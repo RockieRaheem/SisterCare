@@ -2,8 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap");
-
 :root {
   --primary: #8c30e8;
   --background-light: #f7f6f8;
@@ -41,33 +39,19 @@ body {
   background: rgba(140, 48, 232, 0.5);
 }
 
-/* Smooth transitions */
-* {
-  transition-property: background-color, border-color, color;
-  transition-duration: 150ms;
-  transition-timing-function: ease-in-out;
-}
-
-/* Toggle switch animation */
-.toggle-switch {
-  transition: all 0.3s ease;
-}
-
 /* Card hover effects */
 .card-hover {
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
+  @apply transition-all duration-200 ease-in-out;
 }
 
 .card-hover:hover {
-  transform: translateY(-2px);
+  @apply -translate-y-0.5;
   box-shadow: 0 10px 40px rgba(140, 48, 232, 0.1);
 }
 
 /* Button press effect */
 .btn-press:active {
-  transform: scale(0.98);
+  @apply scale-[0.98];
 }
 
 /* Gradient backgrounds */
