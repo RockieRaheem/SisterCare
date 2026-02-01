@@ -102,7 +102,7 @@ export default function LibraryPage() {
     <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden">
       <Header variant="app" />
 
-      <main className="flex-1 flex max-w-[1440px] mx-auto w-full px-6 md:px-20 py-8 gap-10">
+      <main className="flex-1 flex max-w-[1440px] mx-auto w-full px-6 md:px-20 py-8 pb-24 md:pb-8 gap-10">
         {/* Sidebar Navigation */}
         <aside className="hidden lg:flex flex-col w-64 gap-8 shrink-0">
           <div className="flex flex-col gap-2">

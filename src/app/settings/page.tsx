@@ -15,7 +15,7 @@ export default function SettingsPage() {
     <div className="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden bg-background-light dark:bg-background-dark">
       <Header variant="app" />
 
-      <main className="flex-1 max-w-[960px] mx-auto w-full px-4 md:px-10 py-8">
+      <main className="flex-1 max-w-[960px] mx-auto w-full px-4 md:px-10 py-8 pb-24 md:pb-8">
         {/* Page Header */}
         <div className="flex flex-wrap justify-between gap-3 mb-8">
           <div className="flex min-w-72 flex-col gap-3">

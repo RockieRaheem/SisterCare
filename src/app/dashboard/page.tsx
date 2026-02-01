@@ -31,7 +31,7 @@ export default function DashboardPage() {
     <div className="layout-container flex flex-col min-h-screen">
       <Header variant="app" />
 
-      <main className="flex-1 max-w-[1200px] mx-auto w-full px-6 py-8">
+      <main className="flex-1 max-w-[1200px] mx-auto w-full px-6 py-8 pb-24 md:pb-8">
         {/* Page Heading */}
         <div className="flex flex-wrap justify-between gap-3 mb-8">
           <div className="flex min-w-72 flex-col gap-1">

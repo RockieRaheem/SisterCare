@@ -96,7 +96,7 @@ export default function ChatPage() {
       <Header variant="app" />
 
       <main className="flex flex-1 justify-center py-6">
-        <div className="flex flex-col max-w-[800px] w-full px-4 h-[calc(100vh-140px)]">
+        <div className="flex flex-col max-w-[800px] w-full px-4 h-[calc(100vh-140px)] pb-20 md:pb-0">
           {/* Section Header */}
           <div className="flex items-center gap-3 px-4 pb-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">

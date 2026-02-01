@@ -3,6 +3,7 @@ import { Manrope } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { AuthProvider } from "@/context/AuthContext";
+import BottomNav from "@/components/layout/BottomNav";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -39,7 +40,10 @@ export default function RootLayout({
         className={`${manrope.variable} font-display bg-background-light dark:bg-background-dark text-text-primary dark:text-white min-h-screen`}
       >
         <ThemeProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            {children}
+            <BottomNav />
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
