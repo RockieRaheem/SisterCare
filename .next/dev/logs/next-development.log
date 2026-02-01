@@ -1,0 +1,12 @@
+[00:00:04.406] Server  LOG     
+[00:00:04.409] Server  LOG       We detected TypeScript in your project and reconfigured your tsconfig.json file for you.
+[00:00:04.416] Server  LOG       The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:
+
+[00:00:04.419] Server  LOG       	- target was set to ES2017 (For top-level `await`. Note: Next.js only polyfills for the esmodules target.)
+[00:00:04.423] Server  LOG       	- include was updated to add '.next/dev/types/**/*.ts'
+[00:00:04.423] Server  LOG     
+[00:00:04.426] Server  LOG       The following mandatory changes were made to your tsconfig.json:
+
+[00:00:04.430] Server  LOG       	- jsx was set to react-jsx (next.js uses the React automatic runtime)
+[00:00:04.433] Server  LOG     
+[00:00:06.349] Server  LOG     ✓ Ready in 4.6s
