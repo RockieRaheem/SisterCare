@@ -44,7 +44,7 @@ export async function createUserProfile(
   uid: string,
   email: string,
   displayName: string | null = null,
-  photoURL: string | null = null
+  photoURL: string | null = null,
 ): Promise<UserProfile> {
   const userProfile: UserProfile = {
     uid,
@@ -98,7 +98,7 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
  */
 export async function updateUserProfile(
   uid: string,
-  updates: Partial<UserProfile>
+  updates: Partial<UserProfile>,
 ): Promise<void> {
   const docRef = doc(db, "users", uid);
   await updateDoc(docRef, {
@@ -112,7 +112,7 @@ export async function updateUserProfile(
  */
 export async function updateUserPreferences(
   uid: string,
-  preferences: Partial<UserPreferences>
+  preferences: Partial<UserPreferences>,
 ): Promise<void> {
   const docRef = doc(db, "users", uid);
   const userDoc = await getDoc(docRef);
@@ -135,7 +135,7 @@ export async function updateUserPreferences(
  */
 export function calculateNextPeriod(
   lastPeriodDate: Date,
-  cycleLength: number
+  cycleLength: number,
 ): Date {
   const nextDate = new Date(lastPeriodDate);
   nextDate.setDate(nextDate.getDate() + cycleLength);
@@ -148,11 +148,11 @@ export function calculateNextPeriod(
 export function getCurrentPhase(
   lastPeriodDate: Date,
   cycleLength: number,
-  periodLength: number
+  periodLength: number,
 ): { phase: string; dayInCycle: number; daysUntilNextPeriod: number } {
   const today = new Date();
   const daysSinceLastPeriod = Math.floor(
-    (today.getTime() - lastPeriodDate.getTime()) / (1000 * 60 * 60 * 24)
+    (today.getTime() - lastPeriodDate.getTime()) / (1000 * 60 * 60 * 24),
   );
 
   // Calculate day in current cycle (1-indexed)
@@ -179,7 +179,7 @@ export function getCurrentPhase(
  */
 export async function saveCycleData(
   uid: string,
-  cycleData: Partial<CycleData>
+  cycleData: Partial<CycleData>,
 ): Promise<void> {
   const docRef = doc(db, "users", uid);
   const userDoc = await getDoc(docRef);
@@ -211,7 +211,7 @@ export async function completeOnboarding(
   uid: string,
   lastPeriodDate: Date,
   cycleLength: number,
-  periodLength: number
+  periodLength: number,
 ): Promise<void> {
   const nextPeriodDate = calculateNextPeriod(lastPeriodDate, cycleLength);
   const { phase } = getCurrentPhase(lastPeriodDate, cycleLength, periodLength);
@@ -247,7 +247,7 @@ export async function completeOnboarding(
  */
 export async function logSymptoms(
   uid: string,
-  symptomLog: Omit<SymptomLog, "id">
+  symptomLog: Omit<SymptomLog, "id">,
 ): Promise<string> {
   const symptomsRef = collection(db, "users", uid, "symptoms");
   const docRef = await addDoc(symptomsRef, {
@@ -263,14 +263,14 @@ export async function logSymptoms(
 export async function getSymptoms(
   uid: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
 ): Promise<SymptomLog[]> {
   const symptomsRef = collection(db, "users", uid, "symptoms");
   const q = query(
     symptomsRef,
     where("date", ">=", Timestamp.fromDate(startDate)),
     where("date", "<=", Timestamp.fromDate(endDate)),
-    orderBy("date", "desc")
+    orderBy("date", "desc"),
   );
 
   const querySnapshot = await getDocs(q);
@@ -290,7 +290,7 @@ export async function getSymptoms(
  */
 export async function createConversation(
   uid: string,
-  type: "ai_support" | "counsellor" = "ai_support"
+  type: "ai_support" | "counsellor" = "ai_support",
 ): Promise<string> {
   const conversationsRef = collection(db, "conversations");
   const docRef = await addDoc(conversationsRef, {
@@ -308,7 +308,7 @@ export async function createConversation(
  */
 export async function getOrCreateConversation(
   uid: string,
-  type: "ai_support" | "counsellor" = "ai_support"
+  type: "ai_support" | "counsellor" = "ai_support",
 ): Promise<string> {
   const conversationsRef = collection(db, "conversations");
   const q = query(
@@ -316,7 +316,7 @@ export async function getOrCreateConversation(
     where("userId", "==", uid),
     where("type", "==", type),
     where("status", "==", "active"),
-    orderBy("updatedAt", "desc")
+    orderBy("updatedAt", "desc"),
   );
 
   const querySnapshot = await getDocs(q);
@@ -333,9 +333,14 @@ export async function getOrCreateConversation(
  */
 export async function addMessage(
   conversationId: string,
-  message: Omit<ChatMessage, "id" | "timestamp" | "read">
+  message: Omit<ChatMessage, "id" | "timestamp" | "read">,
 ): Promise<string> {
-  const messagesRef = collection(db, "conversations", conversationId, "messages");
+  const messagesRef = collection(
+    db,
+    "conversations",
+    conversationId,
+    "messages",
+  );
   const docRef = await addDoc(messagesRef, {
     ...message,
     timestamp: serverTimestamp(),
@@ -355,9 +360,14 @@ export async function addMessage(
  */
 export async function getMessages(
   conversationId: string,
-  limit: number = 50
+  limit: number = 50,
 ): Promise<ChatMessage[]> {
-  const messagesRef = collection(db, "conversations", conversationId, "messages");
+  const messagesRef = collection(
+    db,
+    "conversations",
+    conversationId,
+    "messages",
+  );
   const q = query(messagesRef, orderBy("timestamp", "asc"));
 
   const querySnapshot = await getDocs(q);
@@ -377,7 +387,7 @@ export async function getMessages(
  */
 export async function createReminder(
   uid: string,
-  reminder: Omit<Reminder, "id" | "sent" | "read">
+  reminder: Omit<Reminder, "id" | "sent" | "read">,
 ): Promise<string> {
   const remindersRef = collection(db, "users", uid, "reminders");
   const docRef = await addDoc(remindersRef, {
@@ -397,7 +407,7 @@ export async function getPendingReminders(uid: string): Promise<Reminder[]> {
   const q = query(
     remindersRef,
     where("sent", "==", false),
-    orderBy("scheduledFor", "asc")
+    orderBy("scheduledFor", "asc"),
   );
 
   const querySnapshot = await getDocs(q);
@@ -414,17 +424,17 @@ export async function getPendingReminders(uid: string): Promise<Reminder[]> {
 export async function schedulePeriodReminders(
   uid: string,
   nextPeriodDate: Date,
-  reminderDaysBefore: number = 3
+  reminderDaysBefore: number = 3,
 ): Promise<void> {
   // Clear existing period reminders
   const remindersRef = collection(db, "users", uid, "reminders");
   const existingQuery = query(
     remindersRef,
     where("type", "==", "period_coming"),
-    where("sent", "==", false)
+    where("sent", "==", false),
   );
   const existingReminders = await getDocs(existingQuery);
-  
+
   for (const reminder of existingReminders.docs) {
     await deleteDoc(reminder.ref);
   }
@@ -435,10 +445,6 @@ export async function schedulePeriodReminders(
 
   if (reminderDate > new Date()) {
     await createReminder(uid, {
-      odString
-      odString
-      odString
-      odString
       userId: uid,
       type: "period_coming",
       title: "Period Coming Soon",
@@ -453,7 +459,7 @@ export async function schedulePeriodReminders(
  */
 export async function markReminderSent(
   uid: string,
-  reminderId: string
+  reminderId: string,
 ): Promise<void> {
   const reminderRef = doc(db, "users", uid, "reminders", reminderId);
   await updateDoc(reminderRef, {
@@ -467,7 +473,7 @@ export async function markReminderSent(
  */
 export async function markReminderRead(
   uid: string,
-  reminderId: string
+  reminderId: string,
 ): Promise<void> {
   const reminderRef = doc(db, "users", uid, "reminders", reminderId);
   await updateDoc(reminderRef, {
@@ -484,7 +490,7 @@ export async function markReminderRead(
  */
 export async function logCycleHistory(
   uid: string,
-  cycle: Omit<CycleHistory, "id">
+  cycle: Omit<CycleHistory, "id">,
 ): Promise<string> {
   const historyRef = collection(db, "users", uid, "cycleHistory");
   const docRef = await addDoc(historyRef, {
@@ -500,7 +506,7 @@ export async function logCycleHistory(
  */
 export async function getCycleHistory(
   uid: string,
-  limit: number = 12
+  limit: number = 12,
 ): Promise<CycleHistory[]> {
   const historyRef = collection(db, "users", uid, "cycleHistory");
   const q = query(historyRef, orderBy("startDate", "desc"));
