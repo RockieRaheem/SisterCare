@@ -7,6 +7,7 @@ const navItems = [
   { href: "/dashboard", icon: "dashboard", label: "Home" },
   { href: "/chat", icon: "chat_bubble", label: "Chat" },
   { href: "/library", icon: "menu_book", label: "Library" },
+  { href: "/profile", icon: "person", label: "Profile" },
   { href: "/settings", icon: "settings", label: "Settings" },
 ];
 

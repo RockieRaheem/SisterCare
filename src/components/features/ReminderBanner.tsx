@@ -2,7 +2,11 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useReminders, requestNotificationPermission, showBrowserNotification } from "@/hooks/useReminders";
+import {
+  useReminders,
+  requestNotificationPermission,
+  showBrowserNotification,
+} from "@/hooks/useReminders";
 
 interface ReminderBannerProps {
   className?: string;
@@ -12,10 +16,13 @@ interface ReminderBannerProps {
  * Banner component to display active reminders
  * Shows period reminders at the top of pages
  */
-export default function ReminderBanner({ className = "" }: ReminderBannerProps) {
+export default function ReminderBanner({
+  className = "",
+}: ReminderBannerProps) {
   const { reminders, unreadCount, markAsRead, loading } = useReminders();
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
-  const [notificationPermission, setNotificationPermission] = useState<boolean>(false);
+  const [notificationPermission, setNotificationPermission] =
+    useState<boolean>(false);
 
   useEffect(() => {
     // Check notification permission on mount
@@ -27,7 +34,9 @@ export default function ReminderBanner({ className = "" }: ReminderBannerProps) 
   useEffect(() => {
     // Show browser notification for new unread reminders
     if (notificationPermission && unreadCount > 0) {
-      const unreadReminder = reminders.find((r) => !r.read && !dismissed.has(r.id));
+      const unreadReminder = reminders.find(
+        (r) => !r.read && !dismissed.has(r.id),
+      );
       if (unreadReminder) {
         showBrowserNotification(unreadReminder.title, {
           body: unreadReminder.message,
@@ -64,16 +73,16 @@ export default function ReminderBanner({ className = "" }: ReminderBannerProps) 
           <div className="flex items-start gap-4">
             <div className="p-2 bg-primary/20 rounded-lg shrink-0">
               <span className="material-symbols-outlined text-primary">
-                {reminder.type === "period_coming" ? "calendar_today" : "notifications"}
+                {reminder.type === "period_coming"
+                  ? "calendar_today"
+                  : "notifications"}
               </span>
             </div>
             <div className="flex-1 min-w-0">
               <h4 className="text-primary font-bold text-sm mb-1">
                 {reminder.title}
               </h4>
-              <p className="text-text-secondary text-sm">
-                {reminder.message}
-              </p>
+              <p className="text-text-secondary text-sm">{reminder.message}</p>
             </div>
             <button
               onClick={() => handleDismiss(reminder.id)}
