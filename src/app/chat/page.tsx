@@ -4,7 +4,11 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
 import { useAuth } from "@/context/AuthContext";
-import { addMessage, getOrCreateConversation, getMessages } from "@/lib/firestore";
+import {
+  addMessage,
+  getOrCreateConversation,
+  getMessages,
+} from "@/lib/firestore";
 
 interface Message {
   id: string;
@@ -23,7 +27,7 @@ const icebreakers = [
 export default function ChatPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -60,7 +64,7 @@ export default function ChatPage() {
 
       // Load existing messages
       const existingMessages = await getMessages(convId);
-      
+
       if (existingMessages.length > 0) {
         setMessages(
           existingMessages.map((msg) => ({
@@ -68,7 +72,7 @@ export default function ChatPage() {
             sender: msg.sender === "user" ? "user" : "sister",
             text: msg.content,
             timestamp: msg.timestamp,
-          }))
+          })),
         );
       } else {
         // Add welcome message
@@ -163,7 +167,7 @@ export default function ChatPage() {
       }
     } catch (error) {
       console.error("Error sending message:", error);
-      
+
       // Add error message
       const errorMessage: Message = {
         id: `error-${Date.now()}`,

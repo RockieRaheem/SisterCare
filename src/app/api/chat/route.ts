@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     if (!message || typeof message !== "string") {
       return NextResponse.json(
         { error: "Message is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -63,7 +63,11 @@ export async function POST(request: NextRequest) {
     if (apiKey) {
       // Use Google Gemini API
       try {
-        const response = await callGeminiAPI(apiKey, message, conversationHistory);
+        const response = await callGeminiAPI(
+          apiKey,
+          message,
+          conversationHistory,
+        );
         return NextResponse.json({ response, source: "ai" });
       } catch (apiError) {
         console.error("Gemini API error:", apiError);
@@ -74,12 +78,11 @@ export async function POST(request: NextRequest) {
     // Use intelligent fallback responses
     const response = generateIntelligentResponse(message);
     return NextResponse.json({ response, source: "fallback" });
-
   } catch (error) {
     console.error("Chat API error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -87,7 +90,7 @@ export async function POST(request: NextRequest) {
 async function callGeminiAPI(
   apiKey: string,
   message: string,
-  conversationHistory: Array<{ role: string; content: string }>
+  conversationHistory: Array<{ role: string; content: string }>,
 ): Promise<string> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
@@ -99,7 +102,11 @@ async function callGeminiAPI(
     },
     {
       role: "model",
-      parts: [{ text: "I understand. I'm Sister, your compassionate AI support assistant at SisterCare. I'm here to provide emotional support, answer questions about menstrual health, and create a safe space for you. How can I help you today? 💜" }],
+      parts: [
+        {
+          text: "I understand. I'm Sister, your compassionate AI support assistant at SisterCare. I'm here to provide emotional support, answer questions about menstrual health, and create a safe space for you. How can I help you today? 💜",
+        },
+      ],
     },
     ...conversationHistory.map((msg) => ({
       role: msg.role === "user" ? "user" : "model",
@@ -151,7 +158,7 @@ async function callGeminiAPI(
   }
 
   const data = await response.json();
-  
+
   if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
     return data.candidates[0].content.parts[0].text;
   }
@@ -163,7 +170,11 @@ function generateIntelligentResponse(message: string): string {
   const lowerMessage = message.toLowerCase();
 
   // Cramps and pain
-  if (lowerMessage.includes("cramp") || lowerMessage.includes("pain") || lowerMessage.includes("hurt")) {
+  if (
+    lowerMessage.includes("cramp") ||
+    lowerMessage.includes("pain") ||
+    lowerMessage.includes("hurt")
+  ) {
     return `I'm sorry you're experiencing discomfort. Period cramps can be really challenging! Here are some natural remedies that might help:
 
 🌡️ **Heat therapy**: A heating pad or warm water bottle on your lower abdomen can relax the muscles
@@ -175,7 +186,12 @@ If your pain is severe or disrupting your daily life, please consider consulting
   }
 
   // Anxiety or stress
-  if (lowerMessage.includes("anxious") || lowerMessage.includes("anxiety") || lowerMessage.includes("stress") || lowerMessage.includes("worried")) {
+  if (
+    lowerMessage.includes("anxious") ||
+    lowerMessage.includes("anxiety") ||
+    lowerMessage.includes("stress") ||
+    lowerMessage.includes("worried")
+  ) {
     return `It's completely normal to feel anxious, especially around your cycle when hormones fluctuate. Your feelings are valid! 💜
 
 Here are some grounding techniques that might help:
@@ -189,7 +205,12 @@ Remember, it's okay to not be okay sometimes. If anxiety persists, talking to a 
   }
 
   // Sleep
-  if (lowerMessage.includes("sleep") || lowerMessage.includes("tired") || lowerMessage.includes("insomnia") || lowerMessage.includes("rest")) {
+  if (
+    lowerMessage.includes("sleep") ||
+    lowerMessage.includes("tired") ||
+    lowerMessage.includes("insomnia") ||
+    lowerMessage.includes("rest")
+  ) {
     return `Getting quality sleep can be extra challenging during your cycle. Here are some tips to help you rest better:
 
 🌙 **Create a routine**: Go to bed and wake up at the same time daily
@@ -202,7 +223,12 @@ If you're on your period, keeping a heating pad nearby and wearing comfortable c
   }
 
   // Mood changes
-  if (lowerMessage.includes("mood") || lowerMessage.includes("emotional") || lowerMessage.includes("sad") || lowerMessage.includes("crying")) {
+  if (
+    lowerMessage.includes("mood") ||
+    lowerMessage.includes("emotional") ||
+    lowerMessage.includes("sad") ||
+    lowerMessage.includes("crying")
+  ) {
     return `Mood changes during your cycle are so common, and what you're feeling is completely valid. Hormonal fluctuations can really affect how we feel! 💜
 
 Here's what might help:
@@ -217,7 +243,11 @@ Be gentle with yourself during this time. Your emotions are real and temporary. 
   }
 
   // Cycle or period questions
-  if (lowerMessage.includes("cycle") || lowerMessage.includes("period") || lowerMessage.includes("menstrual")) {
+  if (
+    lowerMessage.includes("cycle") ||
+    lowerMessage.includes("period") ||
+    lowerMessage.includes("menstrual")
+  ) {
     return `Understanding your cycle is empowering! The menstrual cycle typically has four phases:
 
 📅 **Menstrual Phase (Days 1-5)**: Your period - focus on rest and self-care
@@ -229,7 +259,12 @@ Cycles can range from 21-35 days and still be considered normal. Every body is u
   }
 
   // Greetings
-  if (lowerMessage.includes("hello") || lowerMessage.includes("hi") || lowerMessage.includes("hey") || lowerMessage.match(/^(good\s)?(morning|afternoon|evening)/)) {
+  if (
+    lowerMessage.includes("hello") ||
+    lowerMessage.includes("hi") ||
+    lowerMessage.includes("hey") ||
+    lowerMessage.match(/^(good\s)?(morning|afternoon|evening)/)
+  ) {
     return `Hello, sister! 💜 I'm so glad you're here. How are you feeling today? Whether you have questions about your health, need someone to listen, or just want to chat, I'm here for you. What's on your mind?`;
   }
 
@@ -239,5 +274,7 @@ Cycles can range from 21-35 days and still be considered normal. Every body is u
   }
 
   // Default response
-  return FALLBACK_RESPONSES[Math.floor(Math.random() * FALLBACK_RESPONSES.length)];
+  return FALLBACK_RESPONSES[
+    Math.floor(Math.random() * FALLBACK_RESPONSES.length)
+  ];
 }
