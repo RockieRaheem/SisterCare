@@ -73,10 +73,6 @@ export interface ChatMessage {
 
 export interface ChatConversation {
   id: string;
-  odString;
-  odString;
-  odString;
-  odString;
   userId: string;
   type: "ai_support" | "counsellor";
   status: "active" | "closed";
@@ -89,10 +85,6 @@ export interface ChatConversation {
 // Reminder Types
 export interface Reminder {
   id: string;
-  odString;
-  odString;
-  odString;
-  odString;
   userId: string;
   type: "period_coming" | "period_start" | "log_symptoms" | "check_in";
   title: string;

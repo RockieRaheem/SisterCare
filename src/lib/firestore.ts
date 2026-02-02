@@ -294,10 +294,6 @@ export async function createConversation(
 ): Promise<string> {
   const conversationsRef = collection(db, "conversations");
   const docRef = await addDoc(conversationsRef, {
-    odString
-    odString
-    odString
-    odString
     userId: uid,
     type,
     status: "active",
