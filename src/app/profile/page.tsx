@@ -26,7 +26,10 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   // Form states
   const [displayName, setDisplayName] = useState("");
@@ -56,7 +59,7 @@ export default function ProfilePage() {
       if (userProfile) {
         setProfile(userProfile);
         setDisplayName(userProfile.displayName || "");
-        
+
         if (userProfile.cycleData) {
           const lastDate = userProfile.cycleData.lastPeriodDate;
           if (lastDate) {
@@ -68,8 +71,12 @@ export default function ProfilePage() {
 
         if (userProfile.preferences) {
           setReminderDays(userProfile.preferences.reminderDaysBefore || 3);
-          setEmailNotifications(userProfile.preferences.emailNotifications ?? true);
-          setPushNotifications(userProfile.preferences.pushNotifications ?? true);
+          setEmailNotifications(
+            userProfile.preferences.emailNotifications ?? true,
+          );
+          setPushNotifications(
+            userProfile.preferences.pushNotifications ?? true,
+          );
         }
       }
     } catch (error) {
@@ -128,7 +135,10 @@ export default function ProfilePage() {
       await loadProfile();
     } catch (error) {
       console.error("Error saving profile:", error);
-      setMessage({ type: "error", text: "Failed to save profile. Please try again." });
+      setMessage({
+        type: "error",
+        text: "Failed to save profile. Please try again.",
+      });
     } finally {
       setSaving(false);
     }
@@ -156,7 +166,8 @@ export default function ProfilePage() {
             Your Profile
           </h1>
           <p className="text-text-secondary text-base">
-            Manage your personal information and cycle settings for accurate predictions.
+            Manage your personal information and cycle settings for accurate
+            predictions.
           </p>
         </div>
 
@@ -181,7 +192,9 @@ export default function ProfilePage() {
         {/* Personal Information */}
         <section className="mb-8">
           <h2 className="text-text-primary dark:text-white text-xl font-bold mb-4 flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary">person</span>
+            <span className="material-symbols-outlined text-primary">
+              person
+            </span>
             Personal Information
           </h2>
           <Card>
@@ -211,7 +224,9 @@ export default function ProfilePage() {
         {/* Cycle Information */}
         <section className="mb-8">
           <h2 className="text-text-primary dark:text-white text-xl font-bold mb-4 flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary">calendar_month</span>
+            <span className="material-symbols-outlined text-primary">
+              calendar_month
+            </span>
             Cycle Information
           </h2>
           <Card>
@@ -271,11 +286,13 @@ export default function ProfilePage() {
                   </h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <p className="text-text-secondary">Next Period Expected</p>
+                      <p className="text-text-secondary">
+                        Next Period Expected
+                      </p>
                       <p className="text-text-primary dark:text-white font-semibold">
                         {calculateNextPeriod(
                           new Date(lastPeriodDate),
-                          cycleLength
+                          cycleLength,
                         ).toLocaleDateString("en-US", {
                           month: "long",
                           day: "numeric",
@@ -290,7 +307,7 @@ export default function ProfilePage() {
                           getCurrentPhase(
                             new Date(lastPeriodDate),
                             cycleLength,
-                            periodLength
+                            periodLength,
                           ).phase
                         }
                       </p>
@@ -303,7 +320,7 @@ export default function ProfilePage() {
                           getCurrentPhase(
                             new Date(lastPeriodDate),
                             cycleLength,
-                            periodLength
+                            periodLength,
                           ).dayInCycle
                         }
                       </p>
@@ -315,7 +332,7 @@ export default function ProfilePage() {
                           getCurrentPhase(
                             new Date(lastPeriodDate),
                             cycleLength,
-                            periodLength
+                            periodLength,
                           ).daysUntilNextPeriod
                         }{" "}
                         days
@@ -331,14 +348,17 @@ export default function ProfilePage() {
         {/* Notification Preferences */}
         <section className="mb-8">
           <h2 className="text-text-primary dark:text-white text-xl font-bold mb-4 flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary">notifications</span>
+            <span className="material-symbols-outlined text-primary">
+              notifications
+            </span>
             Reminder Settings
           </h2>
           <Card>
             <div className="space-y-6">
               <div className="flex flex-col gap-2">
                 <label className="text-text-primary dark:text-white text-sm font-semibold">
-                  Remind me {reminderDays} day{reminderDays !== 1 ? "s" : ""} before my period
+                  Remind me {reminderDays} day{reminderDays !== 1 ? "s" : ""}{" "}
+                  before my period
                 </label>
                 <input
                   type="range"
@@ -376,10 +396,7 @@ export default function ProfilePage() {
 
         {/* Save Button */}
         <div className="flex justify-end gap-4">
-          <Button
-            variant="secondary"
-            onClick={() => router.push("/dashboard")}
-          >
+          <Button variant="secondary" onClick={() => router.push("/dashboard")}>
             Cancel
           </Button>
           <Button
