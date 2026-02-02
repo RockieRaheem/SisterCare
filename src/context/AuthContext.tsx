@@ -48,16 +48,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profileLoading, setProfileLoading] = useState(false);
 
   // Load user profile from Firestore
-  const loadUserProfile = async (uid: string, email: string, displayName: string | null, photoURL: string | null) => {
+  const loadUserProfile = async (
+    uid: string,
+    email: string,
+    displayName: string | null,
+    photoURL: string | null,
+  ) => {
     setProfileLoading(true);
     try {
       let profile = await getUserProfile(uid);
-      
+
       // Create profile if it doesn't exist
       if (!profile) {
         profile = await createUserProfile(uid, email, displayName, photoURL);
       }
-      
+
       setUserProfile(profile);
     } catch (error) {
       console.error("Error loading user profile:", error);
@@ -69,7 +74,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Refresh profile data
   const refreshProfile = async () => {
     if (user) {
-      await loadUserProfile(user.uid, user.email || "", user.displayName, user.photoURL);
+      await loadUserProfile(
+        user.uid,
+        user.email || "",
+        user.displayName,
+        user.photoURL,
+      );
     }
   };
 
@@ -85,13 +95,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             photoURL: firebaseUser.photoURL,
           };
           setUser(userData);
-          
+
           // Load Firestore profile
           await loadUserProfile(
             firebaseUser.uid,
             firebaseUser.email || "",
             firebaseUser.displayName,
-            firebaseUser.photoURL
+            firebaseUser.photoURL,
           );
         } else {
           setUser(null);
@@ -122,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     const result = await signInWithPopup(auth, provider);
-    
+
     // Check if profile exists, if not create one
     const existingProfile = await getUserProfile(result.user.uid);
     if (!existingProfile) {
@@ -130,23 +140,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         result.user.uid,
         result.user.email || "",
         result.user.displayName,
-        result.user.photoURL
+        result.user.photoURL,
       );
     }
   };
 
   return (
     <AuthContext.Provider
-      value={{ 
-        user, 
+      value={{
+        user,
         userProfile,
-        loading, 
+        loading,
         profileLoading,
-        signIn, 
-        signUp, 
-        signOut, 
+        signIn,
+        signUp,
+        signOut,
         signInWithGoogle,
-        refreshProfile
+        refreshProfile,
       }}
     >
       {children}
