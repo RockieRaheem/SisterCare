@@ -1,46 +1,34 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
+import { useAuth } from "@/context/AuthContext";
+import { addMessage, getOrCreateConversation, getMessages } from "@/lib/firestore";
 
 interface Message {
-  id: number;
+  id: string;
   sender: "user" | "sister";
   text: string;
   timestamp: Date;
 }
 
-const initialMessages: Message[] = [
-  {
-    id: 1,
-    sender: "sister",
-    text: "Hello! I'm here to listen and support you. How are you feeling today?",
-    timestamp: new Date(),
-  },
-  {
-    id: 2,
-    sender: "user",
-    text: "I'm feeling a bit anxious about my upcoming cycle.",
-    timestamp: new Date(),
-  },
-  {
-    id: 3,
-    sender: "sister",
-    text: "It's completely normal to feel that way. We can talk through it or I can suggest some relaxation techniques. What would help most right now?",
-    timestamp: new Date(),
-  },
-];
-
 const icebreakers = [
   "How can I manage cramps naturally?",
   "I'm feeling a bit anxious",
-  "Tips for better sleep",
+  "Tips for better sleep during my period",
+  "What phase of my cycle am I in?",
 ];
 
 export default function ChatPage() {
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+  
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -51,11 +39,68 @@ export default function ChatPage() {
     scrollToBottom();
   }, [messages]);
 
-  const sendMessage = (text: string) => {
-    if (!text.trim()) return;
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/auth/login");
+      return;
+    }
+
+    if (user) {
+      initializeChat();
+    }
+  }, [user, authLoading, router]);
+
+  const initializeChat = async () => {
+    if (!user) return;
+
+    try {
+      // Get or create conversation
+      const convId = await getOrCreateConversation(user.uid, "ai_support");
+      setConversationId(convId);
+
+      // Load existing messages
+      const existingMessages = await getMessages(convId);
+      
+      if (existingMessages.length > 0) {
+        setMessages(
+          existingMessages.map((msg) => ({
+            id: msg.id,
+            sender: msg.sender === "user" ? "user" : "sister",
+            text: msg.content,
+            timestamp: msg.timestamp,
+          }))
+        );
+      } else {
+        // Add welcome message
+        const welcomeMessage: Message = {
+          id: "welcome",
+          sender: "sister",
+          text: "Hello! I'm Sister, your supportive companion here at SisterCare. 💜 I'm here to listen, answer your questions about menstrual health, and provide emotional support. How are you feeling today?",
+          timestamp: new Date(),
+        };
+        setMessages([welcomeMessage]);
+      }
+    } catch (error) {
+      console.error("Error initializing chat:", error);
+      // Add welcome message even if there's an error
+      setMessages([
+        {
+          id: "welcome",
+          sender: "sister",
+          text: "Hello! I'm Sister, your supportive companion here at SisterCare. 💜 I'm here to listen, answer your questions about menstrual health, and provide emotional support. How are you feeling today?",
+          timestamp: new Date(),
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const sendMessage = async (text: string) => {
+    if (!text.trim() || !user) return;
 
     const userMessage: Message = {
-      id: messages.length + 1,
+      id: `user-${Date.now()}`,
       sender: "user",
       text: text.trim(),
       timestamp: new Date(),
@@ -65,31 +110,88 @@ export default function ChatPage() {
     setInputValue("");
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const responses = [
-        "I understand how you're feeling. Remember, it's okay to take things one step at a time. Would you like some specific tips for managing this?",
-        "Thank you for sharing that with me. Your feelings are valid. Let's explore some ways to help you feel better.",
-        "I hear you. Many sisters experience similar feelings. Here are some gentle suggestions that might help...",
-        "That's a great question! Let me share some helpful information about that topic.",
-      ];
+    try {
+      // Save user message to Firestore
+      if (conversationId) {
+        await addMessage(conversationId, {
+          conversationId,
+          sender: "user",
+          content: text.trim(),
+        });
+      }
 
-      const sisterMessage: Message = {
-        id: messages.length + 2,
+      // Build conversation history for context
+      const conversationHistory = messages.slice(-10).map((msg) => ({
+        role: msg.sender === "user" ? "user" : "assistant",
+        content: msg.text,
+      }));
+
+      // Call AI API
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: text.trim(),
+          conversationHistory,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.response) {
+        const sisterMessage: Message = {
+          id: `sister-${Date.now()}`,
+          sender: "sister",
+          text: data.response,
+          timestamp: new Date(),
+        };
+
+        setMessages((prev) => [...prev, sisterMessage]);
+
+        // Save AI response to Firestore
+        if (conversationId) {
+          await addMessage(conversationId, {
+            conversationId,
+            sender: "ai",
+            content: data.response,
+          });
+        }
+      } else {
+        throw new Error(data.error || "Failed to get response");
+      }
+    } catch (error) {
+      console.error("Error sending message:", error);
+      
+      // Add error message
+      const errorMessage: Message = {
+        id: `error-${Date.now()}`,
         sender: "sister",
-        text: responses[Math.floor(Math.random() * responses.length)],
+        text: "I'm sorry, I'm having a little trouble right now. Please try again in a moment. Remember, I'm here to support you! 💜",
         timestamp: new Date(),
       };
-
-      setMessages((prev) => [...prev, sisterMessage]);
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     sendMessage(inputValue);
   };
+
+  if (authLoading || loading) {
+    return (
+      <div className="min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-text-secondary">Loading chat...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-background-light dark:bg-background-dark">
@@ -109,7 +211,7 @@ export default function ChatPage() {
                 Chat with Sister
               </h2>
               <p className="text-xs text-primary/70 font-medium">
-                Online • Your safe space for guidance
+                AI-Powered • Your safe space for guidance
               </p>
             </div>
           </div>
@@ -136,15 +238,15 @@ export default function ChatPage() {
                   >
                     {message.sender === "sister" ? "Sister" : "You"}
                   </p>
-                  <p
-                    className={`text-base font-normal leading-relaxed flex max-w-[80%] px-4 py-3 shadow-sm ${
+                  <div
+                    className={`text-base font-normal leading-relaxed max-w-[80%] px-4 py-3 shadow-sm whitespace-pre-wrap ${
                       message.sender === "sister"
                         ? "rounded-xl rounded-bl-none bg-primary text-white"
                         : "rounded-xl rounded-br-none bg-user-bubble text-[#5a3a22]"
                     }`}
                   >
                     {message.text}
-                  </p>
+                  </div>
                 </div>
                 {message.sender === "user" && (
                   <div className="bg-gradient-to-br from-orange-300 to-pink-300 rounded-full w-10 h-10 shrink-0 flex items-center justify-center text-white">
@@ -191,17 +293,19 @@ export default function ChatPage() {
           {/* Input Area & Icebreakers */}
           <div className="mt-auto p-4 space-y-4">
             {/* Icebreakers */}
-            <div className="flex flex-wrap gap-2 justify-center">
-              {icebreakers.map((icebreaker) => (
-                <button
-                  key={icebreaker}
-                  onClick={() => sendMessage(icebreaker)}
-                  className="px-4 py-2 rounded-full border border-primary/30 bg-white dark:bg-background-dark text-primary text-sm font-medium hover:bg-primary hover:text-white transition-all"
-                >
-                  {icebreaker}
-                </button>
-              ))}
-            </div>
+            {messages.length <= 1 && (
+              <div className="flex flex-wrap gap-2 justify-center">
+                {icebreakers.map((icebreaker) => (
+                  <button
+                    key={icebreaker}
+                    onClick={() => sendMessage(icebreaker)}
+                    className="px-4 py-2 rounded-full border border-primary/30 bg-white dark:bg-background-dark text-primary text-sm font-medium hover:bg-primary hover:text-white transition-all"
+                  >
+                    {icebreaker}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Input */}
             <form
@@ -222,10 +326,11 @@ export default function ChatPage() {
                 onChange={(e) => setInputValue(e.target.value)}
                 className="flex-1 bg-transparent border-none focus:ring-0 text-text-primary dark:text-white placeholder:text-gray-400 text-sm"
                 placeholder="Type your message here..."
+                disabled={isTyping}
               />
               <button
                 type="submit"
-                disabled={!inputValue.trim()}
+                disabled={!inputValue.trim() || isTyping}
                 className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span className="material-symbols-outlined">send</span>
