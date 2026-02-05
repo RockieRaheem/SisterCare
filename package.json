@@ -1,0 +1,30 @@
+{
+  "name": "sistercare",
+  "version": "1.0.0",
+  "description": "A Digital Support Platform for Women's Well-Being, Guidance, and Menstrual Health",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@tailwindcss/forms": "^0.5.11",
+    "firebase": "latest",
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "autoprefixer": "^10.4.24",
+    "eslint": "latest",
+    "eslint-config-next": "latest",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.19",
+    "typescript": "latest"
+  }
+}
