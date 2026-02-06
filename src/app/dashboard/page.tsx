@@ -9,7 +9,12 @@ import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import PeriodReminderBanner from "@/components/ui/PeriodReminderBanner";
 import Link from "next/link";
-import { getUserProfile, logSymptoms, getCurrentPhase, getCycleInfo } from "@/lib/firestore";
+import {
+  getUserProfile,
+  logSymptoms,
+  getCurrentPhase,
+  getCycleInfo,
+} from "@/lib/firestore";
 import { UserProfile, MoodType } from "@/types";
 
 const moods: { emoji: string; label: string; value: MoodType }[] = [
@@ -131,11 +136,7 @@ export default function DashboardPage() {
         const { lastPeriodDate, cycleLength, periodLength } =
           userProfile.cycleData;
         if (lastPeriodDate && cycleLength && periodLength) {
-          const info = getCycleInfo(
-            lastPeriodDate,
-            cycleLength,
-            periodLength,
-          );
+          const info = getCycleInfo(lastPeriodDate, cycleLength, periodLength);
           setCycleInfo(info);
         }
       }
@@ -195,8 +196,14 @@ export default function DashboardPage() {
     const isPeriodActive = cycleInfo.isInPeriod;
 
     const days = Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
-    const hours = Math.max(0, Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)));
-    const minutes = Math.max(0, Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)));
+    const hours = Math.max(
+      0,
+      Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+    );
+    const minutes = Math.max(
+      0,
+      Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)),
+    );
 
     return { days, hours, minutes, isPeriodActive, nextPeriodDate: nextPeriod };
   }, [cycleInfo, currentTime]);
@@ -259,19 +266,22 @@ export default function DashboardPage() {
             />
           </div>
         )}
-        
+
         {/* Late Period Update Reminder */}
         {cycleInfo?.isPeriodLate && (
           <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl">
             <div className="flex items-start gap-3">
-              <span className="material-symbols-outlined text-amber-500 text-2xl">update</span>
+              <span className="material-symbols-outlined text-amber-500 text-2xl">
+                update
+              </span>
               <div className="flex-1">
                 <h3 className="text-amber-800 dark:text-amber-200 font-bold mb-1">
                   Period Update Needed
                 </h3>
                 <p className="text-amber-700 dark:text-amber-300 text-sm mb-3">
-                  Your period was expected {cycleInfo.daysLate} day{cycleInfo.daysLate !== 1 ? "s" : ""} ago. 
-                  Please update when your period started for accurate tracking.
+                  Your period was expected {cycleInfo.daysLate} day
+                  {cycleInfo.daysLate !== 1 ? "s" : ""} ago. Please update when
+                  your period started for accurate tracking.
                 </p>
                 <Link href="/profile">
                   <Button variant="secondary" size="sm" icon="edit_calendar">
@@ -316,13 +326,29 @@ export default function DashboardPage() {
                 >
                   Current Phase: {cycleInfo?.phase || "Unknown"}
                 </span>
-                <h2 className="text-text-primary dark:text-white text-2xl font-bold mb-6">
-                  {countdown.isPeriodActive
-                    ? "🌸 Your period is here! Days until next cycle:"
-                    : `Days until your next period`}
-                </h2>
+
+                {/* Period-specific messaging */}
+                {countdown.isPeriodActive ? (
+                  <div className="mb-6">
+                    <h2 className="text-text-primary dark:text-white text-2xl font-bold mb-2">
+                      💜 Take It Easy, Queen
+                    </h2>
+                    <p className="text-text-secondary text-base max-w-md">
+                      Day {cycleInfo?.dayInCycle || 1} of your period. Rest,
+                      hydrate, and be gentle with yourself. You&apos;re doing
+                      amazing!
+                    </p>
+                  </div>
+                ) : (
+                  <h2 className="text-text-primary dark:text-white text-2xl font-bold mb-6">
+                    Days until your next period
+                  </h2>
+                )}
 
                 {/* Timer Component */}
+                {countdown.isPeriodActive && (
+                  <p className="text-text-secondary text-sm mb-3">Time until next cycle:</p>
+                )}
                 <div className="flex gap-4 w-full max-w-md mx-auto">
                   <div className="flex grow basis-0 flex-col items-stretch gap-2">
                     <div className="flex h-16 items-center justify-center rounded-xl bg-border-light dark:bg-border-dark">
@@ -358,8 +384,9 @@ export default function DashboardPage() {
 
                 {cycleInfo?.nextPeriodDate && (
                   <p className="text-text-secondary text-base font-medium mt-6">
-                    {countdown.isPeriodActive ? "Next cycle" : "Next period"}{" "}
-                    expected on{" "}
+                    {countdown.isPeriodActive 
+                      ? `Your period will last about ${profile?.cycleData?.periodLength || 5} days. Next cycle starts` 
+                      : "Next period expected on"}{" "}
                     {cycleInfo.nextPeriodDate.toLocaleDateString("en-US", {
                       month: "long",
                       day: "numeric",
@@ -367,22 +394,75 @@ export default function DashboardPage() {
                     })}
                   </p>
                 )}
+                
+                {/* Self-care tip during menstruation */}
+                {countdown.isPeriodActive && (
+                  <div className="mt-4 p-4 bg-pink-50 dark:bg-pink-900/20 rounded-xl border border-pink-200 dark:border-pink-800 max-w-md">
+                    <p className="text-pink-700 dark:text-pink-300 text-sm flex items-start gap-2">
+                      <span className="material-symbols-outlined text-pink-500 flex-shrink-0">self_care</span>
+                      <span>
+                        {cycleInfo?.dayInCycle === 1 && (
+                          <><strong>Day 1 tip:</strong> Take it slow today. Your body is working hard. A warm bath or heating pad can be soothing. 🛁</>
+                        )}
+                        {cycleInfo?.dayInCycle === 2 && (
+                          <><strong>Day 2 tip:</strong> Flow is often heaviest today. Stay hydrated and consider iron-rich foods like spinach or lentils. 🥬</>
+                        )}
+                        {cycleInfo?.dayInCycle === 3 && (
+                          <><strong>Day 3 tip:</strong> You might feel more tired. Light stretching or gentle yoga can help with cramps. 🧘‍♀️</>
+                        )}
+                        {cycleInfo?.dayInCycle === 4 && (
+                          <><strong>Day 4 tip:</strong> Energy may start returning. Listen to your body and rest when needed. 💆‍♀️</>
+                        )}
+                        {(cycleInfo?.dayInCycle || 0) >= 5 && (
+                          <><strong>Almost there:</strong> Your period is ending soon. Celebrate making it through! You&apos;re strong. 💪</>
+                        )}
+                      </span>
+                    </p>
+                  </div>
+                )}
 
-                {/* Progress bar showing day in cycle */}
+                {/* Progress bar - shows period progress during menstruation, cycle progress otherwise */}
                 {cycleInfo && profile?.cycleData?.cycleLength && (
                   <div className="w-full mt-6">
-                    <div className="flex justify-between text-xs text-text-secondary mb-2">
-                      <span>Day {cycleInfo.dayInCycle}</span>
-                      <span>Day {profile.cycleData.cycleLength}</span>
-                    </div>
-                    <div className="w-full bg-border-light dark:bg-border-dark h-2 rounded-full overflow-hidden">
-                      <div
-                        className="bg-primary h-full transition-all"
-                        style={{
-                          width: `${(cycleInfo.dayInCycle / profile.cycleData.cycleLength) * 100}%`,
-                        }}
-                      />
-                    </div>
+                    {countdown.isPeriodActive ? (
+                      <>
+                        <div className="flex justify-between text-xs text-text-secondary mb-2">
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-sm text-pink-500">water_drop</span>
+                            Period Day {cycleInfo.dayInCycle}
+                          </span>
+                          <span>~{profile.cycleData.periodLength || 5} days</span>
+                        </div>
+                        <div className="w-full bg-pink-100 dark:bg-pink-900/30 h-3 rounded-full overflow-hidden">
+                          <div
+                            className="bg-gradient-to-r from-pink-400 to-pink-600 h-full transition-all rounded-full"
+                            style={{
+                              width: `${Math.min((cycleInfo.dayInCycle / (profile.cycleData.periodLength || 5)) * 100, 100)}%`,
+                            }}
+                          />
+                        </div>
+                        <p className="text-xs text-pink-500 dark:text-pink-400 mt-1 text-center">
+                          {cycleInfo.dayInCycle >= (profile.cycleData.periodLength || 5) 
+                            ? "Your period should be ending soon 🌸" 
+                            : `~${(profile.cycleData.periodLength || 5) - cycleInfo.dayInCycle} days remaining`}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex justify-between text-xs text-text-secondary mb-2">
+                          <span>Day {cycleInfo.dayInCycle}</span>
+                          <span>Day {profile.cycleData.cycleLength}</span>
+                        </div>
+                        <div className="w-full bg-border-light dark:bg-border-dark h-2 rounded-full overflow-hidden">
+                          <div
+                            className="bg-primary h-full transition-all"
+                            style={{
+                              width: `${(cycleInfo.dayInCycle / profile.cycleData.cycleLength) * 100}%`,
+                            }}
+                          />
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
