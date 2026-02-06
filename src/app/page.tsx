@@ -94,7 +94,7 @@ export default function Home() {
                     Track your cycle effortlessly, get gentle reminders before
                     your period, chat with a{" "}
                     <span className="text-primary font-semibold">
-                      judgment-free AI companion
+                      judgment-free wellness companion
                     </span>{" "}
                     who truly gets it, and connect with{" "}
                     <span className="text-primary font-semibold">
@@ -115,10 +115,10 @@ export default function Home() {
                     </div>
                     <div className="flex items-center gap-2 bg-pink-50 dark:bg-pink-900/30 rounded-full px-4 py-2">
                       <span className="material-symbols-outlined text-pink-500 text-lg">
-                        smart_toy
+                        chat_bubble
                       </span>
                       <span className="text-sm font-medium text-text-primary dark:text-white">
-                        AI Companion
+                        Sister Chat
                       </span>
                     </div>
                     <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 rounded-full px-4 py-2">
@@ -292,7 +292,7 @@ export default function Home() {
                           </div>
                           <div>
                             <p className="text-xs font-semibold text-primary mb-1">
-                              Sister AI
+                              Sister
                             </p>
                             <p className="text-sm text-text-primary dark:text-white leading-relaxed">
                               Hi beautiful! How are you feeling today? I&apos;m
@@ -369,113 +369,125 @@ export default function Home() {
         {/* Why SisterCare Section */}
         <section
           id="features"
-          className="py-20 lg:py-28 px-6 lg:px-20 bg-white dark:bg-card-dark scroll-mt-20"
+          className="py-20 lg:py-32 px-6 lg:px-20 bg-gradient-to-b from-white via-purple-50/30 to-white dark:from-card-dark dark:via-purple-950/10 dark:to-card-dark scroll-mt-20 relative overflow-hidden"
         >
-          <div className="max-w-6xl mx-auto">
-            <div className="max-w-2xl mb-16">
-              <h2 className="text-3xl md:text-4xl font-bold text-text-primary dark:text-white mb-4">
-                Why women choose SisterCare
+          {/* Background decoration */}
+          <div className="absolute top-20 left-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
+          <div className="absolute bottom-20 right-0 w-80 h-80 bg-pink-200/30 dark:bg-pink-900/10 rounded-full blur-3xl" />
+
+          <div className="max-w-6xl mx-auto relative">
+            <div className="text-center max-w-3xl mx-auto mb-16">
+              <span className="inline-block px-4 py-1.5 bg-primary/10 text-primary font-semibold text-sm rounded-full mb-4">
+                Everything You Need
+              </span>
+              <h2 className="text-3xl md:text-5xl font-bold text-text-primary dark:text-white mb-6">
+                Why Women Love{" "}
+                <span className="bg-gradient-to-r from-primary to-pink-500 bg-clip-text text-transparent">
+                  SisterCare
+                </span>
               </h2>
-              <p className="text-lg text-text-secondary dark:text-gray-400">
-                Built with care for women who want a simple, respectful way to
-                understand their bodies.
+              <p className="text-lg md:text-xl text-text-secondary dark:text-gray-400">
+                Built with care, compassion, and cultural understanding for
+                women who deserve a simple, respectful way to embrace their
+                wellness journey.
               </p>
             </div>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {/* Feature 1 */}
-              <div className="group">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-5 group-hover:bg-primary/20 transition-colors">
-                  <span className="material-symbols-outlined text-primary text-xl">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+              {/* Feature 1 - Cycle Tracking */}
+              <div className="group bg-white dark:bg-gray-800/50 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-xl hover:border-primary/20 hover:-translate-y-1 transition-all duration-300">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center mb-5 shadow-lg shadow-primary/25 group-hover:scale-110 transition-transform">
+                  <span className="material-symbols-outlined text-white text-2xl">
                     calendar_month
                   </span>
                 </div>
-                <h3 className="text-lg font-semibold text-text-primary dark:text-white mb-2">
-                  Simple cycle tracking
+                <h3 className="text-xl font-bold text-text-primary dark:text-white mb-3">
+                  Smart Cycle Tracking
                 </h3>
                 <p className="text-text-secondary dark:text-gray-400 leading-relaxed">
-                  Log your period with a tap. We&apos;ll help predict when your
-                  next one might come based on your personal patterns.
+                  Log your period with a tap. Our smart predictions learn your
+                  unique patterns to forecast your next cycle with precision.
                 </p>
               </div>
 
-              {/* Feature 2 */}
-              <div className="group">
-                <div className="w-12 h-12 rounded-xl bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center mb-5 group-hover:bg-pink-200 dark:group-hover:bg-pink-900/50 transition-colors">
-                  <span className="material-symbols-outlined text-pink-600 dark:text-pink-400 text-xl">
-                    chat
+              {/* Feature 2 - Sister Chat */}
+              <div className="group bg-white dark:bg-gray-800/50 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-xl hover:border-pink-200 hover:-translate-y-1 transition-all duration-300">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center mb-5 shadow-lg shadow-pink-500/25 group-hover:scale-110 transition-transform">
+                  <span className="material-symbols-outlined text-white text-2xl">
+                    chat_bubble
                   </span>
                 </div>
-                <h3 className="text-lg font-semibold text-text-primary dark:text-white mb-2">
-                  Chat with Sister AI
+                <h3 className="text-xl font-bold text-text-primary dark:text-white mb-3">
+                  Your Judgment-Free Sister
                 </h3>
                 <p className="text-text-secondary dark:text-gray-400 leading-relaxed">
-                  Ask questions about your cycle, symptoms, or health concerns.
-                  Get helpful answers anytime, with cultural sensitivity.
+                  Ask anything about your body without embarrassment. Sister
+                  listens with empathy and responds with culturally-aware
+                  guidance.
                 </p>
               </div>
 
-              {/* Feature 3 */}
-              <div className="group">
-                <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-5 group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50 transition-colors">
-                  <span className="material-symbols-outlined text-blue-600 dark:text-blue-400 text-xl">
-                    notifications
+              {/* Feature 3 - Reminders */}
+              <div className="group bg-white dark:bg-gray-800/50 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-xl hover:border-blue-200 hover:-translate-y-1 transition-all duration-300">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center mb-5 shadow-lg shadow-blue-500/25 group-hover:scale-110 transition-transform">
+                  <span className="material-symbols-outlined text-white text-2xl">
+                    notifications_active
                   </span>
                 </div>
-                <h3 className="text-lg font-semibold text-text-primary dark:text-white mb-2">
-                  Gentle reminders
+                <h3 className="text-xl font-bold text-text-primary dark:text-white mb-3">
+                  Gentle Reminders
                 </h3>
                 <p className="text-text-secondary dark:text-gray-400 leading-relaxed">
-                  Get notified before your period arrives so you can prepare.
-                  Customize what you want to be reminded about.
+                  Never be caught off guard again. Get discreet notifications
+                  before your period arrives so you&apos;re always prepared.
                 </p>
               </div>
 
-              {/* Feature 4 */}
-              <div className="group">
-                <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-5 group-hover:bg-emerald-200 dark:group-hover:bg-emerald-900/50 transition-colors">
-                  <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-xl">
-                    menu_book
+              {/* Feature 4 - Professional Counsellors */}
+              <div className="group bg-white dark:bg-gray-800/50 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-xl hover:border-emerald-200 hover:-translate-y-1 transition-all duration-300">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center mb-5 shadow-lg shadow-emerald-500/25 group-hover:scale-110 transition-transform">
+                  <span className="material-symbols-outlined text-white text-2xl">
+                    support_agent
                   </span>
                 </div>
-                <h3 className="text-lg font-semibold text-text-primary dark:text-white mb-2">
-                  Learn about your health
+                <h3 className="text-xl font-bold text-text-primary dark:text-white mb-3">
+                  Real Human Counsellors
                 </h3>
                 <p className="text-text-secondary dark:text-gray-400 leading-relaxed">
-                  Browse articles on menstrual health, reproductive wellness,
-                  and self-care written for Ugandan women.
+                  Connect with verified professional counsellors via WhatsApp or
+                  call when you need human support and guidance.
                 </p>
               </div>
 
-              {/* Feature 5 */}
-              <div className="group">
-                <div className="w-12 h-12 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center mb-5 group-hover:bg-orange-200 dark:group-hover:bg-orange-900/50 transition-colors">
-                  <span className="material-symbols-outlined text-orange-600 dark:text-orange-400 text-xl">
-                    mood
+              {/* Feature 5 - Symptom Tracking */}
+              <div className="group bg-white dark:bg-gray-800/50 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-xl hover:border-orange-200 hover:-translate-y-1 transition-all duration-300">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center mb-5 shadow-lg shadow-orange-500/25 group-hover:scale-110 transition-transform">
+                  <span className="material-symbols-outlined text-white text-2xl">
+                    monitoring
                   </span>
                 </div>
-                <h3 className="text-lg font-semibold text-text-primary dark:text-white mb-2">
-                  Track how you feel
+                <h3 className="text-xl font-bold text-text-primary dark:text-white mb-3">
+                  Track How You Feel
                 </h3>
                 <p className="text-text-secondary dark:text-gray-400 leading-relaxed">
-                  Log symptoms, moods, and energy levels. Over time, you&apos;ll
-                  see patterns that help you understand your body better.
+                  Log symptoms, moods, and energy levels. Discover patterns that
+                  help you understand and embrace your body&apos;s rhythm.
                 </p>
               </div>
 
-              {/* Feature 6 */}
-              <div className="group">
-                <div className="w-12 h-12 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-5 group-hover:bg-red-200 dark:group-hover:bg-red-900/50 transition-colors">
-                  <span className="material-symbols-outlined text-red-600 dark:text-red-400 text-xl">
-                    support
+              {/* Feature 6 - Health Library */}
+              <div className="group bg-white dark:bg-gray-800/50 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-xl hover:border-violet-200 hover:-translate-y-1 transition-all duration-300">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center mb-5 shadow-lg shadow-violet-500/25 group-hover:scale-110 transition-transform">
+                  <span className="material-symbols-outlined text-white text-2xl">
+                    auto_stories
                   </span>
                 </div>
-                <h3 className="text-lg font-semibold text-text-primary dark:text-white mb-2">
-                  Help when you need it
+                <h3 className="text-xl font-bold text-text-primary dark:text-white mb-3">
+                  Health Resource Library
                 </h3>
                 <p className="text-text-secondary dark:text-gray-400 leading-relaxed">
-                  Quick access to Sauti 116 helpline and trusted resources if
-                  you ever need urgent support.
+                  Explore articles on menstrual health, wellness, and self-care
+                  — all written with Ugandan women in mind.
                 </p>
               </div>
             </div>
@@ -485,60 +497,87 @@ export default function Home() {
         {/* Privacy Section */}
         <section
           id="privacy"
-          className="py-20 lg:py-28 px-6 lg:px-20 scroll-mt-20"
+          className="py-20 lg:py-32 px-6 lg:px-20 scroll-mt-20"
         >
           <div className="max-w-6xl mx-auto">
-            <div className="bg-gradient-to-br from-purple-900 via-primary to-purple-800 rounded-3xl p-10 md:p-16 text-white relative overflow-hidden">
-              {/* Decorative circles */}
-              <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-              <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+            <div className="bg-gradient-to-br from-purple-900 via-primary to-pink-700 rounded-[2.5rem] p-10 md:p-16 text-white relative overflow-hidden shadow-2xl">
+              {/* Decorative elements */}
+              <div className="absolute top-0 right-0 w-72 h-72 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-xl" />
+              <div className="absolute bottom-0 left-0 w-56 h-56 bg-pink-500/20 rounded-full translate-y-1/2 -translate-x-1/2 blur-xl" />
+              <div className="absolute top-1/2 left-1/2 w-96 h-96 bg-purple-600/10 rounded-full -translate-x-1/2 -translate-y-1/2 blur-3xl" />
 
-              <div className="relative flex flex-col lg:flex-row items-center gap-12">
+              {/* Dots pattern */}
+              <div
+                className="absolute inset-0 opacity-[0.03]"
+                style={{
+                  backgroundImage:
+                    "radial-gradient(circle, white 1px, transparent 1px)",
+                  backgroundSize: "24px 24px",
+                }}
+              />
+
+              <div className="relative flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
                 <div className="flex-1">
-                  <h2 className="text-3xl md:text-4xl font-bold mb-6">
-                    Your privacy comes first
+                  <span className="inline-block px-4 py-1.5 bg-white/10 backdrop-blur-sm text-white/90 font-semibold text-sm rounded-full mb-6 border border-white/20">
+                    Your Data, Your Rules
+                  </span>
+                  <h2 className="text-3xl md:text-5xl font-bold mb-6 leading-tight">
+                    Your Privacy is <br className="hidden sm:block" />
+                    <span className="text-pink-300">Sacred to Us</span>
                   </h2>
-                  <p className="text-lg text-white/80 mb-8 leading-relaxed">
-                    We know health data is personal. That&apos;s why we built
-                    SisterCare with privacy at its core. Your information
-                    belongs to you.
+                  <p className="text-lg md:text-xl text-white/80 mb-10 leading-relaxed">
+                    We understand your health data is deeply personal.
+                    That&apos;s why privacy isn&apos;t just a feature —
+                    it&apos;s the foundation everything is built upon.
                   </p>
 
-                  <ul className="space-y-4">
-                    <li className="flex items-start gap-3">
-                      <span className="material-symbols-outlined text-pink-300 mt-0.5">
-                        check_circle
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/10">
+                      <span className="material-symbols-outlined text-pink-300 text-xl">
+                        lock
                       </span>
-                      <span>Your data is stored securely and encrypted</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <span className="material-symbols-outlined text-pink-300 mt-0.5">
-                        check_circle
+                      <span className="font-medium">End-to-end encrypted</span>
+                    </div>
+                    <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/10">
+                      <span className="material-symbols-outlined text-pink-300 text-xl">
+                        block
                       </span>
-                      <span>We never sell your information to anyone</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <span className="material-symbols-outlined text-pink-300 mt-0.5">
-                        check_circle
+                      <span className="font-medium">Never sold to anyone</span>
+                    </div>
+                    <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/10">
+                      <span className="material-symbols-outlined text-pink-300 text-xl">
+                        delete_forever
                       </span>
-                      <span>Delete your account and data anytime you want</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <span className="material-symbols-outlined text-pink-300 mt-0.5">
-                        check_circle
+                      <span className="font-medium">Delete anytime</span>
+                    </div>
+                    <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/10">
+                      <span className="material-symbols-outlined text-pink-300 text-xl">
+                        visibility_off
                       </span>
-                      <span>
-                        No tracking, no ads, no hidden data collection
-                      </span>
-                    </li>
-                  </ul>
+                      <span className="font-medium">No ads or tracking</span>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="flex-shrink-0">
-                  <div className="w-40 h-40 md:w-48 md:h-48 rounded-full bg-white/10 flex items-center justify-center">
-                    <div className="w-28 h-28 md:w-32 md:h-32 rounded-full bg-white/10 flex items-center justify-center">
-                      <span className="material-symbols-outlined text-5xl md:text-6xl text-white">
-                        shield
+                <div className="flex-shrink-0 relative">
+                  {/* Animated rings */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div
+                      className="w-56 h-56 md:w-64 md:h-64 rounded-full border border-white/10 animate-pulse"
+                      style={{ animationDuration: "3s" }}
+                    />
+                  </div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div
+                      className="w-44 h-44 md:w-52 md:h-52 rounded-full border border-white/10 animate-pulse"
+                      style={{ animationDuration: "2.5s" }}
+                    />
+                  </div>
+
+                  <div className="relative w-44 h-44 md:w-52 md:h-52 rounded-full bg-gradient-to-br from-white/20 to-white/5 backdrop-blur-sm flex items-center justify-center border border-white/20 shadow-2xl">
+                    <div className="w-28 h-28 md:w-36 md:h-36 rounded-full bg-gradient-to-br from-white/20 to-transparent flex items-center justify-center">
+                      <span className="material-symbols-outlined text-5xl md:text-7xl text-white drop-shadow-lg">
+                        verified_user
                       </span>
                     </div>
                   </div>
@@ -549,80 +588,184 @@ export default function Home() {
         </section>
 
         {/* How it works */}
-        <section className="py-20 lg:py-28 px-6 lg:px-20 bg-gray-50 dark:bg-gray-900/50">
-          <div className="max-w-6xl mx-auto">
+        <section className="py-20 lg:py-32 px-6 lg:px-20 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900/50 dark:to-background-dark relative overflow-hidden">
+          {/* Background pattern */}
+          <div
+            className="absolute inset-0 opacity-[0.02]"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle, #8c30e8 1.5px, transparent 1.5px)",
+              backgroundSize: "40px 40px",
+            }}
+          />
+
+          <div className="max-w-6xl mx-auto relative">
             <div className="text-center mb-16">
-              <h2 className="text-3xl md:text-4xl font-bold text-text-primary dark:text-white mb-4">
-                Get started in minutes
+              <span className="inline-block px-4 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-semibold text-sm rounded-full mb-4">
+                Super Easy
+              </span>
+              <h2 className="text-3xl md:text-5xl font-bold text-text-primary dark:text-white mb-4">
+                Get Started in{" "}
+                <span className="bg-gradient-to-r from-primary to-pink-500 bg-clip-text text-transparent">
+                  3 Simple Steps
+                </span>
               </h2>
-              <p className="text-lg text-text-secondary dark:text-gray-400 max-w-xl mx-auto">
-                No complicated setup. Just create an account and start tracking.
+              <p className="text-lg md:text-xl text-text-secondary dark:text-gray-400 max-w-xl mx-auto">
+                No complicated setup. No confusing forms. Just you and your
+                wellness journey.
               </p>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-8">
-              <div className="text-center">
-                <div className="w-16 h-16 rounded-full bg-primary text-white text-2xl font-bold flex items-center justify-center mx-auto mb-6">
-                  1
+            <div className="grid md:grid-cols-3 gap-8 lg:gap-12">
+              {/* Step 1 */}
+              <div className="relative">
+                <div className="text-center bg-white dark:bg-gray-800/50 rounded-3xl p-8 shadow-lg border border-gray-100 dark:border-gray-700 hover:shadow-xl transition-shadow">
+                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-purple-600 text-white text-3xl font-bold flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary/30 rotate-3 hover:rotate-0 transition-transform">
+                    1
+                  </div>
+                  <h3 className="text-xl font-bold text-text-primary dark:text-white mb-3">
+                    Create Your Account
+                  </h3>
+                  <p className="text-text-secondary dark:text-gray-400">
+                    Sign up with your email in under a minute. Completely free,
+                    no credit card needed.
+                  </p>
                 </div>
-                <h3 className="text-lg font-semibold text-text-primary dark:text-white mb-2">
-                  Create your account
-                </h3>
-                <p className="text-text-secondary dark:text-gray-400">
-                  Sign up with your email. It takes less than a minute and
-                  it&apos;s completely free.
-                </p>
+                <div className="hidden md:block absolute top-1/2 -right-6 lg:-right-8 transform -translate-y-1/2">
+                  <span className="material-symbols-outlined text-primary/30 text-4xl">
+                    chevron_right
+                  </span>
+                </div>
               </div>
 
-              <div className="text-center">
-                <div className="w-16 h-16 rounded-full bg-primary text-white text-2xl font-bold flex items-center justify-center mx-auto mb-6">
-                  2
+              {/* Step 2 */}
+              <div className="relative">
+                <div className="text-center bg-white dark:bg-gray-800/50 rounded-3xl p-8 shadow-lg border border-gray-100 dark:border-gray-700 hover:shadow-xl transition-shadow">
+                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-pink-500 to-rose-500 text-white text-3xl font-bold flex items-center justify-center mx-auto mb-6 shadow-lg shadow-pink-500/30 -rotate-3 hover:rotate-0 transition-transform">
+                    2
+                  </div>
+                  <h3 className="text-xl font-bold text-text-primary dark:text-white mb-3">
+                    Share Your Cycle Info
+                  </h3>
+                  <p className="text-text-secondary dark:text-gray-400">
+                    Enter your last period date and average cycle length.
+                    We&apos;ll handle the rest.
+                  </p>
                 </div>
-                <h3 className="text-lg font-semibold text-text-primary dark:text-white mb-2">
-                  Tell us about your cycle
-                </h3>
-                <p className="text-text-secondary dark:text-gray-400">
-                  Enter your last period date and average cycle length.
-                  We&apos;ll take it from there.
-                </p>
+                <div className="hidden md:block absolute top-1/2 -right-6 lg:-right-8 transform -translate-y-1/2">
+                  <span className="material-symbols-outlined text-primary/30 text-4xl">
+                    chevron_right
+                  </span>
+                </div>
               </div>
 
-              <div className="text-center">
-                <div className="w-16 h-16 rounded-full bg-primary text-white text-2xl font-bold flex items-center justify-center mx-auto mb-6">
-                  3
+              {/* Step 3 */}
+              <div className="relative">
+                <div className="text-center bg-white dark:bg-gray-800/50 rounded-3xl p-8 shadow-lg border border-gray-100 dark:border-gray-700 hover:shadow-xl transition-shadow">
+                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white text-3xl font-bold flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-500/30 rotate-3 hover:rotate-0 transition-transform">
+                    3
+                  </div>
+                  <h3 className="text-xl font-bold text-text-primary dark:text-white mb-3">
+                    Start Your Journey
+                  </h3>
+                  <p className="text-text-secondary dark:text-gray-400">
+                    Log periods, track symptoms, chat with Sister. The more you
+                    use it, the better it understands you.
+                  </p>
                 </div>
-                <h3 className="text-lg font-semibold text-text-primary dark:text-white mb-2">
-                  Start tracking
-                </h3>
-                <p className="text-text-secondary dark:text-gray-400">
-                  Log your periods, symptoms, and moods. The more you track, the
-                  smarter predictions get.
-                </p>
               </div>
             </div>
           </div>
         </section>
 
         {/* CTA Section */}
-        <section className="py-20 lg:py-28 px-6 lg:px-20">
-          <div className="max-w-3xl mx-auto text-center">
-            <span className="material-symbols-outlined text-primary text-5xl mb-6">
-              favorite
-            </span>
-            <h2 className="text-3xl md:text-4xl font-bold text-text-primary dark:text-white mb-4">
-              Ready to understand your body better?
-            </h2>
-            <p className="text-lg text-text-secondary dark:text-gray-400 mb-10 max-w-xl mx-auto">
-              Join SisterCare today. It&apos;s free, private, and designed with
-              you in mind.
-            </p>
-            <Link
-              href="/auth/signup"
-              className="inline-flex items-center justify-center gap-2 rounded-xl h-14 px-10 bg-primary hover:bg-primary/90 text-white text-lg font-semibold shadow-lg shadow-primary/25 transition-all"
+        <section className="py-20 lg:py-32 px-6 lg:px-20 relative overflow-hidden">
+          {/* Decorative background */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-purple-50/50 to-pink-50/50 dark:from-primary/10 dark:via-purple-950/20 dark:to-pink-950/10" />
+          <div className="absolute top-10 left-[10%] w-72 h-72 bg-primary/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-10 right-[10%] w-80 h-80 bg-pink-300/20 dark:bg-pink-800/10 rounded-full blur-3xl" />
+
+          <div className="max-w-4xl mx-auto text-center relative">
+            {/* Floating hearts */}
+            <div
+              className="absolute -top-10 left-[20%] text-4xl animate-bounce"
+              style={{ animationDuration: "2s" }}
             >
-              Create free account
-              <span className="material-symbols-outlined">arrow_forward</span>
-            </Link>
+              💜
+            </div>
+            <div
+              className="absolute top-0 right-[15%] text-3xl animate-bounce"
+              style={{ animationDuration: "2.5s", animationDelay: "0.5s" }}
+            >
+              💗
+            </div>
+            <div
+              className="absolute -bottom-5 left-[30%] text-2xl animate-bounce"
+              style={{ animationDuration: "3s", animationDelay: "1s" }}
+            >
+              ✨
+            </div>
+
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-primary to-pink-500 shadow-xl shadow-primary/30 mb-8">
+              <span className="material-symbols-outlined text-white text-4xl">
+                favorite
+              </span>
+            </div>
+
+            <h2 className="text-3xl md:text-5xl lg:text-6xl font-bold text-text-primary dark:text-white mb-6 leading-tight">
+              Ready to Embrace <br className="hidden sm:block" />
+              <span className="bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent">
+                Your Wellness?
+              </span>
+            </h2>
+
+            <p className="text-lg md:text-xl text-text-secondary dark:text-gray-400 mb-10 max-w-2xl mx-auto leading-relaxed">
+              Join thousands of women who&apos;ve discovered a kinder, more
+              understanding way to care for themselves. Your journey to wellness
+              starts here.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                href="/auth/signup"
+                className="group inline-flex items-center justify-center gap-2 rounded-2xl h-16 px-10 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-white text-lg font-semibold shadow-xl shadow-primary/30 transition-all transform hover:scale-[1.02] hover:-translate-y-1"
+              >
+                Start Your Free Journey
+                <span className="material-symbols-outlined text-xl group-hover:translate-x-1 transition-transform">
+                  arrow_forward
+                </span>
+              </Link>
+              <Link
+                href="/counsellors"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl h-16 px-8 bg-white dark:bg-gray-800 text-text-primary dark:text-white text-lg font-semibold border-2 border-gray-200 dark:border-gray-700 hover:border-primary transition-all transform hover:scale-[1.02]"
+              >
+                <span className="material-symbols-outlined text-emerald-500">
+                  support_agent
+                </span>
+                Talk to a Counsellor
+              </Link>
+            </div>
+
+            <p className="mt-8 text-sm text-text-secondary dark:text-gray-500 flex items-center justify-center gap-4 flex-wrap">
+              <span className="flex items-center gap-1">
+                <span className="material-symbols-outlined text-green-500 text-lg">
+                  check_circle
+                </span>
+                100% Free
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="material-symbols-outlined text-green-500 text-lg">
+                  check_circle
+                </span>
+                No Ads
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="material-symbols-outlined text-green-500 text-lg">
+                  check_circle
+                </span>
+                Private & Secure
+              </span>
+            </p>
           </div>
         </section>
       </main>
