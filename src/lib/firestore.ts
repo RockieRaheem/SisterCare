@@ -718,3 +718,251 @@ export async function getCycleHistory(
     endDate: doc.data().endDate?.toDate() || null,
   })) as CycleHistory[];
 }
+
+// ============================================
+// COUNSELLOR OPERATIONS
+// ============================================
+
+/**
+ * Get all counsellors
+ */
+export async function getCounsellors(): Promise<Counsellor[]> {
+  const counsellorsRef = collection(db, "counsellors");
+  const q = query(counsellorsRef, orderBy("rating", "desc"));
+  
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+    createdAt: doc.data().createdAt?.toDate() || new Date(),
+  })) as Counsellor[];
+}
+
+/**
+ * Get counsellors by status
+ */
+export async function getCounsellorsByStatus(status: CounsellorStatus): Promise<Counsellor[]> {
+  const counsellorsRef = collection(db, "counsellors");
+  const q = query(
+    counsellorsRef, 
+    where("status", "==", status),
+    orderBy("rating", "desc")
+  );
+  
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+    createdAt: doc.data().createdAt?.toDate() || new Date(),
+  })) as Counsellor[];
+}
+
+/**
+ * Get counsellors by specialty
+ */
+export async function getCounsellorsBySpecialty(specialty: CounsellorSpecialty): Promise<Counsellor[]> {
+  const counsellorsRef = collection(db, "counsellors");
+  const q = query(
+    counsellorsRef, 
+    where("specializations", "array-contains", specialty),
+    orderBy("rating", "desc")
+  );
+  
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+    createdAt: doc.data().createdAt?.toDate() || new Date(),
+  })) as Counsellor[];
+}
+
+/**
+ * Get a single counsellor by ID
+ */
+export async function getCounsellor(counsellorId: string): Promise<Counsellor | null> {
+  const counsellorRef = doc(db, "counsellors", counsellorId);
+  const counsellorDoc = await getDoc(counsellorRef);
+  
+  if (!counsellorDoc.exists()) {
+    return null;
+  }
+  
+  return {
+    id: counsellorDoc.id,
+    ...counsellorDoc.data(),
+    createdAt: counsellorDoc.data().createdAt?.toDate() || new Date(),
+  } as Counsellor;
+}
+
+/**
+ * Update counsellor status
+ */
+export async function updateCounsellorStatus(
+  counsellorId: string, 
+  status: CounsellorStatus
+): Promise<void> {
+  const counsellorRef = doc(db, "counsellors", counsellorId);
+  await updateDoc(counsellorRef, { status });
+}
+
+/**
+ * Create a new counsellor (admin function)
+ */
+export async function createCounsellor(
+  counsellor: Omit<Counsellor, "id" | "createdAt">
+): Promise<string> {
+  const counsellorsRef = collection(db, "counsellors");
+  const docRef = await addDoc(counsellorsRef, {
+    ...counsellor,
+    createdAt: serverTimestamp(),
+  });
+  return docRef.id;
+}
+
+/**
+ * Seed sample counsellors for demo purposes
+ */
+export async function seedCounsellors(): Promise<void> {
+  const sampleCounsellors: Omit<Counsellor, "id" | "createdAt">[] = [
+    {
+      name: "Dr. Sarah Nakamya",
+      title: "Licensed Clinical Psychologist",
+      bio: "With over 10 years of experience in women's mental health, I specialize in helping women navigate life transitions, anxiety, and emotional wellness. My approach is warm, non-judgmental, and rooted in evidence-based practices.",
+      specializations: ["Mental Health", "Reproductive Health", "Relationship Counselling"],
+      photoURL: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face",
+      status: "available",
+      rating: 4.9,
+      reviewCount: 156,
+      yearsExperience: 10,
+      languages: ["English", "Luganda", "Swahili"],
+      phoneNumber: "+256700123456",
+      whatsappNumber: "+256700123456",
+      availableHours: {
+        start: "09:00",
+        end: "17:00",
+        days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+      },
+      sessionCount: 1240,
+      verified: true,
+    },
+    {
+      name: "Dr. Grace Achieng",
+      title: "Reproductive Health Specialist",
+      bio: "I am passionate about empowering women with knowledge about their bodies. Whether you're dealing with menstrual health issues, fertility concerns, or need guidance during pregnancy, I'm here to support you every step of the way.",
+      specializations: ["Menstrual Health", "Reproductive Health", "Pregnancy & Postpartum"],
+      photoURL: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop&crop=face",
+      status: "busy",
+      rating: 4.8,
+      reviewCount: 203,
+      yearsExperience: 12,
+      languages: ["English", "Luo", "Swahili"],
+      phoneNumber: "+256700234567",
+      whatsappNumber: "+256700234567",
+      availableHours: {
+        start: "08:00",
+        end: "16:00",
+        days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+      },
+      sessionCount: 1890,
+      verified: true,
+    },
+    {
+      name: "Counsellor Mary Atim",
+      title: "Adolescent Health Counsellor",
+      bio: "I believe every young woman deserves access to accurate health information and a safe space to discuss her concerns. I specialize in helping teens and young adults understand their bodies and build healthy habits.",
+      specializations: ["Adolescent Health", "Menstrual Health", "Sexual Health"],
+      photoURL: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=400&fit=crop&crop=face",
+      status: "available",
+      rating: 4.7,
+      reviewCount: 89,
+      yearsExperience: 6,
+      languages: ["English", "Luganda", "Acholi"],
+      phoneNumber: "+256700345678",
+      whatsappNumber: "+256700345678",
+      availableHours: {
+        start: "10:00",
+        end: "18:00",
+        days: ["Monday", "Tuesday", "Wednesday", "Friday"]
+      },
+      sessionCount: 567,
+      verified: true,
+    },
+    {
+      name: "Dr. Elizabeth Mugisha",
+      title: "Nutrition & Wellness Expert",
+      bio: "Proper nutrition is the foundation of good health. I help women understand how diet affects their menstrual cycles, energy levels, and overall well-being. Let me help you create a personalized wellness plan.",
+      specializations: ["Nutrition & Wellness", "Menstrual Health", "Reproductive Health"],
+      photoURL: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=400&fit=crop&crop=face",
+      status: "offline",
+      rating: 4.9,
+      reviewCount: 134,
+      yearsExperience: 8,
+      languages: ["English", "Runyankole", "Swahili"],
+      phoneNumber: "+256700456789",
+      whatsappNumber: "+256700456789",
+      availableHours: {
+        start: "09:00",
+        end: "15:00",
+        days: ["Tuesday", "Wednesday", "Thursday", "Saturday"]
+      },
+      sessionCount: 892,
+      verified: true,
+    },
+    {
+      name: "Counsellor Janet Nakabugo",
+      title: "Pregnancy & Postpartum Specialist",
+      bio: "Becoming a mother is a beautiful journey, but it can also be overwhelming. I provide compassionate support for women during pregnancy, childbirth, and the postpartum period, including guidance on postpartum mental health.",
+      specializations: ["Pregnancy & Postpartum", "Mental Health", "Reproductive Health"],
+      photoURL: "https://images.unsplash.com/photo-1551836022-deb4988cc6c0?w=400&h=400&fit=crop&crop=face",
+      status: "available",
+      rating: 4.8,
+      reviewCount: 178,
+      yearsExperience: 14,
+      languages: ["English", "Luganda"],
+      phoneNumber: "+256700567890",
+      whatsappNumber: "+256700567890",
+      availableHours: {
+        start: "08:00",
+        end: "14:00",
+        days: ["Monday", "Wednesday", "Friday", "Saturday"]
+      },
+      sessionCount: 2100,
+      verified: true,
+    },
+    {
+      name: "Dr. Patience Akello",
+      title: "Sexual Health Counsellor",
+      bio: "Sexual health is an important part of overall wellness. I create a safe, confidential space where you can discuss any concerns about your sexual health without judgment. Education and empowerment are at the heart of what I do.",
+      specializations: ["Sexual Health", "Reproductive Health", "Relationship Counselling"],
+      photoURL: "https://images.unsplash.com/photo-1607990281513-2c110a25bd8c?w=400&h=400&fit=crop&crop=face",
+      status: "busy",
+      rating: 4.6,
+      reviewCount: 95,
+      yearsExperience: 7,
+      languages: ["English", "Luo", "Ateso"],
+      phoneNumber: "+256700678901",
+      whatsappNumber: "+256700678901",
+      availableHours: {
+        start: "11:00",
+        end: "19:00",
+        days: ["Monday", "Tuesday", "Thursday", "Friday"]
+      },
+      sessionCount: 634,
+      verified: true,
+    },
+  ];
+
+  // Check if counsellors already exist
+  const existing = await getCounsellors();
+  if (existing.length > 0) {
+    console.log("Counsellors already seeded");
+    return;
+  }
+
+  // Add each counsellor
+  for (const counsellor of sampleCounsellors) {
+    await createCounsellor(counsellor);
+  }
+  
+  console.log("Sample counsellors seeded successfully");
+}
