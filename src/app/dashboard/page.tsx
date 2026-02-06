@@ -252,7 +252,7 @@ export default function DashboardPage() {
         {cycleInfo && (
           <div className="mb-6">
             <PeriodReminderBanner
-              daysUntilPeriod={countdown.days}
+              daysUntilPeriod={cycleInfo.daysUntilNextPeriod}
               userName={displayName}
               userId={user?.uid}
               reminderDaysBefore={profile?.preferences?.reminderDaysBefore || 3}
@@ -356,15 +356,11 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                {(countdown.nextPeriodDate ||
-                  profile?.cycleData?.nextPeriodDate) && (
+                {cycleInfo?.nextPeriodDate && (
                   <p className="text-text-secondary text-base font-medium mt-6">
                     {countdown.isPeriodActive ? "Next cycle" : "Next period"}{" "}
                     expected on{" "}
-                    {(
-                      countdown.nextPeriodDate ||
-                      new Date(profile.cycleData.nextPeriodDate!)
-                    ).toLocaleDateString("en-US", {
+                    {cycleInfo.nextPeriodDate.toLocaleDateString("en-US", {
                       month: "long",
                       day: "numeric",
                       year: "numeric",
