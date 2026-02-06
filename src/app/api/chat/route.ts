@@ -56,29 +56,50 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ response: crisisResponse, source: "safety" });
     }
 
-    // Try Gemini API with correct model names
+    // Try Gemini API
     const apiKey = process.env.GEMINI_API_KEY;
-    if (apiKey && apiKey.trim() !== "") {
-      try {
-        const response = await callGeminiAPI(
-          apiKey,
-          message,
-          conversationHistory,
-        );
-        if (response) {
-          // Clean markdown from AI response
-          const cleanedResponse = cleanMarkdown(response);
-          return NextResponse.json({ response: cleanedResponse, source: "ai" });
-        }
-      } catch (apiError) {
-        console.error("Gemini API error:", apiError);
-        // Fall through to intelligent response
-      }
+
+    // Log whether API key is present (for debugging on Vercel)
+    console.log(
+      "GEMINI_API_KEY present:",
+      !!apiKey,
+      "length:",
+      apiKey?.length || 0,
+    );
+
+    if (!apiKey || apiKey.trim() === "") {
+      console.warn("GEMINI_API_KEY not configured - using fallback responses");
+      const response = generateSmartResponse(message);
+      return NextResponse.json({
+        response,
+        source: "fallback",
+        reason: "API key not configured",
+      });
     }
 
-    // Use intelligent fallback
+    try {
+      const response = await callGeminiAPI(
+        apiKey,
+        message,
+        conversationHistory,
+      );
+      if (response) {
+        // Clean markdown from AI response
+        const cleanedResponse = cleanMarkdown(response);
+        return NextResponse.json({ response: cleanedResponse, source: "ai" });
+      }
+    } catch (apiError) {
+      console.error("Gemini API error:", apiError);
+      // Fall through to intelligent response
+    }
+
+    // Use intelligent fallback when API fails
     const response = generateSmartResponse(message);
-    return NextResponse.json({ response, source: "fallback" });
+    return NextResponse.json({
+      response,
+      source: "fallback",
+      reason: "API call failed",
+    });
   } catch (error) {
     console.error("Chat API error:", error);
     return NextResponse.json(
@@ -230,8 +251,8 @@ async function callGeminiAPI(
   message: string,
   conversationHistory: Array<{ role: string; content: string }>,
 ): Promise<string> {
-  // Use current Gemini models (Feb 2026) - lite has better quota limits for free tier
-  const models = ["gemini-2.0-flash-lite", "gemini-2.0-flash", "gemini-2.5-flash"];
+  // Use stable Gemini models - ordered by reliability and free tier availability
+  const models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"];
 
   for (const model of models) {
     try {
@@ -289,7 +310,11 @@ async function callGeminiAPI(
         const errorText = await response.text();
         console.log(`Model ${model} failed: ${response.status} - ${errorText}`);
         // If rate limited, model not found, or permission denied (leaked key), try next model
-        if (response.status === 429 || response.status === 404 || response.status === 403) {
+        if (
+          response.status === 429 ||
+          response.status === 404 ||
+          response.status === 403
+        ) {
           continue;
         }
         throw new Error(`API error: ${response.status} - ${errorText}`);
@@ -324,8 +349,12 @@ function generateSmartResponse(message: string): string {
   const m = message.toLowerCase().trim();
 
   // IDENTITY QUESTIONS - Handle questions about Sister first
-  if (/(who (created|made|built|developed)|who's your (creator|developer|maker))/.test(m) || 
-      /(created you|made you|built you|developed you)/.test(m)) {
+  if (
+    /(who (created|made|built|developed)|who's your (creator|developer|maker))/.test(
+      m,
+    ) ||
+    /(created you|made you|built you|developed you)/.test(m)
+  ) {
     return `I was created by the SisterCare team! 💜
 
 SisterCare is a digital platform dedicated to supporting women's well-being, menstrual health, and emotional wellness - especially for women and girls in Uganda.
@@ -334,8 +363,12 @@ I'm here to be your supportive companion, answering questions, providing guidanc
   }
 
   // What AI model / technology questions
-  if (/(what (ai|model|technology)|which (ai|model)|are you (ai|chatbot|robot|bot)|what are you (made|built|powered))/.test(m) ||
-      /(are you real|are you human|are you a person)/.test(m)) {
+  if (
+    /(what (ai|model|technology)|which (ai|model)|are you (ai|chatbot|robot|bot)|what are you (made|built|powered))/.test(
+      m,
+    ) ||
+    /(are you real|are you human|are you a person)/.test(m)
+  ) {
     return `I'm Sister, an AI-powered support companion! 💜
 
 I'm designed specifically for SisterCare to help with menstrual health questions, emotional support, and wellness guidance. While I'm not human, I'm here to listen without judgment and provide helpful, caring support.
@@ -378,8 +411,12 @@ I'm here to listen to YOU. Please, go ahead and share what's on your mind. I wan
   }
 
   // User wants to chat/talk (simple request)
-  if (/^(i want to chat|let's chat|wanna chat|can we chat|want to talk|wanna talk|let's talk)$/i.test(m) || 
-      /^(i want to|let's|can we) (chat|talk|have a conversation)/i.test(m)) {
+  if (
+    /^(i want to chat|let's chat|wanna chat|can we chat|want to talk|wanna talk|let's talk)$/i.test(
+      m,
+    ) ||
+    /^(i want to|let's|can we) (chat|talk|have a conversation)/i.test(m)
+  ) {
     return `I'd love to chat with you! 💜 I'm all ears.
 
 What's on your mind today? You can tell me about your day, share something that's been bothering you, ask questions about health or periods, or just vent - I'm here for all of it.
@@ -388,7 +425,11 @@ So, what would you like to talk about? 🌸`;
   }
 
   // User says that's not what they asked / wrong answer
-  if (/(didn't ask|didnt ask|not what i asked|not what i said|that's not|thats not|wrong answer|wrong response|i asked about|i was asking|that wasn't|that wasnt|off topic)/.test(m)) {
+  if (
+    /(didn't ask|didnt ask|not what i asked|not what i said|that's not|thats not|wrong answer|wrong response|i asked about|i was asking|that wasn't|that wasnt|off topic)/.test(
+      m,
+    )
+  ) {
     return `I'm so sorry for the confusion! 💜 Let me listen more carefully.
 
 Please tell me again what you'd like to know or talk about, and I'll focus on exactly that. I want to give you the right answer this time.
@@ -397,7 +438,11 @@ What was your question? 🌸`;
   }
 
   // User expresses frustration with responses
-  if (/(not helpful|not helping|useless|don't understand|same response|real answer|hardcoded|hard coded|repetitive|not working|you're broken|broken|just repeating)/.test(m)) {
+  if (
+    /(not helpful|not helping|useless|don't understand|same response|real answer|hardcoded|hard coded|repetitive|not working|you're broken|broken|just repeating)/.test(
+      m,
+    )
+  ) {
     return `I hear your frustration, and I'm truly sorry. 💜 Let me try harder.
 
 Please tell me exactly what's going on - describe your situation in detail and I'll give you my best, most specific guidance.
@@ -438,8 +483,11 @@ The more details you share, the better I can help you. I'm really listening. �
 
   // Generic pain relief / guidance requests (catch-all)
   if (
-    /(relieve|relief|reduce|ease|help.*pain|guidance.*pain|deal.*pain|manage.*pain|stop.*pain)/.test(m) ||
-    /(the pain|my pain|this pain)/.test(m) && /(help|relieve|stop|manage|reduce|ease|guidance)/.test(m)
+    /(relieve|relief|reduce|ease|help.*pain|guidance.*pain|deal.*pain|manage.*pain|stop.*pain)/.test(
+      m,
+    ) ||
+    (/(the pain|my pain|this pain)/.test(m) &&
+      /(help|relieve|stop|manage|reduce|ease|guidance)/.test(m))
   ) {
     return `How to relieve menstrual pain 💜
 
@@ -568,7 +616,11 @@ What's your question? 🌸`;
   }
 
   // Pregnancy concerns
-  if (/(pregnant|pregnancy|think i'm pregnant|might be pregnant|could be pregnant|missed period.*pregnant|no period.*pregnant)/.test(m)) {
+  if (
+    /(pregnant|pregnancy|think i'm pregnant|might be pregnant|could be pregnant|missed period.*pregnant|no period.*pregnant)/.test(
+      m,
+    )
+  ) {
     return `I hear you, and this must be a lot to process. 💜 I'm here for you.
 
 First, take a breath. A missed period doesn't always mean pregnancy - stress, illness, weight changes, and hormonal shifts can all cause it.
@@ -583,7 +635,12 @@ Whatever your situation, you deserve support without judgment. Would you like to
   }
 
   // Talking to parents/adults about periods or health
-  if (/(tell|talk|report|share|speak).*(mum|mom|mother|parent|dad|father|family|adult|teacher)/.test(m) || /(how do i tell|how to tell|should i tell).*/.test(m)) {
+  if (
+    /(tell|talk|report|share|speak).*(mum|mom|mother|parent|dad|father|family|adult|teacher)/.test(
+      m,
+    ) ||
+    /(how do i tell|how to tell|should i tell).*/.test(m)
+  ) {
     return `Talking to a trusted adult 💜
 
 It's brave of you to want to share! Having support makes things easier.
@@ -687,7 +744,11 @@ What would you like to talk about? 🌸`;
   }
 
   // Food/nutrition/cravings - use word boundaries to avoid matching "created" etc.
-  if (/(\bfood\b|\beat\b|\beating\b|\bdiet\b|\bnutrition\b|\bcraving\b|\bhungry\b|\bchocolate\b|\bsnack\b)/.test(m)) {
+  if (
+    /(\bfood\b|\beat\b|\beating\b|\bdiet\b|\bnutrition\b|\bcraving\b|\bhungry\b|\bchocolate\b|\bsnack\b)/.test(
+      m,
+    )
+  ) {
     if (/(craving|chocolate|want to eat)/.test(m)) {
       return `Period cravings are real! 💜
 
