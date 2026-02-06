@@ -13,133 +13,353 @@ export default function Home() {
         {/* Hero Section */}
         <section
           id="mission"
-          className="relative min-h-[90vh] flex items-center scroll-mt-20"
+          className="relative min-h-[90vh] flex items-center scroll-mt-20 overflow-hidden"
         >
-          {/* Soft organic background */}
-          <div className="absolute inset-0 bg-gradient-to-b from-purple-50/80 via-white to-white dark:from-purple-950/20 dark:via-background-dark dark:to-background-dark" />
+          {/* Animated gradient background */}
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-50 via-pink-50/50 to-white dark:from-purple-950/30 dark:via-pink-950/20 dark:to-background-dark" />
 
-          {/* Decorative shapes */}
-          <div className="absolute top-20 right-[10%] w-72 h-72 bg-purple-200/40 dark:bg-purple-900/20 rounded-full blur-3xl" />
-          <div className="absolute bottom-20 left-[5%] w-96 h-96 bg-pink-100/50 dark:bg-pink-900/10 rounded-full blur-3xl" />
+          {/* Animated floating shapes */}
+          <div className="absolute top-10 right-[5%] w-80 h-80 bg-gradient-to-br from-purple-300/40 to-pink-300/40 dark:from-purple-800/30 dark:to-pink-800/30 rounded-full blur-3xl animate-pulse" />
+          <div
+            className="absolute top-40 left-[10%] w-64 h-64 bg-gradient-to-br from-pink-200/50 to-purple-200/50 dark:from-pink-900/20 dark:to-purple-900/20 rounded-full blur-3xl animate-pulse"
+            style={{ animationDelay: "1s" }}
+          />
+          <div
+            className="absolute bottom-20 right-[20%] w-72 h-72 bg-gradient-to-br from-primary/20 to-pink-300/30 dark:from-primary/10 dark:to-pink-800/20 rounded-full blur-3xl animate-pulse"
+            style={{ animationDelay: "2s" }}
+          />
+          <div className="absolute bottom-10 left-[5%] w-96 h-96 bg-pink-100/60 dark:bg-pink-900/10 rounded-full blur-3xl" />
+
+          {/* Decorative dots pattern */}
+          <div
+            className="absolute inset-0 opacity-[0.03] dark:opacity-[0.02]"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle, #8c30e8 1px, transparent 1px)",
+              backgroundSize: "30px 30px",
+            }}
+          />
 
           <div className="relative w-full px-6 lg:px-20 py-20">
-            <div className="max-w-6xl mx-auto">
-              <div className="flex flex-col lg:flex-row items-center gap-16">
+            <div className="max-w-7xl mx-auto">
+              <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
                 {/* Left Content */}
                 <div className="flex-1 text-center lg:text-left">
-                  <p className="text-primary font-semibold text-sm uppercase tracking-wider mb-4">
-                    Women&apos;s Health Companion
-                  </p>
-
-                  <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-bold leading-tight text-text-primary dark:text-white mb-6">
-                    Take charge of your
-                    <span className="block text-primary mt-1">
-                      menstrual health
+                  {/* Badge */}
+                  <div className="inline-flex items-center gap-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-full px-4 py-2 mb-6 border border-purple-100 dark:border-purple-800/50 shadow-sm">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                     </span>
+                    <span className="text-sm font-medium text-text-primary dark:text-white">
+                      Your Safe Space for Wellness
+                    </span>
+                  </div>
+
+                  <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-[1.1] text-text-primary dark:text-white mb-6">
+                    Your Body.{" "}
+                    <span className="relative">
+                      <span className="bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent">
+                        Your Journey.
+                      </span>
+                      <svg
+                        className="absolute -bottom-2 left-0 w-full"
+                        viewBox="0 0 300 12"
+                        fill="none"
+                      >
+                        <path
+                          d="M2 10C50 4 100 4 150 6C200 8 250 4 298 10"
+                          stroke="url(#gradient)"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                        />
+                        <defs>
+                          <linearGradient
+                            id="gradient"
+                            x1="0"
+                            y1="0"
+                            x2="300"
+                            y2="0"
+                          >
+                            <stop stopColor="#8c30e8" />
+                            <stop offset="1" stopColor="#ec4899" />
+                          </linearGradient>
+                        </defs>
+                      </svg>
+                    </span>
+                    <span className="block mt-2">Your Sister.</span>
                   </h1>
 
-                  <p className="text-lg text-text-secondary dark:text-gray-400 max-w-lg mx-auto lg:mx-0 mb-10 leading-relaxed">
-                    A free, private period tracker designed for women in Uganda.
-                    Track your cycle, log symptoms, and chat with an AI health
-                    companion who understands you.
+                  <p className="text-lg md:text-xl text-text-secondary dark:text-gray-400 max-w-xl mx-auto lg:mx-0 mb-8 leading-relaxed">
+                    Track your cycle effortlessly, get gentle reminders before
+                    your period, chat with a{" "}
+                    <span className="text-primary font-semibold">
+                      judgment-free AI companion
+                    </span>{" "}
+                    who truly gets it, and connect with{" "}
+                    <span className="text-primary font-semibold">
+                      real counsellors
+                    </span>{" "}
+                    when you need human support.
                   </p>
+
+                  {/* Feature pills */}
+                  <div className="flex flex-wrap gap-3 justify-center lg:justify-start mb-8">
+                    <div className="flex items-center gap-2 bg-purple-50 dark:bg-purple-900/30 rounded-full px-4 py-2">
+                      <span className="material-symbols-outlined text-primary text-lg">
+                        calendar_month
+                      </span>
+                      <span className="text-sm font-medium text-text-primary dark:text-white">
+                        Period Tracking
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 bg-pink-50 dark:bg-pink-900/30 rounded-full px-4 py-2">
+                      <span className="material-symbols-outlined text-pink-500 text-lg">
+                        smart_toy
+                      </span>
+                      <span className="text-sm font-medium text-text-primary dark:text-white">
+                        AI Companion
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 rounded-full px-4 py-2">
+                      <span className="material-symbols-outlined text-blue-500 text-lg">
+                        notifications_active
+                      </span>
+                      <span className="text-sm font-medium text-text-primary dark:text-white">
+                        Smart Reminders
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-full px-4 py-2">
+                      <span className="material-symbols-outlined text-emerald-500 text-lg">
+                        support_agent
+                      </span>
+                      <span className="text-sm font-medium text-text-primary dark:text-white">
+                        Real Counsellors
+                      </span>
+                    </div>
+                  </div>
 
                   <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
                     <Link
                       href="/auth/signup"
-                      className="inline-flex items-center justify-center gap-2 rounded-xl h-14 px-8 bg-primary hover:bg-primary/90 text-white text-base font-semibold shadow-lg shadow-primary/25 transition-all"
+                      className="group inline-flex items-center justify-center gap-2 rounded-2xl h-14 px-8 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-white text-base font-semibold shadow-xl shadow-primary/30 transition-all transform hover:scale-[1.02] hover:-translate-y-0.5"
                     >
-                      Start tracking — it&apos;s free
-                      <span className="material-symbols-outlined text-xl">
+                      Begin Your Journey — Free
+                      <span className="material-symbols-outlined text-xl group-hover:translate-x-1 transition-transform">
                         arrow_forward
                       </span>
                     </Link>
                     <Link
                       href="/auth/login"
-                      className="inline-flex items-center justify-center gap-2 rounded-xl h-14 px-8 bg-white dark:bg-gray-800 text-text-primary dark:text-white text-base font-semibold border border-gray-200 dark:border-gray-700 hover:border-primary transition-all"
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl h-14 px-8 bg-white dark:bg-gray-800 text-text-primary dark:text-white text-base font-semibold border-2 border-gray-200 dark:border-gray-700 hover:border-primary dark:hover:border-primary transition-all transform hover:scale-[1.02]"
                     >
-                      Sign in
+                      <span className="material-symbols-outlined text-lg">
+                        login
+                      </span>
+                      Welcome Back
                     </Link>
                   </div>
 
-                  <p className="mt-6 text-sm text-text-secondary dark:text-gray-500">
-                    No credit card required. Your data stays private.
-                  </p>
+                  <div className="mt-8 flex items-center gap-6 justify-center lg:justify-start">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-green-500">
+                        verified_user
+                      </span>
+                      <span className="text-sm text-text-secondary">
+                        100% Free
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-green-500">
+                        lock
+                      </span>
+                      <span className="text-sm text-text-secondary">
+                        Private & Secure
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-green-500">
+                        favorite
+                      </span>
+                      <span className="text-sm text-text-secondary">
+                        Made for You
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Right - App Preview Card */}
-                <div className="flex-1 w-full max-w-md">
+                {/* Right - Enhanced App Preview */}
+                <div className="flex-1 w-full max-w-lg">
                   <div className="relative">
+                    {/* Glow effect behind card */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-purple-500/20 to-pink-500/30 rounded-[2rem] blur-2xl transform scale-105" />
+
                     {/* Main card */}
-                    <div className="bg-white dark:bg-card-dark rounded-3xl p-8 shadow-xl border border-gray-100 dark:border-gray-800">
-                      {/* Calendar header */}
+                    <div className="relative bg-white/90 dark:bg-card-dark/90 backdrop-blur-xl rounded-[2rem] p-6 md:p-8 shadow-2xl border border-white/50 dark:border-gray-700/50">
+                      {/* App header mockup */}
                       <div className="flex items-center justify-between mb-6">
-                        <div>
-                          <p className="text-sm text-text-secondary dark:text-gray-400">
-                            Today
-                          </p>
-                          <p className="text-2xl font-bold text-text-primary dark:text-white">
-                            February 5
-                          </p>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-pink-500 flex items-center justify-center">
+                            <span className="material-symbols-outlined text-white text-xl">
+                              favorite
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-bold text-text-primary dark:text-white">
+                              SisterCare
+                            </p>
+                            <p className="text-xs text-text-secondary">
+                              Your cycle companion
+                            </p>
+                          </div>
                         </div>
-                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                          <span className="material-symbols-outlined text-primary text-2xl">
-                            calendar_today
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                            <span className="material-symbols-outlined text-text-secondary text-lg">
+                              notifications
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Cycle visualization */}
+                      <div className="bg-gradient-to-br from-primary/5 via-purple-50 to-pink-50 dark:from-primary/10 dark:via-purple-900/20 dark:to-pink-900/10 rounded-2xl p-5 mb-4">
+                        <div className="flex items-center justify-between mb-4">
+                          <div>
+                            <p className="text-xs text-text-secondary uppercase tracking-wider">
+                              Current Cycle
+                            </p>
+                            <p className="text-3xl font-bold text-text-primary dark:text-white">
+                              Day 12
+                            </p>
+                          </div>
+                          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-pink-500 flex items-center justify-center shadow-lg shadow-primary/30">
+                            <span className="material-symbols-outlined text-white text-2xl">
+                              cycle
+                            </span>
+                          </div>
+                        </div>
+                        <div className="h-3 bg-gray-200/80 dark:bg-gray-700 rounded-full overflow-hidden">
+                          <div className="h-full w-[43%] bg-gradient-to-r from-primary via-purple-500 to-pink-400 rounded-full relative">
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white/30 rounded-full" />
+                          </div>
+                        </div>
+                        <div className="flex justify-between mt-2">
+                          <span className="text-xs text-text-secondary">
+                            Follicular Phase
+                          </span>
+                          <span className="text-xs font-medium text-primary">
+                            ~8 days to ovulation
                           </span>
                         </div>
                       </div>
 
-                      {/* Cycle info */}
-                      <div className="bg-gradient-to-r from-primary/5 to-pink-50 dark:from-primary/10 dark:to-pink-900/10 rounded-2xl p-5 mb-5">
-                        <div className="flex items-center gap-3 mb-3">
-                          <span className="material-symbols-outlined text-primary">
-                            cycle
-                          </span>
-                          <span className="font-semibold text-text-primary dark:text-white">
-                            Cycle Day 12
-                          </span>
-                        </div>
-                        <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                          <div className="h-full w-2/5 bg-gradient-to-r from-primary to-pink-400 rounded-full" />
-                        </div>
-                        <p className="text-sm text-text-secondary dark:text-gray-400 mt-2">
-                          Your next period may start around Feb 18
-                        </p>
-                      </div>
-
-                      {/* Quick actions */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 text-center">
+                      {/* Quick actions grid */}
+                      <div className="grid grid-cols-3 gap-3 mb-4">
+                        <div className="bg-white dark:bg-gray-800 rounded-xl p-3 text-center shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow cursor-pointer">
                           <span className="material-symbols-outlined text-pink-500 text-xl mb-1">
                             edit_note
                           </span>
-                          <p className="text-sm font-medium text-text-primary dark:text-white">
-                            Log today
+                          <p className="text-xs font-medium text-text-primary dark:text-white">
+                            Log
                           </p>
                         </div>
-                        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 text-center">
+                        <div className="bg-white dark:bg-gray-800 rounded-xl p-3 text-center shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow cursor-pointer">
                           <span className="material-symbols-outlined text-purple-500 text-xl mb-1">
                             chat_bubble
                           </span>
-                          <p className="text-sm font-medium text-text-primary dark:text-white">
-                            Ask Sister
+                          <p className="text-xs font-medium text-text-primary dark:text-white">
+                            Chat
                           </p>
+                        </div>
+                        <div className="bg-white dark:bg-gray-800 rounded-xl p-3 text-center shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow cursor-pointer">
+                          <span className="material-symbols-outlined text-emerald-500 text-xl mb-1">
+                            support_agent
+                          </span>
+                          <p className="text-xs font-medium text-text-primary dark:text-white">
+                            Help
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* AI Chat preview */}
+                      <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-pink-500 flex items-center justify-center flex-shrink-0">
+                            <span className="material-symbols-outlined text-white text-sm">
+                              smart_toy
+                            </span>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-primary mb-1">
+                              Sister AI
+                            </p>
+                            <p className="text-sm text-text-primary dark:text-white leading-relaxed">
+                              Hi beautiful! How are you feeling today? I&apos;m
+                              here to listen — no judgment, just support. 💜
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Floating badge */}
+                    {/* Floating elements */}
+                    <div
+                      className="absolute -top-4 -left-4 bg-white dark:bg-gray-800 rounded-xl px-4 py-2 shadow-lg border border-gray-100 dark:border-gray-700 animate-bounce"
+                      style={{ animationDuration: "3s" }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-blue-500 text-lg">
+                          notifications_active
+                        </span>
+                        <span className="text-sm font-medium text-text-primary dark:text-white">
+                          Period in 3 days
+                        </span>
+                      </div>
+                    </div>
+
                     <div className="absolute -bottom-4 -right-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-xl px-4 py-2 shadow-lg">
                       <div className="flex items-center gap-2">
                         <span className="material-symbols-outlined text-green-600 text-lg">
-                          lock
+                          shield
                         </span>
                         <span className="text-sm font-medium text-green-700 dark:text-green-400">
-                          Private & secure
+                          Private & Encrypted
                         </span>
                       </div>
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Trusted By Section */}
+        <section className="py-12 px-6 lg:px-20 border-y border-gray-100 dark:border-gray-800 bg-white/50 dark:bg-gray-900/30">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16">
+              <p className="text-sm font-medium text-text-secondary uppercase tracking-wider">
+                Designed with love for
+              </p>
+              <div className="flex items-center gap-8 md:gap-12">
+                <div className="flex items-center gap-2 text-text-primary dark:text-white">
+                  <span className="material-symbols-outlined text-primary">
+                    location_on
+                  </span>
+                  <span className="font-semibold">Ugandan Women</span>
+                </div>
+                <div className="flex items-center gap-2 text-text-primary dark:text-white">
+                  <span className="material-symbols-outlined text-pink-500">
+                    diversity_3
+                  </span>
+                  <span className="font-semibold">All Ages</span>
+                </div>
+                <div className="flex items-center gap-2 text-text-primary dark:text-white">
+                  <span className="material-symbols-outlined text-purple-500">
+                    spa
+                  </span>
+                  <span className="font-semibold">Your Wellness</span>
                 </div>
               </div>
             </div>
