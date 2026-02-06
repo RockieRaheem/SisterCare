@@ -11,7 +11,10 @@ export default function Home() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative min-h-[90vh] flex items-center">
+        <section
+          id="mission"
+          className="relative min-h-[90vh] flex items-center scroll-mt-20"
+        >
           {/* Soft organic background */}
           <div className="absolute inset-0 bg-gradient-to-b from-purple-50/80 via-white to-white dark:from-purple-950/20 dark:via-background-dark dark:to-background-dark" />
 
@@ -144,7 +147,10 @@ export default function Home() {
         </section>
 
         {/* Why SisterCare Section */}
-        <section className="py-20 lg:py-28 px-6 lg:px-20 bg-white dark:bg-card-dark">
+        <section
+          id="features"
+          className="py-20 lg:py-28 px-6 lg:px-20 bg-white dark:bg-card-dark scroll-mt-20"
+        >
           <div className="max-w-6xl mx-auto">
             <div className="max-w-2xl mb-16">
               <h2 className="text-3xl md:text-4xl font-bold text-text-primary dark:text-white mb-4">
@@ -257,7 +263,10 @@ export default function Home() {
         </section>
 
         {/* Privacy Section */}
-        <section className="py-20 lg:py-28 px-6 lg:px-20">
+        <section
+          id="privacy"
+          className="py-20 lg:py-28 px-6 lg:px-20 scroll-mt-20"
+        >
           <div className="max-w-6xl mx-auto">
             <div className="bg-gradient-to-br from-purple-900 via-primary to-purple-800 rounded-3xl p-10 md:p-16 text-white relative overflow-hidden">
               {/* Decorative circles */}

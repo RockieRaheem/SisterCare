@@ -306,7 +306,7 @@ export default function CounsellorsPage() {
 
   return (
     <div className="min-h-screen bg-bg-light dark:bg-bg-dark">
-      <Header />
+      <Header variant="app" />
 
       <main className="max-w-7xl mx-auto px-4 py-6 pb-24">
         {/* Hero Section */}
