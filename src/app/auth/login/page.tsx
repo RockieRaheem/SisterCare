@@ -1,34 +1,86 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 
+// Email validation regex
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Firebase error messages mapping
+const getFirebaseErrorMessage = (errorCode: string): string => {
+  const errorMessages: Record<string, string> = {
+    "auth/invalid-email": "Please enter a valid email address.",
+    "auth/user-disabled":
+      "This account has been disabled. Please contact support.",
+    "auth/user-not-found":
+      "No account found with this email. Please sign up first.",
+    "auth/wrong-password": "Incorrect password. Please try again.",
+    "auth/too-many-requests":
+      "Too many failed attempts. Please try again later.",
+    "auth/network-request-failed":
+      "Network error. Please check your internet connection.",
+    "auth/invalid-credential": "Invalid email or password. Please try again.",
+  };
+  return (
+    errorMessages[errorCode] ||
+    "Failed to sign in. Please check your credentials."
+  );
+};
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<{
+    email?: string;
+    password?: string;
+  }>({});
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { signIn, signInWithGoogle } = useAuth();
   const router = useRouter();
+
+  const validateForm = useCallback((): boolean => {
+    const errors: { email?: string; password?: string } = {};
+
+    if (!email.trim()) {
+      errors.email = "Email is required";
+    } else if (!EMAIL_REGEX.test(email)) {
+      errors.email = "Please enter a valid email address";
+    }
+
+    if (!password) {
+      errors.password = "Password is required";
+    } else if (password.length < 6) {
+      errors.password = "Password must be at least 6 characters";
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  }, [email, password]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setFieldErrors({});
+
+    if (!validateForm()) {
+      return;
+    }
+
     setLoading(true);
 
     try {
-      await signIn(email, password);
+      await signIn(email.trim().toLowerCase(), password);
       router.push("/dashboard");
     } catch (err: unknown) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to sign in. Please check your credentials.",
-      );
+      // Extract Firebase error code
+      const errorCode = (err as { code?: string })?.code || "";
+      setError(getFirebaseErrorMessage(errorCode));
     } finally {
       setLoading(false);
     }
@@ -36,17 +88,38 @@ export default function LoginPage() {
 
   const handleGoogleSignIn = async () => {
     setError("");
+    setFieldErrors({});
     setLoading(true);
 
     try {
       await signInWithGoogle();
       router.push("/dashboard");
     } catch (err: unknown) {
-      setError(
-        err instanceof Error ? err.message : "Failed to sign in with Google.",
-      );
+      const errorCode = (err as { code?: string })?.code || "";
+      if (errorCode === "auth/popup-closed-by-user") {
+        setError("Sign in cancelled. Please try again.");
+      } else if (errorCode === "auth/popup-blocked") {
+        setError("Pop-up blocked. Please allow pop-ups and try again.");
+      } else {
+        setError("Failed to sign in with Google. Please try again.");
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Clear field error when user starts typing
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmail(e.target.value);
+    if (fieldErrors.email) {
+      setFieldErrors((prev) => ({ ...prev, email: undefined }));
+    }
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPassword(e.target.value);
+    if (fieldErrors.password) {
+      setFieldErrors((prev) => ({ ...prev, password: undefined }));
     }
   };
 
@@ -119,21 +192,34 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
+            <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm flex items-center gap-2">
+              <span className="material-symbols-outlined text-lg">error</span>
               {error}
             </div>
           )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4 mb-6">
-            <Input
-              label="Email or Phone Number"
-              type="email"
-              placeholder="name@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+            <div>
+              <Input
+                label="Email Address"
+                type="email"
+                placeholder="name@example.com"
+                value={email}
+                onChange={handleEmailChange}
+                required
+                autoComplete="email"
+                aria-invalid={!!fieldErrors.email}
+              />
+              {fieldErrors.email && (
+                <p className="mt-1 text-red-500 text-xs flex items-center gap-1">
+                  <span className="material-symbols-outlined text-sm">
+                    error
+                  </span>
+                  {fieldErrors.email}
+                </p>
+              )}
+            </div>
             <div className="flex flex-col">
               <div className="flex justify-between items-center pb-2 px-1">
                 <label className="text-text-primary dark:text-white text-sm font-semibold leading-normal">
@@ -146,17 +232,46 @@ export default function LoginPage() {
                   Forgot password?
                 </Link>
               </div>
-              <Input
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={handlePasswordChange}
+                  required
+                  autoComplete="current-password"
+                  aria-invalid={!!fieldErrors.password}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-primary transition-colors"
+                  tabIndex={-1}
+                >
+                  <span className="material-symbols-outlined text-xl">
+                    {showPassword ? "visibility_off" : "visibility"}
+                  </span>
+                </button>
+              </div>
+              {fieldErrors.password && (
+                <p className="mt-1 text-red-500 text-xs flex items-center gap-1">
+                  <span className="material-symbols-outlined text-sm">
+                    error
+                  </span>
+                  {fieldErrors.password}
+                </p>
+              )}
             </div>
 
             <Button type="submit" fullWidth size="lg" disabled={loading}>
-              {loading ? "Signing in..." : "Secure Login"}
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Signing in...
+                </span>
+              ) : (
+                "Secure Login"
+              )}
             </Button>
           </form>
 

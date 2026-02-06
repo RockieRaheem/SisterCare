@@ -1,46 +1,128 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 
+// Email validation regex
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Password strength checks
+const checkPasswordStrength = (
+  password: string,
+): { score: number; feedback: string[] } => {
+  const feedback: string[] = [];
+  let score = 0;
+
+  if (password.length >= 8) score++;
+  else feedback.push("At least 8 characters");
+
+  if (/[A-Z]/.test(password)) score++;
+  else feedback.push("One uppercase letter");
+
+  if (/[a-z]/.test(password)) score++;
+  else feedback.push("One lowercase letter");
+
+  if (/\d/.test(password)) score++;
+  else feedback.push("One number");
+
+  if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score++;
+  else feedback.push("One special character");
+
+  return { score, feedback };
+};
+
+// Firebase error messages mapping
+const getFirebaseErrorMessage = (errorCode: string): string => {
+  const errorMessages: Record<string, string> = {
+    "auth/email-already-in-use":
+      "An account with this email already exists. Please sign in instead.",
+    "auth/invalid-email": "Please enter a valid email address.",
+    "auth/operation-not-allowed":
+      "Account creation is currently disabled. Please try again later.",
+    "auth/weak-password":
+      "Password is too weak. Please choose a stronger password.",
+    "auth/network-request-failed":
+      "Network error. Please check your internet connection.",
+  };
+  return (
+    errorMessages[errorCode] || "Failed to create account. Please try again."
+  );
+};
+
 export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<{
+    email?: string;
+    password?: string;
+    confirmPassword?: string;
+  }>({});
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const { signUp, signInWithGoogle } = useAuth();
   const router = useRouter();
+
+  const passwordStrength = checkPasswordStrength(password);
+
+  const validateForm = useCallback((): boolean => {
+    const errors: {
+      email?: string;
+      password?: string;
+      confirmPassword?: string;
+    } = {};
+
+    if (!email.trim()) {
+      errors.email = "Email is required";
+    } else if (!EMAIL_REGEX.test(email)) {
+      errors.email = "Please enter a valid email address";
+    }
+
+    if (!password) {
+      errors.password = "Password is required";
+    } else if (password.length < 6) {
+      errors.password = "Password must be at least 6 characters";
+    }
+
+    if (!confirmPassword) {
+      errors.confirmPassword = "Please confirm your password";
+    } else if (password !== confirmPassword) {
+      errors.confirmPassword = "Passwords do not match";
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  }, [email, password, confirmPassword]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setFieldErrors({});
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
+    if (!validateForm()) {
       return;
     }
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+    if (!agreedToTerms) {
+      setError("Please agree to the Terms of Service and Privacy Policy");
       return;
     }
 
     setLoading(true);
 
     try {
-      await signUp(email, password);
+      await signUp(email.trim().toLowerCase(), password);
       router.push("/dashboard");
     } catch (err: unknown) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to create account. Please try again.",
-      );
+      const errorCode = (err as { code?: string })?.code || "";
+      setError(getFirebaseErrorMessage(errorCode));
     } finally {
       setLoading(false);
     }
@@ -48,17 +130,47 @@ export default function SignupPage() {
 
   const handleGoogleSignIn = async () => {
     setError("");
+    setFieldErrors({});
     setLoading(true);
 
     try {
       await signInWithGoogle();
       router.push("/dashboard");
     } catch (err: unknown) {
-      setError(
-        err instanceof Error ? err.message : "Failed to sign in with Google.",
-      );
+      const errorCode = (err as { code?: string })?.code || "";
+      if (errorCode === "auth/popup-closed-by-user") {
+        setError("Sign in cancelled. Please try again.");
+      } else if (errorCode === "auth/popup-blocked") {
+        setError("Pop-up blocked. Please allow pop-ups and try again.");
+      } else {
+        setError("Failed to sign in with Google. Please try again.");
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Clear field error when user starts typing
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmail(e.target.value);
+    if (fieldErrors.email) {
+      setFieldErrors((prev) => ({ ...prev, email: undefined }));
+    }
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPassword(e.target.value);
+    if (fieldErrors.password) {
+      setFieldErrors((prev) => ({ ...prev, password: undefined }));
+    }
+  };
+
+  const handleConfirmPasswordChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    setConfirmPassword(e.target.value);
+    if (fieldErrors.confirmPassword) {
+      setFieldErrors((prev) => ({ ...prev, confirmPassword: undefined }));
     }
   };
 
@@ -131,45 +243,157 @@ export default function SignupPage() {
           </div>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
+            <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm flex items-center gap-2">
+              <span className="material-symbols-outlined text-lg">error</span>
               {error}
             </div>
           )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4 mb-6">
-            <Input
-              label="Email Address"
-              type="email"
-              placeholder="name@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-            <Input
-              label="Password"
-              type="password"
-              placeholder="Create a strong password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-            <Input
-              label="Confirm Password"
-              type="password"
-              placeholder="Confirm your password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-            />
+            <div>
+              <Input
+                label="Email Address"
+                type="email"
+                placeholder="name@example.com"
+                value={email}
+                onChange={handleEmailChange}
+                required
+                autoComplete="email"
+                aria-invalid={!!fieldErrors.email}
+              />
+              {fieldErrors.email && (
+                <p className="mt-1 text-red-500 text-xs flex items-center gap-1">
+                  <span className="material-symbols-outlined text-sm">
+                    error
+                  </span>
+                  {fieldErrors.email}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-text-primary dark:text-white text-sm font-semibold leading-normal pb-2 px-1">
+                Password
+              </label>
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Create a strong password"
+                  value={password}
+                  onChange={handlePasswordChange}
+                  required
+                  autoComplete="new-password"
+                  aria-invalid={!!fieldErrors.password}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-primary transition-colors"
+                  tabIndex={-1}
+                >
+                  <span className="material-symbols-outlined text-xl">
+                    {showPassword ? "visibility_off" : "visibility"}
+                  </span>
+                </button>
+              </div>
+              {fieldErrors.password && (
+                <p className="mt-1 text-red-500 text-xs flex items-center gap-1">
+                  <span className="material-symbols-outlined text-sm">
+                    error
+                  </span>
+                  {fieldErrors.password}
+                </p>
+              )}
+              {/* Password Strength Indicator */}
+              {password && (
+                <div className="mt-2">
+                  <div className="flex gap-1 mb-1">
+                    {[1, 2, 3, 4, 5].map((level) => (
+                      <div
+                        key={level}
+                        className={`h-1 flex-1 rounded-full transition-colors ${
+                          level <= passwordStrength.score
+                            ? passwordStrength.score <= 2
+                              ? "bg-red-500"
+                              : passwordStrength.score <= 3
+                                ? "bg-yellow-500"
+                                : "bg-green-500"
+                            : "bg-gray-200 dark:bg-gray-700"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    {passwordStrength.score <= 2
+                      ? "Weak"
+                      : passwordStrength.score <= 3
+                        ? "Fair"
+                        : passwordStrength.score <= 4
+                          ? "Good"
+                          : "Strong"}
+                    {passwordStrength.feedback.length > 0 &&
+                      ` - Missing: ${passwordStrength.feedback.slice(0, 2).join(", ")}`}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-text-primary dark:text-white text-sm font-semibold leading-normal pb-2 px-1">
+                Confirm Password
+              </label>
+              <div className="relative">
+                <Input
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Confirm your password"
+                  value={confirmPassword}
+                  onChange={handleConfirmPasswordChange}
+                  required
+                  autoComplete="new-password"
+                  aria-invalid={!!fieldErrors.confirmPassword}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-primary transition-colors"
+                  tabIndex={-1}
+                >
+                  <span className="material-symbols-outlined text-xl">
+                    {showConfirmPassword ? "visibility_off" : "visibility"}
+                  </span>
+                </button>
+              </div>
+              {fieldErrors.confirmPassword && (
+                <p className="mt-1 text-red-500 text-xs flex items-center gap-1">
+                  <span className="material-symbols-outlined text-sm">
+                    error
+                  </span>
+                  {fieldErrors.confirmPassword}
+                </p>
+              )}
+              {confirmPassword && password === confirmPassword && (
+                <p className="mt-1 text-green-500 text-xs flex items-center gap-1">
+                  <span className="material-symbols-outlined text-sm">
+                    check_circle
+                  </span>
+                  Passwords match
+                </p>
+              )}
+            </div>
 
             <div className="flex items-start gap-2 py-2">
               <input
                 type="checkbox"
-                required
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
                 className="mt-1 rounded border-primary/30 text-primary focus:ring-primary"
+                id="terms-checkbox"
               />
-              <p className="text-text-secondary text-xs">
+              <label
+                htmlFor="terms-checkbox"
+                className="text-text-secondary text-xs cursor-pointer"
+              >
                 I agree to the{" "}
                 <Link href="/terms" className="text-primary hover:underline">
                   Terms of Service
@@ -178,11 +402,18 @@ export default function SignupPage() {
                 <Link href="/privacy" className="text-primary hover:underline">
                   Privacy Policy
                 </Link>
-              </p>
+              </label>
             </div>
 
             <Button type="submit" fullWidth size="lg" disabled={loading}>
-              {loading ? "Creating account..." : "Create Account"}
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Creating account...
+                </span>
+              ) : (
+                "Create Account"
+              )}
             </Button>
           </form>
 
