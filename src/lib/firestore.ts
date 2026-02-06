@@ -12,6 +12,7 @@ import {
   deleteDoc,
   Timestamp,
   serverTimestamp,
+  limit as firestoreLimit,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import {
@@ -23,6 +24,9 @@ import {
   Reminder,
   SymptomLog,
   CycleHistory,
+  Counsellor,
+  CounsellorStatus,
+  CounsellorSpecialty,
 } from "@/types";
 
 // ============================================

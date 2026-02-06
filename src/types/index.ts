@@ -96,16 +96,41 @@ export interface Reminder {
   read: boolean;
 }
 
-// Counsellor Types (for premium feature)
+// Counsellor Types
+export type CounsellorStatus = "available" | "busy" | "offline";
+
+export type CounsellorSpecialty = 
+  | "Mental Health"
+  | "Menstrual Health"
+  | "Reproductive Health"
+  | "Nutrition & Wellness"
+  | "Pregnancy & Postpartum"
+  | "Sexual Health"
+  | "Adolescent Health"
+  | "Relationship Counselling";
+
 export interface Counsellor {
   id: string;
   name: string;
   title: string;
-  specializations: string[];
+  bio: string;
+  specializations: CounsellorSpecialty[];
   photoURL: string;
-  available: boolean;
+  status: CounsellorStatus;
   rating: number;
   reviewCount: number;
+  yearsExperience: number;
+  languages: string[];
+  phoneNumber: string;
+  whatsappNumber: string;
+  availableHours: {
+    start: string; // e.g., "09:00"
+    end: string;   // e.g., "17:00"
+    days: string[]; // e.g., ["Monday", "Tuesday", ...]
+  };
+  sessionCount: number;
+  verified: boolean;
+  createdAt: Date;
 }
 
 // Subscription Types
