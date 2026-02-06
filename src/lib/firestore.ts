@@ -132,35 +132,101 @@ export async function updateUserPreferences(
 
 /**
  * Calculate the next period date based on last period and cycle length
+ * This function returns the NEXT UPCOMING period date, accounting for
+ * multiple cycles that may have passed since the last logged period.
  */
 export function calculateNextPeriod(
   lastPeriodDate: Date,
   cycleLength: number,
 ): Date {
-  const nextDate = new Date(lastPeriodDate);
-  nextDate.setDate(nextDate.getDate() + cycleLength);
-  return nextDate;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Normalize to start of day
+  
+  const lastPeriod = new Date(lastPeriodDate);
+  lastPeriod.setHours(0, 0, 0, 0);
+  
+  // Calculate days since last period
+  const daysSinceLast = Math.floor(
+    (today.getTime() - lastPeriod.getTime()) / (1000 * 60 * 60 * 24)
+  );
+  
+  // How many complete cycles have passed?
+  const cyclesPassed = Math.floor(daysSinceLast / cycleLength);
+  
+  // Calculate the most recent period start (estimated)
+  const currentCycleStart = new Date(lastPeriod);
+  currentCycleStart.setDate(currentCycleStart.getDate() + (cyclesPassed * cycleLength));
+  
+  // Next period is one cycle after the current cycle start
+  const nextPeriod = new Date(currentCycleStart);
+  nextPeriod.setDate(nextPeriod.getDate() + cycleLength);
+  
+  return nextPeriod;
 }
 
 /**
- * Determine current cycle phase
+ * Get comprehensive cycle information including current state
  */
-export function getCurrentPhase(
+export function getCycleInfo(
   lastPeriodDate: Date,
   cycleLength: number,
   periodLength: number,
-): { phase: string; dayInCycle: number; daysUntilNextPeriod: number } {
+): {
+  phase: string;
+  dayInCycle: number;
+  daysUntilNextPeriod: number;
+  nextPeriodDate: Date;
+  currentCycleStart: Date;
+  isInPeriod: boolean;
+  isPeriodLate: boolean;
+  daysLate: number;
+} {
   const today = new Date();
-  const daysSinceLastPeriod = Math.floor(
-    (today.getTime() - lastPeriodDate.getTime()) / (1000 * 60 * 60 * 24),
+  today.setHours(0, 0, 0, 0);
+  
+  const lastPeriod = new Date(lastPeriodDate);
+  lastPeriod.setHours(0, 0, 0, 0);
+  
+  // Calculate days since last logged period
+  const daysSinceLast = Math.floor(
+    (today.getTime() - lastPeriod.getTime()) / (1000 * 60 * 60 * 24)
   );
-
-  // Calculate day in current cycle (1-indexed)
-  const dayInCycle = (daysSinceLastPeriod % cycleLength) + 1;
-  const daysUntilNextPeriod = cycleLength - dayInCycle + 1;
-
+  
+  // How many complete cycles have theoretically passed?
+  const cyclesPassed = Math.floor(daysSinceLast / cycleLength);
+  
+  // Calculate the estimated current cycle start date
+  const currentCycleStart = new Date(lastPeriod);
+  currentCycleStart.setDate(currentCycleStart.getDate() + (cyclesPassed * cycleLength));
+  
+  // Day in current cycle (1-indexed)
+  const daysSinceCurrentCycleStart = Math.floor(
+    (today.getTime() - currentCycleStart.getTime()) / (1000 * 60 * 60 * 24)
+  );
+  const dayInCycle = daysSinceCurrentCycleStart + 1;
+  
+  // Next period date
+  const nextPeriodDate = new Date(currentCycleStart);
+  nextPeriodDate.setDate(nextPeriodDate.getDate() + cycleLength);
+  
+  // Days until next period
+  const daysUntilNextPeriod = Math.floor(
+    (nextPeriodDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+  );
+  
+  // Is user currently in period phase?
+  const isInPeriod = dayInCycle <= periodLength;
+  
+  // Check if period is "late" (more than cycle length since last logged period
+  // and user hasn't logged a new period)
+  // We consider it "late" if we're past the first expected period and no update
+  const firstExpectedPeriod = new Date(lastPeriod);
+  firstExpectedPeriod.setDate(firstExpectedPeriod.getDate() + cycleLength);
+  const isPeriodLate = cyclesPassed >= 1 && today > firstExpectedPeriod;
+  const daysLate = isPeriodLate ? daysSinceLast - cycleLength : 0;
+  
+  // Determine phase
   let phase: string;
-
   if (dayInCycle <= periodLength) {
     phase = "menstrual";
   } else if (dayInCycle <= Math.floor(cycleLength * 0.45)) {
@@ -170,8 +236,33 @@ export function getCurrentPhase(
   } else {
     phase = "luteal";
   }
+  
+  return {
+    phase,
+    dayInCycle,
+    daysUntilNextPeriod,
+    nextPeriodDate,
+    currentCycleStart,
+    isInPeriod,
+    isPeriodLate,
+    daysLate,
+  };
+}
 
-  return { phase, dayInCycle, daysUntilNextPeriod };
+/**
+ * Determine current cycle phase (simplified version for backward compatibility)
+ */
+export function getCurrentPhase(
+  lastPeriodDate: Date,
+  cycleLength: number,
+  periodLength: number,
+): { phase: string; dayInCycle: number; daysUntilNextPeriod: number } {
+  const info = getCycleInfo(lastPeriodDate, cycleLength, periodLength);
+  return {
+    phase: info.phase,
+    dayInCycle: info.dayInCycle,
+    daysUntilNextPeriod: info.daysUntilNextPeriod,
+  };
 }
 
 /**

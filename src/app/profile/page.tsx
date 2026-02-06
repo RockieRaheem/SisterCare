@@ -15,6 +15,7 @@ import {
   saveCycleData,
   calculateNextPeriod,
   getCurrentPhase,
+  getCycleInfo,
   schedulePeriodReminders,
 } from "@/lib/firestore";
 import { UserProfile, CycleData, UserPreferences } from "@/types";
@@ -387,69 +388,78 @@ export default function ProfilePage() {
               </div>
 
               {/* Cycle Preview */}
-              {lastPeriodDate && (
-                <div className="mt-6 p-4 bg-primary/5 dark:bg-primary/10 rounded-xl border border-primary/20">
-                  <h3 className="text-primary font-bold mb-3 flex items-center gap-2">
-                    <span className="material-symbols-outlined">insights</span>
-                    Cycle Preview
-                  </h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-text-secondary">
-                        Next Period Expected
-                      </p>
-                      <p className="text-text-primary dark:text-white font-semibold">
-                        {calculateNextPeriod(
-                          new Date(lastPeriodDate),
-                          cycleLength,
-                        ).toLocaleDateString("en-US", {
-                          month: "long",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-text-secondary">Current Phase</p>
-                      <p className="text-text-primary dark:text-white font-semibold capitalize">
-                        {
-                          getCurrentPhase(
-                            new Date(lastPeriodDate),
-                            cycleLength,
-                            periodLength,
-                          ).phase
-                        }
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-text-secondary">Day in Cycle</p>
-                      <p className="text-text-primary dark:text-white font-semibold">
-                        Day{" "}
-                        {
-                          getCurrentPhase(
-                            new Date(lastPeriodDate),
-                            cycleLength,
-                            periodLength,
-                          ).dayInCycle
-                        }
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-text-secondary">Days Until Period</p>
-                      <p className="text-text-primary dark:text-white font-semibold">
-                        {
-                          getCurrentPhase(
-                            new Date(lastPeriodDate),
-                            cycleLength,
-                            periodLength,
-                          ).daysUntilNextPeriod
-                        }{" "}
-                        days
-                      </p>
+              {lastPeriodDate && (() => {
+                const cycleInfo = getCycleInfo(
+                  new Date(lastPeriodDate),
+                  cycleLength,
+                  periodLength,
+                );
+                
+                return (
+                  <div className="mt-6 p-4 bg-primary/5 dark:bg-primary/10 rounded-xl border border-primary/20">
+                    <h3 className="text-primary font-bold mb-3 flex items-center gap-2">
+                      <span className="material-symbols-outlined">insights</span>
+                      Cycle Preview
+                    </h3>
+                    
+                    {/* Late Period Warning */}
+                    {cycleInfo.isPeriodLate && (
+                      <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
+                        <p className="text-amber-800 dark:text-amber-200 text-sm flex items-center gap-2">
+                          <span className="material-symbols-outlined text-amber-500">info</span>
+                          <span>
+                            <strong>Update needed:</strong> Your period was expected {cycleInfo.daysLate} day{cycleInfo.daysLate !== 1 ? "s" : ""} ago. 
+                            Please update your &quot;Last Period Start Date&quot; above when your period starts.
+                          </span>
+                        </p>
+                      </div>
+                    )}
+                    
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-text-secondary">
+                          Next Period Expected
+                        </p>
+                        <p className="text-text-primary dark:text-white font-semibold">
+                          {cycleInfo.nextPeriodDate.toLocaleDateString("en-US", {
+                            month: "long",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-text-secondary">Current Phase</p>
+                        <p className="text-text-primary dark:text-white font-semibold capitalize flex items-center gap-1">
+                          {cycleInfo.isInPeriod && (
+                            <span className="material-symbols-outlined text-red-500 text-base">water_drop</span>
+                          )}
+                          {cycleInfo.phase}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-text-secondary">Day in Cycle</p>
+                        <p className="text-text-primary dark:text-white font-semibold">
+                          Day {cycleInfo.dayInCycle}
+                          <span className="text-text-secondary font-normal"> of {cycleLength}</span>
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-text-secondary">Days Until Period</p>
+                        <p className="text-text-primary dark:text-white font-semibold">
+                          {cycleInfo.daysUntilNextPeriod === 0 ? (
+                            <span className="text-red-500">Today!</span>
+                          ) : cycleInfo.daysUntilNextPeriod === 1 ? (
+                            <span className="text-amber-500">Tomorrow</span>
+                          ) : (
+                            <>{cycleInfo.daysUntilNextPeriod} days</>
+                          )}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           </Card>
         </section>

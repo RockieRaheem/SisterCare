@@ -9,7 +9,7 @@ import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import PeriodReminderBanner from "@/components/ui/PeriodReminderBanner";
 import Link from "next/link";
-import { getUserProfile, logSymptoms, getCurrentPhase } from "@/lib/firestore";
+import { getUserProfile, logSymptoms, getCurrentPhase, getCycleInfo } from "@/lib/firestore";
 import { UserProfile, MoodType } from "@/types";
 
 const moods: { emoji: string; label: string; value: MoodType }[] = [
@@ -63,6 +63,10 @@ export default function DashboardPage() {
     phase: string;
     dayInCycle: number;
     daysUntilNextPeriod: number;
+    nextPeriodDate: Date;
+    isInPeriod: boolean;
+    isPeriodLate: boolean;
+    daysLate: number;
   } | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -127,7 +131,7 @@ export default function DashboardPage() {
         const { lastPeriodDate, cycleLength, periodLength } =
           userProfile.cycleData;
         if (lastPeriodDate && cycleLength && periodLength) {
-          const info = getCurrentPhase(
+          const info = getCycleInfo(
             lastPeriodDate,
             cycleLength,
             periodLength,
@@ -177,45 +181,25 @@ export default function DashboardPage() {
   };
 
   // Calculate countdown timer values with memoization
-  // When period starts (diff <= 0), calculate the NEXT cycle's countdown
+  // Uses the corrected nextPeriodDate from getCycleInfo
   const countdown = useMemo(() => {
-    if (
-      !cycleInfo ||
-      !profile?.cycleData?.nextPeriodDate ||
-      !profile?.cycleData?.cycleLength
-    ) {
+    if (!cycleInfo) {
       return { days: 0, hours: 0, minutes: 0, isPeriodActive: false };
     }
 
     const now = currentTime;
-    let nextPeriod = new Date(profile.cycleData.nextPeriodDate);
-    const cycleLength = profile.cycleData.cycleLength;
-    let diff = nextPeriod.getTime() - now.getTime();
+    const nextPeriod = cycleInfo.nextPeriodDate;
+    const diff = nextPeriod.getTime() - now.getTime();
 
-    // If period has passed or started, calculate next cycle date
-    let isPeriodActive = false;
-    if (diff <= 0) {
-      isPeriodActive = true;
-      // Calculate how many cycles have passed
-      const daysPassed = Math.abs(Math.floor(diff / (1000 * 60 * 60 * 24)));
-      const cyclesPassed = Math.floor(daysPassed / cycleLength) + 1;
-      // Set next period to the upcoming cycle
-      nextPeriod = new Date(profile.cycleData.nextPeriodDate);
-      nextPeriod.setDate(nextPeriod.getDate() + cyclesPassed * cycleLength);
-      diff = nextPeriod.getTime() - now.getTime();
-    }
+    // Check if user is currently in their period
+    const isPeriodActive = cycleInfo.isInPeriod;
 
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const days = Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
+    const hours = Math.max(0, Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)));
+    const minutes = Math.max(0, Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)));
 
     return { days, hours, minutes, isPeriodActive, nextPeriodDate: nextPeriod };
-  }, [
-    cycleInfo,
-    profile?.cycleData?.nextPeriodDate,
-    profile?.cycleData?.cycleLength,
-    currentTime,
-  ]);
+  }, [cycleInfo, currentTime]);
 
   const currentPhaseInfo = useMemo(() => {
     return cycleInfo ? phaseInfo[cycleInfo.phase] : phaseInfo.follicular;
@@ -273,6 +257,29 @@ export default function DashboardPage() {
               userId={user?.uid}
               reminderDaysBefore={profile?.preferences?.reminderDaysBefore || 3}
             />
+          </div>
+        )}
+        
+        {/* Late Period Update Reminder */}
+        {cycleInfo?.isPeriodLate && (
+          <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl">
+            <div className="flex items-start gap-3">
+              <span className="material-symbols-outlined text-amber-500 text-2xl">update</span>
+              <div className="flex-1">
+                <h3 className="text-amber-800 dark:text-amber-200 font-bold mb-1">
+                  Period Update Needed
+                </h3>
+                <p className="text-amber-700 dark:text-amber-300 text-sm mb-3">
+                  Your period was expected {cycleInfo.daysLate} day{cycleInfo.daysLate !== 1 ? "s" : ""} ago. 
+                  Please update when your period started for accurate tracking.
+                </p>
+                <Link href="/profile">
+                  <Button variant="secondary" size="sm" icon="edit_calendar">
+                    Update Period Date
+                  </Button>
+                </Link>
+              </div>
+            </div>
           </div>
         )}
 
