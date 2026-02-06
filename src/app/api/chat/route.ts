@@ -230,8 +230,8 @@ async function callGeminiAPI(
   message: string,
   conversationHistory: Array<{ role: string; content: string }>,
 ): Promise<string> {
-  // Updated model names for 2025/2026 - using current stable versions
-  const models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-pro"];
+  // Use current Gemini models (Feb 2026) - lite has better quota limits for free tier
+  const models = ["gemini-2.0-flash-lite", "gemini-2.0-flash", "gemini-2.5-flash"];
 
   for (const model of models) {
     try {
@@ -288,8 +288,8 @@ async function callGeminiAPI(
       if (!response.ok) {
         const errorText = await response.text();
         console.log(`Model ${model} failed: ${response.status} - ${errorText}`);
-        // If rate limited or model not found, try next model
-        if (response.status === 429 || response.status === 404) {
+        // If rate limited, model not found, or permission denied (leaked key), try next model
+        if (response.status === 429 || response.status === 404 || response.status === 403) {
           continue;
         }
         throw new Error(`API error: ${response.status} - ${errorText}`);
@@ -322,6 +322,26 @@ async function callGeminiAPI(
 // Intelligent response generator - handles natural conversation
 function generateSmartResponse(message: string): string {
   const m = message.toLowerCase().trim();
+
+  // IDENTITY QUESTIONS - Handle questions about Sister first
+  if (/(who (created|made|built|developed)|who's your (creator|developer|maker))/.test(m) || 
+      /(created you|made you|built you|developed you)/.test(m)) {
+    return `I was created by the SisterCare team! 💜
+
+SisterCare is a digital platform dedicated to supporting women's well-being, menstrual health, and emotional wellness - especially for women and girls in Uganda.
+
+I'm here to be your supportive companion, answering questions, providing guidance, and offering a safe space to talk. Is there something I can help you with today? 🌸`;
+  }
+
+  // What AI model / technology questions
+  if (/(what (ai|model|technology)|which (ai|model)|are you (ai|chatbot|robot|bot)|what are you (made|built|powered))/.test(m) ||
+      /(are you real|are you human|are you a person)/.test(m)) {
+    return `I'm Sister, an AI-powered support companion! 💜
+
+I'm designed specifically for SisterCare to help with menstrual health questions, emotional support, and wellness guidance. While I'm not human, I'm here to listen without judgment and provide helpful, caring support.
+
+Think of me as a knowledgeable friend who's always available when you need to talk. What's on your mind? 🌸`;
+  }
 
   // CONVERSATIONAL RESPONSES - Handle natural dialog first
 
@@ -357,6 +377,36 @@ What's on your heart? You can share as much or as little as you're comfortable w
 I'm here to listen to YOU. Please, go ahead and share what's on your mind. I want to understand what you're going through before offering any advice. Take all the time you need.`;
   }
 
+  // User wants to chat/talk (simple request)
+  if (/^(i want to chat|let's chat|wanna chat|can we chat|want to talk|wanna talk|let's talk)$/i.test(m) || 
+      /^(i want to|let's|can we) (chat|talk|have a conversation)/i.test(m)) {
+    return `I'd love to chat with you! 💜 I'm all ears.
+
+What's on your mind today? You can tell me about your day, share something that's been bothering you, ask questions about health or periods, or just vent - I'm here for all of it.
+
+So, what would you like to talk about? 🌸`;
+  }
+
+  // User says that's not what they asked / wrong answer
+  if (/(didn't ask|didnt ask|not what i asked|not what i said|that's not|thats not|wrong answer|wrong response|i asked about|i was asking|that wasn't|that wasnt|off topic)/.test(m)) {
+    return `I'm so sorry for the confusion! 💜 Let me listen more carefully.
+
+Please tell me again what you'd like to know or talk about, and I'll focus on exactly that. I want to give you the right answer this time.
+
+What was your question? 🌸`;
+  }
+
+  // User expresses frustration with responses
+  if (/(not helpful|not helping|useless|don't understand|same response|real answer|hardcoded|hard coded|repetitive|not working|you're broken|broken|just repeating)/.test(m)) {
+    return `I hear your frustration, and I'm truly sorry. 💜 Let me try harder.
+
+Please tell me exactly what's going on - describe your situation in detail and I'll give you my best, most specific guidance.
+
+For example: Are you having pain? Where is it and how severe? Is it about your period - when was your last one? Are you worried about pregnancy or something else? Do you need emotional support about something specific?
+
+The more details you share, the better I can help you. I'm really listening. 🌸`;
+  }
+
   // Greetings with emotional context
   if (
     /^(hi+|hello|hey+)/.test(m) &&
@@ -386,6 +436,24 @@ I'm here to listen to YOU. Please, go ahead and share what's on your mind. I wan
 
   // TOPIC-BASED RESPONSES
 
+  // Generic pain relief / guidance requests (catch-all)
+  if (
+    /(relieve|relief|reduce|ease|help.*pain|guidance.*pain|deal.*pain|manage.*pain|stop.*pain)/.test(m) ||
+    /(the pain|my pain|this pain)/.test(m) && /(help|relieve|stop|manage|reduce|ease|guidance)/.test(m)
+  ) {
+    return `How to relieve menstrual pain 💜
+
+For immediate relief: Try a heating pad on your abdomen (it's as effective as ibuprofen!). Pain relievers like ibuprofen or naproxen work best when taken early. A warm bath can also help relax your muscles.
+
+Natural remedies include ginger tea which is anti-inflammatory, gentle yoga poses like child's pose and cat-cow, and light walking which releases endorphins. Chamomile tea and staying hydrated also help.
+
+For long-term relief: Regular exercise helps a lot. Try to reduce salt, caffeine, and alcohol before your period. Magnesium supplements can also make a difference.
+
+Other tips: Rest when you need to - your body is working hard. Apply a warm compress for 15-20 minutes at a time. Avoid tight clothing around your waist.
+
+See a doctor if your pain is severe, sudden, or different from usual. You deserve to feel better! 🌸`;
+  }
+
   // Menstruation/cleaning/hygiene
   if (
     /(clean|wash|hygiene|hygienic|sanit|shower|bath)/.test(m) &&
@@ -406,11 +474,13 @@ After using the bathroom, always wipe front to back, and consider using unscente
 Is there anything specific about period hygiene you'd like to know more about? 🌸`;
   }
 
-  // Cramps
+  // Cramps - enhanced pattern matching
   if (
     /(cramp|cramping|pain.*(abdomen|stomach|belly|lower)|stomach.*hurt|belly.*ache|lower.*pain)/.test(
       m,
-    )
+    ) ||
+    /(terrible|bad|severe|awful|horrible|intense)\s*(cramp|pain)/.test(m) ||
+    /cramp/.test(m)
   ) {
     if (/(what is|what are|what's|define|explain|meaning)/.test(m)) {
       return `What are menstrual cramps? 💜
@@ -495,6 +565,38 @@ Some period basics: They typically come every 21-35 days, usually last 3-7 days,
 I can help with late or missed periods, heavy bleeding, first period info, and products and hygiene.
 
 What's your question? 🌸`;
+  }
+
+  // Pregnancy concerns
+  if (/(pregnant|pregnancy|think i'm pregnant|might be pregnant|could be pregnant|missed period.*pregnant|no period.*pregnant)/.test(m)) {
+    return `I hear you, and this must be a lot to process. 💜 I'm here for you.
+
+First, take a breath. A missed period doesn't always mean pregnancy - stress, illness, weight changes, and hormonal shifts can all cause it.
+
+If you think you might be pregnant: The most reliable way to know is a pregnancy test. They're most accurate from the first day of your missed period. You can get tests at pharmacies or health centers.
+
+Early signs of pregnancy can include a missed period, nausea or vomiting (morning sickness), tender or swollen breasts, fatigue, and frequent urination.
+
+If you're in Uganda and need support: Marie Stopes Uganda offers confidential services (0800 100 110, toll-free). Your local health center can also help with testing and guidance.
+
+Whatever your situation, you deserve support without judgment. Would you like to talk more about what you're going through? 🌸`;
+  }
+
+  // Talking to parents/adults about periods or health
+  if (/(tell|talk|report|share|speak).*(mum|mom|mother|parent|dad|father|family|adult|teacher)/.test(m) || /(how do i tell|how to tell|should i tell).*/.test(m)) {
+    return `Talking to a trusted adult 💜
+
+It's brave of you to want to share! Having support makes things easier.
+
+Tips for starting the conversation: Choose a quiet, private moment. You can say something like "I need to talk about something important" or "I'm feeling worried about my health and need your help."
+
+If it's about your period: Remember this is natural and nothing to be embarrassed about. You could say "I've been having some period symptoms and need some advice."
+
+If it's about pregnancy concerns: This is harder, but you deserve support. Consider writing it down first if speaking feels too hard. You could say "I'm worried about something health-related and I need your help."
+
+If you don't feel safe talking to parents: Consider a school counselor, auntie, older sister, trusted teacher, or health worker at a local clinic.
+
+You don't have to face anything alone. 🌸`;
   }
 
   // Mood/emotions/PMS
@@ -584,8 +686,8 @@ I can help with:
 What would you like to talk about? 🌸`;
   }
 
-  // Food/nutrition/cravings
-  if (/(food|eat|diet|nutrition|craving|hungry|chocolate|snack)/.test(m)) {
+  // Food/nutrition/cravings - use word boundaries to avoid matching "created" etc.
+  if (/(\bfood\b|\beat\b|\beating\b|\bdiet\b|\bnutrition\b|\bcraving\b|\bhungry\b|\bchocolate\b|\bsnack\b)/.test(m)) {
     if (/(craving|chocolate|want to eat)/.test(m)) {
       return `Period cravings are real! 💜
 
