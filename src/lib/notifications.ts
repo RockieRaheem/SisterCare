@@ -19,23 +19,26 @@ export const isNotificationSupported = (): boolean => {
 };
 
 // Request notification permission
-export const requestNotificationPermission = async (): Promise<NotificationPermission> => {
-  if (!isNotificationSupported()) {
-    console.warn("Notifications not supported in this browser");
-    return "denied";
-  }
+export const requestNotificationPermission =
+  async (): Promise<NotificationPermission> => {
+    if (!isNotificationSupported()) {
+      console.warn("Notifications not supported in this browser");
+      return "denied";
+    }
 
-  try {
-    const permission = await Notification.requestPermission();
-    return permission;
-  } catch (error) {
-    console.error("Error requesting notification permission:", error);
-    return "denied";
-  }
-};
+    try {
+      const permission = await Notification.requestPermission();
+      return permission;
+    } catch (error) {
+      console.error("Error requesting notification permission:", error);
+      return "denied";
+    }
+  };
 
 // Get current notification permission status
-export const getNotificationPermission = (): NotificationPermission | "unsupported" => {
+export const getNotificationPermission = ():
+  | NotificationPermission
+  | "unsupported" => {
   if (!isNotificationSupported()) {
     return "unsupported";
   }
@@ -45,7 +48,7 @@ export const getNotificationPermission = (): NotificationPermission | "unsupport
 // Show a browser notification
 export const showBrowserNotification = (
   title: string,
-  options?: NotificationOptions
+  options?: NotificationOptions,
 ): Notification | null => {
   if (!isNotificationSupported() || Notification.permission !== "granted") {
     return null;
@@ -78,7 +81,7 @@ export const showBrowserNotification = (
 // Generate period reminder notification based on days until period
 export const generatePeriodReminder = (
   daysUntilPeriod: number,
-  userName?: string
+  userName?: string,
 ): PeriodNotification | null => {
   const greeting = userName ? `Hi ${userName}! ` : "";
 
@@ -149,7 +152,7 @@ export const generatePeriodReminder = (
 // Generate wellness tips based on cycle phase
 export const generatePhaseTip = (
   phase: string,
-  dayInCycle: number
+  dayInCycle: number,
 ): PeriodNotification | null => {
   const tips: Record<string, string[]> = {
     menstrual: [
@@ -198,12 +201,12 @@ export const generatePhaseTip = (
 export const checkAndNotify = async (
   daysUntilPeriod: number,
   reminderDaysBefore: number,
-  userName?: string
+  userName?: string,
 ): Promise<PeriodNotification | null> => {
   // Only show notification if within reminder window
   if (daysUntilPeriod <= reminderDaysBefore || daysUntilPeriod <= 0) {
     const notification = generatePeriodReminder(daysUntilPeriod, userName);
-    
+
     if (notification && Notification.permission === "granted") {
       // Show browser notification
       showBrowserNotification(notification.title, {
@@ -219,13 +222,34 @@ export const checkAndNotify = async (
 };
 
 // Store notifications in localStorage for persistence
-const NOTIFICATIONS_KEY = "sistercare_notifications";
+// USER-SCOPED: Each user has their own notification storage
+const getNotificationsKey = (userId?: string): string => {
+  if (!userId) return ""; // No key if no user
+  return `sistercare_notifications_${userId}`;
+};
 
-export const getStoredNotifications = (): PeriodNotification[] => {
+// Current user ID - set by NotificationBell component
+let currentUserId: string | null = null;
+
+export const setCurrentUser = (userId: string | null): void => {
+  currentUserId = userId;
+  // Clean up old global notifications on user change (legacy cleanup)
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("sistercare_notifications"); // Remove old global key
+  }
+};
+
+export const getStoredNotifications = (
+  userId?: string,
+): PeriodNotification[] => {
   if (typeof window === "undefined") return [];
-  
+
+  const uid = userId || currentUserId;
+  if (!uid) return []; // No user = no notifications
+
   try {
-    const stored = localStorage.getItem(NOTIFICATIONS_KEY);
+    const key = getNotificationsKey(uid);
+    const stored = localStorage.getItem(key);
     if (stored) {
       const notifications = JSON.parse(stored);
       return notifications.map((n: PeriodNotification) => ({
@@ -239,51 +263,79 @@ export const getStoredNotifications = (): PeriodNotification[] => {
   return [];
 };
 
-export const storeNotification = (notification: PeriodNotification): void => {
+export const storeNotification = (
+  notification: PeriodNotification,
+  userId?: string,
+): void => {
   if (typeof window === "undefined") return;
-  
+
+  const uid = userId || currentUserId;
+  if (!uid) return; // No user = don't store
+
   try {
-    const existing = getStoredNotifications();
+    const key = getNotificationsKey(uid);
+    const existing = getStoredNotifications(uid);
     // Keep only last 10 notifications
     const updated = [notification, ...existing].slice(0, 10);
-    localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(updated));
+    localStorage.setItem(key, JSON.stringify(updated));
   } catch (error) {
     console.error("Error storing notification:", error);
   }
 };
 
-export const markNotificationRead = (notificationId: string): void => {
+export const markNotificationRead = (
+  notificationId: string,
+  userId?: string,
+): void => {
   if (typeof window === "undefined") return;
-  
+
+  const uid = userId || currentUserId;
+  if (!uid) return;
+
   try {
-    const existing = getStoredNotifications();
+    const key = getNotificationsKey(uid);
+    const existing = getStoredNotifications(uid);
     const updated = existing.map((n) =>
-      n.id === notificationId ? { ...n, read: true } : n
+      n.id === notificationId ? { ...n, read: true } : n,
     );
-    localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(updated));
+    localStorage.setItem(key, JSON.stringify(updated));
   } catch (error) {
     console.error("Error updating notification:", error);
   }
 };
 
-export const clearAllNotifications = (): void => {
+export const clearAllNotifications = (userId?: string): void => {
   if (typeof window === "undefined") return;
-  localStorage.removeItem(NOTIFICATIONS_KEY);
+
+  const uid = userId || currentUserId;
+  if (!uid) return;
+
+  const key = getNotificationsKey(uid);
+  localStorage.removeItem(key);
 };
 
 // Check if we should show notification today (avoid spamming)
-const LAST_NOTIFICATION_KEY = "sistercare_last_notification";
+// USER-SCOPED: Each user has their own last notification timestamp
+const getLastNotificationKey = (userId?: string): string => {
+  const uid = userId || currentUserId;
+  if (!uid) return "";
+  return `sistercare_last_notification_${uid}`;
+};
 
-export const shouldShowNotificationToday = (): boolean => {
+export const shouldShowNotificationToday = (userId?: string): boolean => {
   if (typeof window === "undefined") return false;
-  
+
+  const uid = userId || currentUserId;
+  if (!uid) return false;
+
   try {
-    const lastShown = localStorage.getItem(LAST_NOTIFICATION_KEY);
+    const key = getLastNotificationKey(uid);
+    const lastShown = localStorage.getItem(key);
     if (!lastShown) return true;
-    
+
     const lastDate = new Date(lastShown);
     const today = new Date();
-    
+
     // Only show once per day
     return lastDate.toDateString() !== today.toDateString();
   } catch {
@@ -291,7 +343,12 @@ export const shouldShowNotificationToday = (): boolean => {
   }
 };
 
-export const markNotificationShownToday = (): void => {
+export const markNotificationShownToday = (userId?: string): void => {
   if (typeof window === "undefined") return;
-  localStorage.setItem(LAST_NOTIFICATION_KEY, new Date().toISOString());
+
+  const uid = userId || currentUserId;
+  if (!uid) return;
+
+  const key = getLastNotificationKey(uid);
+  localStorage.setItem(key, new Date().toISOString());
 };

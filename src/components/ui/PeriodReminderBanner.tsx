@@ -10,17 +10,20 @@ import {
   requestNotificationPermission,
   getNotificationPermission,
   showBrowserNotification,
+  setCurrentUser,
 } from "@/lib/notifications";
 
 interface PeriodReminderBannerProps {
   daysUntilPeriod: number;
   userName?: string;
+  userId?: string;
   reminderDaysBefore?: number;
 }
 
 export default function PeriodReminderBanner({
   daysUntilPeriod,
   userName,
+  userId,
   reminderDaysBefore = 3,
 }: PeriodReminderBannerProps) {
   const [notification, setNotification] = useState<PeriodNotification | null>(
@@ -32,6 +35,11 @@ export default function PeriodReminderBanner({
   >("default");
 
   useEffect(() => {
+    // Set current user for notification scoping
+    if (userId) {
+      setCurrentUser(userId);
+    }
+
     // Check notification permission
     setNotificationPermission(getNotificationPermission());
 
@@ -42,10 +50,10 @@ export default function PeriodReminderBanner({
       if (reminder) {
         setNotification(reminder);
 
-        // Store notification if not shown today
-        if (shouldShowNotificationToday()) {
-          storeNotification(reminder);
-          markNotificationShownToday();
+        // Store notification if not shown today (user-scoped)
+        if (userId && shouldShowNotificationToday(userId)) {
+          storeNotification(reminder, userId);
+          markNotificationShownToday(userId);
 
           // Try to show browser notification
           if (getNotificationPermission() === "granted") {
@@ -56,7 +64,7 @@ export default function PeriodReminderBanner({
         }
       }
     }
-  }, [daysUntilPeriod, userName, reminderDaysBefore]);
+  }, [daysUntilPeriod, userName, userId, reminderDaysBefore]);
 
   const handleEnableNotifications = async () => {
     const permission = await requestNotificationPermission();

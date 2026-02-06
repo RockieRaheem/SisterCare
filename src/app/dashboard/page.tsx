@@ -270,6 +270,7 @@ export default function DashboardPage() {
             <PeriodReminderBanner
               daysUntilPeriod={countdown.days}
               userName={displayName}
+              userId={user?.uid}
               reminderDaysBefore={profile?.preferences?.reminderDaysBefore || 3}
             />
           </div>

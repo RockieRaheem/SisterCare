@@ -1,28 +1,43 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@/context/AuthContext";
 import {
   PeriodNotification,
   getStoredNotifications,
   markNotificationRead,
   clearAllNotifications,
+  setCurrentUser,
 } from "@/lib/notifications";
 
 interface NotificationBellProps {
   className?: string;
 }
 
-export default function NotificationBell({ className = "" }: NotificationBellProps) {
+export default function NotificationBell({
+  className = "",
+}: NotificationBellProps) {
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState<PeriodNotification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // Load notifications
+  // Set current user for notification scoping
+  useEffect(() => {
+    setCurrentUser(user?.uid || null);
+  }, [user]);
+
+  // Load notifications for current user only
   const loadNotifications = useCallback(() => {
-    const stored = getStoredNotifications();
+    if (!user?.uid) {
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
+    const stored = getStoredNotifications(user.uid);
     setNotifications(stored);
     setUnreadCount(stored.filter((n) => !n.read).length);
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     loadNotifications();
@@ -33,12 +48,14 @@ export default function NotificationBell({ className = "" }: NotificationBellPro
   }, [loadNotifications]);
 
   const handleMarkRead = (id: string) => {
-    markNotificationRead(id);
+    if (!user?.uid) return;
+    markNotificationRead(id, user.uid);
     loadNotifications();
   };
 
   const handleClearAll = () => {
-    clearAllNotifications();
+    if (!user?.uid) return;
+    clearAllNotifications(user.uid);
     setNotifications([]);
     setUnreadCount(0);
     setIsOpen(false);
@@ -160,7 +177,7 @@ export default function NotificationBell({ className = "" }: NotificationBellPro
                       <div className="flex gap-3">
                         <div
                           className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${getNotificationColor(
-                            notification.type
+                            notification.type,
                           )}`}
                         >
                           <span className="material-symbols-outlined text-lg">
