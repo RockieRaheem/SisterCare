@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Guidance &amp; Advice Library - SisterCare</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#8c30e8",
+                        "background-light": "#f7f6f8",
+                        "background-dark": "#191121",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Manrope', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-[#140e1b] dark:text-[#f7f6f8]">
+<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden">
+<!-- Header Section -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-primary/10 px-6 md:px-20 py-4 bg-white dark:bg-background-dark">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-4 text-primary">
+<div class="size-8">
+<svg fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M4 4H17.3334V17.3334H30.6666V30.6666H44V44H4V4Z" fill="currentColor"></path>
+</svg>
+</div>
+<h2 class="text-[#140e1b] dark:text-white text-xl font-bold leading-tight tracking-[-0.015em]">SisterCare</h2>
+</div>
+<nav class="hidden md:flex items-center gap-9">
+<a class="text-[#140e1b] dark:text-white text-sm font-medium leading-normal hover:text-primary transition-colors" href="#">Home</a>
+<a class="text-primary text-sm font-bold leading-normal" href="#">Library</a>
+<a class="text-[#140e1b] dark:text-white text-sm font-medium leading-normal hover:text-primary transition-colors" href="#">Support</a>
+<a class="text-[#140e1b] dark:text-white text-sm font-medium leading-normal hover:text-primary transition-colors" href="#">Community</a>
+</nav>
+</div>
+<div class="flex flex-1 justify-end gap-6 items-center">
+<label class="hidden lg:flex flex-col min-w-40 h-10 max-w-64">
+<div class="flex w-full flex-1 items-stretch rounded-lg h-full">
+<div class="text-primary/70 flex border-none bg-primary/5 items-center justify-center pl-4 rounded-l-lg" data-icon="search">
+<span class="material-symbols-outlined text-xl">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 border-none bg-primary/5 focus:ring-0 focus:outline-0 text-[#140e1b] dark:text-white placeholder:text-primary/50 px-4 rounded-r-lg text-sm font-normal" placeholder="Search articles..." value=""/>
+</div>
+</label>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border-2 border-primary/20" data-alt="User profile avatar" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBeWGXELzLKnYjFFvAE3Qakt56LVzYwfdXGJcdupaZ3D7phuCLnzXMLQZJiJc0G1FbkOwFBH9y7oM3i-_ELrvxrIdYR4lW9xrnBXlmSLc_T1abEbIpEI7WrecKCC95fxZnwCbyQvNlpVcC4yTxyEhpoPCLEEUnRQ1C6SsaFNatHamH2qrjsG7TIyu6If8c7YfjH2CekIcYkhCbTH6G4gD66aSyt4N30QcJtEour2kq1lTNaCuVq2UjoOWLou4jXt2r0A6Ta5LIycWM");'></div>
+</div>
+</header>
+<main class="flex-1 flex max-w-[1440px] mx-auto w-full px-6 md:px-20 py-8 gap-10">
+<!-- Sidebar Navigation -->
+<aside class="hidden lg:flex flex-col w-64 gap-8 shrink-0">
+<div class="flex flex-col gap-2">
+<h3 class="text-[#140e1b] dark:text-white text-base font-bold px-3 mb-2">Library</h3>
+<div class="flex items-center gap-3 px-3 py-3 rounded-xl bg-primary text-white shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined">library_books</span>
+<p class="text-sm font-semibold">All Advice</p>
+</div>
+<div class="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-primary">spa</span>
+<p class="text-[#140e1b] dark:text-white text-sm font-medium">Comfort &amp; Hygiene</p>
+</div>
+<div class="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-primary">sentiment_satisfied</span>
+<p class="text-[#140e1b] dark:text-white text-sm font-medium">Emotional Well-being</p>
+</div>
+<div class="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-primary">medical_services</span>
+<p class="text-[#140e1b] dark:text-white text-sm font-medium">When to See a Doctor</p>
+</div>
+<div class="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-primary">bookmark</span>
+<p class="text-[#140e1b] dark:text-white text-sm font-medium">Saved Articles</p>
+</div>
+</div>
+<div class="mt-auto p-4 bg-primary/10 dark:bg-primary/20 rounded-xl">
+<p class="text-primary font-bold text-sm mb-1">Need urgent help?</p>
+<p class="text-xs text-[#734e97] dark:text-[#a284c0] mb-3">Our 24/7 support line is always available for you.</p>
+<button class="w-full bg-primary text-white py-2 rounded-lg text-xs font-bold hover:bg-primary/90 transition-opacity">Contact Support</button>
+</div>
+</aside>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col gap-6">
+<!-- Page Heading -->
+<div class="flex flex-col gap-2">
+<h1 class="text-[#140e1b] dark:text-white text-4xl font-black leading-tight tracking-[-0.033em]">Guidance &amp; Advice Library</h1>
+<p class="text-[#734e97] dark:text-[#a284c0] text-lg font-normal leading-normal max-w-2xl">Explore expert-backed articles and daily tips designed to support your menstrual health and emotional well-being.</p>
+</div>
+<!-- Chips Filter -->
+<div class="flex gap-3 py-2 flex-wrap">
+<div class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-full bg-primary/10 dark:bg-primary/20 border border-primary/20 px-5 cursor-pointer hover:bg-primary/20 transition-all">
+<p class="text-primary text-sm font-bold leading-normal">Latest</p>
+</div>
+<div class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-full bg-white dark:bg-background-dark border border-gray-200 dark:border-white/10 px-5 cursor-pointer hover:bg-primary/5 transition-all">
+<p class="text-[#140e1b] dark:text-white text-sm font-medium leading-normal">Most Popular</p>
+</div>
+<div class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-full bg-white dark:bg-background-dark border border-gray-200 dark:border-white/10 px-5 cursor-pointer hover:bg-primary/5 transition-all">
+<p class="text-[#140e1b] dark:text-white text-sm font-medium leading-normal">Beginner's Guide</p>
+</div>
+<div class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-full bg-white dark:bg-background-dark border border-gray-200 dark:border-white/10 px-5 cursor-pointer hover:bg-primary/5 transition-all">
+<p class="text-[#140e1b] dark:text-white text-sm font-medium leading-normal">Self-care Tips</p>
+</div>
+<div class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-full bg-white dark:bg-background-dark border border-gray-200 dark:border-white/10 px-5 cursor-pointer hover:bg-primary/5 transition-all">
+<p class="text-[#140e1b] dark:text-white text-sm font-medium leading-normal">Nutrition</p>
+</div>
+</div>
+<!-- Content Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pt-4">
+<!-- Card 1 -->
+<div class="flex flex-col gap-4 group cursor-pointer">
+<div class="relative overflow-hidden rounded-2xl aspect-[16/10] bg-center bg-no-repeat bg-cover transition-transform duration-300 group-hover:scale-[1.02]" data-alt="Soft aesthetic illustration of comfort" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBnQh9rAjIC-FOSbLfhHvtCCWCE1Or_UThgd__J66Wp4Lz04FqsqO2FXWflzM9gI8GpBLfw5qJYTzjkS4RYuPwoIjB1CNyEQ7mhFOmr2lvPQXlBfd6rR8xgSxuZ6trTdXByJzg83upyIeySonx7KGlzeD3E00Q6RnC9k-kobuBEq0P9Aqpp0S1P-fBPWQ9-D5obdwuNRE2-xdwuZPpNL9kffyv8wlg_l2-HXgyH-v0XPB4cTJXcUVl2qUHghoSrj6TpcX4Xj-8_JKQ");'>
+<div class="absolute top-4 left-4 bg-white/90 dark:bg-black/50 backdrop-blur-md px-3 py-1 rounded-lg">
+<span class="text-[10px] font-bold uppercase tracking-wider text-primary">Comfort</span>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<h3 class="text-[#140e1b] dark:text-white text-lg font-bold leading-snug group-hover:text-primary transition-colors">Managing Period Cramps: Natural Remedies</h3>
+<p class="text-[#734e97] dark:text-[#a284c0] text-sm font-normal line-clamp-2">Learn effective ways to soothe discomfort through heat therapy, gentle movement, and hydration.</p>
+<div class="flex items-center gap-3 mt-1">
+<span class="text-primary/60 text-xs font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">schedule</span> 5 min read
+                                </span>
+</div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="flex flex-col gap-4 group cursor-pointer">
+<div class="relative overflow-hidden rounded-2xl aspect-[16/10] bg-center bg-no-repeat bg-cover transition-transform duration-300 group-hover:scale-[1.02]" data-alt="Mindfulness and meditation illustration" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCDndUY8L_v_QSjV4VkvAtGqnxcDpqtmkeuNg6lMGxru__gMjcBPpECV9kALsSGTtz1hhr9iyMd6BYOai2xTYI4f9HEOnjw0scLF8eypVs_Zf0xT0byRcaGEMHBxSz5tmw3g6mfYfeqJJvIgGO1ATaBD8p1yCM3qaNNCi5uliM7mQ37Q-SDqXLz-z4PsczMHPjjTwqE7xeTSi2m0uvMcP71JBl70S-pw3bj5mdzSl9aCRuetwQ9wWUDbgo4unoXVHbFHyK24gTFSbU");'>
+<div class="absolute top-4 left-4 bg-white/90 dark:bg-black/50 backdrop-blur-md px-3 py-1 rounded-lg">
+<span class="text-[10px] font-bold uppercase tracking-wider text-primary">Well-being</span>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<h3 class="text-[#140e1b] dark:text-white text-lg font-bold leading-snug group-hover:text-primary transition-colors">Mindfulness Practices for PMS</h3>
+<p class="text-[#734e97] dark:text-[#a284c0] text-sm font-normal line-clamp-2">How to navigate emotional shifts with self-compassion and grounding techniques.</p>
+<div class="flex items-center gap-3 mt-1">
+<span class="text-primary/60 text-xs font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">schedule</span> 8 min read
+                                </span>
+</div>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="flex flex-col gap-4 group cursor-pointer">
+<div class="relative overflow-hidden rounded-2xl aspect-[16/10] bg-center bg-no-repeat bg-cover transition-transform duration-300 group-hover:scale-[1.02]" data-alt="Eco-friendly period products" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCwSoTlLGelK1EnhMY9lWnlaMCd7ZNT5h4yJhHAxjq65yRd0fBR2jb1PCNB_IxOGX75QLwxLF9nmrXY70VrGEKDvKekp3H6ghJkNsEFB350u9sb7_BzFpr3wvr2MEQVcEjgHAjjq0yO5YGIQNHYNwZC1ru4ppSNixwIBWzGqt5iNxRK7gSaZj9JZgmNOjeOxo6AMzaj2gXmP0juOq3bS9__uDbBjNZa5YFj-O3I0jb75V5c4w-XDVO2LXr3UTK8msCMHI-119bu6-Y");'>
+<div class="absolute top-4 left-4 bg-white/90 dark:bg-black/50 backdrop-blur-md px-3 py-1 rounded-lg">
+<span class="text-[10px] font-bold uppercase tracking-wider text-primary">Hygiene</span>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<h3 class="text-[#140e1b] dark:text-white text-lg font-bold leading-snug group-hover:text-primary transition-colors">Choosing the Right Sustainable Products</h3>
+<p class="text-[#734e97] dark:text-[#a284c0] text-sm font-normal line-clamp-2">A comprehensive guide to cups, discs, and period underwear for every lifestyle.</p>
+<div class="flex items-center gap-3 mt-1">
+<span class="text-primary/60 text-xs font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">schedule</span> 4 min read
+                                </span>
+</div>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="flex flex-col gap-4 group cursor-pointer">
+<div class="relative overflow-hidden rounded-2xl aspect-[16/10] bg-center bg-no-repeat bg-cover transition-transform duration-300 group-hover:scale-[1.02]" data-alt="Hormone balance diagram illustration" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAQtzLlUf4LCEAEs67repjN7dhzGmBk5Tq4iP9c29YEIPan8eFSYYrjq5V8FFahDMhon-i9Y5Ws8KA1gR2bOoxgu0Mc2p8q3FAjNZhsymFGdeyDkJbBUHhND-vY5Z48ao5PNDvEYKaEzrV1avm81aEN5tA6a9R3zu9NLBM0LTfsl7BJW-wY-SpAkwcMbLi1uVErSVeGuMlr0XutU23EYWpsknLrHXrdu8_8zbFV7ZV1GHGKRJ2ZU1KDjbGVA3Upyo5RmJX5VxVbIZU");'>
+<div class="absolute top-4 left-4 bg-white/90 dark:bg-black/50 backdrop-blur-md px-3 py-1 rounded-lg">
+<span class="text-[10px] font-bold uppercase tracking-wider text-primary">Medical</span>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<h3 class="text-[#140e1b] dark:text-white text-lg font-bold leading-snug group-hover:text-primary transition-colors">Signs of Hormonal Imbalance</h3>
+<p class="text-[#734e97] dark:text-[#a284c0] text-sm font-normal line-clamp-2">Understanding your body's signals and when it's time to consult a specialist.</p>
+<div class="flex items-center gap-3 mt-1">
+<span class="text-primary/60 text-xs font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">schedule</span> 10 min read
+                                </span>
+</div>
+</div>
+</div>
+<!-- Card 5 -->
+<div class="flex flex-col gap-4 group cursor-pointer">
+<div class="relative overflow-hidden rounded-2xl aspect-[16/10] bg-center bg-no-repeat bg-cover transition-transform duration-300 group-hover:scale-[1.02]" data-alt="Biological cycle phases abstract art" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBY2RWMU6ChZVXl2Jy5zqktVMz6GguaSDk9QlVq-Yu2vC0JMxa3yvO_Rv2oPPh_-hp60z4x_BSiGO7YU8y2StX0VP7oDOFI-Sz1nVJo_Gu3aIj6rT11CWgv9qaMYqpZoH4IUtNgEbzpBt9KemfMetxmcjmtl72xVhrJqLHfN4tgEyemNq9pzXH1nW6JZ5qr8iPu9jYZiy4oaPsLiQ_R6km1RwDXDXnY8ViE--Q5nsTUUL2AQls0_JCsUrX2Q45aRE9gsHBevWqFDLE");'>
+<div class="absolute top-4 left-4 bg-white/90 dark:bg-black/50 backdrop-blur-md px-3 py-1 rounded-lg">
+<span class="text-[10px] font-bold uppercase tracking-wider text-primary">Education</span>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<h3 class="text-[#140e1b] dark:text-white text-lg font-bold leading-snug group-hover:text-primary transition-colors">The Science of Menstrual Cycles</h3>
+<p class="text-[#734e97] dark:text-[#a284c0] text-sm font-normal line-clamp-2">Deep dive into the follicular, ovulatory, and luteal phases of your cycle.</p>
+<div class="flex items-center gap-3 mt-1">
+<span class="text-primary/60 text-xs font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">schedule</span> 12 min read
+                                </span>
+</div>
+</div>
+</div>
+<!-- Card 6 -->
+<div class="flex flex-col gap-4 group cursor-pointer">
+<div class="relative overflow-hidden rounded-2xl aspect-[16/10] bg-center bg-no-repeat bg-cover transition-transform duration-300 group-hover:scale-[1.02]" data-alt="Journal and pen on a cozy desk" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBjG-24g1mcLOFefAJiZh6WVXKUjKWsNmkCTmoediWshWUG2-ulat0PMFh4-mIJESbZN2Fhwhg5i7U1AA-PjLTVfYoSVMwGS97iK5Fio8PWfUYNerTELIKFmduV8q7OEQZIXmKEkwtKe0IFgUaQA4bZPAlsscMwpJU5_kN1fx3Xm1wF1rHY35wHtX8KmeV3jKtJ-o_tUGlSPCwwApQOy1sOU3fjc5bm7jLrK9TMrJsEhurJxCRSyhggz5np_XxzsQSdMR9D6srqT4A");'>
+<div class="absolute top-4 left-4 bg-white/90 dark:bg-black/50 backdrop-blur-md px-3 py-1 rounded-lg">
+<span class="text-[10px] font-bold uppercase tracking-wider text-primary">Self-Care</span>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<h3 class="text-[#140e1b] dark:text-white text-lg font-bold leading-snug group-hover:text-primary transition-colors">Journaling for Mental Clarity</h3>
+<p class="text-[#734e97] dark:text-[#a284c0] text-sm font-normal line-clamp-2">Daily prompts to help track your mood and identify patterns in your emotional health.</p>
+<div class="flex items-center gap-3 mt-1">
+<span class="text-primary/60 text-xs font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">schedule</span> 6 min read
+                                </span>
+</div>
+</div>
+</div>
+</div>
+<!-- Load More Button -->
+<div class="flex justify-center py-10">
+<button class="px-8 py-3 rounded-xl border-2 border-primary text-primary font-bold hover:bg-primary hover:text-white transition-all">
+                        Load More Articles
+                    </button>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="bg-white dark:bg-background-dark border-t border-primary/10 py-12 px-6 md:px-20 mt-10">
+<div class="max-w-[1440px] mx-auto grid grid-cols-1 md:grid-cols-4 gap-10">
+<div class="col-span-1 md:col-span-2 flex flex-col gap-4">
+<div class="flex items-center gap-3 text-primary">
+<div class="size-6">
+<svg fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M4 4H17.3334V17.3334H30.6666V30.6666H44V44H4V4Z" fill="currentColor"></path>
+</svg>
+</div>
+<h2 class="text-xl font-bold">SisterCare</h2>
+</div>
+<p class="text-[#734e97] dark:text-[#a284c0] text-sm max-w-sm">Empowering women and girls through accessible education, emotional support, and personalized health tracking. You are never alone.</p>
+</div>
+<div>
+<h4 class="font-bold mb-4">Quick Links</h4>
+<ul class="flex flex-col gap-2 text-sm text-[#734e97] dark:text-[#a284c0]">
+<li class="hover:text-primary cursor-pointer">About Us</li>
+<li class="hover:text-primary cursor-pointer">Our Experts</li>
+<li class="hover:text-primary cursor-pointer">Terms of Service</li>
+<li class="hover:text-primary cursor-pointer">Privacy Policy</li>
+</ul>
+</div>
+<div>
+<h4 class="font-bold mb-4">Stay Connected</h4>
+<div class="flex gap-4">
+<div class="size-8 rounded-full bg-primary/10 flex items-center justify-center text-primary cursor-pointer hover:bg-primary hover:text-white transition-colors">
+<span class="material-symbols-outlined text-lg">share</span>
+</div>
+<div class="size-8 rounded-full bg-primary/10 flex items-center justify-center text-primary cursor-pointer hover:bg-primary hover:text-white transition-colors">
+<span class="material-symbols-outlined text-lg">mail</span>
+</div>
+</div>
+</div>
+</div>
+<div class="max-w-[1440px] mx-auto mt-12 pt-8 border-t border-primary/5 text-center text-xs text-[#734e97] dark:text-[#a284c0]">
+                © 2024 SisterCare. All rights reserved. Professional medical advice should always be sought from a qualified healthcare provider.
+            </div>
+</footer>
+</div>
+</body></html>

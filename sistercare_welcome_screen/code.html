@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SisterCare Welcome Screen</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#8c30e8",
+                        "background-light": "#f7f6f8",
+                        "background-dark": "#191121",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-[#140e1b] dark:text-[#faf8fc]">
+<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden">
+<!-- Header / TopNavBar -->
+<header class="flex items-center justify-between border-b border-solid border-[#ede7f3] dark:border-[#2d2138] px-10 py-4 lg:px-40 sticky top-0 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md z-50">
+<div class="flex items-center gap-3">
+<div class="text-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-3xl">female</span>
+</div>
+<h2 class="text-lg font-bold leading-tight tracking-tight">SisterCare</h2>
+</div>
+<div class="flex flex-1 justify-end gap-8 items-center">
+<nav class="hidden md:flex items-center gap-8">
+<a class="text-sm font-medium hover:text-primary transition-colors" href="#">Our Mission</a>
+<a class="text-sm font-medium hover:text-primary transition-colors" href="#">Features</a>
+<a class="text-sm font-medium hover:text-primary transition-colors" href="#">Community</a>
+<a class="text-sm font-medium hover:text-primary transition-colors" href="#">Privacy</a>
+</nav>
+<div class="flex gap-3">
+<button class="flex min-w-[84px] items-center justify-center rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold transition-opacity hover:opacity-90">
+                        Sign Up
+                    </button>
+<button class="flex min-w-[84px] items-center justify-center rounded-lg h-10 px-4 bg-[#ede7f3] dark:bg-[#2d2138] text-[#140e1b] dark:text-[#faf8fc] text-sm font-bold transition-colors hover:bg-opacity-80">
+                        Login
+                    </button>
+</div>
+</div>
+</header>
+<main class="flex-1">
+<!-- HeroSection -->
+<div class="px-6 lg:px-40 py-12 md:py-20 flex justify-center">
+<div class="max-w-[1200px] w-full">
+<div class="flex flex-col gap-10 lg:flex-row items-center">
+<div class="w-full lg:w-1/2 flex flex-col gap-8">
+<div class="flex flex-col gap-4">
+<span class="text-primary font-bold tracking-widest uppercase text-xs">Empowering Every Woman</span>
+<h1 class="text-4xl md:text-6xl font-black leading-[1.1] tracking-tight text-[#140e1b] dark:text-white">
+                                    Your companion for every cycle
+                                </h1>
+<p class="text-base md:text-lg font-normal text-gray-600 dark:text-gray-300 max-w-[500px]">
+                                    SisterCare provides menstrual health tracking and emotional support with dignity and privacy. Join a community that understands you.
+                                </p>
+</div>
+<div class="flex flex-wrap gap-4">
+<button class="flex min-w-[180px] items-center justify-center rounded-xl h-14 px-6 bg-primary text-white text-lg font-bold shadow-lg shadow-primary/25 hover:scale-[1.02] transition-transform">
+                                    Start Your Journey
+                                </button>
+<button class="flex items-center gap-2 text-primary font-bold px-6 h-14 hover:underline">
+<span class="material-symbols-outlined">play_circle</span>
+                                    See how it works
+                                </button>
+</div>
+<div class="flex items-center gap-4 pt-4">
+<div class="flex -space-x-3">
+<div class="h-10 w-10 rounded-full border-2 border-white bg-gray-200 bg-cover" data-alt="Portrait of a smiling young woman" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBva7SeO9rM8PBAGvaOiSRKAy-crxg7nlshMhFXqloODxvzTQAXDKKH2hhFQALBzcW3O7_MHcZB0taIBpycohH_JM6qB-Ue4lotG3kWjscCA9qWJ4Yk2LlP4OsOWJf4eYWCN6RtI0dLRgb0cKZioB0hrQDTJlST1mSPysOk4rsWBJMoaGU6ZMDGDB_Xn-3dPwo5FsRcMCZTTLviFOZrqaOzvZcD5NF8h3p0lqGFj4q2yXWXKKMCqBgZd0fcFsOZKjDBWF6zxD8s6tM')"></div>
+<div class="h-10 w-10 rounded-full border-2 border-white bg-gray-200 bg-cover" data-alt="Portrait of a diverse woman smiling" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDPtwI9s9WJSnceRRkT_q3DTd79Gn4d7hEvrXKYQ6FUn7-ArEmx0mnu9p_kmQGnNzIag_91YM7KiSI5nXwovG_Q_8hci4kxKAE0Oy3891ZTYpgEF2FXP83lhDCoVAHJCJmcKaNv8IYjNuFvVjdKVc7KhSuf6ntXdId6XsHPDtDlP_dNNoaQEZnL8YR79BviBaqtrGDD96JnOFTLjou8tRo9uhUeE_wO7VPV728u3Vpka5vR-i1y4jYsCWWnC9XY9y3uO2dr1KWy040')"></div>
+<div class="h-10 w-10 rounded-full border-2 border-white bg-gray-200 bg-cover" data-alt="Portrait of a woman with natural hair" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAGxN1ilQAobJhEV94xAF2iTFBzuspYUaekZTSQklrS8tDbnXRiBNXDb8mNhcomx0BfFTqkuuiNrEygzhVr2Gmk0XjaNn25dSdB10vo26C4S7lXJe2OfvrvrOBCKRMWmtG3sZTyqg30Y0W4BlIBWf1ALNzxaw-s_MzIm8h1AOQsf6jCToXujHkKsxO9WTQP03GmYz87kKpJopfZhjwSMZYU4iUmcQs4l5vExtWWejV1XG4M7L027LdviNzaCiqumiInfXSNKOCfMBw')"></div>
+</div>
+<p class="text-sm font-medium text-gray-500 dark:text-gray-400">Join 10k+ sisters today</p>
+</div>
+</div>
+<div class="w-full lg:w-1/2">
+<div class="relative aspect-square md:aspect-video lg:aspect-square w-full rounded-3xl overflow-hidden bg-gradient-to-tr from-[#8c30e820] to-[#f4d9ff]">
+<div class="absolute inset-0 bg-cover bg-center mix-blend-overlay" data-alt="Abstract soft purple and peach gradients with organic flowing shapes" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCzrP0sIiuwz4fQii8mbp-UbOTP75j-yWlKKsJXtFwPmEUZwv8SIKegCmX89tKBqohLfaNOHkFaULpfV17Vb09lgKNyyF4AQj2pB2-MvEqi7qhA0_hJQ5HvlETc6UekfAoQn2X2N2T4VV61y34UgotQccY4BSuPnP3sTwupDN1cT4bLVCTLIOJZd_8rNG32HbxboJYcAkGu0mTWVYXAaaNmC2O-VMhlVyJvE8qcZX1Ek-XEFWnIqxITSf4MVqoJ34SJ071Tqzg7WHY')">
+</div>
+<div class="absolute inset-0 flex items-center justify-center p-8">
+<div class="bg-white/90 dark:bg-[#2d2138]/90 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/50 w-full max-w-[320px]">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-bold text-lg">Your Cycle</h3>
+<span class="text-primary material-symbols-outlined">calendar_today</span>
+</div>
+<div class="space-y-4">
+<div class="h-2 w-full bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+<div class="h-full bg-primary w-2/3"></div>
+</div>
+<p class="text-sm font-medium text-gray-600 dark:text-gray-300">Phase: Follicular • Day 12</p>
+<div class="pt-4 border-t border-gray-100 dark:border-gray-700">
+<p class="text-xs text-gray-400 uppercase font-bold mb-2">Daily Insight</p>
+<p class="text-sm italic">"Focus on creative projects today. Your energy levels are peaking."</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- FeatureSection -->
+<div class="px-6 lg:px-40 py-20 bg-white dark:bg-[#1f162a]">
+<div class="max-w-[1200px] mx-auto">
+<div class="flex flex-col gap-12">
+<div class="flex flex-col gap-4 text-center items-center">
+<h2 class="text-3xl md:text-4xl font-black tracking-tight max-w-[720px]">
+                                Designed for your well-being
+                            </h2>
+<p class="text-gray-600 dark:text-gray-400 text-lg max-w-[720px]">
+                                We offer tools that prioritize your health, privacy, and emotional balance at every stage.
+                            </p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<div class="flex flex-col gap-5 rounded-2xl border border-[#ede7f3] dark:border-[#2d2138] bg-background-light dark:bg-background-dark p-8 hover:shadow-lg transition-shadow">
+<div class="text-primary bg-primary/10 w-12 h-12 rounded-xl flex items-center justify-center">
+<span class="material-symbols-outlined text-2xl">calendar_month</span>
+</div>
+<div class="flex flex-col gap-2">
+<h3 class="text-xl font-bold">Cycle Tracking</h3>
+<p class="text-gray-600 dark:text-gray-400 leading-relaxed">
+                                        Understand your body with intuitive cycle monitoring and predictive insights tailored to you.
+                                    </p>
+</div>
+</div>
+<div class="flex flex-col gap-5 rounded-2xl border border-[#ede7f3] dark:border-[#2d2138] bg-background-light dark:bg-background-dark p-8 hover:shadow-lg transition-shadow">
+<div class="text-primary bg-primary/10 w-12 h-12 rounded-xl flex items-center justify-center">
+<span class="material-symbols-outlined text-2xl">favorite</span>
+</div>
+<div class="flex flex-col gap-2">
+<h3 class="text-xl font-bold">Emotional Support</h3>
+<p class="text-gray-600 dark:text-gray-400 leading-relaxed">
+                                        Connect with mental health resources and a moderated community that shares your journey.
+                                    </p>
+</div>
+</div>
+<div class="flex flex-col gap-5 rounded-2xl border border-[#ede7f3] dark:border-[#2d2138] bg-background-light dark:bg-background-dark p-8 hover:shadow-lg transition-shadow">
+<div class="text-primary bg-primary/10 w-12 h-12 rounded-xl flex items-center justify-center">
+<span class="material-symbols-outlined text-2xl">verified_user</span>
+</div>
+<div class="flex flex-col gap-2">
+<h3 class="text-xl font-bold">Absolute Privacy</h3>
+<p class="text-gray-600 dark:text-gray-400 leading-relaxed">
+                                        Your health data is your own. We use end-to-end encryption to ensure your privacy is never compromised.
+                                    </p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- CTASection -->
+<div class="px-6 lg:px-40 py-20">
+<div class="max-w-[1200px] mx-auto bg-primary rounded-[2.5rem] p-10 md:p-20 text-center relative overflow-hidden">
+<!-- Abstract Background Pattern -->
+<div class="absolute inset-0 opacity-10 pointer-events-none" data-alt="Abstract floral pattern in white on purple background">
+<div class="absolute top-0 right-0 w-64 h-64 bg-white rounded-full blur-3xl -mr-32 -mt-32"></div>
+<div class="absolute bottom-0 left-0 w-64 h-64 bg-white rounded-full blur-3xl -ml-32 -mb-32"></div>
+</div>
+<div class="relative z-10 flex flex-col items-center gap-8">
+<h2 class="text-3xl md:text-5xl font-black text-white leading-tight max-w-[800px]">
+                            Ready to embrace your cycle with confidence?
+                        </h2>
+<p class="text-white/80 text-lg md:text-xl max-w-[600px]">
+                            Join thousands of women who have found comfort, clarity, and community with SisterCare.
+                        </p>
+<div class="flex flex-col sm:flex-row gap-4 mt-4">
+<button class="bg-white text-primary px-10 py-4 rounded-xl font-bold text-lg hover:bg-gray-100 transition-colors shadow-xl">
+                                Get Started Now
+                            </button>
+<button class="bg-primary/20 text-white border border-white/30 px-10 py-4 rounded-xl font-bold text-lg hover:bg-white/10 transition-colors">
+                                Learn More
+                            </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="px-10 lg:px-40 py-12 border-t border-[#ede7f3] dark:border-[#2d2138] bg-white dark:bg-background-dark">
+<div class="max-w-[1200px] mx-auto flex flex-col gap-10">
+<div class="flex flex-col md:flex-row justify-between items-center gap-8">
+<div class="flex items-center gap-3">
+<div class="text-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-2xl">female</span>
+</div>
+<h2 class="text-lg font-bold leading-tight">SisterCare</h2>
+</div>
+<div class="flex flex-wrap items-center justify-center gap-8">
+<a class="text-gray-500 hover:text-primary transition-colors text-sm font-medium" href="#">Privacy Policy</a>
+<a class="text-gray-500 hover:text-primary transition-colors text-sm font-medium" href="#">Terms of Service</a>
+<a class="text-gray-500 hover:text-primary transition-colors text-sm font-medium" href="#">Cookie Settings</a>
+<a class="text-gray-500 hover:text-primary transition-colors text-sm font-medium" href="#">Contact Us</a>
+</div>
+<div class="flex gap-4">
+<a class="w-10 h-10 rounded-full bg-gray-100 dark:bg-[#2d2138] flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-primary hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined text-xl">share</span>
+</a>
+<a class="w-10 h-10 rounded-full bg-gray-100 dark:bg-[#2d2138] flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-primary hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined text-xl">camera</span>
+</a>
+<a class="w-10 h-10 rounded-full bg-gray-100 dark:bg-[#2d2138] flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-primary hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined text-xl">public</span>
+</a>
+</div>
+</div>
+<div class="text-center pt-8 border-t border-gray-100 dark:border-gray-800">
+<p class="text-gray-400 text-sm">© 2024 SisterCare Inc. All rights reserved. Designed with love and dignity.</p>
+</div>
+</div>
+</footer>
+</div>
+</body></html>

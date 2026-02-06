@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#8c30e8",
+                        "background-light": "#f7f6f8",
+                        "background-dark": "#191121",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Manrope', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-[#140e1b] dark:text-[#f7f6f8] min-h-screen">
+<div class="layout-container flex flex-col min-h-screen">
+<!-- TopNavBar -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-[#ede7f3] dark:border-[#2d2235] px-10 py-3 bg-white dark:bg-[#1f1629]">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-4 text-primary">
+<div class="size-6">
+<svg fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M4 4H17.3334V17.3334H30.6666V30.6666H44V44H4V4Z" fill="currentColor"></path>
+</svg>
+</div>
+<h2 class="text-[#140e1b] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">SisterCare</h2>
+</div>
+<nav class="hidden md:flex items-center gap-9">
+<a class="text-primary text-sm font-semibold leading-normal" href="#">Dashboard</a>
+<a class="text-[#140e1b] dark:text-[#f7f6f8] text-sm font-medium leading-normal hover:text-primary transition-colors" href="#">Cycle Tracker</a>
+<a class="text-[#140e1b] dark:text-[#f7f6f8] text-sm font-medium leading-normal hover:text-primary transition-colors" href="#">Emotional Support</a>
+<a class="text-[#140e1b] dark:text-[#f7f6f8] text-sm font-medium leading-normal hover:text-primary transition-colors" href="#">Community</a>
+</nav>
+</div>
+<div class="flex flex-1 justify-end gap-4 items-center">
+<label class="flex flex-col min-w-40 !h-10 max-w-64">
+<div class="flex w-full flex-1 items-stretch rounded-lg h-full overflow-hidden">
+<div class="text-[#734e97] flex border-none bg-[#ede7f3] dark:bg-[#2d2235] items-center justify-center pl-4">
+<span class="material-symbols-outlined text-xl">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 border-none bg-[#ede7f3] dark:bg-[#2d2235] text-[#140e1b] dark:text-white focus:ring-0 h-full placeholder:text-[#734e97] px-4 pl-2 text-sm" placeholder="Search resources..." value=""/>
+</div>
+</label>
+<div class="flex gap-2">
+<button class="flex items-center justify-center rounded-lg size-10 bg-[#ede7f3] dark:bg-[#2d2235] text-[#140e1b] dark:text-white">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="flex items-center justify-center rounded-lg size-10 bg-[#ede7f3] dark:bg-[#2d2235] text-[#140e1b] dark:text-white">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border-2 border-primary/20" data-alt="Close up portrait of a smiling woman" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuASX-jxBSMvRWmw9Zn2zKsaP2xGYQxwGPxWKzicLHYtnZii5BEKYNuttVKJ1mGqMIV2hw31AqqcO6DGGqwbn0ap0IhXTMe_rJxTKaZmjqvFTjxutUFPzohM1BfM3F7VbhzRU0uWCFeP3K-LQOP0O143YX8JZ2WtvfZ5DOFdZU73FP7bLAungrkzMxE2q2N6faO907fA5vqlAfbPc_PDRqLtVA0ibHvgfY8cNIr8Jw7D-M5I6yMfF5_n3gs6yY8HxnDr-fEAKsuI3vY");'></div>
+</div>
+</header>
+<main class="flex-1 max-w-[1200px] mx-auto w-full px-6 py-8">
+<!-- PageHeading -->
+<div class="flex flex-wrap justify-between gap-3 mb-8">
+<div class="flex min-w-72 flex-col gap-1">
+<p class="text-[#140e1b] dark:text-white text-4xl font-black leading-tight tracking-[-0.033em]">Welcome back, Sarah</p>
+<p class="text-[#734e97] dark:text-[#a68bc2] text-lg font-normal leading-normal">Your health and emotional well-being at a glance.</p>
+</div>
+<div class="flex items-end">
+<button class="bg-primary hover:bg-primary/90 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-sm">
+<span class="material-symbols-outlined">chat_bubble</span>
+                        Support Chat
+                    </button>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Main Tracking Column -->
+<div class="lg:col-span-2 space-y-8">
+<!-- Timer & Status Section -->
+<div class="bg-white dark:bg-[#1f1629] p-8 rounded-2xl shadow-sm border border-[#ede7f3] dark:border-[#2d2235]">
+<div class="flex flex-col items-center text-center">
+<span class="bg-primary/10 text-primary px-4 py-1 rounded-full text-sm font-bold mb-4 uppercase tracking-wider">Current Phase: Luteal</span>
+<h2 class="text-[#140e1b] dark:text-white text-2xl font-bold mb-6">Days until your next period</h2>
+<!-- Timer Component -->
+<div class="flex gap-4 w-full max-w-md mx-auto">
+<div class="flex grow basis-0 flex-col items-stretch gap-2">
+<div class="flex h-16 items-center justify-center rounded-xl bg-[#ede7f3] dark:bg-[#2d2235]">
+<p class="text-primary text-2xl font-black">05</p>
+</div>
+<p class="text-[#734e97] dark:text-[#a68bc2] text-xs font-bold uppercase">Days</p>
+</div>
+<div class="flex grow basis-0 flex-col items-stretch gap-2">
+<div class="flex h-16 items-center justify-center rounded-xl bg-[#ede7f3] dark:bg-[#2d2235]">
+<p class="text-[#140e1b] dark:text-white text-2xl font-black">14</p>
+</div>
+<p class="text-[#734e97] dark:text-[#a68bc2] text-xs font-bold uppercase">Hours</p>
+</div>
+<div class="flex grow basis-0 flex-col items-stretch gap-2">
+<div class="flex h-16 items-center justify-center rounded-xl bg-[#ede7f3] dark:bg-[#2d2235]">
+<p class="text-[#140e1b] dark:text-white text-2xl font-black">22</p>
+</div>
+<p class="text-[#734e97] dark:text-[#a68bc2] text-xs font-bold uppercase">Mins</p>
+</div>
+</div>
+<!-- MetaText -->
+<p class="text-[#734e97] dark:text-[#a68bc2] text-base font-medium mt-6">Next cycle expected on March 15th</p>
+<div class="w-full bg-[#ede7f3] dark:bg-[#2d2235] h-2 rounded-full mt-6 overflow-hidden">
+<div class="bg-primary h-full w-[82%]"></div>
+</div>
+</div>
+</div>
+<!-- Daily Check-in -->
+<div class="bg-white dark:bg-[#1f1629] p-6 rounded-2xl shadow-sm border border-[#ede7f3] dark:border-[#2d2235]">
+<h2 class="text-[#140e1b] dark:text-white text-xl font-bold mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">edit_note</span>
+                            Your Daily Check-in
+                        </h2>
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+<button class="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-transparent bg-background-light dark:bg-background-dark hover:border-primary transition-all">
+<span class="text-3xl">😊</span>
+<span class="text-sm font-semibold">Good</span>
+</button>
+<button class="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-primary bg-primary/10 transition-all">
+<span class="text-3xl">😴</span>
+<span class="text-sm font-semibold">Tired</span>
+</button>
+<button class="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-transparent bg-background-light dark:bg-background-dark hover:border-primary transition-all">
+<span class="text-3xl">😔</span>
+<span class="text-sm font-semibold">Low</span>
+</button>
+<button class="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-transparent bg-background-light dark:bg-background-dark hover:border-primary transition-all">
+<span class="text-3xl">🤩</span>
+<span class="text-sm font-semibold">Energetic</span>
+</button>
+</div>
+<div class="mt-6">
+<button class="w-full py-3 bg-primary/20 text-primary font-bold rounded-xl hover:bg-primary/30 transition-all">
+                                Log Detailed Symptoms
+                            </button>
+</div>
+</div>
+</div>
+<!-- Side Column -->
+<div class="space-y-8">
+<!-- Daily Tip Card -->
+<div class="bg-[#ede7f3] dark:bg-[#2d2235] p-6 rounded-2xl relative overflow-hidden group">
+<div class="relative z-10">
+<div class="flex items-center gap-2 mb-3">
+<span class="material-symbols-outlined text-primary">lightbulb</span>
+<span class="text-primary font-bold uppercase text-xs tracking-widest">Daily Tip</span>
+</div>
+<h3 class="text-[#140e1b] dark:text-white text-lg font-bold mb-2">Rest and Hydrate</h3>
+<p class="text-[#734e97] dark:text-[#a68bc2] text-sm leading-relaxed">
+                                During the luteal phase, your body temperature rises slightly. Drinking more water and ensuring 8 hours of sleep can help manage PMS symptoms effectively.
+                            </p>
+</div>
+<div class="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-8xl">spa</span>
+</div>
+</div>
+<!-- Mood Progress -->
+<div class="bg-white dark:bg-[#1f1629] p-6 rounded-2xl shadow-sm border border-[#ede7f3] dark:border-[#2d2235]">
+<h3 class="text-[#140e1b] dark:text-white font-bold mb-4">Weekly Mood Summary</h3>
+<div class="space-y-4">
+<div class="flex items-center justify-between text-sm">
+<span class="text-[#734e97] dark:text-[#a68bc2]">Calm</span>
+<span class="font-bold">65%</span>
+</div>
+<div class="w-full bg-background-light dark:bg-background-dark h-2 rounded-full">
+<div class="bg-emerald-400 h-full w-[65%] rounded-full"></div>
+</div>
+<div class="flex items-center justify-between text-sm">
+<span class="text-[#734e97] dark:text-[#a68bc2]">Active</span>
+<span class="font-bold">20%</span>
+</div>
+<div class="w-full bg-background-light dark:bg-background-dark h-2 rounded-full">
+<div class="bg-orange-400 h-full w-[20%] rounded-full"></div>
+</div>
+</div>
+<button class="w-full mt-6 text-sm text-primary font-semibold hover:underline">View detailed insights</button>
+</div>
+<!-- Community Highlight -->
+<div class="bg-primary p-6 rounded-2xl text-white shadow-lg shadow-primary/20">
+<div class="flex items-center gap-2 mb-3">
+<span class="material-symbols-outlined">groups</span>
+<span class="font-bold uppercase text-xs tracking-widest">Community</span>
+</div>
+<p class="text-sm italic mb-4">"You're not alone. Join over 500 sisters discussing 'Managing Work-Life Balance' today."</p>
+<button class="w-full bg-white text-primary py-2 rounded-lg font-bold text-sm">Join the Conversation</button>
+</div>
+</div>
+</div>
+</main>
+<footer class="bg-white dark:bg-[#1f1629] border-t border-[#ede7f3] dark:border-[#2d2235] mt-12 py-8">
+<div class="max-w-[1200px] mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4">
+<div class="flex items-center gap-2 text-primary/60">
+<span class="material-symbols-outlined">health_and_safety</span>
+<span class="text-sm font-medium">SisterCare © 2024. Your health data is encrypted.</span>
+</div>
+<div class="flex gap-6 text-sm font-medium text-[#734e97] dark:text-[#a68bc2]">
+<a class="hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="hover:text-primary transition-colors" href="#">Terms of Service</a>
+<a class="hover:text-primary transition-colors" href="#">Help Center</a>
+</div>
+</div>
+</footer>
+</div>
+</body></html>

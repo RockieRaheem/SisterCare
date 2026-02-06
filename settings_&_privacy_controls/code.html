@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Settings &amp; Privacy Controls - SisterCare</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#8c30e8",
+                        "background-light": "#f7f6f8",
+                        "background-dark": "#191121",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-[#140e1b] dark:text-[#f7f6f8] min-h-screen">
+<div class="relative flex h-auto min-h-screen w-full flex-col group/design-root overflow-x-hidden">
+<div class="layout-container flex h-full grow flex-col">
+<div class="px-4 flex flex-1 justify-center py-5 md:px-10 lg:px-40">
+<div class="layout-content-container flex flex-col max-w-[960px] flex-1">
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-[#dbd0e7] dark:border-[#3a2a4d] px-4 py-3 mb-6">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-4 text-primary">
+<div class="size-6">
+<svg fill="currentColor" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M4 4H17.3334V17.3334H30.6666V30.6666H44V44H4V4Z"></path>
+</svg>
+</div>
+<h2 class="text-[#140e1b] dark:text-white text-xl font-bold leading-tight tracking-[-0.015em]">SisterCare</h2>
+</div>
+<label class="hidden md:flex flex-col min-w-40 !h-10 max-w-64">
+<div class="flex w-full flex-1 items-stretch rounded-lg h-full">
+<div class="text-[#734e97] dark:text-[#a682c9] flex border-none bg-[#ede7f3] dark:bg-[#2d1f3d] items-center justify-center pl-4 rounded-l-lg">
+<span class="material-symbols-outlined text-[20px]">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#140e1b] dark:text-white focus:outline-0 focus:ring-0 border-none bg-[#ede7f3] dark:bg-[#2d1f3d] focus:border-none h-full placeholder:text-[#734e97] px-4 rounded-l-none border-l-0 pl-2 text-base font-normal leading-normal" placeholder="Search settings" value=""/>
+</div>
+</label>
+</div>
+<div class="flex flex-1 justify-end gap-6 items-center">
+<nav class="hidden lg:flex items-center gap-8">
+<a class="text-[#140e1b] dark:text-[#f7f6f8] text-sm font-medium leading-normal hover:text-primary transition-colors" href="#">Dashboard</a>
+<a class="text-[#140e1b] dark:text-[#f7f6f8] text-sm font-medium leading-normal hover:text-primary transition-colors" href="#">Community</a>
+<a class="text-[#140e1b] dark:text-[#f7f6f8] text-sm font-medium leading-normal hover:text-primary transition-colors" href="#">Reminders</a>
+<a class="text-[#140e1b] dark:text-[#f7f6f8] text-sm font-medium leading-normal hover:text-primary transition-colors" href="#">Insights</a>
+</nav>
+<div class="flex gap-2">
+<button class="flex size-10 cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-[#ede7f3] dark:bg-[#2d1f3d] text-[#140e1b] dark:text-white">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="flex size-10 cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-[#ede7f3] dark:bg-[#2d1f3d] text-[#140e1b] dark:text-white">
+<span class="material-symbols-outlined">person</span>
+</button>
+</div>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border-2 border-primary" data-alt="User profile avatar of a woman" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCQE3oUQ_08efiyGwWCiHPm0JQ31bYDRiEckDLBawxpteKTngS7OeW6omdUkTyyWcvFuOGYBr2pet6IC6gO_LZkGqudQVuiGdHEg_uQ00CLWuzFHuuXi1Gh-gVfVQ7cZ5JjW-ltZEn-zMu1AUg86rOanGDjUXRoZu-3G7KkWWrr_aM_x7jrvNi3NlAdtf9S2lokhAMYLDVTdKXEYoIul9lOpxnbnfrrvQ2es1gmUiwKImUD6w6ficdKzZ9sjd7O6sxJ7iKrayfSw0g");'></div>
+</div>
+</header>
+<div class="flex flex-wrap justify-between gap-3 p-4">
+<div class="flex min-w-72 flex-col gap-3">
+<p class="text-[#140e1b] dark:text-white text-4xl font-black leading-tight tracking-[-0.033em]">Settings &amp; Privacy Controls</p>
+<p class="text-[#734e97] dark:text-[#a682c9] text-base font-normal leading-normal">Manage your preferences, cycle data, and security.</p>
+</div>
+</div>
+<h2 class="text-[#140e1b] dark:text-white text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-8">Reminder Preferences</h2>
+<div class="px-4 py-2 @container">
+<div class="flex flex-1 flex-col items-start justify-between gap-4 rounded-xl border border-[#dbd0e7] dark:border-[#3a2a4d] bg-white dark:bg-[#231830] p-5 @[480px]:flex-row @[480px]:items-center">
+<div class="flex flex-col gap-1">
+<p class="text-[#140e1b] dark:text-white text-base font-bold leading-tight">Email Notifications</p>
+<p class="text-[#734e97] dark:text-[#a682c9] text-base font-normal leading-normal">Receive monthly cycle predictions and health tips via email.</p>
+</div>
+<label class="relative flex h-[31px] w-[51px] cursor-pointer items-center rounded-full border-none bg-[#ede7f3] dark:bg-[#3a2a4d] p-0.5 has-[:checked]:justify-end has-[:checked]:bg-primary">
+<div class="h-full w-[27px] rounded-full bg-white" style="box-shadow: rgba(0, 0, 0, 0.15) 0px 3px 8px, rgba(0, 0, 0, 0.06) 0px 3px 1px;"></div>
+<input checked="" class="invisible absolute" type="checkbox"/>
+</label>
+</div>
+</div>
+<div class="px-4 py-2 @container">
+<div class="flex flex-1 flex-col items-start justify-between gap-4 rounded-xl border border-[#dbd0e7] dark:border-[#3a2a4d] bg-white dark:bg-[#231830] p-5 @[480px]:flex-row @[480px]:items-center">
+<div class="flex flex-col gap-1">
+<p class="text-[#140e1b] dark:text-white text-base font-bold leading-tight">In-App Notifications</p>
+<p class="text-[#734e97] dark:text-[#a682c9] text-base font-normal leading-normal">Real-time alerts for symptom tracking and emotional check-ins.</p>
+</div>
+<label class="relative flex h-[31px] w-[51px] cursor-pointer items-center rounded-full border-none bg-[#ede7f3] dark:bg-[#3a2a4d] p-0.5 has-[:checked]:justify-end has-[:checked]:bg-primary">
+<div class="h-full w-[27px] rounded-full bg-white" style="box-shadow: rgba(0, 0, 0, 0.15) 0px 3px 8px, rgba(0, 0, 0, 0.06) 0px 3px 1px;"></div>
+<input class="invisible absolute" type="checkbox"/>
+</label>
+</div>
+</div>
+<h2 class="text-[#140e1b] dark:text-white text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-10">Cycle Calibration</h2>
+<div class="px-4 py-2">
+<div class="flex flex-col gap-4 rounded-xl border border-[#dbd0e7] dark:border-[#3a2a4d] bg-white dark:bg-[#231830] p-5">
+<div class="flex flex-col gap-1">
+<p class="text-[#140e1b] dark:text-white text-base font-bold leading-tight">Data Adjustment</p>
+<p class="text-[#734e97] dark:text-[#a682c9] text-base font-normal leading-normal">Recalculate your predictions based on your historical cycle data from the last 12 months.</p>
+</div>
+<div class="flex flex-wrap gap-3 mt-2">
+<button class="flex h-10 items-center justify-center rounded-lg bg-primary px-4 text-sm font-bold text-white hover:bg-primary/90 transition-colors">
+                                    Start Calibration
+                                </button>
+<button class="flex h-10 items-center justify-center rounded-lg bg-[#ede7f3] dark:bg-[#3a2a4d] px-4 text-sm font-bold text-[#140e1b] dark:text-white hover:bg-[#dbd0e7] dark:hover:bg-[#4a3a5d] transition-colors">
+                                    Clear History
+                                </button>
+</div>
+</div>
+</div>
+<h2 class="text-[#140e1b] dark:text-white text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-10 text-red-600 dark:text-red-400">Privacy &amp; Data</h2>
+<div class="px-4 py-2 space-y-4">
+<div class="flex flex-1 flex-col items-start justify-between gap-4 rounded-xl border border-[#dbd0e7] dark:border-[#3a2a4d] bg-white dark:bg-[#231830] p-5 @[480px]:flex-row @[480px]:items-center">
+<div class="flex flex-col gap-1">
+<p class="text-[#140e1b] dark:text-white text-base font-bold leading-tight">End-to-End Encryption</p>
+<p class="text-[#734e97] dark:text-[#a682c9] text-base font-normal leading-normal">Ensure your health data is only visible to you. Key-based security.</p>
+</div>
+<label class="relative flex h-[31px] w-[51px] cursor-pointer items-center rounded-full border-none bg-[#ede7f3] dark:bg-[#3a2a4d] p-0.5 has-[:checked]:justify-end has-[:checked]:bg-primary">
+<div class="h-full w-[27px] rounded-full bg-white" style="box-shadow: rgba(0, 0, 0, 0.15) 0px 3px 8px, rgba(0, 0, 0, 0.06) 0px 3px 1px;"></div>
+<input checked="" class="invisible absolute" type="checkbox"/>
+</label>
+</div>
+<div class="flex flex-col gap-4 rounded-xl border border-red-200 dark:border-red-900/30 bg-red-50/50 dark:bg-red-900/10 p-5">
+<div class="flex flex-col gap-1">
+<p class="text-red-700 dark:text-red-400 text-base font-bold leading-tight">Dangerous Territory</p>
+<p class="text-[#734e97] dark:text-[#a682c9] text-base font-normal leading-normal">Once deleted, your cycle history and account cannot be recovered. Please use caution.</p>
+</div>
+<div class="flex flex-wrap gap-3">
+<button class="flex h-10 items-center justify-center rounded-lg bg-white dark:bg-[#231830] border border-red-200 dark:border-red-900/40 px-4 text-sm font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                                    Delete My Account
+                                </button>
+<button class="flex h-10 items-center justify-center rounded-lg bg-white dark:bg-[#231830] border border-[#dbd0e7] dark:border-[#3a2a4d] px-4 text-sm font-bold text-[#140e1b] dark:text-white hover:bg-[#ede7f3] dark:hover:bg-[#3a2a4d] transition-colors">
+                                    Download My Data
+                                </button>
+</div>
+</div>
+</div>
+<footer class="mt-20 border-t border-[#dbd0e7] dark:border-[#3a2a4d] py-10 px-4">
+<div class="flex flex-col md:flex-row justify-between items-center gap-6">
+<div class="flex items-center gap-2 text-primary/60">
+<span class="material-symbols-outlined">verified_user</span>
+<span class="text-sm font-medium">HIPAA Compliant Data Storage</span>
+</div>
+<div class="flex gap-6">
+<a class="text-xs text-[#734e97] dark:text-[#a682c9] hover:underline" href="#">Privacy Policy</a>
+<a class="text-xs text-[#734e97] dark:text-[#a682c9] hover:underline" href="#">Terms of Service</a>
+<a class="text-xs text-[#734e97] dark:text-[#a682c9] hover:underline" href="#">Contact Support</a>
+</div>
+<p class="text-xs text-[#734e97] dark:text-[#a682c9]">© 2024 SisterCare. All rights reserved.</p>
+</div>
+</footer>
+</div>
+</div>
+</div>
+</div>
+</body></html>
