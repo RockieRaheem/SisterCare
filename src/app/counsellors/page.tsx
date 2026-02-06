@@ -298,8 +298,8 @@ export default function CounsellorsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-bg-light dark:bg-bg-dark flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      <div className="min-h-screen bg-bg-light dark:bg-bg-dark flex items-center justify-center safe-top safe-bottom">
+        <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-t-2 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -308,43 +308,49 @@ export default function CounsellorsPage() {
     <div className="min-h-screen bg-bg-light dark:bg-bg-dark">
       <Header variant="app" />
 
-      <main className="max-w-7xl mx-auto px-4 py-6 pb-24">
+      <main className="main-content max-w-7xl mx-auto px-4 sm:px-5 md:px-6 py-4 sm:py-5 md:py-6 pb-24">
         {/* Hero Section */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary via-purple-600 to-pink-500 p-8 mb-8 text-white">
+        <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-primary via-purple-600 to-pink-500 p-5 sm:p-6 md:p-8 mb-5 sm:mb-6 md:mb-8 text-white">
           <div className="absolute inset-0 bg-black/10"></div>
-          <div className="absolute -top-20 -right-20 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-pink-500/20 rounded-full blur-3xl"></div>
+          <div className="absolute -top-20 -right-20 w-40 sm:w-64 h-40 sm:h-64 bg-white/10 rounded-full blur-3xl"></div>
+          <div className="absolute -bottom-20 -left-20 w-40 sm:w-64 h-40 sm:h-64 bg-pink-500/20 rounded-full blur-3xl"></div>
 
           <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-4">
-              <span className="material-symbols-outlined text-4xl">
+            <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+              <span className="material-symbols-outlined text-2xl sm:text-3xl md:text-4xl">
                 support_agent
               </span>
-              <h1 className="text-3xl font-bold">Talk to a Counsellor</h1>
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">
+                Talk to a Counsellor
+              </h1>
             </div>
-            <p className="text-white/90 max-w-2xl mb-6">
+            <p className="text-white/90 max-w-2xl mb-4 sm:mb-6 text-sm sm:text-base">
               Connect with our verified health professionals for personalized
               guidance and support. All conversations are confidential and
               judgment-free.
             </p>
 
             {/* Stats */}
-            <div className="flex flex-wrap gap-6">
+            <div className="flex flex-col xs:flex-row flex-wrap gap-3 sm:gap-4 md:gap-6 text-sm sm:text-base">
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-green-400 animate-pulse"></div>
+                <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-green-400 animate-pulse"></div>
                 <span className="font-semibold">
                   {availableCount} Available Now
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined">verified</span>
+                <span className="material-symbols-outlined text-lg sm:text-xl">
+                  verified
+                </span>
                 <span>
                   {counsellors.filter((c) => c.verified).length} Verified
                   Professionals
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined">lock</span>
+                <span className="material-symbols-outlined text-lg sm:text-xl">
+                  lock
+                </span>
                 <span>100% Confidential</span>
               </div>
             </div>
@@ -352,11 +358,11 @@ export default function CounsellorsPage() {
         </div>
 
         {/* Search and Filter Bar */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-border-light dark:border-border-dark p-4 mb-6">
-          <div className="flex flex-col lg:flex-row gap-4">
+        <div className="bg-white dark:bg-gray-900 rounded-xl sm:rounded-2xl shadow-sm border border-border-light dark:border-border-dark p-3 sm:p-4 mb-4 sm:mb-5 md:mb-6">
+          <div className="flex flex-col lg:flex-row gap-3 sm:gap-4">
             {/* Search */}
             <div className="flex-1 relative">
-              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary">
+              <span className="material-symbols-outlined absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-text-secondary text-xl sm:text-2xl">
                 search
               </span>
               <input
@@ -364,14 +370,14 @@ export default function CounsellorsPage() {
                 placeholder="Search by name, specialty, or keyword..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 rounded-xl bg-bg-light dark:bg-bg-dark border border-border-light dark:border-border-dark text-text-primary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full pl-10 sm:pl-12 pr-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl bg-bg-light dark:bg-bg-dark border border-border-light dark:border-border-dark text-text-primary dark:text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               />
             </div>
 
             {/* Filter toggle (mobile) */}
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="lg:hidden flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-bg-light dark:bg-bg-dark border border-border-light dark:border-border-dark text-text-primary dark:text-white"
+              className="lg:hidden flex items-center justify-center gap-2 py-2.5 sm:py-3 px-4 rounded-lg sm:rounded-xl bg-bg-light dark:bg-bg-dark border border-border-light dark:border-border-dark text-text-primary dark:text-white text-sm sm:text-base touch-target"
             >
               <span className="material-symbols-outlined">tune</span>
               Filters
@@ -434,9 +440,9 @@ export default function CounsellorsPage() {
 
           {/* Mobile filters (collapsible) */}
           {showFilters && (
-            <div className="lg:hidden mt-4 pt-4 border-t border-border-light dark:border-border-dark space-y-3">
+            <div className="lg:hidden mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-border-light dark:border-border-dark space-y-3">
               <div>
-                <label className="text-sm font-medium text-text-secondary mb-2 block">
+                <label className="text-xs sm:text-sm font-medium text-text-secondary mb-2 block">
                   Status
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -444,10 +450,10 @@ export default function CounsellorsPage() {
                     <button
                       key={status.value}
                       onClick={() => setSelectedStatus(status.value)}
-                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                      className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-all touch-target ${
                         selectedStatus === status.value
                           ? "bg-primary text-white"
-                          : "bg-bg-light dark:bg-bg-dark text-text-primary dark:text-white border border-border-light dark:border-border-dark"
+                          : "bg-bg-light dark:bg-bg-dark text-text-primary dark:text-white border border-border-light dark:border-border-dark active:bg-primary/10"
                       }`}
                     >
                       {status.label}
@@ -457,7 +463,7 @@ export default function CounsellorsPage() {
               </div>
 
               <div>
-                <label className="text-sm font-medium text-text-secondary mb-2 block">
+                <label className="text-xs sm:text-sm font-medium text-text-secondary mb-2 block">
                   Specialty
                 </label>
                 <select
@@ -467,7 +473,7 @@ export default function CounsellorsPage() {
                       e.target.value as CounsellorSpecialty | "all",
                     )
                   }
-                  className="w-full px-4 py-3 rounded-xl bg-bg-light dark:bg-bg-dark border border-border-light dark:border-border-dark text-text-primary dark:text-white"
+                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl bg-bg-light dark:bg-bg-dark border border-border-light dark:border-border-dark text-text-primary dark:text-white text-sm touch-target"
                 >
                   <option value="all">All Specialties</option>
                   {specialties.map((specialty) => (
@@ -479,7 +485,7 @@ export default function CounsellorsPage() {
               </div>
 
               <div>
-                <label className="text-sm font-medium text-text-secondary mb-2 block">
+                <label className="text-xs sm:text-sm font-medium text-text-secondary mb-2 block">
                   Sort By
                 </label>
                 <select
@@ -489,7 +495,7 @@ export default function CounsellorsPage() {
                       e.target.value as "rating" | "experience" | "sessions",
                     )
                   }
-                  className="w-full px-4 py-3 rounded-xl bg-bg-light dark:bg-bg-dark border border-border-light dark:border-border-dark text-text-primary dark:text-white"
+                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl bg-bg-light dark:bg-bg-dark border border-border-light dark:border-border-dark text-text-primary dark:text-white text-sm touch-target"
                 >
                   <option value="rating">Top Rated</option>
                   <option value="experience">Most Experienced</option>
@@ -501,8 +507,8 @@ export default function CounsellorsPage() {
         </div>
 
         {/* Results count */}
-        <div className="flex items-center justify-between mb-6">
-          <p className="text-text-secondary">
+        <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6">
+          <p className="text-text-secondary text-sm">
             Showing{" "}
             <span className="font-semibold text-text-primary dark:text-white">
               {filteredCounsellors.length}
@@ -518,9 +524,11 @@ export default function CounsellorsPage() {
                 setSelectedSpecialty("all");
                 setSelectedStatus("all");
               }}
-              className="text-primary text-sm font-medium hover:underline flex items-center gap-1"
+              className="text-primary text-xs sm:text-sm font-medium hover:underline flex items-center gap-1 active:opacity-70"
             >
-              <span className="material-symbols-outlined text-sm">close</span>
+              <span className="material-symbols-outlined text-xs sm:text-sm">
+                close
+              </span>
               Clear filters
             </button>
           )}
@@ -528,7 +536,7 @@ export default function CounsellorsPage() {
 
         {/* Counsellors Grid */}
         {filteredCounsellors.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
             {filteredCounsellors.map((counsellor) => (
               <CounsellorCard
                 key={counsellor.id}
@@ -539,14 +547,14 @@ export default function CounsellorsPage() {
             ))}
           </div>
         ) : (
-          <div className="bg-white dark:bg-gray-900 rounded-2xl p-12 text-center border border-border-light dark:border-border-dark">
-            <span className="material-symbols-outlined text-6xl text-text-secondary mb-4">
+          <div className="bg-white dark:bg-gray-900 rounded-xl sm:rounded-2xl p-8 sm:p-10 md:p-12 text-center border border-border-light dark:border-border-dark">
+            <span className="material-symbols-outlined text-5xl sm:text-6xl text-text-secondary mb-3 sm:mb-4">
               person_search
             </span>
-            <h3 className="text-xl font-semibold text-text-primary dark:text-white mb-2">
+            <h3 className="text-lg sm:text-xl font-semibold text-text-primary dark:text-white mb-2">
               No counsellors found
             </h3>
-            <p className="text-text-secondary mb-6">
+            <p className="text-text-secondary text-sm mb-5 sm:mb-6">
               Try adjusting your search or filters to find available
               counsellors.
             </p>
@@ -556,7 +564,7 @@ export default function CounsellorsPage() {
                 setSelectedSpecialty("all");
                 setSelectedStatus("all");
               }}
-              className="px-6 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors"
+              className="px-5 sm:px-6 py-2.5 sm:py-3 bg-primary text-white rounded-lg sm:rounded-xl font-semibold hover:bg-primary/90 transition-colors text-sm sm:text-base touch-target"
             >
               Clear All Filters
             </button>
@@ -564,68 +572,72 @@ export default function CounsellorsPage() {
         )}
 
         {/* Help Section */}
-        <div className="mt-12 bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 rounded-2xl p-6 border border-purple-200 dark:border-purple-800">
-          <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+        <div className="mt-8 sm:mt-10 md:mt-12 bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 rounded-xl sm:rounded-2xl p-4 sm:p-5 md:p-6 border border-purple-200 dark:border-purple-800">
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-3 sm:gap-4">
             <div className="flex-shrink-0">
-              <div className="w-14 h-14 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center shadow-lg">
-                <span className="material-symbols-outlined text-primary text-2xl">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center shadow-lg">
+                <span className="material-symbols-outlined text-primary text-xl sm:text-2xl">
                   help
                 </span>
               </div>
             </div>
             <div className="flex-1">
-              <h3 className="text-lg font-bold text-text-primary dark:text-white mb-1">
+              <h3 className="text-base sm:text-lg font-bold text-text-primary dark:text-white mb-0.5 sm:mb-1">
                 Need Immediate Help?
               </h3>
-              <p className="text-text-secondary text-sm">
+              <p className="text-text-secondary text-xs sm:text-sm">
                 If you&apos;re in crisis or need emergency support, please
                 contact emergency services or a crisis hotline immediately.
               </p>
             </div>
             <a
               href="tel:116"
-              className="flex items-center gap-2 px-6 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600 transition-colors shadow-lg shadow-red-500/25"
+              className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-red-500 text-white rounded-lg sm:rounded-xl font-semibold hover:bg-red-600 transition-colors shadow-lg shadow-red-500/25 text-sm sm:text-base w-full md:w-auto touch-target"
             >
-              <span className="material-symbols-outlined">emergency</span>
+              <span className="material-symbols-outlined text-lg sm:text-xl">
+                emergency
+              </span>
               Emergency: 116
             </a>
           </div>
         </div>
 
         {/* FAQ Section */}
-        <div className="mt-8 mb-8">
-          <h2 className="text-2xl font-bold text-text-primary dark:text-white mb-6 flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary">quiz</span>
+        <div className="mt-6 sm:mt-7 md:mt-8 mb-6 sm:mb-7 md:mb-8">
+          <h2 className="text-xl sm:text-2xl font-bold text-text-primary dark:text-white mb-4 sm:mb-5 md:mb-6 flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary text-xl sm:text-2xl">
+              quiz
+            </span>
             Frequently Asked Questions
           </h2>
 
-          <div className="space-y-4">
-            <div className="bg-white dark:bg-gray-900 rounded-xl p-5 border border-border-light dark:border-border-dark">
-              <h3 className="font-semibold text-text-primary dark:text-white mb-2">
+          <div className="space-y-3 sm:space-y-4">
+            <div className="bg-white dark:bg-gray-900 rounded-lg sm:rounded-xl p-4 sm:p-5 border border-border-light dark:border-border-dark">
+              <h3 className="font-semibold text-text-primary dark:text-white mb-1.5 sm:mb-2 text-sm sm:text-base">
                 Are consultations confidential?
               </h3>
-              <p className="text-text-secondary text-sm">
+              <p className="text-text-secondary text-xs sm:text-sm">
                 Yes, all conversations with our counsellors are 100%
                 confidential. Your privacy is our top priority.
               </p>
             </div>
 
-            <div className="bg-white dark:bg-gray-900 rounded-xl p-5 border border-border-light dark:border-border-dark">
-              <h3 className="font-semibold text-text-primary dark:text-white mb-2">
+            <div className="bg-white dark:bg-gray-900 rounded-lg sm:rounded-xl p-4 sm:p-5 border border-border-light dark:border-border-dark">
+              <h3 className="font-semibold text-text-primary dark:text-white mb-1.5 sm:mb-2 text-sm sm:text-base">
                 How do I know if a counsellor is available?
               </h3>
-              <p className="text-text-secondary text-sm">
+              <p className="text-text-secondary text-xs sm:text-sm">
                 Each counsellor card shows their current status: Available
                 (green), In Session (amber), or Offline (gray). You can only
                 contact counsellors who are currently available.
               </p>
             </div>
 
-            <div className="bg-white dark:bg-gray-900 rounded-xl p-5 border border-border-light dark:border-border-dark">
-              <h3 className="font-semibold text-text-primary dark:text-white mb-2">
+            <div className="bg-white dark:bg-gray-900 rounded-lg sm:rounded-xl p-4 sm:p-5 border border-border-light dark:border-border-dark">
+              <h3 className="font-semibold text-text-primary dark:text-white mb-1.5 sm:mb-2 text-sm sm:text-base">
                 What does &quot;Verified&quot; mean?
               </h3>
-              <p className="text-text-secondary text-sm">
+              <p className="text-text-secondary text-xs sm:text-sm">
                 Verified counsellors have had their professional credentials,
                 qualifications, and identity verified by our team.
               </p>

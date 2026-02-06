@@ -251,10 +251,10 @@ export default function DashboardPage() {
     "Sister";
 
   return (
-    <div className="layout-container flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen">
       <Header variant="app" />
 
-      <main className="flex-1 max-w-[1200px] mx-auto w-full px-6 py-8 pb-24 md:pb-8">
+      <main className="flex-1 max-w-[1200px] mx-auto w-full px-4 sm:px-6 py-5 sm:py-8 main-content">
         {/* Period Reminder Banner */}
         {cycleInfo && (
           <div className="mb-6">
@@ -294,30 +294,36 @@ export default function DashboardPage() {
         )}
 
         {/* Page Heading */}
-        <div className="flex flex-wrap justify-between gap-3 mb-8">
-          <div className="flex min-w-72 flex-col gap-1">
-            <p className="text-text-primary dark:text-white text-4xl font-black leading-tight tracking-tight">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap justify-between gap-4 mb-6 sm:mb-8">
+          <div className="flex flex-col gap-1">
+            <h1 className="text-text-primary dark:text-white text-2xl sm:text-3xl md:text-4xl font-black leading-tight tracking-tight">
               Welcome back, {displayName}
-            </p>
-            <p className="text-text-secondary text-lg font-normal leading-normal">
+            </h1>
+            <p className="text-text-secondary text-sm sm:text-base md:text-lg font-normal leading-normal">
               Your health and emotional well-being at a glance.
             </p>
           </div>
-          <div className="flex items-end gap-3">
-            <Link href="/profile">
-              <Button variant="secondary" icon="person">
+          <div className="flex items-center gap-2 sm:gap-3 mt-2 sm:mt-0">
+            <Link href="/profile" className="flex-1 sm:flex-none">
+              <Button
+                variant="secondary"
+                icon="person"
+                className="w-full sm:w-auto"
+              >
                 Profile
               </Button>
             </Link>
-            <Link href="/chat">
-              <Button icon="chat_bubble">Support Chat</Button>
+            <Link href="/chat" className="flex-1 sm:flex-none">
+              <Button icon="chat_bubble" className="w-full sm:w-auto">
+                Chat
+              </Button>
             </Link>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-6 lg:gap-8">
           {/* Main Tracking Column */}
-          <div className="lg:col-span-2 space-y-8">
+          <div className="lg:col-span-2 space-y-5 sm:space-y-6 lg:space-y-8">
             {/* Timer & Status Section */}
             <Card padding="lg">
               <div className="flex flex-col items-center text-center">
@@ -347,36 +353,38 @@ export default function DashboardPage() {
 
                 {/* Timer Component */}
                 {countdown.isPeriodActive && (
-                  <p className="text-text-secondary text-sm mb-3">Time until next cycle:</p>
+                  <p className="text-text-secondary text-xs sm:text-sm mb-3">
+                    Time until next cycle:
+                  </p>
                 )}
-                <div className="flex gap-4 w-full max-w-md mx-auto">
-                  <div className="flex grow basis-0 flex-col items-stretch gap-2">
-                    <div className="flex h-16 items-center justify-center rounded-xl bg-border-light dark:bg-border-dark">
-                      <p className="text-primary text-2xl font-black">
+                <div className="flex gap-2 sm:gap-4 w-full max-w-sm sm:max-w-md mx-auto">
+                  <div className="flex grow basis-0 flex-col items-stretch gap-1 sm:gap-2">
+                    <div className="flex h-14 sm:h-16 items-center justify-center rounded-xl bg-border-light dark:bg-border-dark">
+                      <p className="text-primary text-xl sm:text-2xl font-black">
                         {String(countdown.days).padStart(2, "0")}
                       </p>
                     </div>
-                    <p className="text-text-secondary text-xs font-bold uppercase">
+                    <p className="text-text-secondary text-[10px] sm:text-xs font-bold uppercase">
                       Days
                     </p>
                   </div>
-                  <div className="flex grow basis-0 flex-col items-stretch gap-2">
-                    <div className="flex h-16 items-center justify-center rounded-xl bg-border-light dark:bg-border-dark">
-                      <p className="text-text-primary dark:text-white text-2xl font-black">
+                  <div className="flex grow basis-0 flex-col items-stretch gap-1 sm:gap-2">
+                    <div className="flex h-14 sm:h-16 items-center justify-center rounded-xl bg-border-light dark:bg-border-dark">
+                      <p className="text-text-primary dark:text-white text-xl sm:text-2xl font-black">
                         {String(countdown.hours).padStart(2, "0")}
                       </p>
                     </div>
-                    <p className="text-text-secondary text-xs font-bold uppercase">
+                    <p className="text-text-secondary text-[10px] sm:text-xs font-bold uppercase">
                       Hours
                     </p>
                   </div>
-                  <div className="flex grow basis-0 flex-col items-stretch gap-2">
-                    <div className="flex h-16 items-center justify-center rounded-xl bg-border-light dark:bg-border-dark">
-                      <p className="text-text-primary dark:text-white text-2xl font-black">
+                  <div className="flex grow basis-0 flex-col items-stretch gap-1 sm:gap-2">
+                    <div className="flex h-14 sm:h-16 items-center justify-center rounded-xl bg-border-light dark:bg-border-dark">
+                      <p className="text-text-primary dark:text-white text-xl sm:text-2xl font-black">
                         {String(countdown.minutes).padStart(2, "0")}
                       </p>
                     </div>
-                    <p className="text-text-secondary text-xs font-bold uppercase">
+                    <p className="text-text-secondary text-[10px] sm:text-xs font-bold uppercase">
                       Mins
                     </p>
                   </div>
@@ -384,8 +392,8 @@ export default function DashboardPage() {
 
                 {cycleInfo?.nextPeriodDate && (
                   <p className="text-text-secondary text-base font-medium mt-6">
-                    {countdown.isPeriodActive 
-                      ? `Your period will last about ${profile?.cycleData?.periodLength || 5} days. Next cycle starts` 
+                    {countdown.isPeriodActive
+                      ? `Your period will last about ${profile?.cycleData?.periodLength || 5} days. Next cycle starts`
                       : "Next period expected on"}{" "}
                     {cycleInfo.nextPeriodDate.toLocaleDateString("en-US", {
                       month: "long",
@@ -394,27 +402,49 @@ export default function DashboardPage() {
                     })}
                   </p>
                 )}
-                
+
                 {/* Self-care tip during menstruation */}
                 {countdown.isPeriodActive && (
                   <div className="mt-4 p-4 bg-pink-50 dark:bg-pink-900/20 rounded-xl border border-pink-200 dark:border-pink-800 max-w-md">
                     <p className="text-pink-700 dark:text-pink-300 text-sm flex items-start gap-2">
-                      <span className="material-symbols-outlined text-pink-500 flex-shrink-0">self_care</span>
+                      <span className="material-symbols-outlined text-pink-500 flex-shrink-0">
+                        self_care
+                      </span>
                       <span>
                         {cycleInfo?.dayInCycle === 1 && (
-                          <><strong>Day 1 tip:</strong> Take it slow today. Your body is working hard. A warm bath or heating pad can be soothing. 🛁</>
+                          <>
+                            <strong>Day 1 tip:</strong> Take it slow today. Your
+                            body is working hard. A warm bath or heating pad can
+                            be soothing. 🛁
+                          </>
                         )}
                         {cycleInfo?.dayInCycle === 2 && (
-                          <><strong>Day 2 tip:</strong> Flow is often heaviest today. Stay hydrated and consider iron-rich foods like spinach or lentils. 🥬</>
+                          <>
+                            <strong>Day 2 tip:</strong> Flow is often heaviest
+                            today. Stay hydrated and consider iron-rich foods
+                            like spinach or lentils. 🥬
+                          </>
                         )}
                         {cycleInfo?.dayInCycle === 3 && (
-                          <><strong>Day 3 tip:</strong> You might feel more tired. Light stretching or gentle yoga can help with cramps. 🧘‍♀️</>
+                          <>
+                            <strong>Day 3 tip:</strong> You might feel more
+                            tired. Light stretching or gentle yoga can help with
+                            cramps. 🧘‍♀️
+                          </>
                         )}
                         {cycleInfo?.dayInCycle === 4 && (
-                          <><strong>Day 4 tip:</strong> Energy may start returning. Listen to your body and rest when needed. 💆‍♀️</>
+                          <>
+                            <strong>Day 4 tip:</strong> Energy may start
+                            returning. Listen to your body and rest when needed.
+                            💆‍♀️
+                          </>
                         )}
                         {(cycleInfo?.dayInCycle || 0) >= 5 && (
-                          <><strong>Almost there:</strong> Your period is ending soon. Celebrate making it through! You&apos;re strong. 💪</>
+                          <>
+                            <strong>Almost there:</strong> Your period is ending
+                            soon. Celebrate making it through! You&apos;re
+                            strong. 💪
+                          </>
                         )}
                       </span>
                     </p>
@@ -428,10 +458,14 @@ export default function DashboardPage() {
                       <>
                         <div className="flex justify-between text-xs text-text-secondary mb-2">
                           <span className="flex items-center gap-1">
-                            <span className="material-symbols-outlined text-sm text-pink-500">water_drop</span>
+                            <span className="material-symbols-outlined text-sm text-pink-500">
+                              water_drop
+                            </span>
                             Period Day {cycleInfo.dayInCycle}
                           </span>
-                          <span>~{profile.cycleData.periodLength || 5} days</span>
+                          <span>
+                            ~{profile.cycleData.periodLength || 5} days
+                          </span>
                         </div>
                         <div className="w-full bg-pink-100 dark:bg-pink-900/30 h-3 rounded-full overflow-hidden">
                           <div
@@ -442,8 +476,9 @@ export default function DashboardPage() {
                           />
                         </div>
                         <p className="text-xs text-pink-500 dark:text-pink-400 mt-1 text-center">
-                          {cycleInfo.dayInCycle >= (profile.cycleData.periodLength || 5) 
-                            ? "Your period should be ending soon 🌸" 
+                          {cycleInfo.dayInCycle >=
+                          (profile.cycleData.periodLength || 5)
+                            ? "Your period should be ending soon 🌸"
                             : `~${(profile.cycleData.periodLength || 5) - cycleInfo.dayInCycle} days remaining`}
                         </p>
                       </>
@@ -550,7 +585,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Side Column */}
-          <div className="space-y-8">
+          <div className="space-y-5 sm:space-y-6 lg:space-y-8">
             {/* Daily Tip Card */}
             <div className="bg-border-light dark:bg-border-dark p-6 rounded-2xl relative overflow-hidden group">
               <div className="relative z-10">

@@ -183,7 +183,7 @@ export default function LibraryPage() {
     <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-background-light dark:bg-background-dark">
       <Header variant="app" />
 
-      <main className="flex-1 flex max-w-[1440px] mx-auto w-full px-4 md:px-10 lg:px-20 py-8 pb-24 md:pb-8 gap-8">
+      <main className="main-content flex-1 flex max-w-[1440px] mx-auto w-full px-4 sm:px-6 md:px-10 lg:px-20 py-4 sm:py-6 md:py-8 pb-24 md:pb-8 gap-4 sm:gap-6 lg:gap-8">
         {/* Sidebar Navigation */}
         <aside className="hidden lg:flex flex-col w-64 gap-8 shrink-0">
           <div className="flex flex-col gap-2">
@@ -229,13 +229,13 @@ export default function LibraryPage() {
         </aside>
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col gap-6">
+        <div className="flex-1 flex flex-col gap-4 sm:gap-5 md:gap-6">
           {/* Page Heading */}
-          <div className="flex flex-col gap-2">
-            <h1 className="text-text-primary dark:text-white text-3xl md:text-4xl font-black leading-tight tracking-tight">
+          <div className="flex flex-col gap-1.5 sm:gap-2">
+            <h1 className="text-text-primary dark:text-white text-2xl sm:text-3xl md:text-4xl font-black leading-tight tracking-tight">
               Health & Wellness Library
             </h1>
-            <p className="text-text-secondary text-base md:text-lg font-normal leading-normal max-w-2xl">
+            <p className="text-text-secondary text-sm sm:text-base md:text-lg font-normal leading-normal max-w-2xl">
               Expert-backed articles to support your menstrual health and
               emotional well-being.
             </p>
@@ -243,7 +243,7 @@ export default function LibraryPage() {
 
           {/* Search Bar */}
           <div className="relative">
-            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary">
+            <span className="material-symbols-outlined absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-text-secondary text-xl sm:text-2xl">
               search
             </span>
             <input
@@ -251,7 +251,7 @@ export default function LibraryPage() {
               placeholder="Search articles..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-background-dark text-text-primary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              className="w-full pl-10 sm:pl-12 pr-4 py-3 sm:py-3.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-background-dark text-text-primary dark:text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
           </div>
 
@@ -260,7 +260,7 @@ export default function LibraryPage() {
             <select
               value={activeCategory}
               onChange={(e) => handleCategoryChange(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-background-dark text-text-primary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full px-3 sm:px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-background-dark text-text-primary dark:text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-primary/20 touch-target"
             >
               {categories.map((cat) => (
                 <option key={cat.id} value={cat.id}>
@@ -271,15 +271,15 @@ export default function LibraryPage() {
           </div>
 
           {/* Tags Filter */}
-          <div className="flex gap-2 py-2 flex-wrap">
+          <div className="flex gap-2 py-2 overflow-x-auto no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap">
             {tags.map((tag) => (
               <button
                 key={tag}
                 onClick={() => handleTagChange(tag)}
-                className={`flex h-9 shrink-0 items-center justify-center rounded-full px-4 cursor-pointer transition-all text-sm ${
+                className={`flex h-8 sm:h-9 shrink-0 items-center justify-center rounded-full px-3 sm:px-4 cursor-pointer transition-all text-xs sm:text-sm ${
                   (tag === "All" && !activeTag) || activeTag === tag
                     ? "bg-primary text-white font-semibold"
-                    : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-text-primary dark:text-white font-medium hover:border-primary"
+                    : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-text-primary dark:text-white font-medium hover:border-primary active:bg-primary/10"
                 }`}
               >
                 {tag}
@@ -288,24 +288,26 @@ export default function LibraryPage() {
           </div>
 
           {/* Results Count */}
-          <p className="text-text-secondary text-sm">
+          <p className="text-text-secondary text-xs sm:text-sm">
             {filteredArticles.length} article
             {filteredArticles.length !== 1 ? "s" : ""} found
           </p>
 
           {/* Content Grid / List */}
           {filteredArticles.length === 0 ? (
-            <div className="text-center py-12">
-              <span className="material-symbols-outlined text-6xl text-gray-300 dark:text-gray-600 mb-4">
+            <div className="text-center py-8 sm:py-12">
+              <span className="material-symbols-outlined text-5xl sm:text-6xl text-gray-300 dark:text-gray-600 mb-3 sm:mb-4">
                 search_off
               </span>
-              <p className="text-text-secondary text-lg">No articles found</p>
-              <p className="text-text-secondary text-sm mt-1">
+              <p className="text-text-secondary text-base sm:text-lg">
+                No articles found
+              </p>
+              <p className="text-text-secondary text-xs sm:text-sm mt-1">
                 Try adjusting your filters or search term
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 md:gap-6 pt-2">
               {filteredArticles.map((article) => (
                 <Card
                   key={article.id}
@@ -314,14 +316,14 @@ export default function LibraryPage() {
                     expandedArticle === article.id ? "md:col-span-2" : ""
                   }`}
                 >
-                  <div className="p-5">
+                  <div className="p-4 sm:p-5">
                     {/* Category Badge */}
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-2 py-1 rounded">
+                    <div className="flex items-center justify-between mb-2 sm:mb-3">
+                      <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 sm:py-1 rounded">
                         {article.category}
                       </span>
-                      <span className="text-text-secondary text-xs flex items-center gap-1">
-                        <span className="material-symbols-outlined text-sm">
+                      <span className="text-text-secondary text-[10px] sm:text-xs flex items-center gap-1">
+                        <span className="material-symbols-outlined text-xs sm:text-sm">
                           schedule
                         </span>
                         {article.readTime}
@@ -329,28 +331,28 @@ export default function LibraryPage() {
                     </div>
 
                     {/* Title & Description */}
-                    <h3 className="text-text-primary dark:text-white text-lg font-bold leading-snug mb-2">
+                    <h3 className="text-text-primary dark:text-white text-base sm:text-lg font-bold leading-snug mb-1.5 sm:mb-2">
                       {article.title}
                     </h3>
-                    <p className="text-text-secondary text-sm leading-relaxed mb-4">
+                    <p className="text-text-secondary text-xs sm:text-sm leading-relaxed mb-3 sm:mb-4">
                       {article.description}
                     </p>
 
                     {/* Expanded Content */}
                     {expandedArticle === article.id && (
-                      <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                        <div className="text-text-primary dark:text-white text-sm leading-relaxed whitespace-pre-line">
+                      <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <div className="text-text-primary dark:text-white text-xs sm:text-sm leading-relaxed whitespace-pre-line">
                           {article.content}
                         </div>
                       </div>
                     )}
 
                     {/* Tags */}
-                    <div className="flex flex-wrap gap-2 mb-4">
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-3 sm:mb-4">
                       {article.tags.map((tag) => (
                         <span
                           key={tag}
-                          className="text-xs text-primary/70 bg-primary/5 px-2 py-1 rounded"
+                          className="text-[10px] sm:text-xs text-primary/70 bg-primary/5 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded"
                         >
                           {tag}
                         </span>
@@ -364,12 +366,12 @@ export default function LibraryPage() {
                           expandedArticle === article.id ? null : article.id,
                         )
                       }
-                      className="text-primary font-semibold text-sm flex items-center gap-1 hover:underline"
+                      className="text-primary font-semibold text-xs sm:text-sm flex items-center gap-1 hover:underline active:opacity-70 py-1"
                     >
                       {expandedArticle === article.id
                         ? "Show Less"
                         : "Read More"}
-                      <span className="material-symbols-outlined text-sm">
+                      <span className="material-symbols-outlined text-xs sm:text-sm">
                         {expandedArticle === article.id
                           ? "expand_less"
                           : "expand_more"}

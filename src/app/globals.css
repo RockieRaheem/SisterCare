@@ -8,14 +8,53 @@
   --primary: #8c30e8;
   --background-light: #f7f6f8;
   --background-dark: #191121;
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
+  --bottom-nav-height: 4.5rem;
 }
 
 html {
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
   font-family: "Manrope", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Safe area utilities for notched phones */
+@supports (padding: max(0px)) {
+  .safe-top {
+    padding-top: max(var(--safe-area-inset-top), 0px);
+  }
+  .safe-bottom {
+    padding-bottom: max(var(--safe-area-inset-bottom), 0px);
+  }
+  .safe-left {
+    padding-left: max(var(--safe-area-inset-left), 0px);
+  }
+  .safe-right {
+    padding-right: max(var(--safe-area-inset-right), 0px);
+  }
+}
+
+/* Main content wrapper to prevent bottom nav overlap */
+.main-content {
+  padding-bottom: calc(
+    var(--bottom-nav-height) + var(--safe-area-inset-bottom) + 1rem
+  );
+}
+
+@media (min-width: 768px) {
+  .main-content {
+    padding-bottom: 2rem;
+  }
 }
 
 /* Material Icons */
@@ -25,6 +64,7 @@ body {
     "wght" 400,
     "GRAD" 0,
     "opsz" 24;
+  flex-shrink: 0;
 }
 
 /* Custom Scrollbar */
@@ -45,6 +85,21 @@ body {
   background: rgba(140, 48, 232, 0.5);
 }
 
+/* Hide scrollbar for touch devices */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Touch-friendly interactive elements */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
 /* Card hover effects */
 .card-hover {
   @apply transition-all duration-200 ease-in-out;
@@ -53,6 +108,16 @@ body {
 .card-hover:hover {
   @apply -translate-y-0.5;
   box-shadow: 0 10px 40px rgba(140, 48, 232, 0.1);
+}
+
+@media (hover: none) {
+  .card-hover:hover {
+    transform: none;
+    box-shadow: none;
+  }
+  .card-hover:active {
+    transform: scale(0.98);
+  }
 }
 
 /* Button press effect */
@@ -73,6 +138,17 @@ body {
   background: linear-gradient(135deg, #191121 0%, #241831 100%);
 }
 
+/* Glass morphism effect */
+.glass {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.dark .glass {
+  background: rgba(25, 17, 33, 0.8);
+}
+
 /* Animation keyframes */
 @keyframes fadeIn {
   from {
@@ -82,6 +158,39 @@ body {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
   }
 }
 
@@ -124,8 +233,31 @@ body {
   }
 }
 
+@keyframes bounce-gentle {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+/* Animation utilities */
 .animate-fade-in {
   animation: fadeIn 0.3s ease-out forwards;
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.4s ease-out forwards;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.3s ease-out forwards;
+}
+
+.animate-slide-in-left {
+  animation: slideInLeft 0.3s ease-out forwards;
 }
 
 .animate-float {
@@ -150,4 +282,55 @@ body {
 
 .animate-pulse-soft {
   animation: pulse-soft 2s ease-in-out infinite;
+}
+
+.animate-bounce-gentle {
+  animation: bounce-gentle 2s ease-in-out infinite;
+}
+
+/* Staggered animations for list items */
+.stagger-1 {
+  animation-delay: 0.05s;
+}
+.stagger-2 {
+  animation-delay: 0.1s;
+}
+.stagger-3 {
+  animation-delay: 0.15s;
+}
+.stagger-4 {
+  animation-delay: 0.2s;
+}
+.stagger-5 {
+  animation-delay: 0.25s;
+}
+.stagger-6 {
+  animation-delay: 0.3s;
+}
+
+/* Focus visible for accessibility */
+.focus-ring:focus-visible {
+  @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-white dark:ring-offset-background-dark;
+}
+
+/* Input focus styles */
+input:focus,
+textarea:focus,
+select:focus {
+  @apply outline-none ring-2 ring-primary/50;
+}
+
+/* Skeleton loading */
+.skeleton {
+  @apply bg-gray-200 dark:bg-gray-700 animate-pulse rounded;
+}
+
+/* Responsive text utilities */
+.text-balance {
+  text-wrap: balance;
+}
+
+/* Container queries polyfill */
+.container-responsive {
+  container-type: inline-size;
 }

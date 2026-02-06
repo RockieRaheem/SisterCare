@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Manrope } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/context/ThemeContext";
@@ -9,6 +9,18 @@ const manrope = Manrope({
   subsets: ["latin"],
   variable: "--font-manrope",
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f7f6f8" },
+    { media: "(prefers-color-scheme: dark)", color: "#191121" },
+  ],
+};
 
 export const metadata: Metadata = {
   title: "SisterCare - Women's Well-Being & Menstrual Health",
@@ -21,6 +33,14 @@ export const metadata: Metadata = {
     "emotional support",
     "wellness",
   ],
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "SisterCare",
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
 
 export default function RootLayout({
@@ -35,13 +55,15 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
           rel="stylesheet"
         />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body
-        className={`${manrope.variable} font-display bg-background-light dark:bg-background-dark text-text-primary dark:text-white min-h-screen`}
+        className={`${manrope.variable} font-display bg-background-light dark:bg-background-dark text-text-primary dark:text-white min-h-screen antialiased`}
       >
         <ThemeProvider>
           <AuthProvider>
-            {children}
+            <div className="flex flex-col min-h-screen">{children}</div>
             <BottomNav />
           </AuthProvider>
         </ThemeProvider>

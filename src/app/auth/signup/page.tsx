@@ -175,21 +175,27 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background-light dark:bg-background-dark">
+    <div className="min-h-screen bg-background-light dark:bg-background-dark flex flex-col">
       {/* Header */}
-      <div className="flex justify-center py-5">
-        <div className="flex flex-col max-w-[1200px] flex-1 px-6">
-          <header className="flex items-center justify-between whitespace-nowrap border-b border-primary/10 py-3">
-            <Link href="/" className="flex items-center gap-4 text-primary">
-              <span className="material-symbols-outlined text-3xl">
+      <div className="flex justify-center py-4 sm:py-5 safe-top">
+        <div className="flex flex-col max-w-[1200px] flex-1 px-4 sm:px-6">
+          <header className="flex items-center justify-between whitespace-nowrap border-b border-primary/10 py-2 sm:py-3">
+            <Link
+              href="/"
+              className="flex items-center gap-2 sm:gap-4 text-primary"
+            >
+              <span
+                className="material-symbols-outlined text-2xl sm:text-3xl"
+                style={{ fontVariationSettings: '"FILL" 1' }}
+              >
                 favorite
               </span>
-              <h2 className="text-text-primary dark:text-white text-xl font-bold leading-tight tracking-tight">
+              <h2 className="text-text-primary dark:text-white text-lg sm:text-xl font-bold leading-tight tracking-tight">
                 SisterCare
               </h2>
             </Link>
-            <div className="flex flex-1 justify-end gap-8">
-              <div className="hidden md:flex items-center gap-9">
+            <div className="flex flex-1 justify-end gap-4 sm:gap-8">
+              <div className="hidden sm:flex items-center gap-9">
                 <Link
                   href="/"
                   className="text-text-primary dark:text-gray-300 text-sm font-medium leading-normal hover:text-primary transition-colors"
@@ -209,27 +215,27 @@ export default function SignupPage() {
       </div>
 
       {/* Main Content */}
-      <main className="flex flex-1 justify-center items-center py-12 px-4">
-        <div className="flex flex-col max-w-[480px] w-full bg-white dark:bg-card-dark rounded-xl shadow-2xl shadow-primary/5 p-8 border border-primary/5">
+      <main className="flex flex-1 justify-center items-start sm:items-center py-6 sm:py-12 px-4">
+        <div className="flex flex-col max-w-[480px] w-full bg-white dark:bg-card-dark rounded-2xl shadow-2xl shadow-primary/5 p-5 sm:p-8 border border-primary/5">
           {/* Headline Section */}
           <div className="flex flex-col items-center">
-            <div className="mb-6 p-4 bg-primary/10 rounded-full">
-              <span className="material-symbols-outlined text-primary text-4xl">
+            <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-primary/10 rounded-full">
+              <span className="material-symbols-outlined text-primary text-3xl sm:text-4xl">
                 person_add
               </span>
             </div>
-            <h1 className="text-text-primary dark:text-white tracking-tight text-[32px] font-bold leading-tight text-center pb-2">
+            <h1 className="text-text-primary dark:text-white tracking-tight text-2xl sm:text-[32px] font-bold leading-tight text-center pb-2">
               Join SisterCare
             </h1>
-            <p className="text-text-secondary text-base font-normal leading-normal text-center mb-8">
+            <p className="text-text-secondary text-sm sm:text-base font-normal leading-normal text-center mb-6 sm:mb-8">
               Start your journey towards better menstrual health and emotional
               well-being.
             </p>
           </div>
 
           {/* Toggle Section */}
-          <div className="flex px-0 py-3 mb-4 w-full">
-            <div className="flex h-12 flex-1 items-center justify-center rounded-xl bg-background-light dark:bg-background-dark p-1.5 border border-primary/10">
+          <div className="flex py-2 sm:py-3 mb-3 sm:mb-4 w-full">
+            <div className="flex h-11 sm:h-12 flex-1 items-center justify-center rounded-xl bg-background-light dark:bg-background-dark p-1 sm:p-1.5 border border-primary/10">
               <Link
                 href="/auth/login"
                 className="flex h-full grow items-center justify-center overflow-hidden rounded-lg px-2 text-text-secondary hover:text-primary transition-colors"
@@ -250,7 +256,10 @@ export default function SignupPage() {
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4 mb-6">
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-3 sm:space-y-4 mb-4 sm:mb-6"
+          >
             <div>
               <Input
                 label="Email Address"
@@ -418,31 +427,31 @@ export default function SignupPage() {
           </form>
 
           {/* Trust Message */}
-          <div className="flex items-center justify-center gap-2 py-3 px-4 bg-primary/5 rounded-lg border border-primary/5">
-            <span className="material-symbols-outlined text-primary text-lg">
+          <div className="flex items-center justify-center gap-2 py-2.5 sm:py-3 px-3 sm:px-4 bg-primary/5 rounded-xl border border-primary/5">
+            <span className="material-symbols-outlined text-primary text-base sm:text-lg flex-shrink-0">
               verified_user
             </span>
-            <p className="text-text-secondary text-xs font-medium leading-normal">
+            <p className="text-text-secondary text-[11px] sm:text-xs font-medium leading-normal">
               Your data is encrypted and private. We never share your health
               info.
             </p>
           </div>
 
           {/* Divider */}
-          <div className="flex items-center my-6">
+          <div className="flex items-center my-4 sm:my-6">
             <div className="flex-1 border-t border-primary/10" />
-            <span className="px-3 text-text-secondary text-xs font-semibold uppercase tracking-wider">
+            <span className="px-3 text-text-secondary text-[10px] sm:text-xs font-semibold uppercase tracking-wider">
               or continue with
             </span>
             <div className="flex-1 border-t border-primary/10" />
           </div>
 
           {/* Social Options */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <button
               onClick={handleGoogleSignIn}
               disabled={loading}
-              className="flex items-center justify-center gap-2 h-12 rounded-xl border border-primary/10 bg-background-light dark:bg-background-dark hover:bg-white dark:hover:bg-border-dark transition-all disabled:opacity-50"
+              className="flex items-center justify-center gap-2 h-11 sm:h-12 rounded-xl border border-primary/10 bg-background-light dark:bg-background-dark hover:bg-white dark:hover:bg-border-dark transition-all disabled:opacity-50 touch-target"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path
@@ -468,7 +477,7 @@ export default function SignupPage() {
             </button>
             <button
               disabled={loading}
-              className="flex items-center justify-center gap-2 h-12 rounded-xl border border-primary/10 bg-background-light dark:bg-background-dark hover:bg-white dark:hover:bg-border-dark transition-all disabled:opacity-50"
+              className="flex items-center justify-center gap-2 h-11 sm:h-12 rounded-xl border border-primary/10 bg-background-light dark:bg-background-dark hover:bg-white dark:hover:bg-border-dark transition-all disabled:opacity-50 touch-target"
             >
               <span className="material-symbols-outlined text-text-primary dark:text-white">
                 phone_iphone
@@ -482,8 +491,8 @@ export default function SignupPage() {
       </main>
 
       {/* Footer */}
-      <footer className="flex justify-center py-8">
-        <div className="flex items-center gap-6 opacity-40">
+      <footer className="flex justify-center py-6 sm:py-8 safe-bottom">
+        <div className="flex items-center gap-4 sm:gap-6 opacity-40">
           <div className="h-px w-12 bg-primary" />
           <div className="flex gap-4">
             <span className="material-symbols-outlined text-primary">

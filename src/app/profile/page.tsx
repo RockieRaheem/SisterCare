@@ -207,10 +207,12 @@ export default function ProfilePage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-text-secondary">Loading profile...</p>
+      <div className="min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center safe-top safe-bottom">
+        <div className="flex flex-col items-center gap-3 sm:gap-4">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-text-secondary text-sm sm:text-base">
+            Loading profile...
+          </p>
         </div>
       </div>
     );
@@ -220,13 +222,13 @@ export default function ProfilePage() {
     <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-background-light dark:bg-background-dark">
       <Header variant="app" />
 
-      <main className="flex-1 max-w-[800px] mx-auto w-full px-4 md:px-8 py-8 pb-24 md:pb-8">
+      <main className="main-content flex-1 max-w-[800px] mx-auto w-full px-4 sm:px-5 md:px-8 py-4 sm:py-6 md:py-8 pb-24 md:pb-8">
         {/* Page Header */}
-        <div className="flex flex-col gap-2 mb-8">
-          <h1 className="text-text-primary dark:text-white text-3xl md:text-4xl font-black leading-tight tracking-tight">
+        <div className="flex flex-col gap-1.5 sm:gap-2 mb-5 sm:mb-6 md:mb-8">
+          <h1 className="text-text-primary dark:text-white text-2xl sm:text-3xl md:text-4xl font-black leading-tight tracking-tight">
             Your Profile
           </h1>
-          <p className="text-text-secondary text-base">
+          <p className="text-text-secondary text-sm sm:text-base">
             Manage your personal information and cycle settings for accurate
             predictions.
           </p>
@@ -235,14 +237,14 @@ export default function ProfilePage() {
         {/* Success/Error Message */}
         {message && (
           <div
-            className={`mb-6 p-4 rounded-xl border ${
+            className={`mb-4 sm:mb-5 md:mb-6 p-3 sm:p-4 rounded-lg sm:rounded-xl border ${
               message.type === "success"
                 ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-400"
                 : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400"
             }`}
           >
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined">
+            <div className="flex items-center gap-2 text-sm sm:text-base">
+              <span className="material-symbols-outlined text-lg sm:text-xl">
                 {message.type === "success" ? "check_circle" : "error"}
               </span>
               <span>{message.text}</span>
@@ -251,15 +253,15 @@ export default function ProfilePage() {
         )}
 
         {/* Personal Information */}
-        <section className="mb-8">
-          <h2 className="text-text-primary dark:text-white text-xl font-bold mb-4 flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary">
+        <section className="mb-6 sm:mb-7 md:mb-8">
+          <h2 className="text-text-primary dark:text-white text-lg sm:text-xl font-bold mb-3 sm:mb-4 flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary text-xl sm:text-2xl">
               person
             </span>
             Personal Information
           </h2>
           <Card>
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <div>
                 <Input
                   label="Display Name"
@@ -278,28 +280,28 @@ export default function ProfilePage() {
                   maxLength={50}
                 />
                 {errors.displayName && (
-                  <p className="mt-1 text-red-500 text-xs flex items-center gap-1">
-                    <span className="material-symbols-outlined text-sm">
+                  <p className="mt-1 text-red-500 text-[10px] sm:text-xs flex items-center gap-1">
+                    <span className="material-symbols-outlined text-xs sm:text-sm">
                       error
                     </span>
                     {errors.displayName}
                   </p>
                 )}
-                <p className="text-xs text-text-secondary mt-1">
+                <p className="text-[10px] sm:text-xs text-text-secondary mt-1">
                   {displayName.length}/50 characters
                 </p>
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-text-primary dark:text-white text-sm font-semibold">
+                <label className="text-text-primary dark:text-white text-xs sm:text-sm font-semibold">
                   Email Address
                 </label>
-                <div className="px-4 py-3 bg-background-light dark:bg-background-dark rounded-xl border border-border-light dark:border-border-dark text-text-secondary flex items-center gap-2">
-                  <span className="material-symbols-outlined text-lg">
+                <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-background-light dark:bg-background-dark rounded-lg sm:rounded-xl border border-border-light dark:border-border-dark text-text-secondary flex items-center gap-2 text-sm">
+                  <span className="material-symbols-outlined text-base sm:text-lg">
                     email
                   </span>
-                  {user?.email}
+                  <span className="truncate">{user?.email}</span>
                 </div>
-                <p className="text-xs text-text-secondary mt-1">
+                <p className="text-[10px] sm:text-xs text-text-secondary mt-1">
                   Email cannot be changed here
                 </p>
               </div>
@@ -308,15 +310,15 @@ export default function ProfilePage() {
         </section>
 
         {/* Cycle Information */}
-        <section className="mb-8">
-          <h2 className="text-text-primary dark:text-white text-xl font-bold mb-4 flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary">
+        <section className="mb-6 sm:mb-7 md:mb-8">
+          <h2 className="text-text-primary dark:text-white text-lg sm:text-xl font-bold mb-3 sm:mb-4 flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary text-xl sm:text-2xl">
               calendar_month
             </span>
             Cycle Information
           </h2>
           <Card>
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-5 md:space-y-6">
               <div>
                 <Input
                   label="Last Period Start Date"
@@ -334,8 +336,8 @@ export default function ProfilePage() {
                   max={new Date().toISOString().split("T")[0]}
                 />
                 {errors.lastPeriodDate && (
-                  <p className="mt-1 text-red-500 text-xs flex items-center gap-1">
-                    <span className="material-symbols-outlined text-sm">
+                  <p className="mt-1 text-red-500 text-[10px] sm:text-xs flex items-center gap-1">
+                    <span className="material-symbols-outlined text-xs sm:text-sm">
                       error
                     </span>
                     {errors.lastPeriodDate}
@@ -343,8 +345,8 @@ export default function ProfilePage() {
                 )}
               </div>
 
-              <div className="flex flex-col gap-2">
-                <label className="text-text-primary dark:text-white text-sm font-semibold">
+              <div className="flex flex-col gap-1.5 sm:gap-2">
+                <label className="text-text-primary dark:text-white text-xs sm:text-sm font-semibold">
                   Average Cycle Length: {cycleLength} days
                 </label>
                 <input
@@ -356,17 +358,17 @@ export default function ProfilePage() {
                     setCycleLength(Number(e.target.value));
                     handleFieldChange();
                   }}
-                  className="w-full h-2 bg-border-light dark:bg-border-dark rounded-lg appearance-none cursor-pointer accent-primary"
+                  className="w-full h-2 bg-border-light dark:bg-border-dark rounded-lg appearance-none cursor-pointer accent-primary touch-target"
                 />
-                <div className="flex justify-between text-xs text-text-secondary">
+                <div className="flex justify-between text-[10px] sm:text-xs text-text-secondary">
                   <span>21 days</span>
                   <span>28 days (typical)</span>
                   <span>40 days</span>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-2">
-                <label className="text-text-primary dark:text-white text-sm font-semibold">
+              <div className="flex flex-col gap-1.5 sm:gap-2">
+                <label className="text-text-primary dark:text-white text-xs sm:text-sm font-semibold">
                   Average Period Length: {periodLength} days
                 </label>
                 <input
@@ -378,9 +380,9 @@ export default function ProfilePage() {
                     setPeriodLength(Number(e.target.value));
                     handleFieldChange();
                   }}
-                  className="w-full h-2 bg-border-light dark:bg-border-dark rounded-lg appearance-none cursor-pointer accent-primary"
+                  className="w-full h-2 bg-border-light dark:bg-border-dark rounded-lg appearance-none cursor-pointer accent-primary touch-target"
                 />
-                <div className="flex justify-between text-xs text-text-secondary">
+                <div className="flex justify-between text-[10px] sm:text-xs text-text-secondary">
                   <span>2 days</span>
                   <span>5 days (typical)</span>
                   <span>10 days</span>
@@ -388,94 +390,112 @@ export default function ProfilePage() {
               </div>
 
               {/* Cycle Preview */}
-              {lastPeriodDate && (() => {
-                const cycleInfo = getCycleInfo(
-                  new Date(lastPeriodDate),
-                  cycleLength,
-                  periodLength,
-                );
-                
-                return (
-                  <div className="mt-6 p-4 bg-primary/5 dark:bg-primary/10 rounded-xl border border-primary/20">
-                    <h3 className="text-primary font-bold mb-3 flex items-center gap-2">
-                      <span className="material-symbols-outlined">insights</span>
-                      Cycle Preview
-                    </h3>
-                    
-                    {/* Late Period Warning */}
-                    {cycleInfo.isPeriodLate && (
-                      <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
-                        <p className="text-amber-800 dark:text-amber-200 text-sm flex items-center gap-2">
-                          <span className="material-symbols-outlined text-amber-500">info</span>
-                          <span>
-                            <strong>Update needed:</strong> Your period was expected {cycleInfo.daysLate} day{cycleInfo.daysLate !== 1 ? "s" : ""} ago. 
-                            Please update your &quot;Last Period Start Date&quot; above when your period starts.
-                          </span>
-                        </p>
-                      </div>
-                    )}
-                    
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="text-text-secondary">
-                          Next Period Expected
-                        </p>
-                        <p className="text-text-primary dark:text-white font-semibold">
-                          {cycleInfo.nextPeriodDate.toLocaleDateString("en-US", {
-                            month: "long",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-text-secondary">Current Phase</p>
-                        <p className="text-text-primary dark:text-white font-semibold capitalize flex items-center gap-1">
-                          {cycleInfo.isInPeriod && (
-                            <span className="material-symbols-outlined text-red-500 text-base">water_drop</span>
-                          )}
-                          {cycleInfo.phase}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-text-secondary">Day in Cycle</p>
-                        <p className="text-text-primary dark:text-white font-semibold">
-                          Day {cycleInfo.dayInCycle}
-                          <span className="text-text-secondary font-normal"> of {cycleLength}</span>
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-text-secondary">Days Until Period</p>
-                        <p className="text-text-primary dark:text-white font-semibold">
-                          {cycleInfo.daysUntilNextPeriod === 0 ? (
-                            <span className="text-red-500">Today!</span>
-                          ) : cycleInfo.daysUntilNextPeriod === 1 ? (
-                            <span className="text-amber-500">Tomorrow</span>
-                          ) : (
-                            <>{cycleInfo.daysUntilNextPeriod} days</>
-                          )}
-                        </p>
+              {lastPeriodDate &&
+                (() => {
+                  const cycleInfo = getCycleInfo(
+                    new Date(lastPeriodDate),
+                    cycleLength,
+                    periodLength,
+                  );
+
+                  return (
+                    <div className="mt-4 sm:mt-5 md:mt-6 p-3 sm:p-4 bg-primary/5 dark:bg-primary/10 rounded-lg sm:rounded-xl border border-primary/20">
+                      <h3 className="text-primary font-bold mb-2 sm:mb-3 flex items-center gap-2 text-sm sm:text-base">
+                        <span className="material-symbols-outlined text-lg sm:text-xl">
+                          insights
+                        </span>
+                        Cycle Preview
+                      </h3>
+
+                      {/* Late Period Warning */}
+                      {cycleInfo.isPeriodLate && (
+                        <div className="mb-3 sm:mb-4 p-2.5 sm:p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
+                          <p className="text-amber-800 dark:text-amber-200 text-xs sm:text-sm flex items-start sm:items-center gap-2">
+                            <span className="material-symbols-outlined text-amber-500 text-base sm:text-lg shrink-0">
+                              info
+                            </span>
+                            <span>
+                              <strong>Update needed:</strong> Your period was
+                              expected {cycleInfo.daysLate} day
+                              {cycleInfo.daysLate !== 1 ? "s" : ""} ago. Please
+                              update your &quot;Last Period Start Date&quot;
+                              above when your period starts.
+                            </span>
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
+                        <div>
+                          <p className="text-text-secondary">
+                            Next Period Expected
+                          </p>
+                          <p className="text-text-primary dark:text-white font-semibold">
+                            {cycleInfo.nextPeriodDate.toLocaleDateString(
+                              "en-US",
+                              {
+                                month: "long",
+                                day: "numeric",
+                                year: "numeric",
+                              },
+                            )}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-text-secondary">Current Phase</p>
+                          <p className="text-text-primary dark:text-white font-semibold capitalize flex items-center gap-1">
+                            {cycleInfo.isInPeriod && (
+                              <span className="material-symbols-outlined text-red-500 text-sm sm:text-base">
+                                water_drop
+                              </span>
+                            )}
+                            {cycleInfo.phase}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-text-secondary">Day in Cycle</p>
+                          <p className="text-text-primary dark:text-white font-semibold">
+                            Day {cycleInfo.dayInCycle}
+                            <span className="text-text-secondary font-normal">
+                              {" "}
+                              of {cycleLength}
+                            </span>
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-text-secondary">
+                            Days Until Period
+                          </p>
+                          <p className="text-text-primary dark:text-white font-semibold">
+                            {cycleInfo.daysUntilNextPeriod === 0 ? (
+                              <span className="text-red-500">Today!</span>
+                            ) : cycleInfo.daysUntilNextPeriod === 1 ? (
+                              <span className="text-amber-500">Tomorrow</span>
+                            ) : (
+                              <>{cycleInfo.daysUntilNextPeriod} days</>
+                            )}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })()}
+                  );
+                })()}
             </div>
           </Card>
         </section>
 
         {/* Notification Preferences */}
-        <section className="mb-8">
-          <h2 className="text-text-primary dark:text-white text-xl font-bold mb-4 flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary">
+        <section className="mb-6 sm:mb-7 md:mb-8">
+          <h2 className="text-text-primary dark:text-white text-lg sm:text-xl font-bold mb-3 sm:mb-4 flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary text-xl sm:text-2xl">
               notifications
             </span>
             Reminder Settings
           </h2>
           <Card>
-            <div className="space-y-6">
-              <div className="flex flex-col gap-2">
-                <label className="text-text-primary dark:text-white text-sm font-semibold">
+            <div className="space-y-4 sm:space-y-5 md:space-y-6">
+              <div className="flex flex-col gap-1.5 sm:gap-2">
+                <label className="text-text-primary dark:text-white text-xs sm:text-sm font-semibold">
                   Remind me {reminderDays} day{reminderDays !== 1 ? "s" : ""}{" "}
                   before my period
                 </label>
@@ -485,16 +505,16 @@ export default function ProfilePage() {
                   max="7"
                   value={reminderDays}
                   onChange={(e) => setReminderDays(Number(e.target.value))}
-                  className="w-full h-2 bg-border-light dark:bg-border-dark rounded-lg appearance-none cursor-pointer accent-primary"
+                  className="w-full h-2 bg-border-light dark:bg-border-dark rounded-lg appearance-none cursor-pointer accent-primary touch-target"
                 />
-                <div className="flex justify-between text-xs text-text-secondary">
+                <div className="flex justify-between text-[10px] sm:text-xs text-text-secondary">
                   <span>1 day</span>
                   <span>3 days</span>
                   <span>7 days</span>
                 </div>
               </div>
 
-              <div className="border-t border-border-light dark:border-border-dark pt-4">
+              <div className="border-t border-border-light dark:border-border-dark pt-3 sm:pt-4">
                 <Toggle
                   checked={emailNotifications}
                   onChange={setEmailNotifications}
@@ -514,24 +534,31 @@ export default function ProfilePage() {
         </section>
 
         {/* Save Button */}
-        <div className="flex justify-end gap-4 items-center">
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 sm:gap-4 items-stretch sm:items-center safe-bottom pb-4 sm:pb-0">
           {hasChanges && (
-            <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
-              <span className="material-symbols-outlined text-sm">edit</span>
+            <span className="text-[10px] sm:text-xs text-amber-600 dark:text-amber-400 flex items-center justify-center sm:justify-start gap-1">
+              <span className="material-symbols-outlined text-xs sm:text-sm">
+                edit
+              </span>
               Unsaved changes
             </span>
           )}
-          <Button variant="secondary" onClick={() => router.push("/dashboard")}>
+          <Button
+            variant="secondary"
+            onClick={() => router.push("/dashboard")}
+            className="w-full sm:w-auto"
+          >
             Cancel
           </Button>
           <Button
             onClick={handleSaveProfile}
             disabled={saving || !hasChanges}
             icon={saving ? undefined : "save"}
+            className="w-full sm:w-auto"
           >
             {saving ? (
-              <span className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <span className="flex items-center justify-center gap-2">
+                <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 Saving...
               </span>
             ) : (

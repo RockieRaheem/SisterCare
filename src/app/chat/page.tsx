@@ -418,10 +418,10 @@ export default function ChatPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center">
+      <div className="min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center safe-top safe-bottom">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-text-secondary dark:text-gray-400">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-text-secondary dark:text-gray-400 text-sm sm:text-base">
             Loading chat...
           </p>
         </div>
@@ -452,43 +452,43 @@ export default function ChatPage() {
             border-r border-border-light dark:border-border-dark 
             transition-all duration-300 ease-out
             ${sidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full lg:translate-x-0"}
-            w-80 lg:w-72
+            w-[85vw] xs:w-80 sm:w-80 lg:w-72
           `}
         >
           <div className="flex flex-col h-full">
             {/* Sidebar Header */}
-            <div className="flex items-center justify-between p-4 border-b border-border-light dark:border-border-dark">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center shadow-lg shadow-primary/20">
-                  <span className="material-symbols-outlined text-white text-xl">
+            <div className="flex items-center justify-between p-3 sm:p-4 border-b border-border-light dark:border-border-dark">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center shadow-lg shadow-primary/20">
+                  <span className="material-symbols-outlined text-white text-lg sm:text-xl">
                     chat
                   </span>
                 </div>
                 <div>
-                  <h2 className="font-semibold text-text-primary dark:text-white text-sm">
+                  <h2 className="font-semibold text-text-primary dark:text-white text-xs sm:text-sm">
                     Chat History
                   </h2>
-                  <p className="text-xs text-text-secondary dark:text-gray-400">
+                  <p className="text-[10px] sm:text-xs text-text-secondary dark:text-gray-400">
                     {conversations.length} conversations
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setSidebarOpen(false)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors lg:hidden"
+                className="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg sm:rounded-xl transition-colors lg:hidden touch-target"
               >
-                <span className="material-symbols-outlined text-text-secondary dark:text-gray-400">
+                <span className="material-symbols-outlined text-text-secondary dark:text-gray-400 text-xl">
                   close
                 </span>
               </button>
             </div>
 
             {/* New Chat Button */}
-            <div className="p-3">
+            <div className="p-2 sm:p-3">
               <button
                 onClick={handleNewChat}
                 disabled={actionLoading === "new"}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-white rounded-xl font-medium text-sm transition-all shadow-lg shadow-primary/25 disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-white rounded-lg sm:rounded-xl font-medium text-xs sm:text-sm transition-all shadow-lg shadow-primary/25 disabled:opacity-50 touch-target"
               >
                 {actionLoading === "new" ? (
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -504,9 +504,9 @@ export default function ChatPage() {
             </div>
 
             {/* Search Conversations */}
-            <div className="px-3 pb-2">
+            <div className="px-2 sm:px-3 pb-2">
               <div className="relative">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary dark:text-gray-400 text-lg">
+                <span className="material-symbols-outlined absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-text-secondary dark:text-gray-400 text-base sm:text-lg">
                   search
                 </span>
                 <input
@@ -514,7 +514,7 @@ export default function ChatPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search conversations..."
-                  className="w-full pl-10 pr-4 py-2.5 bg-gray-100 dark:bg-gray-800 border-none rounded-xl text-sm text-text-primary dark:text-white placeholder:text-text-secondary focus:ring-2 focus:ring-primary/50 transition-all"
+                  className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 bg-gray-100 dark:bg-gray-800 border-none rounded-lg sm:rounded-xl text-xs sm:text-sm text-text-primary dark:text-white placeholder:text-text-secondary focus:ring-2 focus:ring-primary/50 transition-all"
                 />
               </div>
             </div>
@@ -776,38 +776,38 @@ export default function ChatPage() {
 
           {/* Messages Container */}
           <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-background-dark">
-            <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+            <div className="max-w-3xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
               {messages.map((message) => (
                 <div
                   key={message.id}
-                  className={`flex gap-4 animate-fade-in ${message.sender === "user" ? "flex-row-reverse" : ""}`}
+                  className={`flex gap-2 sm:gap-4 animate-fade-in ${message.sender === "user" ? "flex-row-reverse" : ""}`}
                 >
                   {/* Avatar */}
                   <div
-                    className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center shadow-md ${
+                    className={`shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center shadow-md ${
                       message.sender === "sister"
                         ? "bg-gradient-to-br from-primary to-purple-600"
                         : "bg-gradient-to-br from-orange-400 to-pink-500"
                     }`}
                   >
-                    <span className="material-symbols-outlined text-white text-lg">
+                    <span className="material-symbols-outlined text-white text-base sm:text-lg">
                       {message.sender === "sister" ? "spa" : "person"}
                     </span>
                   </div>
 
                   {/* Message Bubble */}
                   <div
-                    className={`flex-1 max-w-[80%] ${message.sender === "user" ? "flex flex-col items-end" : ""}`}
+                    className={`flex-1 max-w-[85%] sm:max-w-[80%] ${message.sender === "user" ? "flex flex-col items-end" : ""}`}
                   >
                     <div
-                      className={`px-4 py-3 rounded-2xl shadow-sm ${
+                      className={`px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl shadow-sm ${
                         message.sender === "sister"
-                          ? "bg-white dark:bg-card-dark rounded-tl-md"
-                          : "bg-gradient-to-r from-primary to-purple-600 text-white rounded-tr-md"
+                          ? "bg-white dark:bg-card-dark rounded-tl-sm sm:rounded-tl-md"
+                          : "bg-gradient-to-r from-primary to-purple-600 text-white rounded-tr-sm sm:rounded-tr-md"
                       }`}
                     >
                       <p
-                        className={`text-sm leading-relaxed whitespace-pre-wrap ${
+                        className={`text-xs sm:text-sm leading-relaxed whitespace-pre-wrap ${
                           message.sender === "sister"
                             ? "text-text-primary dark:text-gray-200"
                             : "text-white"
@@ -816,7 +816,7 @@ export default function ChatPage() {
                         {message.text}
                       </p>
                     </div>
-                    <p className="text-[10px] text-text-secondary dark:text-gray-500 mt-1 px-1">
+                    <p className="text-[9px] sm:text-[10px] text-text-secondary dark:text-gray-500 mt-1 px-1">
                       {message.timestamp.toLocaleTimeString([], {
                         hour: "2-digit",
                         minute: "2-digit",
@@ -828,24 +828,24 @@ export default function ChatPage() {
 
               {/* Typing Indicator */}
               {isTyping && (
-                <div className="flex gap-4 animate-fade-in">
-                  <div className="shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center shadow-md">
-                    <span className="material-symbols-outlined text-white text-lg">
+                <div className="flex gap-2 sm:gap-4 animate-fade-in">
+                  <div className="shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center shadow-md">
+                    <span className="material-symbols-outlined text-white text-base sm:text-lg">
                       spa
                     </span>
                   </div>
-                  <div className="bg-white dark:bg-card-dark rounded-2xl rounded-tl-md px-5 py-4 shadow-sm">
+                  <div className="bg-white dark:bg-card-dark rounded-xl sm:rounded-2xl rounded-tl-sm sm:rounded-tl-md px-4 sm:px-5 py-3 sm:py-4 shadow-sm">
                     <div className="flex gap-1.5">
                       <span
-                        className="w-2 h-2 bg-primary rounded-full animate-bounce"
+                        className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-primary rounded-full animate-bounce"
                         style={{ animationDelay: "0ms" }}
                       />
                       <span
-                        className="w-2 h-2 bg-primary rounded-full animate-bounce"
+                        className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-primary rounded-full animate-bounce"
                         style={{ animationDelay: "150ms" }}
                       />
                       <span
-                        className="w-2 h-2 bg-primary rounded-full animate-bounce"
+                        className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-primary rounded-full animate-bounce"
                         style={{ animationDelay: "300ms" }}
                       />
                     </div>
@@ -858,25 +858,25 @@ export default function ChatPage() {
           </div>
 
           {/* Input Area */}
-          <div className="border-t border-border-light dark:border-border-dark bg-white dark:bg-card-dark">
-            <div className="max-w-3xl mx-auto px-4 py-4">
+          <div className="border-t border-border-light dark:border-border-dark bg-white dark:bg-card-dark safe-bottom">
+            <div className="max-w-3xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
               {/* Icebreakers for new chats */}
               {messages.length <= 1 && (
-                <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 sm:gap-3 mb-3 sm:mb-4">
                   {icebreakers.map((icebreaker) => (
                     <button
                       key={icebreaker.text}
                       onClick={() => sendMessage(icebreaker.text)}
-                      className="flex items-center gap-3 p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl hover:border-primary hover:shadow-md transition-all text-left group"
+                      className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl sm:rounded-2xl hover:border-primary hover:shadow-md transition-all text-left group touch-target"
                     >
                       <div
-                        className={`w-10 h-10 rounded-xl bg-gradient-to-br ${icebreaker.color} flex items-center justify-center shrink-0`}
+                        className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br ${icebreaker.color} flex items-center justify-center shrink-0`}
                       >
-                        <span className="material-symbols-outlined text-white text-lg">
+                        <span className="material-symbols-outlined text-white text-sm sm:text-lg">
                           {icebreaker.icon}
                         </span>
                       </div>
-                      <span className="text-sm text-text-primary dark:text-gray-300 leading-tight">
+                      <span className="text-xs sm:text-sm text-text-primary dark:text-gray-300 leading-tight">
                         {icebreaker.text}
                       </span>
                     </button>
@@ -886,7 +886,7 @@ export default function ChatPage() {
 
               {/* Input Box */}
               <form onSubmit={handleSubmit} className="relative">
-                <div className="flex items-end gap-3 bg-gray-100 dark:bg-gray-800 rounded-2xl p-2 border-2 border-transparent focus-within:border-primary focus-within:bg-white dark:focus-within:bg-gray-900 transition-all">
+                <div className="flex items-end gap-2 sm:gap-3 bg-gray-100 dark:bg-gray-800 rounded-xl sm:rounded-2xl p-1.5 sm:p-2 border-2 border-transparent focus-within:border-primary focus-within:bg-white dark:focus-within:bg-gray-900 transition-all">
                   <textarea
                     ref={inputRef}
                     value={inputValue}
@@ -895,21 +895,21 @@ export default function ChatPage() {
                     placeholder="Message Sister..."
                     disabled={isTyping}
                     rows={1}
-                    className="flex-1 bg-transparent resize-none border-none focus:ring-0 focus:outline-none text-text-primary dark:text-white placeholder:text-text-secondary text-sm px-3 py-2 max-h-[150px]"
+                    className="flex-1 bg-transparent resize-none border-none focus:ring-0 focus:outline-none text-text-primary dark:text-white placeholder:text-text-secondary text-xs sm:text-sm px-2 sm:px-3 py-2 max-h-[120px] sm:max-h-[150px]"
                   />
                   <button
                     type="submit"
                     disabled={!inputValue.trim() || isTyping}
-                    className="p-3 rounded-xl bg-gradient-to-r from-primary to-purple-600 text-white hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-primary/25"
+                    className="p-2.5 sm:p-3 rounded-lg sm:rounded-xl bg-gradient-to-r from-primary to-purple-600 text-white hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-primary/25 touch-target"
                   >
-                    <span className="material-symbols-outlined text-lg">
+                    <span className="material-symbols-outlined text-base sm:text-lg">
                       send
                     </span>
                   </button>
                 </div>
               </form>
 
-              <p className="text-center text-[10px] text-text-secondary dark:text-gray-500 mt-3">
+              <p className="text-center text-[9px] sm:text-[10px] text-text-secondary dark:text-gray-500 mt-2 sm:mt-3">
                 Sister is an AI companion. For emergencies, call{" "}
                 <a
                   href="tel:116"
