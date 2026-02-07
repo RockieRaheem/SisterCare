@@ -857,8 +857,8 @@ export default function ChatPage() {
             </div>
           </div>
 
-          {/* Input Area */}
-          <div className="border-t border-border-light dark:border-border-dark bg-white dark:bg-card-dark safe-bottom">
+          {/* Input Area - positioned above bottom nav */}
+          <div className="border-t border-border-light dark:border-border-dark bg-white dark:bg-card-dark pb-[calc(var(--bottom-nav-height,72px)+env(safe-area-inset-bottom))] lg:pb-4">
             <div className="max-w-3xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
               {/* Icebreakers for new chats */}
               {messages.length <= 1 && (

@@ -183,7 +183,7 @@ export default function LibraryPage() {
     <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-background-light dark:bg-background-dark">
       <Header variant="app" />
 
-      <main className="main-content flex-1 flex max-w-[1440px] mx-auto w-full px-4 sm:px-6 md:px-10 lg:px-20 py-4 sm:py-6 md:py-8 pb-24 md:pb-8 gap-4 sm:gap-6 lg:gap-8">
+      <main className="main-content flex-1 flex flex-col lg:flex-row max-w-[1440px] mx-auto w-full px-3 xs:px-4 sm:px-6 md:px-10 lg:px-20 py-4 sm:py-6 md:py-8 pb-24 md:pb-8 gap-4 sm:gap-6 lg:gap-8 overflow-x-hidden">
         {/* Sidebar Navigation */}
         <aside className="hidden lg:flex flex-col w-64 gap-8 shrink-0">
           <div className="flex flex-col gap-2">
@@ -229,13 +229,13 @@ export default function LibraryPage() {
         </aside>
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col gap-4 sm:gap-5 md:gap-6">
+        <div className="flex-1 flex flex-col gap-4 sm:gap-5 md:gap-6 min-w-0 overflow-x-hidden">
           {/* Page Heading */}
           <div className="flex flex-col gap-1.5 sm:gap-2">
-            <h1 className="text-text-primary dark:text-white text-2xl sm:text-3xl md:text-4xl font-black leading-tight tracking-tight">
+            <h1 className="text-text-primary dark:text-white text-xl xs:text-2xl sm:text-3xl md:text-4xl font-black leading-tight tracking-tight">
               Health & Wellness Library
             </h1>
-            <p className="text-text-secondary text-sm sm:text-base md:text-lg font-normal leading-normal max-w-2xl">
+            <p className="text-text-secondary text-xs xs:text-sm sm:text-base md:text-lg font-normal leading-normal max-w-2xl">
               Expert-backed articles to support your menstrual health and
               emotional well-being.
             </p>
@@ -307,16 +307,16 @@ export default function LibraryPage() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 md:gap-6 pt-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 xs:gap-4 sm:gap-5 md:gap-6 pt-2 overflow-hidden">
               {filteredArticles.map((article) => (
                 <Card
                   key={article.id}
                   padding="none"
-                  className={`flex flex-col overflow-hidden transition-all ${
+                  className={`flex flex-col overflow-hidden transition-all min-w-0 ${
                     expandedArticle === article.id ? "md:col-span-2" : ""
                   }`}
                 >
-                  <div className="p-4 sm:p-5">
+                  <div className="p-3 xs:p-4 sm:p-5">
                     {/* Category Badge */}
                     <div className="flex items-center justify-between mb-2 sm:mb-3">
                       <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 sm:py-1 rounded">
@@ -331,17 +331,17 @@ export default function LibraryPage() {
                     </div>
 
                     {/* Title & Description */}
-                    <h3 className="text-text-primary dark:text-white text-base sm:text-lg font-bold leading-snug mb-1.5 sm:mb-2">
+                    <h3 className="text-text-primary dark:text-white text-sm xs:text-base sm:text-lg font-bold leading-snug mb-1.5 sm:mb-2 break-words">
                       {article.title}
                     </h3>
-                    <p className="text-text-secondary text-xs sm:text-sm leading-relaxed mb-3 sm:mb-4">
+                    <p className="text-text-secondary text-[11px] xs:text-xs sm:text-sm leading-relaxed mb-3 sm:mb-4 break-words">
                       {article.description}
                     </p>
 
                     {/* Expanded Content */}
                     {expandedArticle === article.id && (
                       <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-700">
-                        <div className="text-text-primary dark:text-white text-xs sm:text-sm leading-relaxed whitespace-pre-line">
+                        <div className="text-text-primary dark:text-white text-[11px] xs:text-xs sm:text-sm leading-relaxed whitespace-pre-line break-words">
                           {article.content}
                         </div>
                       </div>
