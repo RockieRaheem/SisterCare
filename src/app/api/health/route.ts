@@ -7,31 +7,46 @@ export async function GET() {
   // Test the Gemini API if key exists
   let apiStatus = "not_configured";
   let apiError = null;
+  let workingModel = null;
 
   if (apiKey && apiKey.trim() !== "") {
-    try {
-      // Make a simple test call to verify the API key works
-      const testUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // Try multiple models to find one that works
+    const testModels = [
+      "gemini-2.0-flash-exp",
+      "gemini-1.5-flash-latest",
+      "gemini-1.5-flash",
+      "gemini-1.0-pro",
+      "gemini-pro",
+    ];
 
-      const response = await fetch(testUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: "Say hello" }] }],
-          generationConfig: { maxOutputTokens: 10 },
-        }),
-      });
+    for (const model of testModels) {
+      try {
+        const testUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
-      if (response.ok) {
-        apiStatus = "working";
-      } else {
-        const errorData = await response.text();
-        apiStatus = "error";
-        apiError = `Status ${response.status}: ${errorData.substring(0, 200)}`;
+        const response = await fetch(testUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: "Hi" }] }],
+            generationConfig: { maxOutputTokens: 5 },
+          }),
+        });
+
+        if (response.ok) {
+          apiStatus = "working";
+          workingModel = model;
+          break;
+        } else {
+          const errorData = await response.text();
+          apiError = `${model}: Status ${response.status} - ${errorData.substring(0, 100)}`;
+        }
+      } catch (err) {
+        apiError = err instanceof Error ? err.message : "Unknown error";
       }
-    } catch (err) {
+    }
+
+    if (apiStatus !== "working") {
       apiStatus = "error";
-      apiError = err instanceof Error ? err.message : "Unknown error";
     }
   }
 
@@ -44,6 +59,7 @@ export async function GET() {
       keyLength: apiKey?.length || 0,
       keyPrefix: apiKey ? apiKey.substring(0, 8) + "..." : null,
       status: apiStatus,
+      workingModel,
       error: apiError,
     },
   });
