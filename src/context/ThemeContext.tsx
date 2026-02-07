@@ -26,10 +26,16 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const savedTheme = localStorage.getItem("sistercare-theme") as Theme;
 
     // Always default to light mode unless user explicitly chose dark
-    if (savedTheme) {
-      setTheme(savedTheme);
+    if (savedTheme === "dark") {
+      setTheme("dark");
+      document.documentElement.classList.add("dark");
     } else {
       setTheme("light");
+      document.documentElement.classList.remove("dark");
+      // Clear any invalid saved value
+      if (savedTheme && savedTheme !== "light") {
+        localStorage.setItem("sistercare-theme", "light");
+      }
     }
   }, []);
 
