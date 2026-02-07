@@ -7,6 +7,22 @@ import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import NotificationBell from "@/components/ui/NotificationBell";
 
+// Helper function to get initials from name or email
+function getInitials(displayName: string | null, email: string | null): string {
+  if (displayName) {
+    const names = displayName.trim().split(" ");
+    if (names.length >= 2) {
+      return (names[0][0] + names[names.length - 1][0]).toUpperCase();
+    }
+    return displayName.substring(0, 2).toUpperCase();
+  }
+  if (email) {
+    const localPart = email.split("@")[0];
+    return localPart.substring(0, 2).toUpperCase();
+  }
+  return "U";
+}
+
 interface HeaderProps {
   variant?: "landing" | "app";
 }
@@ -229,12 +245,21 @@ export default function Header({ variant = "landing" }: HeaderProps) {
                 href="/profile"
                 className="flex items-center gap-3 hover:opacity-80 transition-opacity"
               >
-                <div
-                  className="bg-center bg-no-repeat aspect-square bg-cover rounded-full w-9 h-9 border-2 border-primary/20"
-                  style={{
-                    backgroundImage: `url('${user?.photoURL || "https://ui-avatars.com/api/?name=User&background=8c30e8&color=fff"}')`,
-                  }}
-                />
+                {user?.photoURL ? (
+                  <div
+                    className="bg-center bg-no-repeat aspect-square bg-cover rounded-full w-9 h-9 border-2 border-primary/20"
+                    style={{
+                      backgroundImage: `url('${user.photoURL}')`,
+                    }}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center rounded-full w-9 h-9 border-2 border-primary/20 bg-gradient-to-br from-primary to-purple-600 text-white text-sm font-bold">
+                    {getInitials(
+                      user?.displayName || null,
+                      user?.email || null,
+                    )}
+                  </div>
+                )}
               </Link>
               {user && (
                 <button
