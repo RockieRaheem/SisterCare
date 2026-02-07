@@ -24,14 +24,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setMounted(true);
     const savedTheme = localStorage.getItem("sistercare-theme") as Theme;
-    const prefersDark = window.matchMedia(
-      "(prefers-color-scheme: dark)",
-    ).matches;
 
+    // Always default to light mode unless user explicitly chose dark
     if (savedTheme) {
       setTheme(savedTheme);
-    } else if (prefersDark) {
-      setTheme("dark");
+    } else {
+      setTheme("light");
     }
   }, []);
 
