@@ -7,7 +7,7 @@ interface FooterProps {
 export default function Footer({ variant = "landing" }: FooterProps) {
   if (variant === "app") {
     return (
-      <footer className="bg-white dark:bg-card-dark border-t border-border-light dark:border-border-dark py-8">
+      <footer className="bg-white dark:bg-card-dark border-t border-border-light dark:border-border-dark py-8 pb-[calc(2rem+var(--bottom-nav-height,72px)+env(safe-area-inset-bottom))] lg:pb-8">
         <div className="max-w-[1200px] mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2 text-primary/60">
             <span className="material-symbols-outlined">health_and_safety</span>
@@ -46,7 +46,7 @@ export default function Footer({ variant = "landing" }: FooterProps) {
 
   // Landing page footer
   return (
-    <footer className="px-6 lg:px-40 py-12 border-t border-border-light dark:border-border-dark bg-white dark:bg-background-dark">
+    <footer className="px-6 lg:px-40 py-12 pb-[calc(3rem+var(--bottom-nav-height,72px)+env(safe-area-inset-bottom))] lg:pb-12 border-t border-border-light dark:border-border-dark bg-white dark:bg-background-dark">
       <div className="max-w-[1200px] mx-auto grid grid-cols-1 md:grid-cols-4 gap-10">
         <div className="col-span-1 md:col-span-2 flex flex-col gap-4">
           <div className="flex items-center gap-3 text-primary">
