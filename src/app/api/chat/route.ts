@@ -251,22 +251,18 @@ async function callGeminiAPI(
   message: string,
   conversationHistory: Array<{ role: string; content: string }>,
 ): Promise<string> {
-  // Try multiple model names - some may not be available depending on API key/region
+  // Use available Gemini models - gemini-2.5-flash is the current stable model
   const models = [
-    "gemini-2.0-flash-exp",
-    "gemini-1.5-flash-latest",
+    "gemini-2.5-flash",
+    "gemini-2.5-pro",
+    "gemini-2.0-flash",
     "gemini-1.5-flash",
-    "gemini-1.0-pro",
-    "gemini-pro",
   ];
 
   for (const model of models) {
     try {
-      // Try v1beta first, then v1 endpoint
-      const urls = [
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-        `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`,
-      ];
+      // Try v1beta endpoint (most models available here)
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
       // Build conversation contents
       const contents = [
@@ -308,49 +304,45 @@ async function callGeminiAPI(
         ],
       };
 
-      for (const url of urls) {
+      console.log(`Trying model: ${model}`);
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
         console.log(
-          `Trying model: ${model} with URL: ${url.includes("v1beta") ? "v1beta" : "v1"}`,
+          `Model ${model} failed: ${response.status} - ${errorText.substring(0, 200)}`,
         );
-
-        const response = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(requestBody),
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.log(
-            `Model ${model} failed: ${response.status} - ${errorText.substring(0, 200)}`,
-          );
-          // If rate limited, model not found, or permission denied, try next URL/model
-          if (
-            response.status === 429 ||
-            response.status === 404 ||
-            response.status === 403
-          ) {
-            continue;
-          }
-          throw new Error(`API error: ${response.status} - ${errorText}`);
+        // If rate limited, model not found, or permission denied, try next model
+        if (
+          response.status === 429 ||
+          response.status === 404 ||
+          response.status === 403
+        ) {
+          continue; // Try next model
         }
-
-        const data = await response.json();
-
-        // Check for valid response
-        if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
-          console.log(`Model ${model} succeeded!`);
-          return data.candidates[0].content.parts[0].text;
-        }
-
-        // Check if blocked by safety
-        if (data.candidates?.[0]?.finishReason === "SAFETY") {
-          console.log(`Model ${model} blocked by safety filter`);
-          continue;
-        }
-
-        console.log(`Model ${model} returned no content`);
+        throw new Error(`API error: ${response.status} - ${errorText}`);
       }
+
+      const data = await response.json();
+
+      // Check for valid response
+      if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
+        console.log(`Model ${model} succeeded!`);
+        return data.candidates[0].content.parts[0].text;
+      }
+
+      // Check if blocked by safety
+      if (data.candidates?.[0]?.finishReason === "SAFETY") {
+        console.log(`Model ${model} blocked by safety filter`);
+        continue; // Try next model
+      }
+
+      console.log(`Model ${model} returned no content`);
     } catch (err) {
       console.log(`Model ${model} error:`, err);
       continue;

@@ -12,11 +12,10 @@ export async function GET() {
   if (apiKey && apiKey.trim() !== "") {
     // Try multiple models to find one that works
     const testModels = [
-      "gemini-2.0-flash-exp",
-      "gemini-1.5-flash-latest",
+      "gemini-2.5-flash",
+      "gemini-2.5-pro",
+      "gemini-2.0-flash",
       "gemini-1.5-flash",
-      "gemini-1.0-pro",
-      "gemini-pro",
     ];
 
     for (const model of testModels) {
