@@ -14,8 +14,9 @@ import {
   deleteConversation,
   updateConversationTitle,
   updateConversationPreview,
+  getUserProfile,
 } from "@/lib/firestore";
-import { ChatConversation } from "@/types";
+import { ChatConversation, UserProfile } from "@/types";
 
 interface Message {
   id: string;
@@ -73,6 +74,7 @@ export default function ChatPage() {
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const conversationsRef = useRef<ChatConversation[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
