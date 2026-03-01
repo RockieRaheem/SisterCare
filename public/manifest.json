@@ -1,0 +1,49 @@
+{
+  "name": "SisterCare",
+  "short_name": "SisterCare",
+  "description": "A Digital Support Platform for Women's Well-Being, Guidance, and Menstrual Health",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#f7f6f8",
+  "theme_color": "#8c30e8",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en",
+  "categories": ["health", "lifestyle", "medical"],
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Chat with Sister",
+      "short_name": "Chat",
+      "description": "Open AI chat for support",
+      "url": "/chat"
+    },
+    {
+      "name": "Track Period",
+      "short_name": "Track",
+      "description": "Log your period start",
+      "url": "/dashboard"
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
+}
