@@ -99,9 +99,26 @@ export default function RootLayout({
       <body
         className={`${manrope.variable} font-display bg-background-light dark:bg-background-dark text-text-primary dark:text-white min-h-screen antialiased`}
       >
+        {/* Skip to main content link - Essential for keyboard/screen reader users */}
+        <a href="#main-content" className="skip-link">
+          Skip to main content
+        </a>
+
+        {/* Live region for screen reader announcements */}
+        <div
+          id="aria-live-region"
+          className="live-region"
+          aria-live="polite"
+          aria-atomic="true"
+        />
+
         <ThemeProvider>
           <AuthProvider>
-            <div className="flex flex-col min-h-screen">{children}</div>
+            <div className="flex flex-col min-h-screen">
+              <main id="main-content" tabIndex={-1}>
+                {children}
+              </main>
+            </div>
             <BottomNav />
           </AuthProvider>
         </ThemeProvider>

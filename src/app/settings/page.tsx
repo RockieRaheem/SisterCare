@@ -7,10 +7,15 @@ import Card from "@/components/ui/Card";
 import Toggle from "@/components/ui/Toggle";
 import Button from "@/components/ui/Button";
 import { useAuth } from "@/context/AuthContext";
+import { jsPDF } from "jspdf";
 import {
   getUserProfile,
   updateUserPreferences,
   updateUserProfile,
+  getSymptoms,
+  getPendingReminders,
+  getCycleHistory,
+  getUserConversations,
 } from "@/lib/firestore";
 import {
   requestNotificationPermission,
@@ -25,6 +30,7 @@ export default function SettingsPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [message, setMessage] = useState<{
     type: "success" | "error";
     text: string;
@@ -128,6 +134,305 @@ export default function SettingsPage() {
       router.push("/");
     } catch (error) {
       console.error("Error signing out:", error);
+    }
+  };
+
+  // Export user health data as PDF
+  const handleExportData = async () => {
+    if (!user) return;
+
+    setExporting(true);
+    setMessage(null);
+
+    try {
+      // Fetch all user data
+      const [profile, symptoms, reminders, cycleHistory, conversations] =
+        await Promise.all([
+          getUserProfile(user.uid),
+          getSymptoms(user.uid, new Date(0), new Date()), // All symptoms ever
+          getPendingReminders(user.uid),
+          getCycleHistory(user.uid),
+          getUserConversations(user.uid),
+        ]);
+
+      // Create PDF document
+      const pdf = new jsPDF();
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      let yPos = 20;
+
+      // Helper function to add new page if needed
+      const checkPageBreak = (height: number = 20) => {
+        if (yPos + height > 270) {
+          pdf.addPage();
+          yPos = 20;
+        }
+      };
+
+      // Title
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(24);
+      pdf.setTextColor(140, 48, 232); // Primary purple
+      pdf.text("SisterCare", pageWidth / 2, yPos, { align: "center" });
+      yPos += 10;
+
+      pdf.setFontSize(14);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text("Health Data Report", pageWidth / 2, yPos, { align: "center" });
+      yPos += 8;
+
+      pdf.setFontSize(10);
+      pdf.text(
+        `Generated: ${new Date().toLocaleDateString("en-UG", { dateStyle: "full" })}`,
+        pageWidth / 2,
+        yPos,
+        { align: "center" },
+      );
+      yPos += 15;
+
+      // Horizontal line
+      pdf.setDrawColor(140, 48, 232);
+      pdf.setLineWidth(0.5);
+      pdf.line(20, yPos, pageWidth - 20, yPos);
+      yPos += 15;
+
+      // Profile Section
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(16);
+      pdf.setTextColor(50, 50, 50);
+      pdf.text("Profile Information", 20, yPos);
+      yPos += 10;
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(11);
+      pdf.setTextColor(80, 80, 80);
+      pdf.text(`Name: ${profile?.displayName || "Not set"}`, 25, yPos);
+      yPos += 7;
+      pdf.text(`Email: ${profile?.email || "Not set"}`, 25, yPos);
+      yPos += 7;
+      pdf.text(
+        `Account Created: ${profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : "Unknown"}`,
+        25,
+        yPos,
+      );
+      yPos += 15;
+
+      // Cycle Data Section
+      checkPageBreak(60);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(16);
+      pdf.setTextColor(50, 50, 50);
+      pdf.text("Menstrual Cycle Data", 20, yPos);
+      yPos += 10;
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(11);
+      pdf.setTextColor(80, 80, 80);
+
+      if (profile?.cycleData) {
+        const lastPeriod = profile.cycleData.lastPeriodDate
+          ? new Date(profile.cycleData.lastPeriodDate).toLocaleDateString()
+          : "Not recorded";
+        const nextPeriod = profile.cycleData.nextPeriodDate
+          ? new Date(profile.cycleData.nextPeriodDate).toLocaleDateString()
+          : "Not calculated";
+
+        pdf.text(`Last Period: ${lastPeriod}`, 25, yPos);
+        yPos += 7;
+        pdf.text(`Next Expected Period: ${nextPeriod}`, 25, yPos);
+        yPos += 7;
+        pdf.text(
+          `Average Cycle Length: ${profile.cycleData.cycleLength || "--"} days`,
+          25,
+          yPos,
+        );
+        yPos += 7;
+        pdf.text(
+          `Average Period Length: ${profile.cycleData.periodLength || "--"} days`,
+          25,
+          yPos,
+        );
+        yPos += 7;
+        pdf.text(
+          `Current Phase: ${profile.cycleData.currentPhase || "Unknown"}`,
+          25,
+          yPos,
+        );
+      } else {
+        pdf.text(
+          "No cycle data recorded yet. Complete onboarding to start tracking.",
+          25,
+          yPos,
+        );
+      }
+      yPos += 15;
+
+      // Symptoms Section
+      checkPageBreak(40);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(16);
+      pdf.setTextColor(50, 50, 50);
+      pdf.text(`Symptom Logs (${symptoms.length} entries)`, 20, yPos);
+      yPos += 10;
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(10);
+      pdf.setTextColor(80, 80, 80);
+
+      if (symptoms.length > 0) {
+        // Show last 15 symptoms
+        const recentSymptoms = symptoms.slice(0, 15);
+        recentSymptoms.forEach((symptom) => {
+          checkPageBreak(15);
+          const date = symptom.date
+            ? new Date(symptom.date).toLocaleDateString()
+            : "Unknown date";
+          const symptomList = Array.isArray(symptom.symptoms)
+            ? symptom.symptoms.join(", ")
+            : "None";
+          const mood = symptom.mood || "--";
+          pdf.text(`• ${date}: ${symptomList} (Mood: ${mood})`, 25, yPos);
+          yPos += 6;
+        });
+
+        if (symptoms.length > 15) {
+          pdf.setFont("helvetica", "italic");
+          pdf.text(`... and ${symptoms.length - 15} more entries`, 25, yPos);
+          yPos += 6;
+        }
+      } else {
+        pdf.text("No symptoms logged yet.", 25, yPos);
+        yPos += 6;
+      }
+      yPos += 10;
+
+      // Cycle History Section
+      checkPageBreak(40);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(16);
+      pdf.setTextColor(50, 50, 50);
+      pdf.text(`Cycle History (${cycleHistory.length} cycles)`, 20, yPos);
+      yPos += 10;
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(10);
+      pdf.setTextColor(80, 80, 80);
+
+      if (cycleHistory.length > 0) {
+        const recentCycles = cycleHistory.slice(0, 10);
+        recentCycles.forEach((cycle) => {
+          checkPageBreak(10);
+          const startDate = cycle.startDate
+            ? new Date(cycle.startDate).toLocaleDateString()
+            : "Unknown";
+          const endDate = cycle.endDate
+            ? new Date(cycle.endDate).toLocaleDateString()
+            : "Ongoing";
+          pdf.text(
+            `• ${startDate} to ${endDate} (${cycle.cycleLength || "--"} days)`,
+            25,
+            yPos,
+          );
+          yPos += 6;
+        });
+      } else {
+        pdf.text("No cycle history recorded yet.", 25, yPos);
+        yPos += 6;
+      }
+      yPos += 10;
+
+      // Reminders Section
+      checkPageBreak(30);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(16);
+      pdf.setTextColor(50, 50, 50);
+      pdf.text(`Pending Reminders (${reminders.length})`, 20, yPos);
+      yPos += 10;
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(10);
+      pdf.setTextColor(80, 80, 80);
+
+      if (reminders.length > 0) {
+        reminders.slice(0, 5).forEach((reminder) => {
+          checkPageBreak(10);
+          const date = reminder.scheduledFor
+            ? new Date(reminder.scheduledFor).toLocaleDateString()
+            : "Unknown";
+          pdf.text(`• ${reminder.title || "Reminder"}: ${date}`, 25, yPos);
+          yPos += 6;
+        });
+      } else {
+        pdf.text("No pending reminders.", 25, yPos);
+        yPos += 6;
+      }
+      yPos += 15;
+
+      // Summary Stats
+      checkPageBreak(40);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(16);
+      pdf.setTextColor(50, 50, 50);
+      pdf.text("Summary", 20, yPos);
+      yPos += 10;
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(11);
+      pdf.setTextColor(80, 80, 80);
+      pdf.text(`Total Symptom Logs: ${symptoms.length}`, 25, yPos);
+      yPos += 7;
+      pdf.text(`Cycles Tracked: ${cycleHistory.length}`, 25, yPos);
+      yPos += 7;
+      pdf.text(`Chat Conversations: ${conversations.length}`, 25, yPos);
+      yPos += 20;
+
+      // Footer
+      checkPageBreak(30);
+      pdf.setDrawColor(200, 200, 200);
+      pdf.line(20, yPos, pageWidth - 20, yPos);
+      yPos += 10;
+
+      pdf.setFont("helvetica", "italic");
+      pdf.setFontSize(9);
+      pdf.setTextColor(120, 120, 120);
+      pdf.text(
+        "This report was generated by SisterCare - Your trusted women's health companion.",
+        pageWidth / 2,
+        yPos,
+        { align: "center" },
+      );
+      yPos += 6;
+      pdf.text(
+        "For medical concerns, please consult a healthcare professional.",
+        pageWidth / 2,
+        yPos,
+        { align: "center" },
+      );
+      yPos += 6;
+      pdf.text(
+        "Uganda Emergency: Sauti 116 | Police: 999",
+        pageWidth / 2,
+        yPos,
+        { align: "center" },
+      );
+
+      // Save PDF
+      pdf.save(
+        `SisterCare-Health-Report-${new Date().toISOString().split("T")[0]}.pdf`,
+      );
+
+      setMessage({
+        type: "success",
+        text: "Your health report has been downloaded as PDF!",
+      });
+      setTimeout(() => setMessage(null), 5000);
+    } catch (error) {
+      console.error("Error exporting data:", error);
+      setMessage({
+        type: "error",
+        text: "Failed to export data. Please try again.",
+      });
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -351,6 +656,68 @@ export default function SettingsPage() {
           <Button onClick={saveSettings} disabled={saving} fullWidth>
             {saving ? "Saving..." : "Save Settings"}
           </Button>
+        </div>
+
+        {/* Data & Privacy */}
+        <h2 className="text-text-primary dark:text-white text-lg sm:text-xl md:text-[22px] font-bold leading-tight tracking-tight pb-2 sm:pb-3 pt-4 sm:pt-5 md:pt-6">
+          Data & Privacy
+        </h2>
+
+        <div className="space-y-3 sm:space-y-4 mb-6 sm:mb-7 md:mb-8">
+          <Card>
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4">
+              <div>
+                <p className="text-text-primary dark:text-white text-sm sm:text-base font-bold">
+                  Export Your Health Data
+                </p>
+                <p className="text-text-secondary text-xs sm:text-sm">
+                  Download a beautifully formatted PDF report with all your
+                  cycle data, symptoms, and health records.
+                </p>
+              </div>
+              <Button
+                variant="secondary"
+                onClick={handleExportData}
+                disabled={exporting}
+                className="w-full sm:w-auto"
+              >
+                <span className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-sm">
+                    {exporting ? "hourglass_empty" : "picture_as_pdf"}
+                  </span>
+                  {exporting ? "Generating PDF..." : "Download PDF"}
+                </span>
+              </Button>
+            </div>
+          </Card>
+
+          <Card>
+            <div className="flex flex-col gap-2">
+              <p className="text-text-primary dark:text-white text-sm sm:text-base font-bold">
+                Your Data Rights
+              </p>
+              <ul className="text-text-secondary text-xs sm:text-sm space-y-1">
+                <li className="flex items-start gap-2">
+                  <span className="material-symbols-outlined text-primary text-sm mt-0.5">
+                    check_circle
+                  </span>
+                  Your data is stored securely and encrypted
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="material-symbols-outlined text-primary text-sm mt-0.5">
+                    check_circle
+                  </span>
+                  We never sell your personal health information
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="material-symbols-outlined text-primary text-sm mt-0.5">
+                    check_circle
+                  </span>
+                  You can export or delete your data at any time
+                </li>
+              </ul>
+            </div>
+          </Card>
         </div>
 
         {/* Account Actions */}

@@ -6,6 +6,12 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
   fullWidth?: boolean;
   icon?: string;
+  /** Accessible label for screen readers (use when button only has an icon) */
+  ariaLabel?: string;
+  /** Whether the button controls an expanded/collapsed element */
+  ariaExpanded?: boolean;
+  /** ID of the element this button controls */
+  ariaControls?: string;
 }
 
 export default function Button({
@@ -14,11 +20,14 @@ export default function Button({
   children,
   fullWidth = false,
   icon,
+  ariaLabel,
+  ariaExpanded,
+  ariaControls,
   className = "",
   ...props
 }: ButtonProps) {
   const baseStyles =
-    "flex items-center justify-center font-bold rounded-xl transition-all btn-press disabled:opacity-50 disabled:cursor-not-allowed";
+    "flex items-center justify-center font-bold rounded-xl transition-all btn-press disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2";
 
   const variantStyles = {
     primary: "bg-primary text-white hover:bg-primary/90 shadow-primary-sm",
@@ -39,9 +48,16 @@ export default function Button({
   return (
     <button
       className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${fullWidth ? "w-full" : ""} ${className}`}
+      aria-label={ariaLabel}
+      aria-expanded={ariaExpanded}
+      aria-controls={ariaControls}
       {...props}
     >
-      {icon && <span className="material-symbols-outlined">{icon}</span>}
+      {icon && (
+        <span className="material-symbols-outlined" aria-hidden="true">
+          {icon}
+        </span>
+      )}
       {children}
     </button>
   );

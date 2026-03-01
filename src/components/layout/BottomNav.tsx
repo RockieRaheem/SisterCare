@@ -21,9 +21,16 @@ export default function BottomNav() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden safe-bottom">
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50 md:hidden safe-bottom"
+      aria-label="Main navigation"
+      role="navigation"
+    >
       <div className="bg-white dark:bg-card-dark border-t border-border-light dark:border-border-dark shadow-soft-lg">
-        <div className="flex items-center justify-around px-2 h-[72px] max-w-lg mx-auto">
+        <div
+          className="flex items-center justify-around px-2 h-[72px] max-w-lg mx-auto"
+          role="menubar"
+        >
           {navItems.map((item) => {
             const isActive =
               pathname === item.href ||
@@ -33,11 +40,15 @@ export default function BottomNav() {
               <Link
                 key={item.href}
                 href={item.href}
+                role="menuitem"
+                aria-current={isActive ? "page" : undefined}
+                aria-label={`${item.label}${isActive ? " (current page)" : ""}`}
                 className={`
                   relative flex flex-col items-center justify-center 
                   flex-1 h-full py-2 px-1
                   transition-all duration-200 ease-out
                   touch-target focus-ring rounded-xl
+                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2
                   ${
                     isActive
                       ? "text-primary"
@@ -47,7 +58,10 @@ export default function BottomNav() {
               >
                 {/* Active indicator */}
                 {isActive && (
-                  <span className="absolute top-1 w-8 h-1 bg-primary rounded-full" />
+                  <span
+                    className="absolute top-1 w-8 h-1 bg-primary rounded-full"
+                    aria-hidden="true"
+                  />
                 )}
 
                 <span
@@ -61,6 +75,7 @@ export default function BottomNav() {
                       ? '"FILL" 1, "wght" 600'
                       : '"FILL" 0, "wght" 400',
                   }}
+                  aria-hidden="true"
                 >
                   {item.icon}
                 </span>

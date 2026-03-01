@@ -12,6 +12,7 @@
   "dependencies": {
     "@tailwindcss/forms": "^0.5.11",
     "firebase": "latest",
+    "jspdf": "^4.2.0",
     "next": "latest",
     "react": "latest",
     "react-dom": "latest"
