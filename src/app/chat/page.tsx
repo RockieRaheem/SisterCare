@@ -75,9 +75,57 @@ export default function ChatPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isListening, setIsListening] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const conversationsRef = useRef<ChatConversation[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+
+  // Check for speech recognition support
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const SpeechRecognition =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        setSpeechSupported(true);
+        recognitionRef.current = new SpeechRecognition();
+        recognitionRef.current.continuous = false;
+        recognitionRef.current.interimResults = true;
+        recognitionRef.current.lang = "en-US";
+
+        recognitionRef.current.onresult = (event) => {
+          const transcript = Array.from(event.results)
+            .map((result) => result[0].transcript)
+            .join("");
+          setInputValue(transcript);
+        };
+
+        recognitionRef.current.onend = () => {
+          setIsListening(false);
+        };
+
+        recognitionRef.current.onerror = (event) => {
+          console.error("Speech recognition error:", event.error);
+          setIsListening(false);
+        };
+      }
+    }
+  }, []);
+
+  // Toggle voice input
+  const toggleVoiceInput = useCallback(() => {
+    if (!recognitionRef.current) return;
+
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      setInputValue("");
+      recognitionRef.current.start();
+      setIsListening(true);
+    }
+  }, [isListening]);
 
   // Keep ref in sync with state for use in callbacks
   useEffect(() => {
@@ -921,11 +969,31 @@ export default function ChatPage() {
                     value={inputValue}
                     onChange={handleInputChange}
                     onKeyDown={handleKeyDown}
-                    placeholder="Message Sister..."
-                    disabled={isTyping}
+                    placeholder={
+                      isListening ? "Listening..." : "Message Sister..."
+                    }
+                    disabled={isTyping || isListening}
                     rows={1}
                     className="flex-1 bg-transparent resize-none border-none focus:ring-0 focus:outline-none text-text-primary dark:text-white placeholder:text-text-secondary text-xs sm:text-sm px-2 sm:px-3 py-2 max-h-[120px] sm:max-h-[150px]"
                   />
+                  {/* Voice Input Button */}
+                  {speechSupported && (
+                    <button
+                      type="button"
+                      onClick={toggleVoiceInput}
+                      disabled={isTyping}
+                      className={`p-2.5 sm:p-3 rounded-lg sm:rounded-xl transition-all touch-target ${
+                        isListening
+                          ? "bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/40"
+                          : "bg-gray-200 dark:bg-gray-700 text-text-secondary dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600"
+                      }`}
+                      title={isListening ? "Stop listening" : "Voice input"}
+                    >
+                      <span className="material-symbols-outlined text-base sm:text-lg">
+                        {isListening ? "mic_off" : "mic"}
+                      </span>
+                    </button>
+                  )}
                   <button
                     type="submit"
                     disabled={!inputValue.trim() || isTyping}
