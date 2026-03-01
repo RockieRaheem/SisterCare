@@ -331,17 +331,21 @@ export default function ChatPage() {
             message: text.trim(),
             conversationHistory,
             userId: user.uid,
-            userProfile: userProfile ? {
-              displayName: userProfile.displayName,
-              onboardingCompleted: userProfile.onboardingCompleted,
-            } : undefined,
-            cycleData: userProfile?.cycleData ? {
-              lastPeriodDate: userProfile.cycleData.lastPeriodDate,
-              cycleLength: userProfile.cycleData.cycleLength,
-              periodLength: userProfile.cycleData.periodLength,
-              nextPeriodDate: userProfile.cycleData.nextPeriodDate,
-              currentPhase: userProfile.cycleData.currentPhase,
-            } : undefined,
+            userProfile: userProfile
+              ? {
+                  displayName: userProfile.displayName,
+                  onboardingCompleted: userProfile.onboardingCompleted,
+                }
+              : undefined,
+            cycleData: userProfile?.cycleData
+              ? {
+                  lastPeriodDate: userProfile.cycleData.lastPeriodDate,
+                  cycleLength: userProfile.cycleData.cycleLength,
+                  periodLength: userProfile.cycleData.periodLength,
+                  nextPeriodDate: userProfile.cycleData.nextPeriodDate,
+                  currentPhase: userProfile.cycleData.currentPhase,
+                }
+              : undefined,
           }),
         });
 
@@ -393,7 +397,7 @@ export default function ChatPage() {
         setIsTyping(false);
       }
     },
-    [user, activeConversationId, messages, generateTitleFromMessage],
+    [user, activeConversationId, messages, generateTitleFromMessage, userProfile],
   );
 
   const handleSubmit = (e: React.FormEvent) => {
