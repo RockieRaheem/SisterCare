@@ -168,6 +168,10 @@ export default function ChatPage() {
     if (!user) return;
 
     try {
+      // Load user profile for agent context
+      const profile = await getUserProfile(user.uid);
+      setUserProfile(profile);
+
       const userConversations = await getUserConversations(user.uid);
       setConversations(userConversations);
 
@@ -319,12 +323,25 @@ export default function ChatPage() {
           content: msg.text,
         }));
 
+        // Send message to AI Agent with user context
         const response = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             message: text.trim(),
             conversationHistory,
+            userId: user.uid,
+            userProfile: userProfile ? {
+              displayName: userProfile.displayName,
+              onboardingCompleted: userProfile.onboardingCompleted,
+            } : undefined,
+            cycleData: userProfile?.cycleData ? {
+              lastPeriodDate: userProfile.cycleData.lastPeriodDate,
+              cycleLength: userProfile.cycleData.cycleLength,
+              periodLength: userProfile.cycleData.periodLength,
+              nextPeriodDate: userProfile.cycleData.nextPeriodDate,
+              currentPhase: userProfile.cycleData.currentPhase,
+            } : undefined,
           }),
         });
 
