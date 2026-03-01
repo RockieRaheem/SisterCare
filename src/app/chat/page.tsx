@@ -397,7 +397,13 @@ export default function ChatPage() {
         setIsTyping(false);
       }
     },
-    [user, activeConversationId, messages, generateTitleFromMessage, userProfile],
+    [
+      user,
+      activeConversationId,
+      messages,
+      generateTitleFromMessage,
+      userProfile,
+    ],
   );
 
   const handleSubmit = (e: React.FormEvent) => {
