@@ -17,6 +17,14 @@ import {
   UGANDA_HEALTHCARE_RESOURCES,
   HEALTH_KNOWLEDGE_BASE,
 } from "./knowledge";
+import {
+  logSymptoms,
+  createReminder,
+  getSymptoms,
+  saveCycleData,
+  calculateNextPeriod,
+} from "../firestore";
+import { MoodType, FlowIntensity } from "@/types";
 
 // Types for agent execution
 interface ToolCall {
@@ -127,26 +135,40 @@ async function executeTool(
 
       case "log_symptoms": {
         const symptoms = args.symptoms as string[];
-        const mood = args.mood as string;
-        const flowIntensity = args.flowIntensity as string;
-        const notes = args.notes as string;
+        const mood = (args.mood as MoodType) || "okay";
+        const flowIntensity = (args.flowIntensity as FlowIntensity) || "none";
+        const notes = (args.notes as string) || "";
 
         // Create symptom log entry
         const logEntry = {
-          date: new Date().toISOString(),
+          date: new Date(),
           symptoms,
-          mood: mood || "okay",
-          flowIntensity: flowIntensity || "none",
-          notes: notes || "",
-          logged: true,
+          mood,
+          flowIntensity,
+          notes,
         };
+
+        // PERSIST TO FIRESTORE if userId is available
+        let logId: string | null = null;
+        if (context.userId) {
+          try {
+            logId = await logSymptoms(context.userId, logEntry);
+          } catch (error) {
+            console.error("[Agent] Failed to persist symptoms:", error);
+          }
+        }
 
         return {
           toolName: name,
           result: {
             success: true,
             message: `Logged ${symptoms.length} symptom(s): ${symptoms.join(", ")}`,
-            logEntry,
+            logEntry: {
+              ...logEntry,
+              id: logId,
+              date: logEntry.date.toISOString(),
+            },
+            persisted: !!logId,
           },
           success: true,
         };
@@ -200,7 +222,11 @@ async function executeTool(
       }
 
       case "set_reminder": {
-        const reminderType = args.type as string;
+        const reminderType = args.type as
+          | "period_coming"
+          | "period_start"
+          | "log_symptoms"
+          | "check_in";
         const title = args.title as string;
         const message = args.message as string;
         const scheduledFor = args.scheduledFor as string;
@@ -208,11 +234,28 @@ async function executeTool(
         // Parse scheduled date
         const scheduledDate = parseScheduledDate(scheduledFor);
 
+        // PERSIST TO FIRESTORE if userId is available
+        let reminderId: string | null = null;
+        if (context.userId) {
+          try {
+            reminderId = await createReminder(context.userId, {
+              userId: context.userId,
+              type: reminderType,
+              title,
+              message,
+              scheduledFor: scheduledDate,
+            });
+          } catch (error) {
+            console.error("[Agent] Failed to persist reminder:", error);
+          }
+        }
+
         return {
           toolName: name,
           result: {
             success: true,
             reminder: {
+              id: reminderId,
               type: reminderType,
               title,
               message,
@@ -220,6 +263,7 @@ async function executeTool(
               created: true,
             },
             message: `Reminder set for ${scheduledDate.toLocaleDateString()}: "${title}"`,
+            persisted: !!reminderId,
           },
           success: true,
         };
@@ -268,16 +312,58 @@ async function executeTool(
       case "get_symptom_history": {
         const days = (args.days as number) || 30;
 
-        // Return simulated history structure (would be from Firestore in production)
+        // FETCH FROM FIRESTORE if userId is available
+        let symptoms: Array<{
+          date: string;
+          symptoms: string[];
+          mood: string;
+          flowIntensity?: string;
+          notes: string;
+        }> = [];
+        if (context.userId) {
+          try {
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - days);
+            const logs = await getSymptoms(context.userId, startDate, endDate);
+            symptoms = logs.map((log) => ({
+              date: log.date.toISOString(),
+              symptoms: log.symptoms,
+              mood: log.mood,
+              flowIntensity: log.flowIntensity,
+              notes: log.notes,
+            }));
+          } catch (error) {
+            console.error("[Agent] Failed to fetch symptom history:", error);
+          }
+        }
+
+        // Analyze patterns from symptom data
+        const symptomCounts: Record<string, number> = {};
+        symptoms.forEach((log) => {
+          log.symptoms.forEach((s) => {
+            symptomCounts[s] = (symptomCounts[s] || 0) + 1;
+          });
+        });
+        const topSymptoms = Object.entries(symptomCounts)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5)
+          .map(([symptom, count]) => `${symptom} (${count}x)`);
+
         return {
           toolName: name,
           result: {
             period: `Last ${days} days`,
-            symptoms: [],
+            totalLogs: symptoms.length,
+            symptoms: symptoms.slice(0, 10), // Return last 10 logs
             patterns:
-              "Symptom history tracking started. Log symptoms regularly to see patterns.",
+              topSymptoms.length > 0
+                ? `Most common symptoms: ${topSymptoms.join(", ")}`
+                : "No symptoms logged yet. Start logging to see patterns.",
             recommendation:
-              "Continue logging symptoms to build a comprehensive health picture.",
+              symptoms.length > 5
+                ? "Great job tracking! Continue to maintain accurate health insights."
+                : "Log symptoms regularly to build a comprehensive health picture.",
           },
           success: true,
         };
@@ -349,14 +435,36 @@ async function executeTool(
           ? new Date(args.startDate as string)
           : new Date();
 
+        // PERSIST TO FIRESTORE if userId is available
+        let persisted = false;
+        let nextPeriodDate: Date | null = null;
+        if (context.userId && context.cycleData) {
+          try {
+            nextPeriodDate = calculateNextPeriod(
+              startDate,
+              context.cycleData.cycleLength,
+            );
+            await saveCycleData(context.userId, {
+              lastPeriodDate: startDate,
+              nextPeriodDate,
+            });
+            persisted = true;
+          } catch (error) {
+            console.error("[Agent] Failed to update period start:", error);
+          }
+        }
+
         return {
           toolName: name,
           result: {
             success: true,
             message: `Period start recorded for ${startDate.toLocaleDateString()}`,
             startDate: startDate.toISOString(),
-            action:
-              "Your cycle data has been updated. Predictions will now be more accurate.",
+            nextPeriodDate: nextPeriodDate?.toISOString() || null,
+            action: persisted
+              ? "Your cycle data has been updated. Predictions will now be more accurate."
+              : "Period recorded. Sign in to save your data permanently.",
+            persisted,
           },
           success: true,
         };
