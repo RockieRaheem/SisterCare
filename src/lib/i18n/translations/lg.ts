@@ -83,20 +83,56 @@ export const lg: TranslationKeys = {
   // Dashboard - Olukalala olukulu
   dashboard: {
     greeting: "Oli otya",
+    welcomeBack: "Tukusanyukidde okomedde",
     welcomeMessage: "Owulira otya leero?",
+    healthAtGlance: "Ebyobulamu byo n'embeera yo mu butongole butono.",
     cycleDay: "Olunaku lw'omwezi",
     daysUntilPeriod: "ennaku okutuka mu mwezi",
+    daysUntilNextPeriod: "Ennaku okutuka ku mwezi gwo ogujja",
     periodIn: "Omwezi mu",
     currentPhase: "Ekiseera kino",
     nextPeriod: "Omwezi ogujja",
+    nextPeriodExpected: "Omwezi ogujja gusuubiddwa ku",
     periodStarted: "Omwezi gutandise",
     logSymptoms: "Wandiika obubonero",
+    logDetailedSymptoms: "Wandiika obubonero obwekuusa",
     viewCalendar: "Laba kalenda",
     quickActions: "Bikolwa byanguwa",
     recentSymptoms: "Obubonero obw'oluvannyuma",
     healthTips: "Amagezi g'ebyobulamu",
     upcomingReminders: "Okujjukiza okujja",
     noReminders: "Tewali kujjukiza",
+    dailyCheckin: "Okukebera kw'olunaku",
+    moodLoggedSuccess: "Embeera yo eteekawo bulungi!",
+    thankYouCheckin: "Weebale okukebera leero.",
+    dailyTip: "Ekigezi ky'olunaku",
+    viewAnalytics: "Laba Ebikubakako",
+    talkToSister: "Yogera ne Sister",
+    healthLibrary: "Ekyteeka ky'Ebyobulamu",
+    updateCycleData: "Kyusa ebikwata ku mwezi",
+    needSupport: "Oyetaaga obuyambi?",
+    supportMessage:
+      "AI yaffe ey'obuyambi erabika 24/7 okukuddamu ebibuuzo ku byobulamu by'omwezi, embeera ey'omwoyo, n'ebirala.",
+    startChatting: "Tandika okwogera",
+    checkingProfile: "Tukebera ebikukwatako...",
+    loadingDashboard: "Tukozesa olukalala lwo...",
+    tryAgain: "Ddamu ogezeko",
+    completeProfile: "Wuukiriza ebikukwatako",
+    completeProfileDesc:
+      "Yongera ebikwata ku mwezi gwo okufuna ebyogezi ebituufu n'okujjukirwa.",
+    completeSetup: "Maliriza okutegeka",
+    periodUpdateNeeded: "Omwezi gwo gwetaaga okukyusako",
+    periodUpdateDesc:
+      "Omwezi gwo gwali gusuubiddwa ennaku {days} emabega. Tusaba otutegeeze omwezi gwo lwagutandikira.",
+    updatePeriodDate: "Kyusa olunaku lw'omwezi",
+    takeItEasy: "Wewummule, Kabaka",
+    periodDayMessage:
+      "Olunaku {day} olw'omwezi gwo. Wewummule, nywa amazzi, era weefunire. Okola bulungi!",
+    timeUntilNextCycle: "Obudde okutuka ku mwezi ogujja:",
+    periodDay: "Olunaku lw'omwezi",
+    periodEndingSoon: "Omwezi gwo gunaatera okuwedde 🌸",
+    daysRemaining: "Ennaku ~{days} zikyali",
+    periodWillLast: "Omwezi gwo gumala ennaku {days}. Omwezi ogujja gutandika",
     cyclePhases: {
       menstrual: "Ekiseera ky'omwezi",
       follicular: "Ekiseera eky'okukula",
@@ -108,6 +144,41 @@ export const lg: TranslationKeys = {
       follicular: "Amaanyi gakula - kiseera kirungi okutandika ebipya",
       ovulation: "Amaanyi mangi - ekiseera ky'obuzazi obusinga",
       luteal: "Okuwummula - weeweezemu n'obuwombeefu",
+    },
+    phaseTitles: {
+      menstrual: "Wewummule era Weefunire",
+      follicular: "Amaanyi gakula",
+      ovulation: "Amaanyi amasinga",
+      luteal: "Okuwummula",
+    },
+    phaseTips: {
+      menstrual:
+        "Omubiri gwo gusuuka. Wewummule, tambula mpola, era lya emmere erina omusaano. Kituufu okuwummula.",
+      follicular:
+        "Estrogen yakula! Kiseera kirungi okutandika ebipya, okuyiga, n'okukwana n'abantu. Amaanyi gakula.",
+      ovulation:
+        "Oli mu maanyi amasinga era obuzazi. Kiseera kirungi eky'okwogera ebikulu n'okuwasilisigana.",
+      luteal:
+        "Progesterone yakula, okwetegekera okubeera olubuto. Malirizaamu emirimu, weefunire, wetegekereze omwezi.",
+    },
+    periodTips: {
+      day1: "Ekigezi ky'olunaku 1: Tambula mpola leero. Omubiri gwo gukola ennyo. Okwoga mu mazzi agebugumu oba ekitambi ekyokubuguma kisobola okuyamba. 🛁",
+      day2: "Ekigezi ky'olunaku 2: Omusaayi gunene nnyo leero. Nywa amazzi mangi era lya emmere erina omusaano ng'ekidoodo oba enbumba. 🥬",
+      day3: "Ekigezi ky'olunaku 3: Osobola okuwulira okukoowa. Okwegoloola okuwewula oba yoga empola kisobola okuyamba n'ebibonero. 🧘‍♀️",
+      day4: "Ekigezi ky'olunaku 4: Amaanyi gasobola okuddayo. Wuliriza omubiri gwo era wewummulire bw'oba oyetaaga. 💆‍♀️",
+      almostThere:
+        "Kumpi okuwedde: Omwezi gwo gunaatera okuwedde. Wesiimye okukituuka! Oli wa maanyi. 💪",
+    },
+    timeUnits: {
+      days: "Ennaku",
+      hours: "Essaawa",
+      mins: "Eddak.",
+    },
+    moods: {
+      good: "Nnungi",
+      tired: "Nkoowe",
+      low: "Sirina maanyi",
+      great: "Nnungi nnyo",
     },
   },
 

@@ -77,20 +77,57 @@ export const en = {
   // Dashboard
   dashboard: {
     greeting: "Hello",
+    welcomeBack: "Welcome back",
     welcomeMessage: "How are you feeling today?",
+    healthAtGlance: "Your health and emotional well-being at a glance.",
     cycleDay: "Cycle Day",
     daysUntilPeriod: "days until period",
+    daysUntilNextPeriod: "Days until your next period",
     periodIn: "Period in",
     currentPhase: "Current Phase",
     nextPeriod: "Next Period",
+    nextPeriodExpected: "Next period expected on",
     periodStarted: "Period Started",
     logSymptoms: "Log Symptoms",
+    logDetailedSymptoms: "Log Detailed Symptoms",
     viewCalendar: "View Calendar",
     quickActions: "Quick Actions",
     recentSymptoms: "Recent Symptoms",
     healthTips: "Health Tips",
     upcomingReminders: "Upcoming Reminders",
     noReminders: "No upcoming reminders",
+    dailyCheckin: "Your Daily Check-in",
+    moodLoggedSuccess: "Mood logged successfully!",
+    thankYouCheckin: "Thank you for checking in today.",
+    dailyTip: "Daily Tip",
+    viewAnalytics: "View Analytics",
+    talkToSister: "Talk to Sister",
+    healthLibrary: "Health Library",
+    updateCycleData: "Update Cycle Data",
+    needSupport: "Need Support?",
+    supportMessage:
+      "Our AI support is available 24/7 to answer your questions about menstrual health, emotional well-being, and more.",
+    startChatting: "Start Chatting",
+    checkingProfile: "Checking your profile...",
+    loadingDashboard: "Loading your dashboard...",
+    tryAgain: "Try Again",
+    completeProfile: "Complete Your Profile",
+    completeProfileDesc:
+      "Add your cycle information to get accurate predictions and personalized reminders.",
+    completeSetup: "Complete Setup",
+    periodUpdateNeeded: "Period Update Needed",
+    periodUpdateDesc:
+      "Your period was expected {days} day(s) ago. Please update when your period started for accurate tracking.",
+    updatePeriodDate: "Update Period Date",
+    takeItEasy: "Take It Easy, Queen",
+    periodDayMessage:
+      "Day {day} of your period. Rest, hydrate, and be gentle with yourself. You're doing amazing!",
+    timeUntilNextCycle: "Time until next cycle:",
+    periodDay: "Period Day",
+    periodEndingSoon: "Your period should be ending soon 🌸",
+    daysRemaining: "~{days} days remaining",
+    periodWillLast:
+      "Your period will last about {days} days. Next cycle starts",
     cyclePhases: {
       menstrual: "Menstrual",
       follicular: "Follicular",
@@ -102,6 +139,41 @@ export const en = {
       follicular: "Energy rising - great for new projects",
       ovulation: "Peak energy - most fertile window",
       luteal: "Winding down - practice gentle self-care",
+    },
+    phaseTitles: {
+      menstrual: "Rest and Nurture",
+      follicular: "Energy Rising",
+      ovulation: "Peak Energy",
+      luteal: "Wind Down",
+    },
+    phaseTips: {
+      menstrual:
+        "Your body is shedding its lining. Focus on rest, gentle movement, and iron-rich foods. It's okay to take it easy.",
+      follicular:
+        "Estrogen is rising! Great time for creative projects, learning new things, and social activities. Energy levels are increasing.",
+      ovulation:
+        "You're at peak energy and fertility. Communication skills are enhanced. Great time for important conversations and presentations.",
+      luteal:
+        "Progesterone rises, preparing for potential pregnancy. Focus on completing tasks, self-care, and preparing for your upcoming period.",
+    },
+    periodTips: {
+      day1: "Day 1 tip: Take it slow today. Your body is working hard. A warm bath or heating pad can be soothing. 🛁",
+      day2: "Day 2 tip: Flow is often heaviest today. Stay hydrated and consider iron-rich foods like spinach or lentils. 🥬",
+      day3: "Day 3 tip: You might feel more tired. Light stretching or gentle yoga can help with cramps. 🧘‍♀️",
+      day4: "Day 4 tip: Energy may start returning. Listen to your body and rest when needed. 💆‍♀️",
+      almostThere:
+        "Almost there: Your period is ending soon. Celebrate making it through! You're strong. 💪",
+    },
+    timeUnits: {
+      days: "Days",
+      hours: "Hours",
+      mins: "Mins",
+    },
+    moods: {
+      good: "Good",
+      tired: "Tired",
+      low: "Low",
+      great: "Great",
     },
   },
 
