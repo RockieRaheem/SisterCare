@@ -5,6 +5,8 @@ interface CardProps {
   className?: string;
   hover?: boolean;
   padding?: "none" | "sm" | "md" | "lg";
+  animate?: boolean;
+  glow?: boolean;
 }
 
 export default function Card({
@@ -12,6 +14,8 @@ export default function Card({
   className = "",
   hover = false,
   padding = "md",
+  animate = false,
+  glow = false,
 }: CardProps) {
   const paddingStyles = {
     none: "",
@@ -27,7 +31,10 @@ export default function Card({
         rounded-2xl 
         border border-border-light dark:border-border-dark 
         shadow-sm
+        transition-all duration-300 ease-out
         ${hover ? "card-hover cursor-pointer" : ""}
+        ${animate ? "card-animate" : ""}
+        ${glow ? "glow-primary" : ""}
         ${paddingStyles[padding]}
         ${className}
       `}

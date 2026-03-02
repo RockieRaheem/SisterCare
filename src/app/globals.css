@@ -445,3 +445,362 @@ select:focus-visible {
 .container-responsive {
   container-type: inline-size;
 }
+
+/* ==========================================
+   UI/UX Polish - Enhanced Animations & Transitions
+   ========================================== */
+
+/* Smooth page transitions */
+.page-transition {
+  animation: pageSlideIn 0.3s ease-out;
+}
+
+@keyframes pageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Card entrance animations */
+.card-animate {
+  animation: cardFadeIn 0.4s ease-out both;
+}
+
+.card-animate:nth-child(1) {
+  animation-delay: 0s;
+}
+.card-animate:nth-child(2) {
+  animation-delay: 0.05s;
+}
+.card-animate:nth-child(3) {
+  animation-delay: 0.1s;
+}
+.card-animate:nth-child(4) {
+  animation-delay: 0.15s;
+}
+.card-animate:nth-child(5) {
+  animation-delay: 0.2s;
+}
+.card-animate:nth-child(6) {
+  animation-delay: 0.25s;
+}
+
+@keyframes cardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Improved button interactions */
+.btn-premium {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-premium::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 150%;
+  height: 150%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.3) 0%,
+    transparent 70%
+  );
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform 0.5s ease;
+}
+
+.btn-premium:hover::before {
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.btn-premium:active {
+  transform: scale(0.96);
+}
+
+/* Enhanced focus states */
+.focus-premium:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--background-light),
+    0 0 0 4px var(--primary);
+}
+
+.dark .focus-premium:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--background-dark),
+    0 0 0 4px var(--primary);
+}
+
+/* Shimmer loading effect */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.4) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.dark .shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200% 100%;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Floating animation for decorative elements */
+.float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Subtle bounce for interactive elements */
+.bounce-subtle {
+  animation: bounceSubtle 0.3s ease;
+}
+
+@keyframes bounceSubtle {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Progress bar animation */
+.progress-animate {
+  animation: progressGrow 1s ease-out both;
+}
+
+@keyframes progressGrow {
+  from {
+    width: 0;
+  }
+}
+
+/* Glow effect for primary elements */
+.glow-primary {
+  box-shadow: 0 0 20px rgba(140, 48, 232, 0.3);
+}
+
+.glow-primary-intense {
+  box-shadow:
+    0 0 20px rgba(140, 48, 232, 0.4),
+    0 0 40px rgba(140, 48, 232, 0.2);
+}
+
+/* Smooth modal/overlay transitions */
+.modal-overlay {
+  animation: overlayFadeIn 0.2s ease-out;
+}
+
+@keyframes overlayFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modal-content {
+  animation: modalSlideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes modalSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Tooltip animations */
+.tooltip-animate {
+  animation: tooltipPop 0.2s ease-out;
+}
+
+@keyframes tooltipPop {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Tab selection indicator */
+.tab-indicator {
+  transition:
+    left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Gradient border effect */
+.gradient-border {
+  position: relative;
+}
+
+.gradient-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  background: linear-gradient(135deg, var(--primary), #a855f7);
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: xor;
+  -webkit-mask-composite: xor;
+}
+
+/* Count-up animation for numbers */
+.count-up {
+  animation: countUp 0.5s ease-out;
+}
+
+@keyframes countUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Staggered list animations */
+.stagger-list > * {
+  animation: listItemSlide 0.4s ease-out both;
+}
+
+.stagger-list > *:nth-child(1) {
+  animation-delay: 0s;
+}
+.stagger-list > *:nth-child(2) {
+  animation-delay: 0.05s;
+}
+.stagger-list > *:nth-child(3) {
+  animation-delay: 0.1s;
+}
+.stagger-list > *:nth-child(4) {
+  animation-delay: 0.15s;
+}
+.stagger-list > *:nth-child(5) {
+  animation-delay: 0.2s;
+}
+.stagger-list > *:nth-child(6) {
+  animation-delay: 0.25s;
+}
+.stagger-list > *:nth-child(7) {
+  animation-delay: 0.3s;
+}
+.stagger-list > *:nth-child(8) {
+  animation-delay: 0.35s;
+}
+
+@keyframes listItemSlide {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Improved input focus transitions */
+.input-premium {
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.input-premium:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(140, 48, 232, 0.15);
+}
+
+/* Notification badge pulse */
+.badge-pulse {
+  animation: badgePulse 2s infinite;
+}
+
+@keyframes badgePulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+  }
+}
+
+/* Success checkmark animation */
+.check-animate {
+  animation: checkPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes checkPop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
