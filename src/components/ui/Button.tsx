@@ -12,6 +12,8 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   ariaExpanded?: boolean;
   /** ID of the element this button controls */
   ariaControls?: string;
+  /** Enable premium animation effects */
+  premium?: boolean;
 }
 
 export default function Button({
@@ -23,20 +25,22 @@ export default function Button({
   ariaLabel,
   ariaExpanded,
   ariaControls,
+  premium = false,
   className = "",
   ...props
 }: ButtonProps) {
   const baseStyles =
-    "flex items-center justify-center font-bold rounded-xl transition-all btn-press disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2";
+    "flex items-center justify-center font-bold rounded-xl transition-all duration-200 ease-out btn-press disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-[0.97]";
 
   const variantStyles = {
-    primary: "bg-primary text-white hover:bg-primary/90 shadow-primary-sm",
+    primary:
+      "bg-primary text-white hover:bg-primary/90 hover:shadow-lg shadow-primary-sm",
     secondary:
-      "bg-border-light dark:bg-border-dark text-text-primary dark:text-white hover:bg-opacity-80",
+      "bg-border-light dark:bg-border-dark text-text-primary dark:text-white hover:bg-opacity-80 hover:scale-[1.02]",
     outline:
-      "border-2 border-primary text-primary hover:bg-primary hover:text-white",
+      "border-2 border-primary text-primary hover:bg-primary hover:text-white hover:shadow-md",
     ghost: "text-primary hover:bg-primary/10",
-    danger: "bg-red-500 text-white hover:bg-red-600",
+    danger: "bg-red-500 text-white hover:bg-red-600 hover:shadow-lg",
   };
 
   const sizeStyles = {
@@ -47,14 +51,17 @@ export default function Button({
 
   return (
     <button
-      className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${fullWidth ? "w-full" : ""} ${className}`}
+      className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${fullWidth ? "w-full" : ""} ${premium ? "btn-premium" : ""} ${className}`}
       aria-label={ariaLabel}
       aria-expanded={ariaExpanded}
       aria-controls={ariaControls}
       {...props}
     >
       {icon && (
-        <span className="material-symbols-outlined" aria-hidden="true">
+        <span
+          className="material-symbols-outlined transition-transform group-hover:scale-110"
+          aria-hidden="true"
+        >
           {icon}
         </span>
       )}

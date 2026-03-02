@@ -64,8 +64,11 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
               h-14 
               placeholder:text-text-secondary/50 
               ${icon ? "pl-12" : "p-4"} 
-              text-base font-normal leading-normal transition-all
-              ${error ? "border-red-500 focus:border-red-500 focus:ring-red-500/20" : ""}
+              text-base font-normal leading-normal 
+              transition-all duration-200 ease-out
+              hover:border-primary/30 hover:bg-white dark:hover:bg-card-dark
+              focus:shadow-[0_0_0_3px_rgba(140,48,232,0.15)]
+              ${error ? "border-red-500 focus:border-red-500 focus:ring-red-500/20 focus:shadow-[0_0_0_3px_rgba(239,68,68,0.15)]" : ""}
               ${className}
             `}
             {...props}
