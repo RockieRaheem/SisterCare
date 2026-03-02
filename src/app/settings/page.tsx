@@ -460,10 +460,12 @@ export default function SettingsPage() {
         <div className="flex flex-wrap justify-between gap-2 sm:gap-3 mb-5 sm:mb-6 md:mb-8">
           <div className="flex min-w-0 sm:min-w-72 flex-col gap-1.5 sm:gap-2 md:gap-3">
             <h1 className="text-text-primary dark:text-white text-2xl sm:text-3xl md:text-4xl font-black leading-tight tracking-tight">
-              Settings & Privacy
+              {t.settings.title}
             </h1>
             <p className="text-text-secondary text-sm sm:text-base font-normal leading-normal">
-              Manage your preferences, notifications, and account security.
+              {language === "lg"
+                ? "Tegeka by'oyagala, obumanyiso, n'obukuumi bw'akawunti yo."
+                : "Manage your preferences, notifications, and account security."}
             </p>
           </div>
         </div>
@@ -646,7 +648,11 @@ export default function SettingsPage() {
                       : "border-gray-200 dark:border-gray-700 text-text-secondary hover:border-primary/50 active:bg-primary/5"
                   }`}
                 >
-                  {option === "light" ? t.settings.lightMode : option === "dark" ? t.settings.darkMode : "System"}
+                  {option === "light"
+                    ? t.settings.lightMode
+                    : option === "dark"
+                      ? t.settings.darkMode
+                      : "System"}
                 </button>
               ))}
             </div>
@@ -657,7 +663,9 @@ export default function SettingsPage() {
         <Card className="mb-6 sm:mb-7 md:mb-8">
           <div className="flex flex-col gap-2.5 sm:gap-3">
             <p className="text-text-primary dark:text-white text-sm sm:text-base font-bold flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary text-lg">translate</span>
+              <span className="material-symbols-outlined text-primary text-lg">
+                translate
+              </span>
               {t.settings.language}
             </p>
             <div className="flex flex-wrap gap-2 sm:gap-3">
@@ -677,8 +685,8 @@ export default function SettingsPage() {
               ))}
             </div>
             <p className="text-text-secondary text-xs mt-1">
-              {language === "lg" 
-                ? "Oluganda luzze kukozesebwa mu app yonna" 
+              {language === "lg"
+                ? "Oluganda luzze kukozesebwa mu app yonna"
                 : "Change the language used throughout the app"}
             </p>
           </div>

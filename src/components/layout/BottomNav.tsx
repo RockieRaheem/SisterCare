@@ -2,17 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
-const navItems = [
-  { href: "/dashboard", icon: "home", label: "Home" },
-  { href: "/chat", icon: "chat_bubble", label: "Chat" },
-  { href: "/counsellors", icon: "support_agent", label: "Help" },
-  { href: "/library", icon: "menu_book", label: "Learn" },
-  { href: "/profile", icon: "person", label: "Profile" },
-];
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const { t } = useLanguage();
+
+  // Navigation items with translation keys
+  const navItems = [
+    { href: "/dashboard", icon: "home", labelKey: "home" as const },
+    { href: "/chat", icon: "chat_bubble", labelKey: "chat" as const },
+    { href: "/counsellors", icon: "support_agent", labelKey: "help" as const },
+    { href: "/library", icon: "menu_book", labelKey: "library" as const },
+    { href: "/profile", icon: "person", labelKey: "profile" as const },
+  ];
 
   // Don't show on landing, login, signup, or onboarding pages
   const hiddenPaths = ["/", "/auth/login", "/auth/signup", "/onboarding"];
@@ -23,7 +26,7 @@ export default function BottomNav() {
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-50 md:hidden safe-bottom"
-      aria-label="Main navigation"
+      aria-label={t.nav.home}
       role="navigation"
     >
       <div className="bg-white dark:bg-card-dark border-t border-border-light dark:border-border-dark shadow-soft-lg">
@@ -36,13 +39,25 @@ export default function BottomNav() {
               pathname === item.href ||
               (item.href !== "/dashboard" && pathname.startsWith(item.href));
 
+            // Get translated label
+            const label =
+              item.labelKey === "home"
+                ? t.nav.home
+                : item.labelKey === "chat"
+                  ? t.nav.chat
+                  : item.labelKey === "help"
+                    ? t.nav.help
+                    : item.labelKey === "library"
+                      ? t.nav.library
+                      : t.nav.profile;
+
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 role="menuitem"
                 aria-current={isActive ? "page" : undefined}
-                aria-label={`${item.label}${isActive ? " (current page)" : ""}`}
+                aria-label={`${label}${isActive ? " (current page)" : ""}`}
                 className={`
                   relative flex flex-col items-center justify-center 
                   flex-1 h-full py-2 px-1
@@ -82,7 +97,7 @@ export default function BottomNav() {
                 <span
                   className={`text-[10px] leading-tight ${isActive ? "font-bold" : "font-medium"}`}
                 >
-                  {item.label}
+                  {label}
                 </span>
               </Link>
             );
