@@ -237,14 +237,55 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Agent error:", error);
 
-    // Fallback response
+    const errorMessage = String(error);
+
+    // Handle rate limiting gracefully
+    if (
+      errorMessage.includes("RATE_LIMITED:") ||
+      errorMessage.includes("429")
+    ) {
+      return NextResponse.json(
+        {
+          response:
+            "I'm a bit busy right now with lots of conversations! 💜 Please wait about 20 seconds and send your message again. I promise I'll be right with you!",
+          source: "rate_limited",
+          type: "agent",
+          retryAfter: 20,
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": "20",
+          },
+        },
+      );
+    }
+
+    // Handle timeout errors
+    if (
+      errorMessage.includes("timeout") ||
+      errorMessage.includes("AbortError") ||
+      errorMessage.includes("ETIMEDOUT")
+    ) {
+      return NextResponse.json(
+        {
+          response:
+            "I'm taking a bit longer than usual to respond. Please try sending your message again. 💜",
+          source: "timeout",
+          type: "agent",
+        },
+        { status: 504 },
+      );
+    }
+
+    // Fallback response for other errors
     return NextResponse.json(
       {
         response:
-          "I apologize, but I encountered an issue processing your request. Please try again. If you're experiencing a medical emergency, please call Uganda Police at 999 or visit your nearest hospital.",
+          "I'm having a small technical issue right now. Please try again in a moment. If you need immediate help, call Sauti 116 (toll-free in Uganda) or visit your nearest health center. 💜",
         source: "error",
         type: "agent",
-        error: String(error),
+        error: errorMessage,
       },
       { status: 500 },
     );
@@ -274,10 +315,9 @@ export async function GET() {
       "health_reports",
       "personalized_tips",
     ],
-    model: "gemini-2.5-flash",
+    model: "gemini-2.5-flash-lite",
     functionsAvailable: 12,
     apiKeyConfigured: !!apiKey,
-    description:
-      "SisterCare AI Agent - Beyond chatbots, solving real health problems",
+    description: "SisterCare AI - Your supportive health companion",
   });
 }

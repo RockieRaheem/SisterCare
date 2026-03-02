@@ -336,7 +336,10 @@ export default function ChatPage() {
         timestamp: new Date(),
       };
 
-      setMessages((prev) => [...prev, userMessage]);
+      // Get current messages before updating state
+      const currentMessages = [...messages, userMessage];
+
+      setMessages(currentMessages);
       setInputValue("");
       if (inputRef.current) {
         inputRef.current.style.height = "auto";
@@ -366,40 +369,82 @@ export default function ChatPage() {
           );
         }
 
-        const conversationHistory = messages.slice(-10).map((msg) => ({
+        // Use currentMessages which includes the new user message
+        const conversationHistory = currentMessages.slice(-10).map((msg) => ({
           role: msg.sender === "user" ? "user" : "assistant",
           content: msg.text,
         }));
 
         // Send message to AI Agent with user context
-        const response = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            message: text.trim(),
-            conversationHistory,
-            userId: user.uid,
-            userProfile: userProfile
-              ? {
-                  displayName: userProfile.displayName,
-                  onboardingCompleted: userProfile.onboardingCompleted,
-                }
-              : undefined,
-            cycleData: userProfile?.cycleData
-              ? {
-                  lastPeriodDate: userProfile.cycleData.lastPeriodDate,
-                  cycleLength: userProfile.cycleData.cycleLength,
-                  periodLength: userProfile.cycleData.periodLength,
-                  nextPeriodDate: userProfile.cycleData.nextPeriodDate,
-                  currentPhase: userProfile.cycleData.currentPhase,
-                }
-              : undefined,
-          }),
-        });
+        const makeRequest = async (
+          retryCount = 0,
+        ): Promise<{ response: string }> => {
+          const res = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              message: text.trim(),
+              conversationHistory,
+              userId: user.uid,
+              userProfile: userProfile
+                ? {
+                    displayName: userProfile.displayName,
+                    onboardingCompleted: userProfile.onboardingCompleted,
+                  }
+                : undefined,
+              cycleData: userProfile?.cycleData
+                ? {
+                    lastPeriodDate: userProfile.cycleData.lastPeriodDate,
+                    cycleLength: userProfile.cycleData.cycleLength,
+                    periodLength: userProfile.cycleData.periodLength,
+                    nextPeriodDate: userProfile.cycleData.nextPeriodDate,
+                    currentPhase: userProfile.cycleData.currentPhase,
+                  }
+                : undefined,
+            }),
+          });
 
-        const data = await response.json();
+          const data = await res.json();
 
-        if (response.ok && data.response) {
+          // Handle rate limiting with auto-retry
+          if (res.status === 429 && retryCount < 2) {
+            const retryAfter = parseInt(
+              res.headers.get("Retry-After") || "30",
+              10,
+            );
+
+            // Show temporary waiting message
+            const waitMessage: Message = {
+              id: `wait-${Date.now()}`,
+              sender: "sister",
+              text: `${data.response || "I'm thinking... please wait a moment!"} ⏳`,
+              timestamp: new Date(),
+            };
+            setMessages((prev) => [...prev, waitMessage]);
+
+            // Wait and retry
+            await new Promise((resolve) =>
+              setTimeout(resolve, retryAfter * 1000),
+            );
+
+            // Remove the waiting message before retry
+            setMessages((prev) => prev.filter((m) => m.id !== waitMessage.id));
+
+            return makeRequest(retryCount + 1);
+          }
+
+          if (!res.ok) {
+            throw new Error(
+              data.response || data.error || "Failed to get response",
+            );
+          }
+
+          return data;
+        };
+
+        const data = await makeRequest();
+
+        if (data.response) {
           const sisterMessage: Message = {
             id: `sister-${Date.now()}`,
             sender: "sister",
@@ -428,8 +473,6 @@ export default function ChatPage() {
                 : c,
             ),
           );
-        } else {
-          throw new Error(data.error || "Failed to get response");
         }
       } catch (err) {
         console.error("Error sending message:", err);

@@ -59,47 +59,43 @@ interface CycleDataContext {
   currentPhase: string;
 }
 
-// Agent system prompt - instructs the AI to be an agent, not just a chatbot
-const AGENT_SYSTEM_PROMPT = `You are "Sister", an AI AGENT (not just a chatbot) for SisterCare - a women's health platform in Uganda.
+// Agent system prompt - ChatGPT-style clear, helpful, conversational responses
+const AGENT_SYSTEM_PROMPT = `You are "Sister", an AI health companion on SisterCare - a women's health app designed for women in Uganda.
 
-AS AN AGENT, YOU MUST:
-1. REASON about the user's needs before responding
-2. USE TOOLS to gather real data, log information, and take actions
-3. SOLVE PROBLEMS by combining multiple tools when needed
-4. TAKE AUTONOMOUS ACTIONS like logging symptoms, setting reminders, finding resources
+## Your Personality
+- Warm, caring, and supportive - like a trusted older sister
+- Direct and helpful - answer questions clearly without excessive preamble
+- Empathetic but practical - acknowledge feelings while providing useful guidance
+- Professional yet approachable - use simple language, avoid medical jargon
 
-AGENT WORKFLOW:
-1. Analyze the user's message to understand their need
-2. Decide which tools to call (you can call multiple tools)
-3. Execute tools to gather data or take actions
-4. Synthesize tool results into a helpful response
-5. Take follow-up actions if needed (e.g., after logging symptoms, offer to set a reminder)
+## Response Guidelines
+1. **Be Direct**: Start with the answer or key information, not "I'm here for you" every time
+2. **Be Contextual**: Remember what the user asked and refer back to it
+3. **Be Specific**: Give concrete advice, dates, and information when possible
+4. **Be Concise**: Keep responses focused - 2-4 paragraphs max for most questions
+5. **Use Tools**: When the user asks about their cycle, symptoms, or needs action taken - USE the available tools
 
-TOOL USAGE GUIDELINES:
-- ALWAYS call get_cycle_info when discussing periods, predictions, or cycle-related questions
-- ALWAYS call log_symptoms when a user reports symptoms (don't just acknowledge - LOG them)
-- ALWAYS call analyze_symptoms when a user describes multiple symptoms or expresses concern
-- ALWAYS call search_health_info for factual health questions
-- ALWAYS call find_healthcare_resources when someone needs medical help
-- ALWAYS call assess_risk_level when symptoms seem serious
-- PROACTIVELY call set_reminder after important events (e.g., after logging symptoms, offer period reminder)
+## When to Use Tools
+- Questions about "my cycle", "my period", "when is my next": Call get_cycle_info
+- User reports symptoms or feelings: Call log_symptoms AND analyze_symptoms
+- Health questions: Call search_health_info
+- Need medical help: Call find_healthcare_resources
 
-REMEMBER:
-- You have access to the user's real health data - use it to personalize responses
-- You can TAKE ACTIONS (log data, set reminders) - don't just talk about them
-- You should REASON through complex problems step by step
-- For medical concerns, assess risk and recommend appropriate action
+## Response Format
+- Start with the direct answer or acknowledgment
+- Provide relevant context or explanation
+- Offer a helpful follow-up suggestion or question
+- Use 1-2 emojis max (💜, 🌸) - don't overdo it
 
-UGANDA CONTEXT:
-- Users are primarily in Uganda
-- Reference Uganda-specific resources (Sauti 116, FIDA Uganda, local hospitals)
-- Be culturally sensitive
+## Uganda Context
+- Reference local resources: Sauti 116 (toll-free helpline), FIDA Uganda, local hospitals
+- Be culturally sensitive and supportive
+- Understand that users may have limited healthcare access
 
-RESPONSE STYLE:
-- Warm, supportive, empathetic
-- Use emojis sparingly (💜, 🌸, ✨)
-- Keep responses helpful but concise
-- Always explain what actions you took (e.g., "I've logged your symptoms...")`;
+## Important
+- NEVER give the same generic welcome message repeatedly
+- ALWAYS reference the user's actual question in your response
+- If you don't have data, say so clearly and help them set it up`;
 
 /**
  * Execute a tool call and return the result
@@ -1010,13 +1006,13 @@ function getPersonalizedTips(
 }
 
 /**
- * Helper function to fetch with retry logic for network issues
+ * Helper function to fetch with retry logic for network issues and rate limits
  */
 async function fetchWithRetry(
   url: string,
   options: RequestInit,
-  maxRetries: number = 3,
-  timeoutMs: number = 60000,
+  maxRetries: number = 2,
+  timeoutMs: number = 30000,
 ): Promise<Response> {
   let lastError: Error | null = null;
 
@@ -1030,10 +1026,35 @@ async function fetchWithRetry(
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
+
+      // Handle rate limiting (429) - fail fast instead of long waits
+      if (response.status === 429) {
+        clearTimeout(timeoutId);
+
+        // Only retry once with a short delay
+        if (attempt < maxRetries) {
+          console.log(
+            `[Agent] Rate limited. Quick retry in 5s (${attempt + 1}/${maxRetries})...`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, 5000));
+          continue;
+        }
+
+        // After quick retry fails, throw immediately with user-friendly error
+        throw new Error(
+          `RATE_LIMITED:I'm receiving a lot of messages right now! Please wait about 30 seconds and try again. 💜`,
+        );
+      }
+
       return response;
     } catch (error) {
       clearTimeout(timeoutId);
       lastError = error instanceof Error ? error : new Error(String(error));
+
+      // Check if it's a rate limit error we threw
+      if (lastError.message.startsWith("RATE_LIMITED:")) {
+        throw lastError;
+      }
 
       // Check if it's a timeout or network error worth retrying
       const isRetryable =
@@ -1047,8 +1068,8 @@ async function fetchWithRetry(
         break;
       }
 
-      // Wait before retrying (exponential backoff)
-      const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+      // Wait before retrying (short backoff)
+      const waitTime = Math.min(1000 * attempt, 3000);
       console.log(
         `Retry attempt ${attempt}/${maxRetries} after ${waitTime}ms...`,
       );
@@ -1076,11 +1097,12 @@ export async function executeAgent(
   const actions: string[] = [];
 
   // Call Gemini with function calling enabled
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+  // Use Gemini 2.5 Flash-Lite for better rate limits and faster responses
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`;
 
-  // Build conversation with context
+  // Build conversation with context - include more history for better context
   const contents = [
-    ...context.conversationHistory.slice(-6).map((msg) => ({
+    ...context.conversationHistory.slice(-10).map((msg) => ({
       role: msg.role === "user" ? "user" : "model",
       parts: [{ text: msg.content }],
     })),
@@ -1089,14 +1111,24 @@ export async function executeAgent(
 
   // Add user context to system prompt if available
   let enhancedSystemPrompt = AGENT_SYSTEM_PROMPT;
+
+  // Add user's name for personalization
+  if (context.userProfile?.displayName) {
+    enhancedSystemPrompt += `\n\nUSER'S NAME: ${context.userProfile.displayName}`;
+  }
+
   if (context.cycleData) {
     const cycleInfo = calculateCycleInfo(context.cycleData);
-    enhancedSystemPrompt += `\n\nUSER CONTEXT:
+    enhancedSystemPrompt += `\n\nUSER'S CYCLE DATA:
 - Current cycle day: ${cycleInfo.dayInCycle}
-- Current phase: ${cycleInfo.currentPhase}
+- Current phase: ${cycleInfo.currentPhase} (${cycleInfo.phaseDescription || ""})
 - Days until next period: ${cycleInfo.daysUntilNextPeriod}
-- Currently on period: ${cycleInfo.isCurrentlyOnPeriod}
-Use this information to provide personalized responses.`;
+- Next period expected: ${new Date(cycleInfo.nextPeriodDate).toLocaleDateString()}
+- Currently on period: ${cycleInfo.isCurrentlyOnPeriod ? "Yes" : "No"}
+- Cycle length: ${cycleInfo.cycleLength} days
+USE THIS DATA to answer questions about their cycle accurately.`;
+  } else {
+    enhancedSystemPrompt += `\n\nNOTE: User has not set up cycle tracking yet. If they ask about their cycle, encourage them to complete onboarding in settings.`;
   }
 
   const requestBody = {
@@ -1115,10 +1147,10 @@ Use this information to provide personalized responses.`;
       },
     },
     generationConfig: {
-      temperature: 0.8,
+      temperature: 0.7,
       topK: 40,
       topP: 0.95,
-      maxOutputTokens: 2048,
+      maxOutputTokens: 1024,
     },
     safetySettings: [
       { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
@@ -1134,7 +1166,7 @@ Use this information to provide personalized responses.`;
     ],
   };
 
-  // Use retry logic with extended timeout (60 seconds per attempt, up to 3 retries)
+  // Use retry logic with shorter timeout for better UX
   let response = await fetchWithRetry(
     url,
     {
@@ -1142,8 +1174,8 @@ Use this information to provide personalized responses.`;
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(requestBody),
     },
-    3,
-    60000,
+    2,
+    30000,
   );
 
   if (!response.ok) {
@@ -1231,8 +1263,8 @@ Use this information to provide personalized responses.`;
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(followUpBody),
       },
-      3,
-      60000,
+      2,
+      30000,
     );
 
     if (!response.ok) {
@@ -1252,27 +1284,30 @@ Use this information to provide personalized responses.`;
       ?.filter((part: { text?: string }) => part.text)
       ?.map((part: { text?: string }) => part.text)
       ?.join("\n") ||
-    "I apologize, I couldn't process your request. Please try again.";
+    "I'm not sure how to respond to that. Could you try rephrasing your question?";
 
   return {
-    response: cleanMarkdown(finalText),
+    response: cleanResponse(finalText),
     toolsUsed,
     actions,
   };
 }
 
-// Clean markdown formatting
-function cleanMarkdown(text: string): string {
-  return text
-    .replace(/\*\*([^*]+)\*\*/g, "$1")
-    .replace(/__([^_]+)__/g, "$1")
-    .replace(/\*([^*]+)\*/g, "$1")
-    .replace(/_([^_]+)_/g, "$1")
-    .replace(/^#{1,6}\s+/gm, "")
-    .replace(/^\s*[\*\-]\s+/gm, "")
-    .replace(/^\s*\d+\.\s+/gm, "")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/```[\s\S]*?```/g, "")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
+// Clean and format response for chat display
+function cleanResponse(text: string): string {
+  return (
+    text
+      // Remove excessive bold/italic markdown but keep text readable
+      .replace(/\*\*\*([^*]+)\*\*\*/g, "$1") // Bold italic
+      .replace(/\*\*([^*]+)\*\*/g, "$1") // Bold
+      .replace(/\*([^*]+)\*/g, "$1") // Italic
+      // Remove code blocks but keep the content
+      .replace(/```[\w]*\n?([\s\S]*?)```/g, "$1")
+      .replace(/`([^`]+)`/g, "$1")
+      // Remove heading markers
+      .replace(/^#{1,6}\s+/gm, "")
+      // Clean up excessive whitespace
+      .replace(/\n{3,}/g, "\n\n")
+      .trim()
+  );
 }
