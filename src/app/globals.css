@@ -343,6 +343,27 @@ select:focus-visible {
   ring: none;
 }
 
+/* Custom select styling */
+select {
+  background-image: none;
+}
+
+select option {
+  padding: 12px 16px;
+  background-color: #ffffff;
+  color: #140e1b;
+}
+
+.dark select option {
+  background-color: #1f1629;
+  color: #ffffff;
+}
+
+select option:checked,
+select option:hover {
+  background-color: rgba(140, 48, 232, 0.1);
+}
+
 /* Screen reader only content */
 .sr-only {
   position: absolute;

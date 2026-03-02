@@ -522,17 +522,24 @@ export default function SettingsPage() {
                     How many days before your period to send a reminder
                   </p>
                 </div>
-                <select
-                  value={reminderDays}
-                  onChange={(e) => setReminderDays(Number(e.target.value))}
-                  className="w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border border-primary/20 bg-background-light dark:bg-background-dark text-text-primary dark:text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-primary/20 touch-target"
-                >
-                  <option value={1}>1 day before</option>
-                  <option value={2}>2 days before</option>
-                  <option value={3}>3 days before</option>
-                  <option value={5}>5 days before</option>
-                  <option value={7}>7 days before</option>
-                </select>
+                <div className="relative inline-flex items-center">
+                  <select
+                    value={reminderDays}
+                    onChange={(e) => setReminderDays(Number(e.target.value))}
+                    className="appearance-none min-w-[160px] h-11 pl-4 pr-12 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-card-dark text-text-primary dark:text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary cursor-pointer transition-all hover:border-primary/50"
+                  >
+                    <option value={1}>1 day before</option>
+                    <option value={2}>2 days before</option>
+                    <option value={3}>3 days before</option>
+                    <option value={5}>5 days before</option>
+                    <option value={7}>7 days before</option>
+                  </select>
+                  <div className="absolute right-0 top-0 bottom-0 w-10 flex items-center justify-center pointer-events-none">
+                    <span className="material-symbols-outlined text-primary text-xl">
+                      keyboard_arrow_down
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </Card>
@@ -641,10 +648,7 @@ export default function SettingsPage() {
             <div className="flex flex-wrap gap-2 sm:gap-3">
               <button
                 type="button"
-                onClick={() => {
-                  alert("Light clicked!");
-                  setTheme("light");
-                }}
+                onClick={() => setTheme("light")}
                 className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border-2 transition-all text-sm cursor-pointer ${
                   theme === "light"
                     ? "border-primary bg-primary/10 text-primary font-semibold"
@@ -655,10 +659,7 @@ export default function SettingsPage() {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  alert("Dark clicked!");
-                  setTheme("dark");
-                }}
+                onClick={() => setTheme("dark")}
                 className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border-2 transition-all text-sm cursor-pointer ${
                   theme === "dark"
                     ? "border-primary bg-primary/10 text-primary font-semibold"
@@ -669,10 +670,7 @@ export default function SettingsPage() {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  alert("System clicked!");
-                  setTheme("system");
-                }}
+                onClick={() => setTheme("system")}
                 className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border-2 transition-all text-sm cursor-pointer ${
                   theme === "system"
                     ? "border-primary bg-primary/10 text-primary font-semibold"
