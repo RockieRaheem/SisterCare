@@ -42,6 +42,7 @@ export const en = {
     logout: "Logout",
     login: "Login",
     signup: "Sign Up",
+    analytics: "Analytics",
   },
 
   // Auth

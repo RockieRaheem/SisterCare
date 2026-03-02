@@ -48,6 +48,7 @@ export const lg: TranslationKeys = {
     logout: "Vvaamu",
     login: "Yingira",
     signup: "Wandiikibwe",
+    analytics: "Ebikukwatako by'omwezi",
   },
 
   // Auth - Okuyingira

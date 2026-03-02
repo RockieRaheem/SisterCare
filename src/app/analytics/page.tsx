@@ -63,11 +63,18 @@ export default function AnalyticsPage() {
       try {
         // Get last 90 days of symptom data
         const endDate = new Date();
-        const startDate = new Date(endDate.getTime() - 90 * 24 * 60 * 60 * 1000);
-        
+        const startDate = new Date(
+          endDate.getTime() - 90 * 24 * 60 * 60 * 1000,
+        );
+
         const [userProfile, logs] = await Promise.all([
           getUserProfile(user.uid),
           getSymptoms(user.uid, startDate, endDate),
+        ]);
+        setProfile(userProfile);
+        setSymptomLogs(logs || []);
+      } catch (error) {
+        console.error("Error loading analytics data:", error);
       } finally {
         setLoading(false);
       }
