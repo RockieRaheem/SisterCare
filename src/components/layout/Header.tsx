@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import NotificationBell from "@/components/ui/NotificationBell";
 
 // Helper function to get initials from name or email
@@ -29,26 +30,30 @@ interface HeaderProps {
 
 interface NavLink {
   href: string;
-  label: string;
+  labelKey: "dashboard" | "chat" | "counsellors" | "library" | "settings";
   icon: string;
 }
 
 const navLinks: NavLink[] = [
-  { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
-  { href: "/chat", label: "Chat", icon: "chat_bubble" },
-  { href: "/counsellors", label: "Counsellors", icon: "support_agent" },
-  { href: "/library", label: "Library", icon: "menu_book" },
-  { href: "/settings", label: "Settings", icon: "settings" },
+  { href: "/dashboard", labelKey: "dashboard", icon: "dashboard" },
+  { href: "/chat", labelKey: "chat", icon: "chat_bubble" },
+  { href: "/counsellors", labelKey: "counsellors", icon: "support_agent" },
+  { href: "/library", labelKey: "library", icon: "menu_book" },
+  { href: "/settings", labelKey: "settings", icon: "settings" },
 ];
 
 export default function Header({ variant = "landing" }: HeaderProps) {
   const { theme, toggleTheme } = useTheme();
   const { user, signOut } = useAuth();
+  const { t } = useLanguage();
   const pathname = usePathname();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+
+  // Get translated label for nav item
+  const getNavLabel = (key: NavLink["labelKey"]) => t.nav[key];
 
   // Close mobile menu when route changes
   useEffect(() => {
@@ -88,7 +93,7 @@ export default function Header({ variant = "landing" }: HeaderProps) {
   // Get current page title
   const getCurrentPageTitle = () => {
     const currentLink = navLinks.find((link) => isActive(link.href));
-    return currentLink?.label || "SisterCare";
+    return currentLink ? getNavLabel(currentLink.labelKey) : "SisterCare";
   };
 
   if (variant === "app") {

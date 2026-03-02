@@ -354,6 +354,17 @@ export const en = {
     notFound: "Not found",
     serverError: "Server error. Please try again later.",
   },
-} as const;
+};
 
-export type TranslationKeys = typeof en;
+// Create a deep partial type that converts all string literals to string
+// This allows other translation files to have different values while maintaining structure
+type DeepStringify<T> = {
+  [K in keyof T]: T[K] extends string
+    ? string
+    : T[K] extends object
+      ? DeepStringify<T[K]>
+      : T[K];
+};
+
+// Export the translation keys type based on the English translations structure
+export type TranslationKeys = DeepStringify<typeof en>;
