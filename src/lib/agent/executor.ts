@@ -1010,6 +1010,56 @@ function getPersonalizedTips(
 }
 
 /**
+ * Helper function to fetch with retry logic for network issues
+ */
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  maxRetries: number = 3,
+  timeoutMs: number = 60000,
+): Promise<Response> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      lastError = error instanceof Error ? error : new Error(String(error));
+
+      // Check if it's a timeout or network error worth retrying
+      const isRetryable =
+        lastError.name === "AbortError" ||
+        lastError.message.includes("fetch failed") ||
+        lastError.message.includes("ETIMEDOUT") ||
+        lastError.message.includes("ECONNRESET") ||
+        lastError.message.includes("ConnectTimeoutError");
+
+      if (!isRetryable || attempt === maxRetries) {
+        break;
+      }
+
+      // Wait before retrying (exponential backoff)
+      const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+      console.log(
+        `Retry attempt ${attempt}/${maxRetries} after ${waitTime}ms...`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, waitTime));
+    }
+  }
+
+  throw lastError || new Error("Network request failed");
+}
+
+/**
  * Main agent execution function
  * Handles the full agent loop: parse → reason → act → respond
  */
@@ -1084,14 +1134,21 @@ Use this information to provide personalized responses.`;
     ],
   };
 
-  let response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(requestBody),
-  });
+  // Use retry logic with extended timeout (60 seconds per attempt, up to 3 retries)
+  let response = await fetchWithRetry(
+    url,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
+    },
+    3,
+    60000,
+  );
 
   if (!response.ok) {
-    throw new Error(`Gemini API error: ${response.status}`);
+    const errorText = await response.text().catch(() => "Unknown error");
+    throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
   }
 
   let data = await response.json();
@@ -1166,14 +1223,23 @@ Use this information to provide personalized responses.`;
       contents: followUpContents,
     };
 
-    response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(followUpBody),
-    });
+    // Use retry logic for follow-up calls
+    response = await fetchWithRetry(
+      url,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(followUpBody),
+      },
+      3,
+      60000,
+    );
 
     if (!response.ok) {
-      throw new Error(`Gemini API follow-up error: ${response.status}`);
+      const errorText = await response.text().catch(() => "Unknown error");
+      throw new Error(
+        `Gemini API follow-up error: ${response.status} - ${errorText}`,
+      );
     }
 
     data = await response.json();
