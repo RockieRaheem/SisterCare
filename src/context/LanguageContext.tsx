@@ -28,7 +28,9 @@ interface LanguageContextType {
   isLoading: boolean;
 }
 
-const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+const LanguageContext = createContext<LanguageContextType | undefined>(
+  undefined,
+);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>(getDefaultLanguage());
@@ -61,7 +63,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     (path: string, fallback?: string) => {
       return getTranslation(language, path, fallback);
     },
-    [language]
+    [language],
   );
 
   // Don't render until we've loaded the saved language preference

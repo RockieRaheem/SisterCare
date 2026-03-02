@@ -3,6 +3,7 @@ import { Manrope } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { AuthProvider } from "@/context/AuthContext";
+import { LanguageProvider } from "@/context/LanguageContext";
 import BottomNav from "@/components/layout/BottomNav";
 
 const manrope = Manrope({
@@ -114,12 +115,14 @@ export default function RootLayout({
 
         <ThemeProvider>
           <AuthProvider>
-            <div className="flex flex-col min-h-screen">
-              <main id="main-content" tabIndex={-1}>
-                {children}
-              </main>
-            </div>
-            <BottomNav />
+            <LanguageProvider>
+              <div className="flex flex-col min-h-screen">
+                <main id="main-content" tabIndex={-1}>
+                  {children}
+                </main>
+              </div>
+              <BottomNav />
+            </LanguageProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

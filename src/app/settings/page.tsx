@@ -7,6 +7,7 @@ import Card from "@/components/ui/Card";
 import Toggle from "@/components/ui/Toggle";
 import Button from "@/components/ui/Button";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { jsPDF } from "jspdf";
 import {
   getUserProfile,
@@ -26,6 +27,7 @@ import { UserPreferences } from "@/types";
 
 export default function SettingsPage() {
   const { user, loading: authLoading, signOut } = useAuth();
+  const { language, setLanguage, languages, t } = useLanguage();
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
@@ -625,13 +627,13 @@ export default function SettingsPage() {
 
         {/* Appearance */}
         <h2 className="text-text-primary dark:text-white text-lg sm:text-xl md:text-[22px] font-bold leading-tight tracking-tight pb-2 sm:pb-3 pt-4 sm:pt-5 md:pt-6">
-          Appearance
+          {t.settings.preferences}
         </h2>
 
-        <Card className="mb-6 sm:mb-7 md:mb-8">
+        <Card className="mb-4 sm:mb-5">
           <div className="flex flex-col gap-2.5 sm:gap-3">
             <p className="text-text-primary dark:text-white text-sm sm:text-base font-bold">
-              Theme
+              {t.settings.theme}
             </p>
             <div className="flex flex-wrap gap-2 sm:gap-3">
               {(["light", "dark", "system"] as const).map((option) => (
@@ -644,10 +646,41 @@ export default function SettingsPage() {
                       : "border-gray-200 dark:border-gray-700 text-text-secondary hover:border-primary/50 active:bg-primary/5"
                   }`}
                 >
-                  {option}
+                  {option === "light" ? t.settings.lightMode : option === "dark" ? t.settings.darkMode : "System"}
                 </button>
               ))}
             </div>
+          </div>
+        </Card>
+
+        {/* Language Selection */}
+        <Card className="mb-6 sm:mb-7 md:mb-8">
+          <div className="flex flex-col gap-2.5 sm:gap-3">
+            <p className="text-text-primary dark:text-white text-sm sm:text-base font-bold flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary text-lg">translate</span>
+              {t.settings.language}
+            </p>
+            <div className="flex flex-wrap gap-2 sm:gap-3">
+              {languages.map((lang) => (
+                <button
+                  key={lang.code}
+                  onClick={() => setLanguage(lang.code)}
+                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border-2 transition-all text-sm touch-target flex items-center gap-2 ${
+                    language === lang.code
+                      ? "border-primary bg-primary/10 text-primary font-semibold"
+                      : "border-gray-200 dark:border-gray-700 text-text-secondary hover:border-primary/50 active:bg-primary/5"
+                  }`}
+                >
+                  <span>{lang.code === "en" ? "🇬🇧" : "🇺🇬"}</span>
+                  <span>{lang.nativeName}</span>
+                </button>
+              ))}
+            </div>
+            <p className="text-text-secondary text-xs mt-1">
+              {language === "lg" 
+                ? "Oluganda luzze kukozesebwa mu app yonna" 
+                : "Change the language used throughout the app"}
+            </p>
           </div>
         </Card>
 
