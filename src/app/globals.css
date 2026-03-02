@@ -343,26 +343,6 @@ select:focus-visible {
   ring: none;
 }
 
-/* Skip to main content link - Essential for screen reader users */
-.skip-link {
-  position: absolute;
-  top: -50px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--primary);
-  color: white;
-  padding: 12px 24px;
-  z-index: 9999;
-  border-radius: 0 0 12px 12px;
-  font-weight: bold;
-  text-decoration: none;
-  transition: top 0.2s ease;
-}
-
-.skip-link:focus {
-  top: 0;
-}
-
 /* Screen reader only content */
 .sr-only {
   position: absolute;
