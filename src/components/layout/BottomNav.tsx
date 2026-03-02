@@ -25,13 +25,14 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 md:hidden safe-bottom"
+      className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white dark:bg-card-dark"
       aria-label={t.nav.home}
       role="navigation"
+      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
-      <div className="bg-white dark:bg-card-dark border-t border-border-light dark:border-border-dark shadow-soft-lg">
+      <div className="border-t border-border-light dark:border-border-dark shadow-[0_-4px_20px_rgba(0,0,0,0.08)] backdrop-blur-lg bg-white/95 dark:bg-card-dark/95">
         <div
-          className="flex items-center justify-around px-2 h-[72px] max-w-lg mx-auto"
+          className="flex items-center justify-around px-3 h-[60px] max-w-md mx-auto"
           role="menubar"
         >
           {navItems.map((item) => {
