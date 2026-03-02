@@ -8,6 +8,7 @@ import Toggle from "@/components/ui/Toggle";
 import Button from "@/components/ui/Button";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { useTheme } from "@/context/ThemeContext";
 import { jsPDF } from "jspdf";
 import {
   getUserProfile,
@@ -28,6 +29,7 @@ import { UserPreferences } from "@/types";
 export default function SettingsPage() {
   const { user, loading: authLoading, signOut } = useAuth();
   const { language, setLanguage, languages, t } = useLanguage();
+  const { theme, setTheme } = useTheme();
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
@@ -42,7 +44,6 @@ export default function SettingsPage() {
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(true);
   const [reminderDays, setReminderDays] = useState(3);
-  const [theme, setTheme] = useState<"light" | "dark" | "system">("system");
   const [browserNotificationStatus, setBrowserNotificationStatus] = useState<
     NotificationPermission | "unsupported"
   >("default");
@@ -638,23 +639,48 @@ export default function SettingsPage() {
               {t.settings.theme}
             </p>
             <div className="flex flex-wrap gap-2 sm:gap-3">
-              {(["light", "dark", "system"] as const).map((option) => (
-                <button
-                  key={option}
-                  onClick={() => setTheme(option)}
-                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border-2 capitalize transition-all text-sm touch-target ${
-                    theme === option
-                      ? "border-primary bg-primary/10 text-primary font-semibold"
-                      : "border-gray-200 dark:border-gray-700 text-text-secondary hover:border-primary/50 active:bg-primary/5"
-                  }`}
-                >
-                  {option === "light"
-                    ? t.settings.lightMode
-                    : option === "dark"
-                      ? t.settings.darkMode
-                      : "System"}
-                </button>
-              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  alert("Light clicked!");
+                  setTheme("light");
+                }}
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border-2 transition-all text-sm cursor-pointer ${
+                  theme === "light"
+                    ? "border-primary bg-primary/10 text-primary font-semibold"
+                    : "border-gray-200 dark:border-gray-700 text-text-secondary hover:border-primary/50"
+                }`}
+              >
+                {t.settings.lightMode}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  alert("Dark clicked!");
+                  setTheme("dark");
+                }}
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border-2 transition-all text-sm cursor-pointer ${
+                  theme === "dark"
+                    ? "border-primary bg-primary/10 text-primary font-semibold"
+                    : "border-gray-200 dark:border-gray-700 text-text-secondary hover:border-primary/50"
+                }`}
+              >
+                {t.settings.darkMode}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  alert("System clicked!");
+                  setTheme("system");
+                }}
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border-2 transition-all text-sm cursor-pointer ${
+                  theme === "system"
+                    ? "border-primary bg-primary/10 text-primary font-semibold"
+                    : "border-gray-200 dark:border-gray-700 text-text-secondary hover:border-primary/50"
+                }`}
+              >
+                {t.settings.systemMode || "System"}
+              </button>
             </div>
           </div>
         </Card>

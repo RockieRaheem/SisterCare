@@ -43,7 +43,7 @@ const navLinks: NavLink[] = [
 ];
 
 export default function Header({ variant = "landing" }: HeaderProps) {
-  const { theme, toggleTheme } = useTheme();
+  const { resolvedTheme, toggleTheme } = useTheme();
   const { user, signOut } = useAuth();
   const { t } = useLanguage();
   const pathname = usePathname();
@@ -136,7 +136,7 @@ export default function Header({ variant = "landing" }: HeaderProps) {
                 className="flex items-center justify-center w-10 h-10 rounded-xl text-text-secondary hover:text-primary hover:bg-primary/5 transition-colors touch-target"
               >
                 <span className="material-symbols-outlined text-[22px]">
-                  {theme === "light" ? "dark_mode" : "light_mode"}
+                  {resolvedTheme === "light" ? "dark_mode" : "light_mode"}
                 </span>
               </button>
             </div>
@@ -239,7 +239,7 @@ export default function Header({ variant = "landing" }: HeaderProps) {
                 className="flex items-center justify-center rounded-xl w-10 h-10 bg-background-light dark:bg-background-dark text-text-primary dark:text-white hover:bg-primary hover:text-white transition-colors"
               >
                 <span className="material-symbols-outlined">
-                  {theme === "light" ? "dark_mode" : "light_mode"}
+                  {resolvedTheme === "light" ? "dark_mode" : "light_mode"}
                 </span>
               </button>
               <NotificationBell />
@@ -327,7 +327,7 @@ export default function Header({ variant = "landing" }: HeaderProps) {
             className="flex items-center justify-center rounded-xl w-10 h-10 bg-white dark:bg-card-dark text-text-primary dark:text-white hover:bg-primary hover:text-white transition-colors shadow-soft touch-target"
           >
             <span className="material-symbols-outlined text-xl">
-              {theme === "light" ? "dark_mode" : "light_mode"}
+              {resolvedTheme === "light" ? "dark_mode" : "light_mode"}
             </span>
           </button>
 

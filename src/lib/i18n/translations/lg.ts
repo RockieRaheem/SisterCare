@@ -233,6 +233,7 @@ export const lg: TranslationKeys = {
     theme: "Enkanganyo",
     darkMode: "Enkanganyo enzirugavu",
     lightMode: "Enkanganyo enjeru",
+    systemMode: "Enkola ya Sisitemi",
     cycleSettings: "Entegeka z'omwezi",
     cycleLength: "Obuwanvu bw'omwezi gwo",
     periodLength: "Omwezi gumala nnaku mmeka",

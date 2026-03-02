@@ -228,6 +228,7 @@ export const en = {
     theme: "Theme",
     darkMode: "Dark Mode",
     lightMode: "Light Mode",
+    systemMode: "System",
     cycleSettings: "Cycle Settings",
     cycleLength: "Average Cycle Length",
     periodLength: "Average Period Length",
