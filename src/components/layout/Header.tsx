@@ -203,7 +203,7 @@ export default function Header({ variant = "landing" }: HeaderProps) {
                   >
                     {link.icon}
                   </span>
-                  {link.label}
+                  {getNavLabel(link.labelKey)}
                 </Link>
               ))}
             </nav>
