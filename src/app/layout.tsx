@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/context/ThemeContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 import BottomNav from "@/components/layout/BottomNav";
+import OfflineIndicator from "@/components/ui/OfflineIndicator";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -111,6 +112,7 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthProvider>
             <LanguageProvider>
+              <OfflineIndicator />
               <div className="flex flex-col min-h-screen">
                 <main id="main-content" tabIndex={-1}>
                   {children}
