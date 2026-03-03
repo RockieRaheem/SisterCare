@@ -20,13 +20,15 @@ export default function Home() {
           <div className="relative w-full px-4 sm:px-6 lg:px-20 py-16 sm:py-20 lg:py-24">
             <div className="max-w-4xl mx-auto text-center">
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight text-text-primary dark:text-white mb-6">
-                Your Cycle, <span className="text-primary">Your Way</span>
+                Breaking the <span className="text-primary">Silence</span>
               </h1>
 
               <p className="text-lg sm:text-xl text-text-secondary dark:text-gray-400 max-w-2xl mx-auto mb-8 leading-relaxed">
-                Track your period, get reminders, and chat with Sister — a
-                judgment-free AI companion. Built for Ugandan women, completely
-                free, 100% private.
+                Millions of women struggle alone — with mental health, menstrual
+                confusion, and nowhere to turn. SisterCare gives you Sister, an
+                AI companion who listens without judgment, tracks your cycle so
+                you&apos;re never caught off guard, and connects you with real
+                counsellors when you need human support.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
@@ -52,19 +54,19 @@ export default function Home() {
                   <span className="material-symbols-outlined text-green-500 text-lg">
                     check_circle
                   </span>
-                  Free Forever
+                  100% Free
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span className="material-symbols-outlined text-green-500 text-lg">
                     check_circle
                   </span>
-                  No Ads
+                  24/7 Available
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span className="material-symbols-outlined text-green-500 text-lg">
                     check_circle
                   </span>
-                  Private
+                  Completely Private
                 </span>
               </div>
             </div>
@@ -79,10 +81,11 @@ export default function Home() {
           <div className="max-w-5xl mx-auto">
             <div className="text-center mb-12 lg:mb-16">
               <h2 className="text-3xl sm:text-4xl font-bold text-text-primary dark:text-white mb-4">
-                Everything You Need
+                Three Pillars of Care
               </h2>
               <p className="text-lg text-text-secondary dark:text-gray-400 max-w-xl mx-auto">
-                Simple tools to help you understand your body better.
+                Mental wellness, menstrual health, and human support — all in
+                one private space.
               </p>
             </div>
 
@@ -95,11 +98,11 @@ export default function Home() {
                   </span>
                 </div>
                 <h3 className="font-semibold text-text-primary dark:text-white mb-2">
-                  Period Tracking
+                  Smart Cycle Tracking
                 </h3>
                 <p className="text-sm text-text-secondary dark:text-gray-400">
-                  Log your cycle with one tap. Smart predictions that learn your
-                  patterns.
+                  Never be caught off guard again. Know exactly when your period
+                  is coming so you can plan your life.
                 </p>
               </div>
 
@@ -111,11 +114,11 @@ export default function Home() {
                   </span>
                 </div>
                 <h3 className="font-semibold text-text-primary dark:text-white mb-2">
-                  Sister Chat
+                  Sister AI Agent
                 </h3>
                 <p className="text-sm text-text-secondary dark:text-gray-400">
-                  Ask anything without embarrassment. Your AI companion who
-                  truly understands.
+                  Finally, someone to talk to. Share your struggles, ask
+                  anything — Sister listens without judgment.
                 </p>
               </div>
 
@@ -123,15 +126,15 @@ export default function Home() {
               <div className="text-center p-6">
                 <div className="w-14 h-14 rounded-2xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mx-auto mb-4">
                   <span className="material-symbols-outlined text-blue-500 text-2xl">
-                    notifications_active
+                    psychology
                   </span>
                 </div>
                 <h3 className="font-semibold text-text-primary dark:text-white mb-2">
-                  Smart Reminders
+                  Mental Wellness
                 </h3>
                 <p className="text-sm text-text-secondary dark:text-gray-400">
-                  Discreet notifications before your period so you&apos;re
-                  always prepared.
+                  Log symptoms, track moods, and get support during your
+                  toughest days. You don&apos;t have to suffer alone.
                 </p>
               </div>
 
@@ -143,11 +146,11 @@ export default function Home() {
                   </span>
                 </div>
                 <h3 className="font-semibold text-text-primary dark:text-white mb-2">
-                  Real Counsellors
+                  Human Counsellors
                 </h3>
                 <p className="text-sm text-text-secondary dark:text-gray-400">
-                  Connect with verified professionals when you need human
-                  support.
+                  When AI isn&apos;t enough, connect with verified professionals
+                  who understand your struggles.
                 </p>
               </div>
             </div>
@@ -257,11 +260,11 @@ export default function Home() {
         <section className="py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-20 safe-bottom">
           <div className="max-w-2xl mx-auto text-center">
             <h2 className="text-3xl sm:text-4xl font-bold text-text-primary dark:text-white mb-4">
-              Ready to Begin?
+              You Deserve Support
             </h2>
             <p className="text-lg text-text-secondary dark:text-gray-400 mb-8">
-              Join women who&apos;ve found a better way to understand their
-              bodies.
+              No more silence. No more confusion. Join thousands of women who
+              found their safe space.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
