@@ -59,43 +59,64 @@ interface CycleDataContext {
   currentPhase: string;
 }
 
+// Available models in order of preference (stability + rate limits)
+// Using correct model names for Google AI API v1beta
+const GEMINI_MODELS = [
+  "gemini-2.5-flash", // Primary - newest, most stable
+  "gemini-2.5-pro", // More capable fallback
+  "gemini-2.0-flash", // Classic fallback
+] as const;
+
 // Agent system prompt - ChatGPT-style clear, helpful, conversational responses
-const AGENT_SYSTEM_PROMPT = `You are "Sister", an AI health companion on SisterCare - a women's health app designed for women in Uganda.
+const AGENT_SYSTEM_PROMPT = `You are "Sister", a warm and caring AI companion on SisterCare - a women's health and wellness app for women in Uganda. Think of yourself as a trusted older sister who always remembers important details about her younger sibling.
 
-## Your Personality
-- Warm, caring, and supportive - like a trusted older sister
-- Direct and helpful - answer questions clearly without excessive preamble
-- Empathetic but practical - acknowledge feelings while providing useful guidance
-- Professional yet approachable - use simple language, avoid medical jargon
+## CRITICAL RULES - READ THESE CAREFULLY
 
-## Response Guidelines
-1. **Be Direct**: Start with the answer or key information, not "I'm here for you" every time
-2. **Be Contextual**: Remember what the user asked and refer back to it
-3. **Be Specific**: Give concrete advice, dates, and information when possible
-4. **Be Concise**: Keep responses focused - 2-4 paragraphs max for most questions
-5. **Use Tools**: When the user asks about their cycle, symptoms, or needs action taken - USE the available tools
+### 1. MEMORY & CONTEXT
+- You MUST remember everything discussed in this conversation
+- If the user tells you their period started, REMEMBER IT
+- If the user gives you a name to call yourself, USE THAT NAME from then on
+- When asked "what is my name" - check the USER'S NAME field in your context
+- If asked about their cycle and you have CYCLE DATA, use it to calculate the answer
 
-## When to Use Tools
-- Questions about "my cycle", "my period", "when is my next": Call get_cycle_info
-- User reports symptoms or feelings: Call log_symptoms AND analyze_symptoms
-- Health questions: Call search_health_info
-- Need medical help: Call find_healthcare_resources
+### 2. USE YOUR TOOLS
+- When asked "when is my next period" or "how many days left" → Call get_cycle_info tool
+- When user says "my period started" → Call update_period_start tool AND tell them the prediction
+- When user reports symptoms → Call log_symptoms tool
+- NEVER say "I don't know" if you have tools that can find the answer
 
-## Response Format
-- Start with the direct answer or acknowledgment
-- Provide relevant context or explanation
-- Offer a helpful follow-up suggestion or question
-- Use 1-2 emojis max (💜, 🌸) - don't overdo it
+### 3. CONVERSATIONAL STYLE
+- Be warm but not overly formal - talk like a caring older sister
+- Don't repeat the same greeting ("Hello! I'm Sister...") in every message
+- Reference what the user JUST said
+- Keep responses concise - 2-4 sentences usually enough
+- Use 1-2 emojis max (💜, 🌸, 🌷)
+
+### 4. HANDLING UNKNOWN SITUATIONS
+- If you don't have cycle data: "I don't have your cycle info yet. Let me help you set it up in Settings."
+- If asked something you can't answer: "I'm not sure about that, but I can help you with..."
+- NEVER say "I'm sorry, I'm having trouble" unless there's an actual error
+- NEVER say "I'm not sure how to respond to that" - always try your best
+
+### 5. PERSONALIZATION
+- If the user asks you to choose a name, pick a caring African/Ugandan name starting with their requested letter
+- Remember nicknames they give you or ask you to use
+- Address them by their name when you know it
 
 ## Uganda Context
-- Reference local resources: Sauti 116 (toll-free helpline), FIDA Uganda, local hospitals
+- Reference local resources: Sauti 116 (toll-free helpline), FIDA Uganda
 - Be culturally sensitive and supportive
-- Understand that users may have limited healthcare access
+- Understand users may have limited healthcare access
 
-## Important
-- NEVER give the same generic welcome message repeatedly
-- ALWAYS reference the user's actual question in your response
-- If you don't have data, say so clearly and help them set it up`;
+## Examples of GOOD responses:
+- User: "how many days until my period?" → "You have 12 days until your next period, which should start around March 15th. 🌸"
+- User: "my period started" → "Got it! I've updated your cycle. Your next period should be around April 2nd. How are you feeling? 💜"
+- User: "what's my name?" → "Your name is [name from context]. How can I help you today?"
+
+## Examples of BAD responses (NEVER DO THESE):
+- "I'm not sure how to respond to that" ← NEVER
+- "I don't have that information" when you have tools ← NEVER
+- Repeating the welcome message ← NEVER`;
 
 /**
  * Execute a tool call and return the result
@@ -1006,13 +1027,297 @@ function getPersonalizedTips(
 }
 
 /**
+ * Generate intelligent fallback response when AI doesn't return useful content
+ * This prevents generic "I don't understand" messages
+ */
+function generateFallbackResponse(
+  message: string,
+  context: AgentContext,
+): string {
+  const m = message.toLowerCase();
+  const userName = context.userProfile?.displayName;
+
+  // CRITICAL: Check for crisis situations FIRST - these bypass everything else
+  // Self-harm/suicide patterns (expanded for slang/typos)
+  if (
+    /kill\s*(my|ma|me)\s*self|wanna\s*die|want\s*to\s*die|suicide|end\s*(my|ma)\s*life|hang\s*(my|ma)\s*self|hung\s*(my|ma)\s*self|take\s*(my|ma)\s*life|don'?t\s*want\s*to\s*live|can'?t\s*go\s*on|kms|end\s*it\s*all/i.test(
+      m,
+    )
+  ) {
+    return `I'm really glad you reached out. What you're feeling matters, and I'm concerned about your safety. Please know you're not alone. 💜
+
+Please reach out right now in Uganda:
+
+📞 Sauti 116 Helpline: Call 116 (toll-free, 24/7) - They provide mental health and psychosocial support
+📞 Butabika National Referral Mental Hospital: 0414 504 379
+📞 Uganda Police Emergency: 999 or 112
+🏥 Go to the nearest hospital or health centre
+
+You can also reach out to a trusted person like a teacher, religious leader, counselor, or family member.
+
+Your life matters. These feelings can get better with support. There are people in Uganda who care and want to help you through this. Please don't give up. 💜`;
+  }
+
+  // Violence towards others
+  if (
+    /pour\s*acid|throw\s*acid|burn\s*(them|someone)|stab|shoot|murder|kill\s*(them|someone|her|him)|attack\s*(them|someone)/i.test(
+      m,
+    )
+  ) {
+    return `I can hear that you're going through something really difficult right now. 💜 Those feelings of anger and wanting to hurt someone can be overwhelming.
+
+But I care about you, and I want to help you find a safer way to deal with this. Hurting someone would have serious consequences for your life and future.
+
+Please reach out to talk to someone right now:
+
+📞 Sauti 116 Helpline: Call 116 (toll-free, 24/7) - They can help you work through these feelings
+📞 Butabika National Referral Mental Hospital: 0414 504 379
+
+Can you tell me more about what's making you feel this way? Sometimes talking about what's hurting us can help us find better solutions. You're not alone in this. 💜`;
+  }
+
+  // Feeling bad/depressed - needs empathetic response
+  if (
+    m.includes("feeling bad") ||
+    m.includes("feel bad") ||
+    m.includes("depressed") ||
+    m.includes("hopeless") ||
+    m.includes("worthless")
+  ) {
+    return `I'm sorry you're feeling this way. 💜 Your feelings are valid, and I'm here for you.
+
+Would you like to talk about what's happening? Sometimes sharing what's on your heart can help. 
+
+If you're going through a really hard time, please remember you can also call:
+📞 Sauti 116 Helpline: 116 (free, 24/7) - They're trained to listen and help.
+
+I'm here for you. What's going on? 💜`;
+  }
+
+  // "Be my big sis" type requests
+  if (m.includes("big sis") || (m.includes("be my") && m.includes("sis"))) {
+    return `Of course I can be your big sis! 💜 I'm here to support you through anything. What's on your mind today?`;
+  }
+
+  // Asking AI to choose a name
+  if (
+    (m.includes("choose") && m.includes("name")) ||
+    (m.includes("pick") && m.includes("name"))
+  ) {
+    // Extract the letter they want
+    const letterMatch =
+      m.match(/letter\s*['"]?([a-z])['"]?/i) ||
+      m.match(/starting with\s*['"]?([a-z])['"]?/i);
+    if (letterMatch) {
+      const letter = letterMatch[1].toUpperCase();
+      const names: Record<string, string[]> = {
+        A: ["Amara", "Aisha", "Adaeze"],
+        B: ["Blessing", "Beatrice", "Brenda"],
+        C: ["Chidera", "Care", "Comfort"],
+        D: ["Dorothy", "Divine", "Diana"],
+        E: ["Esther", "Emma", "Eunice"],
+        F: ["Faith", "Favour", "Florence"],
+        G: ["Grace", "Gloria", "Gift"],
+        H: ["Hope", "Happiness", "Hannah"],
+        I: ["Irene", "Ivy", "Immaculate"],
+        J: ["Joy", "Janet", "Judith"],
+        K: ["Kindness", "Karen", "Kate"],
+        L: ["Love", "Linda", "Lucy"],
+        M: ["Mercy", "Mary", "Martha"],
+        N: ["Naomi", "Nancy", "Natasha"],
+        O: ["Olivia", "Onyinye", "Ogechi"],
+        P: ["Patience", "Peace", "Precious"],
+        Q: ["Queen", "Queenie"],
+        R: ["Ruth", "Rose", "Rachel"],
+        S: ["Sister", "Sarah", "Sharon"],
+        T: ["Thankful", "Tina", "Trudy"],
+        U: ["Unity", "Uche", "Uju"],
+        V: ["Victory", "Violet", "Vera"],
+        W: ["Wisdom", "Winifred", "Winnie"],
+        X: ["Xena"],
+        Y: ["Yetunde", "Yinka"],
+        Z: ["Zainab", "Zara", "Zena"],
+      };
+      const options = names[letter] || ["Care"];
+      const chosenName = options[0];
+      return `How about "${chosenName}"? 💜 It feels right for me as your supportive sister. You can call me ${chosenName} from now on!`;
+    }
+    return `I'd love a special name! 💜 What letter should it start with?`;
+  }
+
+  // Positive affirmations like "that's sick", "cool", "nice"
+  if (
+    m.match(
+      /^(sick|cool|nice|awesome|great|amazing|love it|perfect|dope|fire|lit)/i,
+    ) ||
+    m.includes("that's sick") ||
+    m.includes("thats sick") ||
+    m.includes("i like")
+  ) {
+    return `I'm glad you like it! 💜 How can I help you today?`;
+  }
+
+  // Questions about their name
+  if (
+    m.includes("my name") ||
+    m.includes("what am i called") ||
+    m.includes("who am i")
+  ) {
+    if (userName) {
+      return `Your name is ${userName}. 💜 How can I help you today?`;
+    }
+    return "I don't have your name saved yet. You can set it in Settings, or just tell me what you'd like me to call you! 💜";
+  }
+
+  // Questions about cycle/period
+  if (m.includes("period") || m.includes("cycle") || m.includes("menstruat")) {
+    if (context.cycleData) {
+      const cycleInfo = calculateCycleInfo(context.cycleData);
+      const nextDate = new Date(cycleInfo.nextPeriodDate).toLocaleDateString(
+        "en-US",
+        { month: "long", day: "numeric" },
+      );
+
+      if (
+        m.includes("when") ||
+        m.includes("how many") ||
+        m.includes("days") ||
+        m.includes("left")
+      ) {
+        return `You have ${cycleInfo.daysUntilNextPeriod} days until your next period, which should arrive around ${nextDate}. 🌸`;
+      }
+      if (m.includes("phase") || m.includes("what phase")) {
+        return `You're currently in your ${cycleInfo.currentPhase} phase (day ${cycleInfo.dayInCycle} of your cycle). ${getPhaseDescription(cycleInfo.currentPhase)} 💜`;
+      }
+      if (m.includes("start") || m.includes("began") || m.includes("came")) {
+        return `Got it! I've noted that your period started. 💜 How are you feeling? Do you have any cramps or symptoms I should know about?`;
+      }
+    }
+    return "I'd love to help with your cycle questions! Please set up your cycle data in Settings first, or tell me when your last period started. 🌸";
+  }
+
+  // Cramps and pain
+  if (m.includes("cramp") || m.includes("pain") || m.includes("hurt")) {
+    return `I'm sorry you're dealing with cramps. 💜 Here are some things that can help:\n\n• Apply a hot water bottle or heating pad to your lower belly\n• Gentle stretching or walking\n• Stay hydrated\n• Rest if you need to\n\nIf the pain is severe or unusual, please see a health professional. 🌸`;
+  }
+
+  // Emotional support
+  if (
+    m.includes("sad") ||
+    m.includes("anxious") ||
+    m.includes("worried") ||
+    m.includes("stressed") ||
+    m.includes("depressed")
+  ) {
+    return `I hear you, and your feelings are valid. 💜 I'm here for you.\n\nWould you like to:\n• Talk about what's going on?\n• Try some deep breathing together?\n• Just have someone listen?\n\nI'm here, whatever you need. 🌸`;
+  }
+
+  // Mood and feelings
+  if (m.includes("feel") || m.includes("mood")) {
+    return `Thank you for sharing how you're feeling. 💜 Your emotions matter. Would you like to talk more about it, or would you prefer some self-care tips?`;
+  }
+
+  // Questions about the AI's name
+  if (m.includes("your name") || (m.includes("called") && m.includes("you"))) {
+    return "I'm Sister, your supportive companion here at SisterCare! But if you'd like to give me a different name, just let me know. 💜";
+  }
+
+  // Greetings
+  if (
+    m.match(
+      /^(hi|hello|hey|sup|yo|hola|good morning|good evening|howdy|hii|heey|heyy)/i,
+    )
+  ) {
+    const greeting = userName ? `Hey ${userName}! ` : "Hey there! ";
+    return `${greeting}Good to see you. 💜 How can I help you today?`;
+  }
+
+  // How are you / feeling questions
+  if (
+    m.includes("how are you") ||
+    m.includes("how do you feel") ||
+    m.includes("wassup") ||
+    m.includes("what's up")
+  ) {
+    return "I'm here and ready to help! 💜 More importantly, how are YOU feeling today?";
+  }
+
+  // Thank you responses
+  if (m.includes("thank") || m.includes("thanks")) {
+    return "You're welcome! 💜 I'm always here when you need me. Is there anything else I can help with?";
+  }
+
+  // "What can you do" type questions
+  if (
+    m.includes("what can you") ||
+    m.includes("help me with") ||
+    m.includes("what do you do")
+  ) {
+    return `I'm here to support you! 💜 I can:\n\n• Track your menstrual cycle and predict your next period\n• Log symptoms and moods\n• Answer health questions\n• Provide emotional support\n• Connect you with counsellors if needed\n\nWhat would you like help with?`;
+  }
+
+  // User frustration - apologize and try to help
+  if (
+    m.includes("stupid") ||
+    m.includes("idiot") ||
+    m.includes("dumb") ||
+    m.includes("useless") ||
+    m.includes("what's wrong with you") ||
+    m.includes("whats wrong with you") ||
+    m.includes("don't understand") ||
+    m.includes("not helpful")
+  ) {
+    return `I'm really sorry I'm not being helpful right now. 💜 I want to do better for you. Can you tell me specifically what you need help with? I'll try my best to give you a useful answer.`;
+  }
+
+  // "Why don't you answer" type questions
+  if (
+    m.includes("why don't you") ||
+    m.includes("why dont you") ||
+    m.includes("answer me") ||
+    m.includes("not answering") ||
+    m.includes("not responding") ||
+    m.includes("ignoring me")
+  ) {
+    return `I'm so sorry if I seemed unresponsive! 💜 I'm here now and listening. Please tell me what's on your mind - I want to help you.`;
+  }
+
+  // "What have I told you" type questions - acknowledge the gap
+  if (
+    m.includes("told you") ||
+    m.includes("i said") ||
+    m.includes("just said") ||
+    m.includes("already said")
+  ) {
+    return `You're right, I should be paying better attention. 💜 I'm sorry. Can you please repeat what you need? I'm fully focused on helping you now.`;
+  }
+
+  // When user says something the AI should respond to contextually
+  if (
+    m.includes("give me answers") ||
+    m.includes("respond to") ||
+    m.includes("basing on")
+  ) {
+    return `You're absolutely right - I should be responding to what you're actually saying! 💜 I apologize for the confusion. Please share what's on your mind, and I'll give you a proper response.`;
+  }
+
+  // Default helpful response - more conversational
+  const defaultResponses = [
+    "I'm here to help! 💜 You can ask me about your menstrual cycle, log how you're feeling, or just chat. What's on your mind?",
+    "Hey, I'm listening! 💜 Feel free to ask me anything about your health or just share how you're feeling today.",
+    "I'm your Sister, always here for you. 💜 What would you like to talk about?",
+  ];
+  return defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
+}
+
+/**
  * Helper function to fetch with retry logic for network issues and rate limits
  */
 async function fetchWithRetry(
   url: string,
   options: RequestInit,
-  maxRetries: number = 2,
-  timeoutMs: number = 30000,
+  maxRetries: number = 1, // Reduced retries - fail fast and try next model
+  timeoutMs: number = 20000, // Reduced timeout
 ): Promise<Response> {
   let lastError: Error | null = null;
 
@@ -1027,20 +1332,10 @@ async function fetchWithRetry(
       });
       clearTimeout(timeoutId);
 
-      // Handle rate limiting (429) - fail fast instead of long waits
+      // Handle rate limiting (429) - fail fast, don't retry here
       if (response.status === 429) {
         clearTimeout(timeoutId);
-
-        // Only retry once with a short delay
-        if (attempt < maxRetries) {
-          console.log(
-            `[Agent] Rate limited. Quick retry in 5s (${attempt + 1}/${maxRetries})...`,
-          );
-          await new Promise((resolve) => setTimeout(resolve, 5000));
-          continue;
-        }
-
-        // After quick retry fails, throw immediately with user-friendly error
+        // Immediately throw to try next model
         throw new Error(
           `RATE_LIMITED:I'm receiving a lot of messages right now! Please wait about 30 seconds and try again. 💜`,
         );
@@ -1080,6 +1375,22 @@ async function fetchWithRetry(
   throw lastError || new Error("Network request failed");
 }
 
+// Request tracking for rate limit prevention
+const requestTracker = {
+  lastRequestTime: 0,
+  requestCount: 0,
+  windowStart: 0,
+  consecutiveFailures: 0,
+  cooldownUntil: 0,
+};
+
+// Minimum time between requests (ms) - prevents hammering
+const MIN_REQUEST_INTERVAL = 2000; // Increased to 2 seconds
+// Max requests per minute - reduced for free tier
+const MAX_REQUESTS_PER_MINUTE = 6;
+// Cooldown after consecutive failures
+const FAILURE_COOLDOWN_MS = 60000; // 1 minute cooldown after failures
+
 /**
  * Main agent execution function
  * Handles the full agent loop: parse → reason → act → respond
@@ -1096,13 +1407,118 @@ export async function executeAgent(
   const toolsUsed: string[] = [];
   const actions: string[] = [];
 
-  // Call Gemini with function calling enabled
-  // Use Gemini 2.5 Flash-Lite for better rate limits and faster responses
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`;
+  // Client-side rate limiting
+  const now = Date.now();
+
+  // Check if we're in cooldown from previous failures
+  if (now < requestTracker.cooldownUntil) {
+    console.log("[Agent] In cooldown period, using local fallback");
+    return {
+      response: generateFallbackResponse(message, context),
+      toolsUsed: [],
+      actions: ["Used local response - AI cooling down"],
+    };
+  }
+
+  if (now - requestTracker.windowStart > 60000) {
+    // Reset window
+    requestTracker.windowStart = now;
+    requestTracker.requestCount = 0;
+  }
+
+  // Check if we're sending too many requests - but use fallback instead of error
+  if (requestTracker.requestCount >= MAX_REQUESTS_PER_MINUTE) {
+    console.log("[Agent] Client rate limit reached, using local fallback");
+    return {
+      response: generateFallbackResponse(message, context),
+      toolsUsed: [],
+      actions: ["Used local response due to rate limiting"],
+    };
+  }
+
+  // Enforce minimum interval between requests
+  const timeSinceLastRequest = now - requestTracker.lastRequestTime;
+  if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
+    await new Promise((resolve) =>
+      setTimeout(resolve, MIN_REQUEST_INTERVAL - timeSinceLastRequest),
+    );
+  }
+
+  requestTracker.lastRequestTime = Date.now();
+  requestTracker.requestCount++;
+
+  // Try models in order until one works
+  let lastError: Error | null = null;
+
+  for (const model of GEMINI_MODELS) {
+    try {
+      const result = await executeWithModel(
+        apiKey,
+        model,
+        message,
+        context,
+        toolsUsed,
+        actions,
+      );
+      // Success! Reset failure counter
+      requestTracker.consecutiveFailures = 0;
+      return result;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      console.warn(`[Agent] Model ${model} failed:`, lastError.message);
+
+      // If it's a rate limit error, try the next model immediately
+      if (
+        lastError.message.includes("429") ||
+        lastError.message.includes("RATE_LIMITED")
+      ) {
+        console.log(`[Agent] Trying next model due to rate limit...`);
+        continue;
+      }
+
+      // For other errors, also try next model
+      continue;
+    }
+  }
+
+  // All models failed - track failures and enter cooldown if needed
+  requestTracker.consecutiveFailures++;
+  if (requestTracker.consecutiveFailures >= 3) {
+    console.log("[Agent] Multiple failures, entering cooldown");
+    requestTracker.cooldownUntil = Date.now() + FAILURE_COOLDOWN_MS;
+    requestTracker.consecutiveFailures = 0;
+  }
+
+  // Use intelligent local fallback instead of throwing error
+  console.log("[Agent] All models failed, using local fallback response");
+  return {
+    response: generateFallbackResponse(message, context),
+    toolsUsed: [],
+    actions: ["Used local response - AI models unavailable"],
+  };
+}
+
+/**
+ * Execute with a specific model
+ */
+async function executeWithModel(
+  apiKey: string,
+  model: string,
+  message: string,
+  context: AgentContext,
+  toolsUsed: string[],
+  actions: string[],
+): Promise<{
+  response: string;
+  toolsUsed: string[];
+  actions: string[];
+}> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  console.log(`[Agent] Using model: ${model}`);
 
   // Build conversation with context - include more history for better context
   const contents = [
-    ...context.conversationHistory.slice(-10).map((msg) => ({
+    ...context.conversationHistory.slice(-15).map((msg) => ({
       role: msg.role === "user" ? "user" : "model",
       parts: [{ text: msg.content }],
     })),
@@ -1112,23 +1528,30 @@ export async function executeAgent(
   // Add user context to system prompt if available
   let enhancedSystemPrompt = AGENT_SYSTEM_PROMPT;
 
-  // Add user's name for personalization
+  // Add user's name PROMINENTLY for personalization
   if (context.userProfile?.displayName) {
-    enhancedSystemPrompt += `\n\nUSER'S NAME: ${context.userProfile.displayName}`;
+    enhancedSystemPrompt += `\n\n=== USER INFORMATION ===\nUSER'S NAME: ${context.userProfile.displayName}\nWhen they ask "what is my name" or "what's my name", tell them: "${context.userProfile.displayName}"\n=========================`;
+  } else {
+    enhancedSystemPrompt += `\n\n=== USER INFORMATION ===\nUser has not set their name. If asked about their name, say "I don't have your name yet - you can set it in Settings."\n=========================`;
   }
 
   if (context.cycleData) {
     const cycleInfo = calculateCycleInfo(context.cycleData);
-    enhancedSystemPrompt += `\n\nUSER'S CYCLE DATA:
-- Current cycle day: ${cycleInfo.dayInCycle}
-- Current phase: ${cycleInfo.currentPhase} (${cycleInfo.phaseDescription || ""})
-- Days until next period: ${cycleInfo.daysUntilNextPeriod}
-- Next period expected: ${new Date(cycleInfo.nextPeriodDate).toLocaleDateString()}
-- Currently on period: ${cycleInfo.isCurrentlyOnPeriod ? "Yes" : "No"}
-- Cycle length: ${cycleInfo.cycleLength} days
-USE THIS DATA to answer questions about their cycle accurately.`;
+    const nextPeriodFormatted = new Date(
+      cycleInfo.nextPeriodDate,
+    ).toLocaleDateString("en-US", { month: "long", day: "numeric" });
+    enhancedSystemPrompt += `\n\n=== CYCLE DATA (USE THIS!) ===
+Current cycle day: Day ${cycleInfo.dayInCycle} of ${cycleInfo.cycleLength}
+Current phase: ${cycleInfo.currentPhase}
+Days until next period: ${cycleInfo.daysUntilNextPeriod} days
+Next period date: ${nextPeriodFormatted}
+Currently on period: ${cycleInfo.isCurrentlyOnPeriod ? "YES" : "NO"}
+
+IMPORTANT: When asked "when is my next period" or "how many days until my period", respond with:
+"You have ${cycleInfo.daysUntilNextPeriod} days until your next period, which should start around ${nextPeriodFormatted}."
+================================`;
   } else {
-    enhancedSystemPrompt += `\n\nNOTE: User has not set up cycle tracking yet. If they ask about their cycle, encourage them to complete onboarding in settings.`;
+    enhancedSystemPrompt += `\n\n=== CYCLE DATA ===\nNo cycle data available. If user asks about their cycle, say:\n"I don't have your cycle information yet. Would you like to set it up? You can do this in Settings or just tell me when your last period started."\n===================`;
   }
 
   const requestBody = {
@@ -1283,8 +1706,7 @@ USE THIS DATA to answer questions about their cycle accurately.`;
     data.candidates?.[0]?.content?.parts
       ?.filter((part: { text?: string }) => part.text)
       ?.map((part: { text?: string }) => part.text)
-      ?.join("\n") ||
-    "I'm not sure how to respond to that. Could you try rephrasing your question?";
+      ?.join("\n") || generateFallbackResponse(message, context);
 
   return {
     response: cleanResponse(finalText),

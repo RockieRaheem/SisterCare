@@ -22,14 +22,18 @@ const CRISIS_PATTERNS = {
     familyPattern:
       /(parent|father|mother|dad|mom|uncle|aunt|brother|sister|family|relative|step|stepfather|stepmother|stepdad|stepmom|guardian|boyfriend|partner|husband|wife|grandpa|grandma|grandfather|grandmother|cousin|neighbor|teacher|coach|boss)/,
   },
+  // Extended self-harm patterns to catch slang, typos, and informal language
   selfHarm:
-    /(kill myself|want to die|suicide|suicidal|end my life|self.?harm|cutting myself|hurt myself|don't want to live|no reason to live)/,
+    /(kill\s*(my|ma|me)\s*self|wanna\s*die|want\s*to\s*die|suicide|suicidal|end\s*(my|ma)\s*life|self.?harm|cutting\s*(my|ma)\s*self|hurt\s*(my|ma)\s*self|don'?t\s*want\s*to\s*live|no\s*reason\s*to\s*live|hang\s*(my|ma)\s*self|hung\s*(my|ma)\s*self|take\s*(my|ma)\s*(own\s*)?life|jump\s*off|overdose|poison\s*(my|ma)\s*self|kms|end\s*it\s*all|don'?t\s*wanna\s*live|cant\s*go\s*on|can'?t\s*take\s*it\s*anymore)/i,
   harassment:
     /(sexual.?harass|harassing me|stalking|stalker|sending me nudes|asking for nudes|creepy messages|inappropriate messages|touched without consent)/,
   danger:
     /(in danger|not safe|scared for my life|someone is going to hurt me|threatened me|threatening)/,
   generalAbuse:
     /(abusive|abuse|abusing|abused|being beaten|someone hits me|being hurt|mistreat|mistreating|hurts me|beating me)/,
+  // Violence towards others - needs intervention
+  violence:
+    /(pour\s*acid|throw\s*acid|burn\s*(them|someone|her|him)|stab|shoot|murder|kill\s*(them|someone|her|him)|attack\s*(them|someone|her|him)|hurt\s*(them|someone|her|him))/i,
 };
 
 // Crisis responses with Uganda-specific resources
@@ -99,6 +103,17 @@ Resources:
 🌐 Report online: sauti.mglsd.go.ug/sauti/report
 
 Would you feel comfortable sharing more about what's happening? I want to make sure you get the right help.`,
+
+  violence: `I can hear that you're going through something really difficult right now. 💜 Those feelings of anger and wanting to hurt someone can be overwhelming.
+
+But I care about you, and I want to help you find a safer way to deal with this. Hurting someone would have serious consequences for your life and future.
+
+Please reach out to talk to someone right now:
+
+📞 Sauti 116 Helpline: Call 116 (toll-free, 24/7) - They can help you work through these feelings
+📞 Butabika National Referral Mental Hospital: 0414 504 379
+
+Can you tell me more about what's making you feel this way? Sometimes talking about what's hurting us can help us find better solutions. You're not alone in this. 💜`,
 };
 
 /**
@@ -116,9 +131,14 @@ function checkForCrisis(message: string): string | null {
     return CRISIS_RESPONSES.familyAbuse;
   }
 
-  // Self-harm/suicide detection
+  // Self-harm/suicide detection - HIGHEST PRIORITY
   if (CRISIS_PATTERNS.selfHarm.test(m)) {
     return CRISIS_RESPONSES.selfHarm;
+  }
+
+  // Violence towards others - needs intervention
+  if (CRISIS_PATTERNS.violence.test(m)) {
+    return CRISIS_RESPONSES.violence;
   }
 
   // Sexual harassment/assault
@@ -315,7 +335,7 @@ export async function GET() {
       "health_reports",
       "personalized_tips",
     ],
-    model: "gemini-2.5-flash-lite",
+    models: ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"],
     functionsAvailable: 12,
     apiKeyConfigured: !!apiKey,
     description: "SisterCare AI - Your supportive health companion",
