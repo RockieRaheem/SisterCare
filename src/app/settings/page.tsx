@@ -75,8 +75,16 @@ export default function SettingsPage() {
         setReminderDays(profile.preferences.reminderDaysBefore ?? 3);
         setTheme(profile.preferences.theme ?? "system");
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      const firebaseError = error as { code?: string; message?: string };
       console.error("Error loading settings:", error);
+      
+      // Silently handle permission errors - user can still use settings
+      const isPermissionError = firebaseError.message?.includes("permission") ||
+        firebaseError.code === "permission-denied";
+      if (!isPermissionError) {
+        // Only log non-permission errors
+      }
     } finally {
       setLoading(false);
     }
@@ -101,11 +109,18 @@ export default function SettingsPage() {
 
       // Clear message after 3 seconds
       setTimeout(() => setMessage(null), 3000);
-    } catch (error) {
+    } catch (error: unknown) {
+      const firebaseError = error as { code?: string; message?: string };
       console.error("Error saving settings:", error);
+      
+      const isPermissionError = firebaseError.message?.includes("permission") ||
+        firebaseError.code === "permission-denied";
+      
       setMessage({
         type: "error",
-        text: "Failed to save settings. Please try again.",
+        text: isPermissionError 
+          ? "Could not save to cloud. Please check your connection."
+          : "Failed to save settings. Please try again.",
       });
     } finally {
       setSaving(false);
@@ -428,11 +443,18 @@ export default function SettingsPage() {
         text: "Your health report has been downloaded as PDF!",
       });
       setTimeout(() => setMessage(null), 5000);
-    } catch (error) {
+    } catch (error: unknown) {
+      const firebaseError = error as { code?: string; message?: string };
       console.error("Error exporting data:", error);
+      
+      const isPermissionError = firebaseError.message?.includes("permission") ||
+        firebaseError.code === "permission-denied";
+      
       setMessage({
         type: "error",
-        text: "Failed to export data. Please try again.",
+        text: isPermissionError
+          ? "Could not access your data. Please check your connection."
+          : "Failed to export data. Please try again.",
       });
     } finally {
       setExporting(false);

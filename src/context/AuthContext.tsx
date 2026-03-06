@@ -69,12 +69,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const firebaseError = error as { code?: string; message?: string };
       console.error("Error loading user profile:", error);
 
-      // If offline, create a temporary local profile and retry later
-      if (
+      // Handle offline, unavailable, or permission errors
+      const isOfflineError =
         firebaseError.message?.includes("offline") ||
-        firebaseError.code === "unavailable"
-      ) {
-        console.log("Firestore offline, using temporary profile...");
+        firebaseError.code === "unavailable";
+      const isPermissionError =
+        firebaseError.message?.includes("permission") ||
+        firebaseError.code === "permission-denied";
+
+      if (isOfflineError || isPermissionError) {
+        console.log(
+          isPermissionError
+            ? "Firestore permission error, using temporary profile..."
+            : "Firestore offline, using temporary profile...",
+        );
         // Set a temporary profile so the user can continue
         setUserProfile({
           uid,
@@ -94,8 +102,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           updatedAt: new Date(),
         } as FullUserProfile);
 
-        // Retry loading after a delay (max 3 retries)
-        if (retryCount < 3) {
+        // Only retry for offline errors (not permission errors)
+        if (isOfflineError && retryCount < 3) {
           setTimeout(
             () => {
               loadUserProfile(

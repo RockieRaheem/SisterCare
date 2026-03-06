@@ -80,9 +80,22 @@ export default function ProfilePage() {
           );
         }
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      const firebaseError = error as { code?: string; message?: string };
       console.error("Error loading profile:", error);
-      setMessage({ type: "error", text: "Failed to load profile data" });
+
+      const isPermissionError =
+        firebaseError.message?.includes("permission") ||
+        firebaseError.code === "permission-denied";
+
+      if (isPermissionError) {
+        setMessage({
+          type: "error",
+          text: "Cloud sync unavailable. Some features may be limited.",
+        });
+      } else {
+        setMessage({ type: "error", text: "Failed to load profile data" });
+      }
     } finally {
       setLoading(false);
     }
@@ -181,12 +194,25 @@ export default function ProfilePage() {
 
       // Reload profile to get fresh data
       await loadProfile();
-    } catch (error) {
+    } catch (error: unknown) {
+      const firebaseError = error as { code?: string; message?: string };
       console.error("Error saving profile:", error);
-      setMessage({
-        type: "error",
-        text: "Failed to save profile. Please try again.",
-      });
+
+      const isPermissionError =
+        firebaseError.message?.includes("permission") ||
+        firebaseError.code === "permission-denied";
+
+      if (isPermissionError) {
+        setMessage({
+          type: "error",
+          text: "Could not save to cloud. Please check your connection and try again.",
+        });
+      } else {
+        setMessage({
+          type: "error",
+          text: "Failed to save profile. Please try again.",
+        });
+      }
     } finally {
       setSaving(false);
     }

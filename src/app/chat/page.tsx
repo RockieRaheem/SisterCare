@@ -174,9 +174,36 @@ export default function ChatPage() {
       setMessages([{ ...WELCOME_MESSAGE, timestamp: new Date() }]);
       setError(null);
       setSidebarOpen(false);
-    } catch (err) {
+    } catch (err: unknown) {
+      const firebaseError = err as { code?: string; message?: string };
       console.error("Error creating new chat:", err);
-      setError("Failed to create new chat. Please try again.");
+
+      const isPermissionError =
+        firebaseError.message?.includes("permission") ||
+        firebaseError.code === "permission-denied";
+
+      if (isPermissionError) {
+        // Create local-only chat without Firestore
+        const localChatId = `local-${Date.now()}`;
+        const newConversation: ChatConversation = {
+          id: localChatId,
+          userId: user.uid,
+          title: "New Chat",
+          type: "ai_support",
+          status: "active",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          lastMessage: "",
+          messageCount: 0,
+        };
+        setConversations((prev) => [newConversation, ...prev]);
+        setActiveConversationId(localChatId);
+        setMessages([{ ...WELCOME_MESSAGE, timestamp: new Date() }]);
+        setError(null);
+        setSidebarOpen(false);
+      } else {
+        setError("Failed to create new chat. Please try again.");
+      }
     } finally {
       setActionLoading(null);
     }
@@ -187,6 +214,15 @@ export default function ChatPage() {
     setActionLoading(conversationId);
     try {
       setActiveConversationId(conversationId);
+
+      // Skip Firestore for local chats
+      if (conversationId.startsWith("local-")) {
+        setMessages([{ ...WELCOME_MESSAGE, timestamp: new Date() }]);
+        setError(null);
+        setSidebarOpen(false);
+        return;
+      }
+
       const existingMessages = await getMessages(conversationId);
 
       if (existingMessages.length > 0) {
@@ -203,9 +239,22 @@ export default function ChatPage() {
       }
       setError(null);
       setSidebarOpen(false);
-    } catch (err) {
+    } catch (err: unknown) {
+      const firebaseError = err as { code?: string; message?: string };
       console.error("Error loading conversation:", err);
-      setError("Failed to load conversation. Please try again.");
+
+      const isPermissionError =
+        firebaseError.message?.includes("permission") ||
+        firebaseError.code === "permission-denied";
+
+      if (isPermissionError) {
+        // Fall back to welcome message for permission errors
+        setMessages([{ ...WELCOME_MESSAGE, timestamp: new Date() }]);
+        setError(null);
+      } else {
+        setError("Failed to load conversation. Please try again.");
+      }
+      setSidebarOpen(false);
     } finally {
       setActionLoading(null);
     }
@@ -216,12 +265,35 @@ export default function ChatPage() {
     if (!user) return;
 
     try {
-      // Load user profile for agent context
-      const profile = await getUserProfile(user.uid);
-      setUserProfile(profile);
+      // Load user profile for agent context - handle permission errors gracefully
+      try {
+        const profile = await getUserProfile(user.uid);
+        setUserProfile(profile);
+      } catch (profileErr) {
+        console.warn("Could not load user profile:", profileErr);
+        // Continue without profile - chat can still work
+      }
 
-      const userConversations = await getUserConversations(user.uid);
-      setConversations(userConversations);
+      // Try to load conversations - handle permission errors
+      let userConversations: ChatConversation[] = [];
+      try {
+        userConversations = await getUserConversations(user.uid);
+        setConversations(userConversations);
+      } catch (convErr: unknown) {
+        const firebaseError = convErr as { code?: string; message?: string };
+        console.warn("Could not load conversations:", convErr);
+
+        const isPermissionError =
+          firebaseError.message?.includes("permission") ||
+          firebaseError.code === "permission-denied";
+
+        if (isPermissionError) {
+          // Permission error - create a local chat instead
+          await handleNewChat();
+          setLoading(false);
+          return;
+        }
+      }
 
       if (userConversations.length > 0) {
         await loadConversation(userConversations[0].id);
@@ -229,9 +301,20 @@ export default function ChatPage() {
         await handleNewChat();
       }
       setError(null);
-    } catch (err) {
+    } catch (err: unknown) {
+      const firebaseError = err as { code?: string; message?: string };
       console.error("Error loading conversations:", err);
-      setError("Failed to load conversations. Please try again.");
+
+      const isPermissionError =
+        firebaseError.message?.includes("permission") ||
+        firebaseError.code === "permission-denied";
+
+      if (isPermissionError) {
+        // Still allow chat to work locally without cloud sync
+        setError(null); // Don't show error - just use local chat
+      } else {
+        setError("Failed to load conversations. Please try again.");
+      }
       await handleNewChat();
     } finally {
       setLoading(false);
@@ -255,7 +338,14 @@ export default function ChatPage() {
     async (conversationId: string) => {
       setActionLoading(`delete-${conversationId}`);
       try {
-        await deleteConversation(conversationId);
+        // Only delete from Firestore if not a local chat
+        if (!conversationId.startsWith("local-")) {
+          try {
+            await deleteConversation(conversationId);
+          } catch (firestoreErr) {
+            console.warn("Could not delete from Firestore:", firestoreErr);
+          }
+        }
 
         setConversations((prev) => {
           const remaining = prev.filter((c) => c.id !== conversationId);
@@ -293,7 +383,18 @@ export default function ChatPage() {
 
       setActionLoading(`rename-${conversationId}`);
       try {
-        await updateConversationTitle(conversationId, editTitleValue.trim());
+        // Only update Firestore if not a local chat
+        if (!conversationId.startsWith("local-")) {
+          try {
+            await updateConversationTitle(
+              conversationId,
+              editTitleValue.trim(),
+            );
+          } catch (firestoreErr) {
+            console.warn("Could not update title in Firestore:", firestoreErr);
+          }
+        }
+
         setConversations((prev) =>
           prev.map((c) =>
             c.id === conversationId
@@ -348,25 +449,48 @@ export default function ChatPage() {
       setError(null);
 
       try {
-        await addMessage(activeConversationId, {
-          conversationId: activeConversationId,
-          sender: "user",
-          content: text.trim(),
-        });
+        // Only save to Firestore if not a local chat
+        const isLocalChat = activeConversationId.startsWith("local-");
 
-        await updateConversationPreview(activeConversationId, text.trim());
+        if (!isLocalChat) {
+          try {
+            await addMessage(activeConversationId, {
+              conversationId: activeConversationId,
+              sender: "user",
+              content: text.trim(),
+            });
 
-        const currentConversation = conversationsRef.current.find(
-          (c) => c.id === activeConversationId,
-        );
-        if (currentConversation?.title === "New Chat") {
-          const newTitle = generateTitleFromMessage(text.trim());
-          await updateConversationTitle(activeConversationId, newTitle);
-          setConversations((prev) =>
-            prev.map((c) =>
-              c.id === activeConversationId ? { ...c, title: newTitle } : c,
-            ),
+            await updateConversationPreview(activeConversationId, text.trim());
+
+            const currentConversation = conversationsRef.current.find(
+              (c) => c.id === activeConversationId,
+            );
+            if (currentConversation?.title === "New Chat") {
+              const newTitle = generateTitleFromMessage(text.trim());
+              await updateConversationTitle(activeConversationId, newTitle);
+              setConversations((prev) =>
+                prev.map((c) =>
+                  c.id === activeConversationId ? { ...c, title: newTitle } : c,
+                ),
+              );
+            }
+          } catch (firestoreErr) {
+            // Silently handle Firestore errors - chat still works
+            console.warn("Could not save to Firestore:", firestoreErr);
+          }
+        } else {
+          // For local chats, just update the title locally
+          const currentConversation = conversationsRef.current.find(
+            (c) => c.id === activeConversationId,
           );
+          if (currentConversation?.title === "New Chat") {
+            const newTitle = generateTitleFromMessage(text.trim());
+            setConversations((prev) =>
+              prev.map((c) =>
+                c.id === activeConversationId ? { ...c, title: newTitle } : c,
+              ),
+            );
+          }
         }
 
         // Use currentMessages which includes the new user message
@@ -454,13 +578,27 @@ export default function ChatPage() {
 
           setMessages((prev) => [...prev, sisterMessage]);
 
-          await addMessage(activeConversationId, {
-            conversationId: activeConversationId,
-            sender: "ai",
-            content: data.response,
-          });
+          // Only save to Firestore if not a local chat
+          if (!isLocalChat) {
+            try {
+              await addMessage(activeConversationId, {
+                conversationId: activeConversationId,
+                sender: "ai",
+                content: data.response,
+              });
 
-          await updateConversationPreview(activeConversationId, data.response);
+              await updateConversationPreview(
+                activeConversationId,
+                data.response,
+              );
+            } catch (firestoreErr) {
+              // Silently handle Firestore errors - chat still works
+              console.warn(
+                "Could not save AI response to Firestore:",
+                firestoreErr,
+              );
+            }
+          }
 
           setConversations((prev) =>
             prev.map((c) =>

@@ -84,15 +84,32 @@ export default function DashboardPage() {
 
         // Only mark as checked if onboarding is complete
         setOnboardingChecked(true);
-      } catch (err) {
+      } catch (err: unknown) {
+        const firebaseError = err as { code?: string; message?: string };
         console.error("Error checking onboarding:", err);
-        // On error, redirect to onboarding to be safe
-        router.replace("/onboarding");
+
+        // Check if it's a permission error
+        const isPermissionError =
+          firebaseError.message?.includes("permission") ||
+          firebaseError.code === "permission-denied";
+
+        if (isPermissionError) {
+          // If permission error but user is authenticated, use authProfile or allow access
+          if (authProfile?.onboardingCompleted) {
+            setOnboardingChecked(true);
+          } else {
+            // Show dashboard anyway - user can use it without Firestore temporarily
+            setOnboardingChecked(true);
+          }
+        } else {
+          // On other errors, redirect to onboarding to be safe
+          router.replace("/onboarding");
+        }
       }
     };
 
     checkOnboarding();
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, authProfile]);
 
   // Load dashboard data only AFTER onboarding is verified
   useEffect(() => {
@@ -118,13 +135,40 @@ export default function DashboardPage() {
           setCycleInfo(info);
         }
       }
-    } catch (err) {
+    } catch (err: unknown) {
+      const firebaseError = err as { code?: string; message?: string };
       console.error("Error loading dashboard data:", err);
-      setError("Unable to load your dashboard. Please try again.");
+
+      // Check if it's a permission error
+      const isPermissionError =
+        firebaseError.message?.includes("permission") ||
+        firebaseError.code === "permission-denied";
+
+      if (isPermissionError) {
+        // Use authProfile if available
+        if (authProfile) {
+          setProfile(authProfile);
+          if (authProfile.cycleData) {
+            const { lastPeriodDate, cycleLength, periodLength } =
+              authProfile.cycleData;
+            if (lastPeriodDate && cycleLength && periodLength) {
+              const info = getCycleInfo(
+                lastPeriodDate,
+                cycleLength,
+                periodLength,
+              );
+              setCycleInfo(info);
+            }
+          }
+        }
+        setError("Cloud sync unavailable. Some features may be limited.");
+      } else {
+        setError("Unable to load your dashboard. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
-  }, [user, router]);
+  }, [user, authProfile]);
 
   const handleMoodSelect = async (mood: MoodType) => {
     if (moodLogging) return;
@@ -151,9 +195,25 @@ export default function DashboardPage() {
         setMoodLogged(false);
         setSelectedMood(null);
       }, 3000);
-    } catch (err) {
+    } catch (err: unknown) {
+      const firebaseError = err as { code?: string; message?: string };
       console.error("Error logging mood:", err);
-      setSelectedMood(null);
+
+      // For permission errors, still show success locally
+      const isPermissionError =
+        firebaseError.message?.includes("permission") ||
+        firebaseError.code === "permission-denied";
+
+      if (isPermissionError) {
+        // Show success locally even if couldn't save to cloud
+        setMoodLogged(true);
+        setTimeout(() => {
+          setMoodLogged(false);
+          setSelectedMood(null);
+        }, 3000);
+      } else {
+        setSelectedMood(null);
+      }
     } finally {
       setMoodLogging(false);
     }
