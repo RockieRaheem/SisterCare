@@ -47,6 +47,12 @@ export const SUPPORTED_LANGUAGES = {
     ttsSpeakerId: 248,
   },
   sw: { code: "sw", name: "Swahili", region: "Regional", ttsSpeakerId: 246 },
+  luo: {
+    code: "luo",
+    name: "Luo",
+    region: "Western Uganda",
+    ttsSpeakerId: 247,
+  },
 };
 
 export type SupportedLanguageCode = keyof typeof SUPPORTED_LANGUAGES;

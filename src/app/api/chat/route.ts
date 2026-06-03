@@ -236,6 +236,7 @@ function toSupportedLanguageCode(language?: string): SupportedLanguageCode {
   if (lower === "acholi" || lower === "ach") return "ach";
   if (lower === "lugbara" || lower === "lgg") return "lgg";
   if (lower === "swahili" || lower === "sw") return "sw";
+  if (lower === "luo" || lower === "luo") return "luo";
   return "eng";
 }
 
