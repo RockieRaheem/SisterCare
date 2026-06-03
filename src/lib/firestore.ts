@@ -1177,6 +1177,34 @@ const STATIC_COUNSELLORS: Counsellor[] = [
     verified: true,
     createdAt: new Date("2019-02-14"),
   },
+  {
+    id: "6",
+    name: "Ms. Joy Nabwire",
+    title: "Relationship Counsellor",
+    bio: "Helping women build healthy relationships and navigate emotional challenges.",
+    specializations: [
+      "Relationship Counselling",
+      "Mental Health",
+      "Sexual Health",
+    ],
+    photoURL:
+      "https://images.unsplash.com/photo-1655720357761-f18ea9e5e7e6?w=600&auto=format&fit=crop&q=60",
+    status: "available",
+    rating: 4.6,
+    reviewCount: 62,
+    yearsExperience: 5,
+    languages: ["English", "Runyankole", "Luganda"],
+    phoneNumber: "+256704057370",
+    whatsappNumber: "+256704057370",
+    availableHours: {
+      start: "11:00",
+      end: "20:00",
+      days: ["Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+    },
+    sessionCount: 398,
+    verified: true,
+    createdAt: new Date("2023-01-10"),
+  },
 ];
 
 export async function routeCounsellor(params: {
@@ -1216,6 +1244,18 @@ export async function routeCounsellor(params: {
         ),
       )
     : [];
+
+  if (preferredLanguage && languageMatched.length === 0) {
+    const staticLanguageMatched = STATIC_COUNSELLORS.filter((c) =>
+      c.languages.some(
+        (l) => l.toLowerCase() === preferredLanguage.toLowerCase(),
+      ),
+    );
+
+    if (staticLanguageMatched.length > 0) {
+      candidates = staticLanguageMatched;
+    }
+  }
 
   const languagePool =
     languageMatched.length > 0 ? languageMatched : candidates;
@@ -1286,14 +1326,17 @@ export async function logAgentEvent(params: {
 }): Promise<string> {
   const { userId, type, severity, conversationId, success } = params;
   const ref = collection(db, "users", userId, "agentEvents");
-  const docRef = await addDoc(ref, {
+  const payload: Record<string, unknown> = {
     userId,
     type,
-    severity,
-    conversationId,
     success: success ?? true,
     createdAt: serverTimestamp(),
-  });
+  };
+
+  if (severity !== undefined) payload.severity = severity;
+  if (conversationId !== undefined) payload.conversationId = conversationId;
+
+  const docRef = await addDoc(ref, payload);
   return docRef.id;
 }
 

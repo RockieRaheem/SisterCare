@@ -503,8 +503,22 @@ export default function ChatPage() {
               );
             }
           } catch (firestoreErr) {
+            const firebaseError = firestoreErr as {
+              code?: string;
+              message?: string;
+            };
+            const isPermissionError =
+              firebaseError.message?.includes("permission") ||
+              firebaseError.code === "permission-denied";
+
             // Silently handle Firestore errors - chat still works
-            console.warn("Could not save to Firestore:", firestoreErr);
+            if (isPermissionError) {
+              console.warn(
+                "Cloud sync unavailable - continuing in local mode.",
+              );
+            } else {
+              console.warn("Could not save to Firestore.");
+            }
           }
         } else {
           // For local chats, just update the title locally
@@ -641,11 +655,22 @@ export default function ChatPage() {
                 data.response,
               );
             } catch (firestoreErr) {
+              const firebaseError = firestoreErr as {
+                code?: string;
+                message?: string;
+              };
+              const isPermissionError =
+                firebaseError.message?.includes("permission") ||
+                firebaseError.code === "permission-denied";
+
               // Silently handle Firestore errors - chat still works
-              console.warn(
-                "Could not save AI response to Firestore:",
-                firestoreErr,
-              );
+              if (isPermissionError) {
+                console.warn(
+                  "Cloud sync unavailable - continuing in local mode.",
+                );
+              } else {
+                console.warn("Could not save AI response to Firestore.");
+              }
             }
           }
 

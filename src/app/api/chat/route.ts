@@ -205,6 +205,7 @@ function inferRequestedLanguage(message: string): string | undefined {
   const m = message.toLowerCase();
   const languageMap: Array<[RegExp, string]> = [
     [/ateso/, "Ateso"],
+    [/runyankole|nyankole|ankole/, "Runyankole"],
     [/luganda|ganda/, "Luganda"],
     [/english/, "English"],
     [/swahili/, "Swahili"],
