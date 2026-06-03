@@ -72,6 +72,18 @@ const WELCOME_MESSAGE: Message = {
   timestamp: new Date(),
 };
 
+function openExternalAction(url: string): void {
+  if (typeof window === "undefined") return;
+
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.target = "_self";
+  anchor.rel = "noreferrer";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+}
+
 export default function ChatPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -97,6 +109,12 @@ export default function ChatPage() {
   const [agentActionStatuses, setAgentActionStatuses] = useState<
     AgentActionStatus[]
   >([]);
+  const [handoffAction, setHandoffAction] = useState<
+    ChatApiResponse["handoffAction"] | null
+  >(null);
+  const [handoffFallbackAction, setHandoffFallbackAction] = useState<
+    ChatApiResponse["handoffFallbackAction"] | null
+  >(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const conversationsRef = useRef<ChatConversation[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -612,21 +630,21 @@ export default function ChatPage() {
         const data = await makeRequest();
 
         setAgentActionStatuses(data.actionStatuses || []);
+        setHandoffAction(data.handoffAction || null);
+        setHandoffFallbackAction(data.handoffFallbackAction || null);
 
         if (data.handoffAction?.autoOpen && typeof window !== "undefined") {
           // Browser/device policies can block dialer opening from web contexts.
-          // Attempt preferred action first, then fallback channel if provided.
-          const beforeHref = window.location.href;
-          window.location.href = data.handoffAction.url;
+          // Use a real link click first; keep a visible manual fallback below.
+          openExternalAction(data.handoffAction.url);
 
           if (
             data.handoffFallbackAction?.autoOpen &&
             data.handoffAction.type === "call"
           ) {
             window.setTimeout(() => {
-              const stillSamePage = window.location.href === beforeHref;
-              if (stillSamePage) {
-                window.location.href = data.handoffFallbackAction!.url;
+              if (document.visibilityState === "visible") {
+                openExternalAction(data.handoffFallbackAction!.url);
               }
             }, 1200);
           }
@@ -1153,6 +1171,47 @@ export default function ChatPage() {
                         </div>
                       );
                     })}
+                  </div>
+                </div>
+              )}
+
+              {handoffAction && (
+                <div className="bg-gradient-to-r from-primary to-purple-600 text-white rounded-2xl p-4 sm:p-5 shadow-lg animate-fade-in">
+                  <p className="text-xs uppercase tracking-wide font-semibold opacity-80">
+                    Direct handoff
+                  </p>
+                  <p className="mt-1 text-sm sm:text-base font-medium">
+                    {handoffAction.type === "call"
+                      ? "Tap to call your counsellor now."
+                      : "Tap to open WhatsApp with your counsellor now."}
+                  </p>
+                  <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                    <button
+                      type="button"
+                      onClick={() => openExternalAction(handoffAction.url)}
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white text-primary font-semibold shadow-sm"
+                    >
+                      <span className="material-symbols-outlined text-lg">
+                        {handoffAction.type === "call" ? "call" : "chat"}
+                      </span>
+                      {handoffAction.label}
+                    </button>
+                    {handoffFallbackAction && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          openExternalAction(handoffFallbackAction.url)
+                        }
+                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 border border-white/30 text-white font-semibold"
+                      >
+                        <span className="material-symbols-outlined text-lg">
+                          {handoffFallbackAction.type === "call"
+                            ? "call"
+                            : "chat"}
+                        </span>
+                        {handoffFallbackAction.label}
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
