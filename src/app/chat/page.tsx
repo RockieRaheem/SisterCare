@@ -261,11 +261,15 @@ export default function ChatPage() {
       setSidebarOpen(false);
     } catch (err: unknown) {
       const firebaseError = err as { code?: string; message?: string };
-      console.error("Error loading conversation:", err);
-
       const isPermissionError =
         firebaseError.message?.includes("permission") ||
         firebaseError.code === "permission-denied";
+
+      if (isPermissionError) {
+        console.warn("Conversation access denied - using local fallback.");
+      } else {
+        console.error("Error loading conversation:", err);
+      }
 
       if (isPermissionError) {
         // Fall back to welcome message for permission errors
@@ -323,11 +327,15 @@ export default function ChatPage() {
       setError(null);
     } catch (err: unknown) {
       const firebaseError = err as { code?: string; message?: string };
-      console.error("Error loading conversations:", err);
-
       const isPermissionError =
         firebaseError.message?.includes("permission") ||
         firebaseError.code === "permission-denied";
+
+      if (isPermissionError) {
+        console.warn("Conversations access denied - using local fallback.");
+      } else {
+        console.error("Error loading conversations:", err);
+      }
 
       if (isPermissionError) {
         // Still allow chat to work locally without cloud sync

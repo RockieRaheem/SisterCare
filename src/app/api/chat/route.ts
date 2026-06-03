@@ -191,6 +191,36 @@ function inferCounsellorSpecialty(message: string): CounsellorSpecialty {
   return "Mental Health";
 }
 
+function normalizeLanguageName(language?: string): string | undefined {
+  if (!language) return undefined;
+  const lower = language.trim().toLowerCase();
+  if (!lower) return undefined;
+
+  if (lower === "en") return "English";
+  if (lower === "lg") return "Luganda";
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
+}
+
+function inferRequestedLanguage(message: string): string | undefined {
+  const m = message.toLowerCase();
+  const languageMap: Array<[RegExp, string]> = [
+    [/ateso/, "Ateso"],
+    [/luganda|ganda/, "Luganda"],
+    [/english/, "English"],
+    [/swahili/, "Swahili"],
+    [/lusoga/, "Lusoga"],
+    [/luo/, "Luo"],
+  ];
+
+  for (const [pattern, language] of languageMap) {
+    if (pattern.test(m)) {
+      return language;
+    }
+  }
+
+  return undefined;
+}
+
 function parsePeriodStartDate(message: string): Date | null {
   const m = message.toLowerCase();
   const now = new Date();
@@ -415,9 +445,14 @@ export async function POST(request: NextRequest) {
 
       try {
         const specialty = inferCounsellorSpecialty(trimmedMessage);
+        const requestedLanguage = inferRequestedLanguage(trimmedMessage);
+        const preferredLanguage =
+          requestedLanguage ||
+          normalizeLanguageName(userProfile?.preferences?.language) ||
+          "English";
         const counsellor = await routeCounsellor({
           specialty,
-          preferredLanguage: userProfile?.preferences?.language || "English",
+          preferredLanguage,
         });
 
         if (counsellor) {

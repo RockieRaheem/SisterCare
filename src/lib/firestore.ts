@@ -1118,6 +1118,30 @@ const STATIC_COUNSELLORS: Counsellor[] = [
     createdAt: new Date("2022-06-10"),
   },
   {
+    id: "4",
+    name: "Ms. Mercy Atim",
+    title: "Adolescent Health Counsellor",
+    bio: "Specialized in supporting young women through puberty and adolescence.",
+    specializations: ["Adolescent Health", "Mental Health", "Menstrual Health"],
+    photoURL:
+      "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=400&h=400&fit=crop&crop=face",
+    status: "available",
+    rating: 4.9,
+    reviewCount: 84,
+    yearsExperience: 7,
+    languages: ["English", "Ateso", "Luganda"],
+    phoneNumber: "+256704057370",
+    whatsappNumber: "+256704057370",
+    availableHours: {
+      start: "08:00",
+      end: "16:00",
+      days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+    },
+    sessionCount: 672,
+    verified: true,
+    createdAt: new Date("2021-09-01"),
+  },
+  {
     id: "5",
     name: "Dr. Patience Nabirye",
     title: "Pregnancy & Postpartum Specialist",
@@ -1185,8 +1209,18 @@ export async function routeCounsellor(params: {
     if (candidates.length === 0) candidates = STATIC_COUNSELLORS;
   }
 
-  const availableFirst = candidates.filter((c) => c.status === "available");
-  const pool = availableFirst.length > 0 ? availableFirst : candidates;
+  const languageMatched = preferredLanguage
+    ? candidates.filter((c) =>
+        c.languages.some(
+          (l) => l.toLowerCase() === preferredLanguage.toLowerCase(),
+        ),
+      )
+    : [];
+
+  const languagePool =
+    languageMatched.length > 0 ? languageMatched : candidates;
+  const availableFirst = languagePool.filter((c) => c.status === "available");
+  const pool = availableFirst.length > 0 ? availableFirst : languagePool;
 
   pool.sort((a, b) => {
     const langA = preferredLanguage
