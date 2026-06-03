@@ -67,7 +67,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUserProfile(profile);
     } catch (error: unknown) {
       const firebaseError = error as { code?: string; message?: string };
-      console.error("Error loading user profile:", error);
 
       // Handle offline, unavailable, or permission errors
       const isOfflineError =
@@ -76,6 +75,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const isPermissionError =
         firebaseError.message?.includes("permission") ||
         firebaseError.code === "permission-denied";
+
+      if (isOfflineError || isPermissionError) {
+        console.warn("Using temporary profile due to Firestore access issue.");
+      } else {
+        console.error("Error loading user profile:", error);
+      }
 
       if (isOfflineError || isPermissionError) {
         console.log(

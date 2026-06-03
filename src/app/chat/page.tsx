@@ -62,6 +62,20 @@ interface ChatApiResponse {
   };
 }
 
+const CHAT_LANGUAGE_OPTIONS: SupportedLanguageCode[] = ["eng", "lug"];
+
+function isPermissionDeniedError(err: unknown): boolean {
+  const e = err as { code?: string; message?: string };
+  const code = (e.code || "").toLowerCase();
+  const message = (e.message || "").toLowerCase();
+  return (
+    code.includes("permission-denied") ||
+    message.includes("permission-denied") ||
+    message.includes("missing or insufficient permissions") ||
+    message.includes("permission")
+  );
+}
+
 const icebreakers = [
   {
     icon: "healing",
@@ -279,12 +293,9 @@ export default function ChatPage() {
       setError(null);
       setSidebarOpen(false);
     } catch (err: unknown) {
-      const firebaseError = err as { code?: string; message?: string };
       console.error("Error creating new chat:", err);
 
-      const isPermissionError =
-        firebaseError.message?.includes("permission") ||
-        firebaseError.code === "permission-denied";
+      const isPermissionError = isPermissionDeniedError(err);
 
       if (isPermissionError) {
         // Create local-only chat without Firestore
@@ -344,10 +355,7 @@ export default function ChatPage() {
       setError(null);
       setSidebarOpen(false);
     } catch (err: unknown) {
-      const firebaseError = err as { code?: string; message?: string };
-      const isPermissionError =
-        firebaseError.message?.includes("permission") ||
-        firebaseError.code === "permission-denied";
+      const isPermissionError = isPermissionDeniedError(err);
 
       if (isPermissionError) {
         console.warn("Conversation access denied - using local fallback.");
@@ -378,7 +386,9 @@ export default function ChatPage() {
         const profile = await getUserProfile(user.uid);
         setUserProfile(profile);
       } catch (profileErr) {
-        console.warn("Could not load user profile:", profileErr);
+        if (!isPermissionDeniedError(profileErr)) {
+          console.warn("Could not load user profile:", profileErr);
+        }
         // Continue without profile - chat can still work
       }
 
@@ -388,12 +398,11 @@ export default function ChatPage() {
         userConversations = await getUserConversations(user.uid);
         setConversations(userConversations);
       } catch (convErr: unknown) {
-        const firebaseError = convErr as { code?: string; message?: string };
-        console.warn("Could not load conversations:", convErr);
+        const isPermissionError = isPermissionDeniedError(convErr);
 
-        const isPermissionError =
-          firebaseError.message?.includes("permission") ||
-          firebaseError.code === "permission-denied";
+        if (!isPermissionError) {
+          console.warn("Could not load conversations:", convErr);
+        }
 
         if (isPermissionError) {
           // Permission error - create a local chat instead
@@ -410,10 +419,7 @@ export default function ChatPage() {
       }
       setError(null);
     } catch (err: unknown) {
-      const firebaseError = err as { code?: string; message?: string };
-      const isPermissionError =
-        firebaseError.message?.includes("permission") ||
-        firebaseError.code === "permission-denied";
+      const isPermissionError = isPermissionDeniedError(err);
 
       if (isPermissionError) {
         console.warn("Conversations access denied - using local fallback.");
@@ -587,13 +593,7 @@ export default function ChatPage() {
               );
             }
           } catch (firestoreErr) {
-            const firebaseError = firestoreErr as {
-              code?: string;
-              message?: string;
-            };
-            const isPermissionError =
-              firebaseError.message?.includes("permission") ||
-              firebaseError.code === "permission-denied";
+            const isPermissionError = isPermissionDeniedError(firestoreErr);
 
             // Silently handle Firestore errors - chat still works
             if (isPermissionError) {
@@ -601,7 +601,7 @@ export default function ChatPage() {
                 "Cloud sync unavailable - continuing in local mode.",
               );
             } else {
-              console.warn("Could not save to Firestore.");
+              console.warn("Could not save to Firestore:", firestoreErr);
             }
           }
         } else {
@@ -739,20 +739,17 @@ export default function ChatPage() {
                 data.response,
               );
             } catch (firestoreErr) {
-              const firebaseError = firestoreErr as {
-                code?: string;
-                message?: string;
-              };
-              const isPermissionError =
-                firebaseError.message?.includes("permission") ||
-                firebaseError.code === "permission-denied";
+              const isPermissionError = isPermissionDeniedError(firestoreErr);
 
               if (isPermissionError) {
                 console.warn(
                   "Cloud sync unavailable - continuing in local mode.",
                 );
               } else {
-                console.warn("Could not save AI response to Firestore.");
+                console.warn(
+                  "Could not save AI response to Firestore:",
+                  firestoreErr,
+                );
               }
             }
           }
@@ -1420,9 +1417,9 @@ export default function ChatPage() {
                   }
                   className="px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg sm:rounded-xl text-text-primary dark:text-white focus:ring-2 focus:ring-primary focus:border-primary transition-all"
                 >
-                  {Object.entries(SUPPORTED_LANGUAGES).map(([code, lang]) => (
+                  {CHAT_LANGUAGE_OPTIONS.map((code) => (
                     <option key={code} value={code}>
-                      {lang.name}
+                      {SUPPORTED_LANGUAGES[code].name}
                     </option>
                   ))}
                 </select>

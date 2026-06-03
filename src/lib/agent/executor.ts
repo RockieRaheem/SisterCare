@@ -103,6 +103,11 @@ const AGENT_SYSTEM_PROMPT = `You are "Sister", a warm and caring AI companion on
 - Remember nicknames they give you or ask you to use
 - Address them by their name when you know it
 
+### 6. LANGUAGE ENFORCEMENT
+- If the user message contains a line in this exact format: "MANDATORY LANGUAGE MODE: <Language>", you MUST write the entire reply only in that language
+- When this mode is present, never answer in English
+- Keep the same empathy and helpfulness while using the required language
+
 ## Uganda Context
 - Reference local resources: Sauti 116 (toll-free helpline), FIDA Uganda
 - Be culturally sensitive and supportive
@@ -1254,6 +1259,57 @@ I'm here for you. What's going on? 💜`;
     m.includes("what do you do")
   ) {
     return `I'm here to support you! 💜 I can:\n\n• Track your menstrual cycle and predict your next period\n• Log symptoms and moods\n• Answer health questions\n• Provide emotional support\n• Connect you with counsellors if needed\n\nWhat would you like help with?`;
+  }
+
+  // Local language intent hints added by the API for Luganda and similar phrases.
+  if (
+    m.includes("i want to talk to a counsellor") ||
+    m.includes("human support") ||
+    m.includes("talk to a counsellor") ||
+    m.includes("counselor")
+  ) {
+    return `Of course - I can help connect you to a counsellor. 💜
+
+If you'd like, I can match you with a counsellor now, or we can talk about what's going on first. If this feels urgent, tell me what's happening and I'll help right away.`;
+  }
+
+  if (
+    m.includes("i have abdominal pain") ||
+    m.includes("i have cramps") ||
+    m.includes("period pain") ||
+    m.includes("lower abdominal pain")
+  ) {
+    return `I'm sorry you're in pain. 💜 For cramps or lower abdominal pain, try:
+
+• A hot water bottle or warm compress on your lower belly
+• Gentle stretching or a short walk
+• Drinking water and resting
+• Avoiding very heavy activity for now
+
+If the pain is severe, unusual, or getting worse, please see a health professional.`;
+  }
+
+  if (
+    m.includes("a girl is pregnant") ||
+    m.includes("pregnant girl") ||
+    m.includes("pregnant")
+  ) {
+    return `If a girl is pregnant, the next best step is to get support from a trusted adult or health worker. 💜
+
+Please try to confirm the pregnancy with a clinic or health professional, and encourage antenatal care as early as possible. If there is fear, pressure, or safety concern, I can also help you think through who to talk to safely.`;
+  }
+
+  if (
+    m.includes("i feel very bad today and need help") ||
+    m.includes("i need help") ||
+    m.includes("feel very bad")
+  ) {
+    return `I'm here with you. 💜 Please tell me a little more about what is happening so I can help in the right way.
+
+If you want, you can tell me:
+• whether it's pain, stress, or fear
+• whether you need a counsellor
+• whether this is about pregnancy, periods, or something else`;
   }
 
   // User frustration - apologize and try to help

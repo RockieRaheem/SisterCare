@@ -79,9 +79,6 @@ export async function speechToText(
   const formData = new FormData();
   formData.append("audio", audioFile);
   formData.append("language", languageCode);
-  formData.append("adapter", languageCode);
-  formData.append("recognise_speakers", "false");
-  formData.append("whisper", "false");
 
   const response = await fetch(`${SUNBIRD_API_URL}/stt`, {
     method: "POST",
@@ -99,8 +96,9 @@ export async function speechToText(
   const data = await response.json();
 
   return {
-    transcript: data.audio_transcription || "",
-    language: data.language,
+    transcript:
+      data.output?.text || data.audio_transcription || data.text || "",
+    language: data.output?.language || data.language || languageCode,
     wasAudioTrimmed: data.was_audio_trimmed || false,
     originalDurationMinutes: data.original_duration_minutes || null,
   };
@@ -138,7 +136,9 @@ export async function detectLanguage(text: string): Promise<{
   const data = await response.json();
 
   return {
-    language: (data.language || "eng") as SupportedLanguageCode,
+    language: (data.output?.language ||
+      data.language ||
+      "eng") as SupportedLanguageCode,
     confidence: data.confidence || 0.9,
   };
 }

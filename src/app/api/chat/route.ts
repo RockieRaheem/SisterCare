@@ -236,7 +236,7 @@ function toSupportedLanguageCode(language?: string): SupportedLanguageCode {
   if (lower === "acholi" || lower === "ach") return "ach";
   if (lower === "lugbara" || lower === "lgg") return "lgg";
   if (lower === "swahili" || lower === "sw") return "sw";
-  if (lower === "luo" || lower === "luo") return "luo";
+  if (lower === "luo") return "luo";
   return "eng";
 }
 
@@ -259,6 +259,123 @@ function inferRequestedLanguage(message: string): string | undefined {
   }
 
   return undefined;
+}
+
+function addLanguageIntentHint(
+  message: string,
+  language: SupportedLanguageCode,
+): string {
+  const normalized = message.trim();
+  const lower = normalized.toLowerCase();
+
+  if (language !== "lug") {
+    return normalized;
+  }
+
+  const intentHints: Array<[RegExp, string]> = [
+    [
+      /(njagala|nnyagala).*(kwogera|okwogera).*(kansala|counsellor|counselor|human help|help)/i,
+      "English meaning: I want to talk to a counsellor or human support.",
+    ],
+    [
+      /(olubuto|lubuto).*(lunuma|lunuma nnyo|lunuma nyo|lumwa|lumye)/i,
+      "English meaning: I have abdominal pain or cramps.",
+    ],
+    [
+      /(mbulila bubi nyo|mbulira bubi nyo|netaga ku buyambi|netaaga ku buyambi|ntaga ku buyambi|nenyaga ku buyambi|need help)/i,
+      "English meaning: I feel very bad today and need help.",
+    ],
+    [
+      /(ku mwana omuwala ali olubuto|omuwala ali olubuto|ali olubuto|pregnant girl|pregnant)/i,
+      "English meaning: A girl is pregnant.",
+    ],
+    [
+      /(kye kitegeeza|kyekitegeeza|kitegeeza ki|what does it mean)/i,
+      "English meaning: What does this mean?",
+    ],
+  ];
+
+  for (const [pattern, hint] of intentHints) {
+    if (pattern.test(lower)) {
+      return `${normalized}\n\n${hint}`;
+    }
+  }
+
+  return normalized;
+}
+
+function getDirectLugandaResponse(message: string): string | null {
+  const m = message.toLowerCase();
+
+  if (
+    /(jebale|jebala|webale|gyebale|osiibye otya|oli otya|hello|hi)/i.test(m)
+  ) {
+    return "Gyebale ko! Ndi Sister wo era ndi wano okukuyamba. 💜 Leero oyagala twogere ku ki?";
+  }
+
+  if (/(tomanyi luganda|togera luganda|toyogera luganda)/i.test(m)) {
+    return "Mmanyi Oluganda era nnyinza okwogera naawe bulungi. 💜 Nsonyiwa bw'otafunye ky'oyagala mangu. Nsaba ombuulire ekizibu kyo mu bigambo ebitono, nkuyambe bulungi.";
+  }
+
+  if (
+    /(njagala|nnyagala).*(kansala|counsellor|counselor|human help)/i.test(m)
+  ) {
+    return "Kale, nsobola okukuyunga ku kansala. 💜 Bw'oyagala nnyinza okukuyamba okufuna omuntu ow'okuyamba kati. Era bw'oba olina akaseera, tusobola okusooka okwogera ku mbeera yo okwanguyiza obuyambi obutuufu.";
+  }
+
+  if (
+    /(olubuto|lubuto).*(lunuma|lunuma nnyo|lunuma nyo|lumwa|lumye)/i.test(m)
+  ) {
+    return "Nsonyiwa oluvannyuma lw'obulumi. 💜 Ku cramp oba obulumi bw'ekifuba ekya wansi, gezaako okussaako enkoona entangaala, okunywa amazzi, okuwummula, n'okwewala okukola ebizito. Singa bulumi bwa maanyi nnyo, laba omukugu mu by'obulamu.";
+  }
+
+  if (
+    /(omutwe).*(gundi bubi|gunuma|gunnuma|bubi nnyo|gulumye|lumwa)/i.test(m)
+  ) {
+    return "Nsonyiwa ku bulumi bw'omutwe. 💜 Gezaako okuwummula mu kifo ekisirifu, nywa amazzi, era obeere wala ku bintu ebireeta olusuku. Singa bulumi bumala ebbanga oba bweyongera, laba omukugu mu by'obulamu.";
+  }
+
+  if (
+    /(ku mwana omuwala ali olubuto|omuwala ali olubuto|ali olubuto|pregnant girl)/i.test(
+      m,
+    )
+  ) {
+    return "Omuwala bw'aba ali olubuto, kirungi okumuyunga ku muntu omukulu oba omukozi w'eby'obulamu mangu. 💜 Muyambe okukebera olubuto mu kliniki, era atandike okulabirirwa mu lubuto mangu singa kisoboka.";
+  }
+
+  if (
+    /(mbulila bubi nyo|mbulira bubi nyo|netaga ku buyambi|netaaga ku buyambi|need help)/i.test(
+      m,
+    )
+  ) {
+    return "Ndi wano okukuyamba. 💜 Nsobola okukutegeera bulungi singa ombuulira ekikukwatako kati. Oyagala obuyambi ku bulumi, ku birowoozo, oba oyagala nnyunge ku kansala?";
+  }
+
+  return null;
+}
+
+function isLanguageSwitchIntent(message: string): boolean {
+  const m = message.toLowerCase();
+  return (
+    /speak|talk|reply|respond|use language|language please|write in/.test(m) ||
+    /toyogera|twogere|yogera/.test(m)
+  );
+}
+
+function getLanguageSwitchConfirmation(
+  language: SupportedLanguageCode,
+): string | null {
+  const responses: Partial<Record<SupportedLanguageCode, string>> = {
+    lug: "Kale, tugenda kwogera mu Luganda. Ndi wano okukuyamba ku by'obulamu bwo. Onyagala twogere ku ki?",
+    nyn: "Ni sawa, twaza kugamba omu Runyankole. Ndi hanu kukuhwera. Niki eki orikwenda tugambeho?",
+    teo: "Erai, itetemuni ka Ateso. Arai ikesi na itungauni. Ijo nu daunitete itunganakini?",
+    luo: "Ber ahinya, wabiro wuoyo e dholuo. An kanyiso ka akweyi. Idwaro wawinjore kuom ang'o?",
+    ach: "Ber, wabedo kawacho i leb Acholi. An tye ka konyi. Imito wa lok ikom ngo?",
+    lgg: "Yoo, mi adri ti Lugbara. Ma adi rika ma ni. Mi oji ni ri nyi?",
+    sw: "Sawa, tutaongea kwa Kiswahili. Niko hapa kukusaidia. Ungependa tuzungumzie nini?",
+  };
+
+  return responses[language] || null;
 }
 
 function parsePeriodStartDate(message: string): Date | null {
@@ -343,6 +460,133 @@ function checkForCrisis(message: string): string | null {
   return null;
 }
 
+async function translateWithGemini(
+  apiKey: string,
+  text: string,
+  targetLanguage: string,
+): Promise<string> {
+  const model = "gemini-2.5-flash";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: [
+                `Translate the text to ${targetLanguage}.`,
+                "Return only the translated text with no commentary.",
+                "",
+                text,
+              ].join("\n"),
+            },
+          ],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.2,
+        maxOutputTokens: 1024,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Gemini translation failed: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const translated = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!translated || typeof translated !== "string") {
+    throw new Error("Gemini translation returned empty output");
+  }
+
+  return translated.trim();
+}
+
+function isProbablyEnglishText(text: string): boolean {
+  const normalized = text.trim().toLowerCase();
+  if (!normalized) return false;
+
+  // Lightweight heuristic for common English-heavy outputs.
+  const englishMarkers = [
+    " i ",
+    " you ",
+    " your ",
+    " the ",
+    " and ",
+    " can ",
+    " please ",
+    "hello",
+    "feel",
+    "today",
+    "help",
+  ];
+
+  let score = 0;
+  for (const marker of englishMarkers) {
+    if (normalized.includes(marker)) score += 1;
+  }
+
+  return score >= 2;
+}
+
+function fallbackLocalizedResponse(
+  originalEnglishText: string,
+  language: SupportedLanguageCode,
+): string {
+  const lower = originalEnglishText.toLowerCase();
+
+  const generic: Partial<Record<SupportedLanguageCode, string>> = {
+    lug: "Ndi wano okukuyamba. Nsaba obuuze ekibuuzo kyo nate mu ngeri ennyangu. 💜",
+    nyn: "Ndi hanu kukuhwera. Nkusaba obuuze eki orikwenda obuyambiho. 💜",
+    teo: "Arai ikesi na itungauni. Kojo akiswomuni itai. 💜",
+    luo: "An kanyiso ka akweyi. Kiyie penjo mariwore kendo. 💜",
+    ach: "An tye ka konyi. Tim ber i penya an kede lok mamek. 💜",
+    lgg: "Ma adi rika ma ni. Mi oji ri nyi bori kuza. 💜",
+    sw: "Niko hapa kukusaidia. Tafadhali uliza swali lako tena kwa urahisi. 💜",
+  };
+
+  const cycleSetup: Partial<Record<SupportedLanguageCode, string>> = {
+    lug: "Nnyinza okukuyamba ku cycle yo. Sooka otegeke cycle data yo mu Settings, oba mpiteko olunaku period yo lwe yasooka okutandika. 🌸",
+    nyn: "Ninyenda kukuhwera aha cycle yawe. Banza oteekateekye cycle data omu Settings, nari ombuurire olunaku orwatandikireho periods. 🌸",
+    teo: "Arai etunganan ka cycle noi. Kobuni akitogogong Settings ka cycle data, arai ijo neni amori na itojokinit periods. 🌸",
+    luo: "Anyalo konyi kuom cycle mari. Chak keto data mar cycle e Settings kata nyisa chieng' mane period maru ochakore. 🌸",
+    ach: "An twero konyi ikom cycle mamegi. Bed i keto cycle data i Settings onyo waci an nino ma period mamegi ocako. 🌸",
+    lgg: "Ma adi rika ma cycle mi. Soko mi dria cycle data ri Settings, ma mi pa ma ndrini ma period mi oco. 🌸",
+    sw: "Ninaweza kukusaidia kuhusu mzunguko wako. Tafadhali weka data ya mzunguko kwenye Settings au niambie tarehe ambayo hedhi yako ilianza. 🌸",
+  };
+
+  const greeting: Partial<Record<SupportedLanguageCode, string>> = {
+    lug: "Ndi Sister wo era ndi wano bulijjo okukuyamba. 💜 Oyagala twogere ku ki?",
+    nyn: "Ndi Sister wawe kandi ndi hanu kukuhwera obwire bwona. 💜 Niki eki orikwenda tugambeho?",
+    teo: "Arai Sister koni, ikesi na itungauni ijo. 💜 Ijo nu daunitete itunganakini?",
+    luo: "An Sister mari kendo an kanyiso ka akweyi. 💜 Idwaro wawinjore kuom ang'o?",
+    ach: "An aye Sister mamegi, tye ka konyi kare weng. 💜 Imito wa lok ikom ngo?",
+    lgg: "Ma Sister mi, ma adi rika ma ni nyonyo. 💜 Mi oji ni ri nyi?",
+    sw: "Mimi ni Sister wako, niko hapa kukusaidia kila wakati. 💜 Ungependa tuzungumzie nini?",
+  };
+
+  if (
+    lower.includes("set up your cycle data") ||
+    lower.includes("last period started")
+  ) {
+    return cycleSetup[language] || generic[language] || originalEnglishText;
+  }
+
+  if (
+    lower.includes("always here for you") ||
+    lower.includes("what would you like to talk about")
+  ) {
+    return greeting[language] || generic[language] || originalEnglishText;
+  }
+
+  return generic[language] || originalEnglishText;
+}
+
 /**
  * POST /api/chat
  *
@@ -386,14 +630,70 @@ export async function POST(request: NextRequest) {
 
     const actionStatuses: AgentActionStatus[] = [];
     const triage = assessTriageSeverity(trimmedMessage);
+    const apiKey = process.env.GEMINI_API_KEY || "";
 
     const storedLanguage = toSupportedLanguageCode(
       userProfile?.preferences?.language,
     );
+    const inMessageLanguage = toSupportedLanguageCode(
+      inferRequestedLanguage(trimmedMessage),
+    );
     let userLanguage: SupportedLanguageCode =
       toSupportedLanguageCode(clientLanguage) || storedLanguage || "eng";
+    if (inMessageLanguage !== "eng") {
+      userLanguage = inMessageLanguage;
+    }
     let translationApplied = userLanguage !== "eng";
     let messageForAgent = trimmedMessage;
+
+    messageForAgent = addLanguageIntentHint(messageForAgent, userLanguage);
+
+    if (isLanguageSwitchIntent(trimmedMessage) && userLanguage !== "eng") {
+      const confirmation = getLanguageSwitchConfirmation(userLanguage);
+      if (confirmation) {
+        return NextResponse.json({
+          response: confirmation,
+          language: userLanguage,
+          languageName: SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
+          translationApplied: true,
+          source: "agent",
+          type: "agent",
+          toolsUsed: [],
+          actions: ["Language preference switched"],
+          triage,
+          actionStatuses: [
+            {
+              key: "language",
+              label: `Language switched to ${SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage}`,
+              state: "done",
+            },
+          ],
+        });
+      }
+    }
+
+    const directLugandaResponse =
+      userLanguage === "lug" ? getDirectLugandaResponse(trimmedMessage) : null;
+    if (directLugandaResponse) {
+      return NextResponse.json({
+        response: directLugandaResponse,
+        language: "lug",
+        languageName: "Luganda",
+        translationApplied: true,
+        source: "local_fallback",
+        type: "agent",
+        toolsUsed: [],
+        actions: ["Used direct Luganda response"],
+        triage,
+        actionStatuses: [
+          {
+            key: "language",
+            label: "Handled as direct Luganda response",
+            state: "done",
+          },
+        ],
+      });
+    }
 
     if (!clientLanguage && !storedLanguage) {
       try {
@@ -421,6 +721,20 @@ export async function POST(request: NextRequest) {
           "Translation to English failed, continuing with original message:",
           translationError,
         );
+        if (apiKey) {
+          try {
+            messageForAgent = await translateWithGemini(
+              apiKey,
+              trimmedMessage,
+              "English",
+            );
+          } catch (geminiTranslationError) {
+            console.warn(
+              "Gemini fallback translation to English failed:",
+              geminiTranslationError,
+            );
+          }
+        }
       }
     }
 
@@ -488,7 +802,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const requestedCounsellor = COUNSELLOR_REQUEST_PATTERN.test(trimmedMessage);
+    const requestedCounsellor =
+      COUNSELLOR_REQUEST_PATTERN.test(trimmedMessage) ||
+      (userLanguage === "lug" &&
+        /(njagala|nnyagala).*(kansala|counsellor|counselor|talk to someone|human help)/i.test(
+          trimmedMessage,
+        ));
     const requestedCall = CALL_REQUEST_PATTERN.test(trimmedMessage);
     const requestedWhatsApp = WHATSAPP_REQUEST_PATTERN.test(trimmedMessage);
     const shouldOfferHandoff = triage.severity === "high";
@@ -504,11 +823,46 @@ export async function POST(request: NextRequest) {
         try {
           const translated = await translateText(text, "eng", userLanguage);
           localizedText = translated.translatedText;
+
+          // Some providers return unchanged English text on soft failures.
+          // If that happens, force fallback translation with Gemini.
+          if (
+            apiKey &&
+            (localizedText.trim() === text.trim() ||
+              isProbablyEnglishText(localizedText))
+          ) {
+            localizedText = await translateWithGemini(
+              apiKey,
+              text,
+              SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
+            );
+          }
         } catch (translationError) {
           console.warn(
             "Failed to translate response, using English:",
             translationError,
           );
+          if (apiKey) {
+            try {
+              localizedText = await translateWithGemini(
+                apiKey,
+                text,
+                SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
+              );
+            } catch (geminiTranslationError) {
+              console.warn(
+                "Gemini fallback translation failed, using original text:",
+                geminiTranslationError,
+              );
+            }
+          }
+        }
+
+        if (
+          localizedText.trim() === text.trim() ||
+          isProbablyEnglishText(localizedText)
+        ) {
+          localizedText = fallbackLocalizedResponse(text, userLanguage);
         }
       }
 
@@ -531,6 +885,20 @@ export async function POST(request: NextRequest) {
 
       return { localizedText, audio };
     };
+
+    // Fallback: if translation services are unavailable, still nudge the model
+    // to answer directly in the user's chosen language.
+    const agentMessage =
+      userLanguage !== "eng"
+        ? [
+            `MANDATORY LANGUAGE MODE: ${SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage}`,
+            "You must respond ONLY in this language.",
+            "Do not reply in English.",
+            "Keep response natural and culturally appropriate for Uganda.",
+            "",
+            `User message: ${messageForAgent}`,
+          ].join("\n")
+        : messageForAgent;
 
     const crisisResponse = checkForCrisis(trimmedMessage);
     if (crisisResponse) {
@@ -795,7 +1163,6 @@ export async function POST(request: NextRequest) {
         "\n\nI am concerned by what you shared. I can connect you to a professional counsellor right now. Reply: 'Connect me to a counsellor'.";
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey || apiKey.trim() === "") {
       console.warn("GEMINI_API_KEY not configured - agent cannot function");
       return NextResponse.json(
@@ -814,10 +1181,10 @@ export async function POST(request: NextRequest) {
 
     console.log(
       "Executing agent for message:",
-      messageForAgent.substring(0, 50) + "...",
+      agentMessage.substring(0, 50) + "...",
     );
 
-    const agentResult = await executeAgent(apiKey, messageForAgent, {
+    const agentResult = await executeAgent(apiKey, agentMessage, {
       userId,
       userProfile,
       cycleData: cycleData

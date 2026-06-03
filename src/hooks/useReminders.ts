@@ -30,6 +30,17 @@ export function useReminders(): UseRemindersReturn {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const isPermissionDeniedError = (err: unknown): boolean => {
+    const e = err as { code?: string; message?: string };
+    const code = (e.code || "").toLowerCase();
+    const message = (e.message || "").toLowerCase();
+    return (
+      code.includes("permission-denied") ||
+      message.includes("permission-denied") ||
+      message.includes("missing or insufficient permissions")
+    );
+  };
+
   // Fetch pending reminders
   const fetchReminders = useCallback(async () => {
     if (!user) {
@@ -51,8 +62,14 @@ export function useReminders(): UseRemindersReturn {
 
       setReminders(activeReminders);
     } catch (err) {
-      console.error("Error fetching reminders:", err);
-      setError("Failed to load reminders");
+      if (isPermissionDeniedError(err)) {
+        // Run silently in local mode when Firestore rules block reminders.
+        setReminders([]);
+        setError(null);
+      } else {
+        console.error("Error fetching reminders:", err);
+        setError("Failed to load reminders");
+      }
     } finally {
       setLoading(false);
     }
@@ -69,7 +86,9 @@ export function useReminders(): UseRemindersReturn {
           prev.map((r) => (r.id === reminderId ? { ...r, read: true } : r)),
         );
       } catch (err) {
-        console.error("Error marking reminder as read:", err);
+        if (!isPermissionDeniedError(err)) {
+          console.error("Error marking reminder as read:", err);
+        }
       }
     },
     [user],
@@ -93,7 +112,9 @@ export function useReminders(): UseRemindersReturn {
         );
       }
     } catch (err) {
-      console.error("Error scheduling reminders:", err);
+      if (!isPermissionDeniedError(err)) {
+        console.error("Error scheduling reminders:", err);
+      }
     }
   }, [user]);
 
