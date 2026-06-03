@@ -28,6 +28,12 @@ interface Message {
 interface ChatApiResponse {
   response: string;
   actionStatuses?: AgentActionStatus[];
+  handoffAction?: {
+    type: "call" | "whatsapp";
+    label: string;
+    url: string;
+    autoOpen?: boolean;
+  };
 }
 
 const icebreakers = [
@@ -577,6 +583,12 @@ export default function ChatPage() {
         const data = await makeRequest();
 
         setAgentActionStatuses(data.actionStatuses || []);
+
+        if (data.handoffAction?.autoOpen && typeof window !== "undefined") {
+          // Browser security policies may block auto-open on some devices.
+          // We still attempt to launch the user's preferred channel immediately.
+          window.open(data.handoffAction.url, "_self");
+        }
 
         if (data.response) {
           const sisterMessage: Message = {

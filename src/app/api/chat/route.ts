@@ -131,8 +131,21 @@ Can you tell me more about what's making you feel this way? Sometimes talking ab
 
 const COUNSELLOR_REQUEST_PATTERN =
   /(counsellor|counselor|therapist|professional help|human support|talk to someone|connect me|i need help|i want a human|real help|i need real|speak to someone|real person|human help|mental health support|see a doctor|see a specialist)/i;
+const CALL_REQUEST_PATTERN =
+  /(call (them|her|him|counsellor|counselor)|phone (them|her|him|counsellor|counselor)|dial|make (the )?call|call now|automatically call|auto.?call)/i;
+const WHATSAPP_REQUEST_PATTERN =
+  /(whatsapp|what'?s app|message (them|her|him|counsellor|counselor)|text (them|her|him|counsellor|counselor)|chat on whatsapp|connect.*whatsapp)/i;
 const PERIOD_START_PATTERN =
   /(period (started|came|has started)|i got my period|my period is here|started my period|got my periods)/i;
+
+function toPhoneHref(phoneNumber: string): string {
+  return `tel:${phoneNumber.replace(/[^+\d]/g, "")}`;
+}
+
+function toWhatsAppHref(phoneNumber: string): string {
+  const digits = phoneNumber.replace(/[^\d]/g, "");
+  return `https://wa.me/${digits}`;
+}
 
 function assessTriageSeverity(message: string): {
   severity: TriageSeverity;
@@ -360,9 +373,14 @@ export async function POST(request: NextRequest) {
     }
 
     const requestedCounsellor = COUNSELLOR_REQUEST_PATTERN.test(trimmedMessage);
+    const requestedCall = CALL_REQUEST_PATTERN.test(trimmedMessage);
+    const requestedWhatsApp = WHATSAPP_REQUEST_PATTERN.test(trimmedMessage);
     const shouldOfferHandoff = triage.severity === "high";
     const shouldAutoConnect =
-      requestedCounsellor || triage.severity === "critical";
+      requestedCounsellor ||
+      requestedCall ||
+      requestedWhatsApp ||
+      triage.severity === "critical";
 
     let handoffText = "";
 
@@ -440,7 +458,7 @@ export async function POST(request: NextRequest) {
 
           // When user explicitly requested a counsellor, return deterministic
           // contact response immediately — do NOT let the LLM override this.
-          if (requestedCounsellor) {
+          if (requestedCounsellor || requestedCall || requestedWhatsApp) {
             const statusLabel =
               counsellor.status === "available"
                 ? "available now"
@@ -448,8 +466,24 @@ export async function POST(request: NextRequest) {
                   ? "currently in a session"
                   : "offline (will respond when back)";
 
+            const preferredAction = requestedCall
+              ? {
+                  type: "call",
+                  label: "Call counsellor now",
+                  url: toPhoneHref(counsellor.phoneNumber),
+                }
+              : {
+                  type: "whatsapp",
+                  label: "Open WhatsApp chat",
+                  url: toWhatsAppHref(counsellor.whatsappNumber),
+                };
+
+            const autoActionText = requestedCall
+              ? "I am now opening your phone dialer with the counsellor number pre-filled."
+              : "I am now opening a direct WhatsApp chat with your counsellor.";
+
             return NextResponse.json({
-              response: `I've connected you to **${counsellor.name}** — ${counsellor.title}. 💜\n\nHere are their direct contact details:\n\n📞 **Phone:** ${counsellor.phoneNumber}\n💬 **WhatsApp:** ${counsellor.whatsappNumber}\n\nThey are currently ${statusLabel} and specialise in ${counsellor.specializations.join(", ")}.\n\nYou can message them directly on WhatsApp or call now. A support thread has also been created for you in the app.`,
+              response: `I've connected you to **${counsellor.name}** — ${counsellor.title}. 💜\n\n${autoActionText}\n\nHere are their direct contact details:\n\n📞 **Phone:** ${counsellor.phoneNumber}\n💬 **WhatsApp:** ${counsellor.whatsappNumber}\n\nThey are currently ${statusLabel} and specialise in ${counsellor.specializations.join(", ")}.\n\nA support thread has also been created for you in the app.`,
               source: "agent",
               type: "agent",
               toolsUsed: ["counsellor_routing"],
@@ -457,6 +491,10 @@ export async function POST(request: NextRequest) {
               triage,
               actionStatuses,
               handoffThreadCreated: Boolean(handoffConversationId),
+              handoffAction: {
+                ...preferredAction,
+                autoOpen: true,
+              },
               counsellorHandoff: {
                 name: counsellor.name,
                 title: counsellor.title,
