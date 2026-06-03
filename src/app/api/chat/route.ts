@@ -1,5 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { executeAgent } from "@/lib/agent";
+import {
+  connectUserToCounsellor,
+  getCycleInfo,
+  logAgentEvent,
+  routeCounsellor,
+  saveCycleData,
+  calculateNextPeriod,
+} from "@/lib/firestore";
+import {
+  AgentActionStatus,
+  CounsellorSpecialty,
+  TriageSeverity,
+} from "@/types";
 
 /**
  * SisterCare AI Agent API Route
@@ -116,6 +129,94 @@ Please reach out to talk to someone right now:
 Can you tell me more about what's making you feel this way? Sometimes talking about what's hurting us can help us find better solutions. You're not alone in this. 💜`,
 };
 
+const COUNSELLOR_REQUEST_PATTERN =
+  /(counsellor|counselor|therapist|professional help|human support|talk to someone|connect me|i need help)/i;
+const PERIOD_START_PATTERN =
+  /(period (started|came|has started)|i got my period|my period is here|started my period|got my periods)/i;
+
+function assessTriageSeverity(message: string): {
+  severity: TriageSeverity;
+  reason: string;
+} {
+  const m = message.toLowerCase();
+
+  if (
+    CRISIS_PATTERNS.selfHarm.test(m) ||
+    CRISIS_PATTERNS.violence.test(m) ||
+    CRISIS_PATTERNS.danger.test(m)
+  ) {
+    return { severity: "critical", reason: "safety_risk" };
+  }
+
+  if (
+    CRISIS_PATTERNS.harassment.test(m) ||
+    CRISIS_PATTERNS.generalAbuse.test(m) ||
+    /panic|severe pain|can't cope|cant cope|overwhelmed|trauma|abuse/i.test(m)
+  ) {
+    return { severity: "high", reason: "distress_signals" };
+  }
+
+  if (/anxious|sad|stressed|worried|low mood|depressed|cramps/i.test(m)) {
+    return { severity: "medium", reason: "wellbeing_concern" };
+  }
+
+  return { severity: "low", reason: "routine_support" };
+}
+
+function inferCounsellorSpecialty(message: string): CounsellorSpecialty {
+  const m = message.toLowerCase();
+
+  if (/pregnan|postpartum|baby/i.test(m)) return "Pregnancy & Postpartum";
+  if (/diet|food|nutrition|weight/i.test(m)) return "Nutrition & Wellness";
+  if (/relationship|partner|marriage/i.test(m))
+    return "Relationship Counselling";
+  if (/sexual|sex|std|sti/i.test(m)) return "Sexual Health";
+  if (/teen|adolescent|school girl|young girl/i.test(m))
+    return "Adolescent Health";
+  if (/period|menstrual|cycle|cramps|pms/i.test(m)) return "Menstrual Health";
+
+  return "Mental Health";
+}
+
+function parsePeriodStartDate(message: string): Date | null {
+  const m = message.toLowerCase();
+  const now = new Date();
+
+  if (/today/.test(m)) return now;
+  if (/yesterday/.test(m)) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - 1);
+    return d;
+  }
+
+  const dateMatch = message.match(/\b(\d{4}-\d{2}-\d{2})\b/);
+  if (dateMatch) {
+    const parsed = new Date(dateMatch[1]);
+    if (!isNaN(parsed.getTime())) return parsed;
+  }
+
+  const generic = new Date(message);
+  if (!isNaN(generic.getTime()) && generic.getFullYear() > 2000) return generic;
+
+  return null;
+}
+
+function shouldPromptCycleConfirmation(cycleData?: {
+  lastPeriodDate: string | Date;
+  cycleLength: number;
+  periodLength: number;
+}): boolean {
+  if (!cycleData) return false;
+
+  const info = getCycleInfo(
+    new Date(cycleData.lastPeriodDate),
+    cycleData.cycleLength,
+    cycleData.periodLength,
+  );
+
+  return info.daysUntilNextPeriod <= 1 || info.isPeriodLate;
+}
+
 /**
  * Check for crisis situations - these need immediate human-written responses
  * The agent is bypassed for safety-critical situations
@@ -190,8 +291,160 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const trimmedMessage = message.trim();
+    if (trimmedMessage.length > 2000) {
+      return NextResponse.json(
+        { error: "Message is too long" },
+        { status: 400 },
+      );
+    }
+
+    const actionStatuses: AgentActionStatus[] = [];
+    const triage = assessTriageSeverity(trimmedMessage);
+
+    if (userId) {
+      try {
+        await logAgentEvent({
+          userId,
+          type: "triage",
+          severity: triage.severity,
+          success: true,
+        });
+      } catch (eventError) {
+        console.warn("Failed to log triage event:", eventError);
+      }
+    }
+
+    actionStatuses.push({
+      key: "triage",
+      label: `Triage completed (${triage.severity})`,
+      state: "done",
+    });
+
+    // Auto-update cycle if user confirms period start.
+    if (userId && cycleData && PERIOD_START_PATTERN.test(trimmedMessage)) {
+      const parsedStartDate =
+        parsePeriodStartDate(trimmedMessage) || new Date();
+      const nextPeriod = calculateNextPeriod(
+        parsedStartDate,
+        cycleData.cycleLength,
+      );
+
+      try {
+        await saveCycleData(userId, {
+          lastPeriodDate: parsedStartDate,
+          nextPeriodDate: nextPeriod,
+          currentPhase: "menstrual",
+        });
+
+        await logAgentEvent({
+          userId,
+          type: "cycle_updated",
+          severity: triage.severity,
+          success: true,
+        });
+
+        actionStatuses.push({
+          key: "cycle-update",
+          label: `Cycle updated from confirmed period date (${parsedStartDate.toLocaleDateString()})`,
+          state: "done",
+        });
+      } catch (cycleError) {
+        console.warn("Failed to auto-update cycle:", cycleError);
+        actionStatuses.push({
+          key: "cycle-update",
+          label: "Cycle auto-update failed",
+          state: "failed",
+        });
+      }
+    }
+
+    const requestedCounsellor = COUNSELLOR_REQUEST_PATTERN.test(trimmedMessage);
+    const shouldOfferHandoff = triage.severity === "high";
+    const shouldAutoConnect =
+      requestedCounsellor || triage.severity === "critical";
+
+    let handoffText = "";
+
+    if (shouldAutoConnect && userId) {
+      actionStatuses.push({
+        key: "handoff",
+        label: "Finding best available counsellor",
+        state: "pending",
+      });
+
+      try {
+        const specialty = inferCounsellorSpecialty(trimmedMessage);
+        const counsellor = await routeCounsellor({
+          specialty,
+          preferredLanguage: userProfile?.preferences?.language || "English",
+        });
+
+        if (counsellor) {
+          const handoffConversationId = await connectUserToCounsellor({
+            userId,
+            counsellorId: counsellor.id,
+            reason: requestedCounsellor ? "user_request" : "risk_detected",
+            summary: trimmedMessage,
+          });
+
+          await logAgentEvent({
+            userId,
+            type: requestedCounsellor ? "handoff_connected" : "handoff_offered",
+            severity: triage.severity,
+            conversationId: handoffConversationId,
+            success: true,
+          });
+
+          actionStatuses[actionStatuses.length - 1] = {
+            key: "handoff",
+            label: `Connected to ${counsellor.name} (${counsellor.title})`,
+            state: "done",
+          };
+
+          handoffText = `\n\nI have connected you to ${counsellor.name} (${counsellor.title}) for dedicated support. You can continue in your counsellor support thread now.`;
+        } else {
+          actionStatuses[actionStatuses.length - 1] = {
+            key: "handoff",
+            label:
+              "No counsellor currently available; queued for next available professional",
+            state: "failed",
+          };
+          handoffText =
+            "\n\nI could not find an immediately available counsellor right now, but I have flagged this for urgent follow-up. If this is an emergency, call Sauti 116 or 999 immediately.";
+        }
+      } catch (handoffError) {
+        console.error("Handoff routing failed:", handoffError);
+        actionStatuses[actionStatuses.length - 1] = {
+          key: "handoff",
+          label: "Counsellor routing failed",
+          state: "failed",
+        };
+      }
+    } else if (shouldOfferHandoff && userId) {
+      try {
+        await logAgentEvent({
+          userId,
+          type: "handoff_offered",
+          severity: triage.severity,
+          success: true,
+        });
+      } catch (eventError) {
+        console.warn("Failed to log handoff offer:", eventError);
+      }
+
+      actionStatuses.push({
+        key: "handoff-offer",
+        label: "Proactive counsellor handoff offered",
+        state: "done",
+      });
+
+      handoffText =
+        "\n\nI am concerned by what you shared. I can connect you to a professional counsellor right now. Reply: 'Connect me to a counsellor'.";
+    }
+
     // FIRST: Check for crisis situations - these bypass the agent
-    const crisisResponse = checkForCrisis(message);
+    const crisisResponse = checkForCrisis(trimmedMessage);
     if (crisisResponse) {
       console.log("Crisis detected - using safety response");
       return NextResponse.json({
@@ -200,6 +453,15 @@ export async function POST(request: NextRequest) {
         type: "agent",
         toolsUsed: [],
         actions: ["Crisis intervention triggered"],
+        triage,
+        actionStatuses: [
+          ...actionStatuses,
+          {
+            key: "safety",
+            label: "Safety protocol activated",
+            state: "done",
+          },
+        ],
       });
     }
 
@@ -215,6 +477,8 @@ export async function POST(request: NextRequest) {
           source: "error",
           type: "agent",
           error: "API key not configured",
+          triage,
+          actionStatuses,
         },
         { status: 503 },
       );
@@ -223,10 +487,10 @@ export async function POST(request: NextRequest) {
     // Execute the agent
     console.log(
       "Executing agent for message:",
-      message.substring(0, 50) + "...",
+      trimmedMessage.substring(0, 50) + "...",
     );
 
-    const agentResult = await executeAgent(apiKey, message, {
+    const agentResult = await executeAgent(apiKey, trimmedMessage, {
       userId,
       userProfile,
       cycleData: cycleData
@@ -241,14 +505,48 @@ export async function POST(request: NextRequest) {
       conversationHistory,
     });
 
+    let responseText = agentResult.response;
+
+    // Proactive cycle completion check prompt
+    const needsCycleCheck = shouldPromptCycleConfirmation(cycleData);
+    if (needsCycleCheck && !PERIOD_START_PATTERN.test(trimmedMessage)) {
+      responseText +=
+        "\n\nQuick check-in: did your period start already? If yes, please share the exact start date so I can update your cycle predictions accurately.";
+
+      actionStatuses.push({
+        key: "cycle-confirmation",
+        label: "Cycle confirmation requested",
+        state: "done",
+      });
+
+      if (userId) {
+        try {
+          await logAgentEvent({
+            userId,
+            type: "cycle_confirmation_prompted",
+            severity: triage.severity,
+            success: true,
+          });
+        } catch (eventError) {
+          console.warn("Failed to log cycle confirmation prompt:", eventError);
+        }
+      }
+    }
+
+    if (handoffText) {
+      responseText += handoffText;
+    }
+
     console.log("Agent completed. Tools used:", agentResult.toolsUsed);
 
     return NextResponse.json({
-      response: agentResult.response,
+      response: responseText,
       source: "agent",
       type: "agent",
       toolsUsed: agentResult.toolsUsed,
       actions: agentResult.actions,
+      triage,
+      actionStatuses,
       reasoning:
         agentResult.toolsUsed.length > 0
           ? `Analyzed your request and used ${agentResult.toolsUsed.length} tool(s) to help you.`
@@ -271,6 +569,7 @@ export async function POST(request: NextRequest) {
           source: "rate_limited",
           type: "agent",
           retryAfter: 20,
+          actionStatuses: [],
         },
         {
           status: 429,
@@ -293,6 +592,7 @@ export async function POST(request: NextRequest) {
             "I'm taking a bit longer than usual to respond. Please try sending your message again. 💜",
           source: "timeout",
           type: "agent",
+          actionStatuses: [],
         },
         { status: 504 },
       );
@@ -306,6 +606,7 @@ export async function POST(request: NextRequest) {
         source: "error",
         type: "agent",
         error: errorMessage,
+        actionStatuses: [],
       },
       { status: 500 },
     );
@@ -324,6 +625,12 @@ export async function GET() {
     status: "online",
     type: "ai_agent",
     capabilities: [
+      "triage_scoring",
+      "proactive_handoff_offers",
+      "auto_counsellor_routing",
+      "cycle_confirmation_loop",
+      "agent_action_statuses",
+      "evaluation_events",
       "cycle_tracking",
       "symptom_logging",
       "symptom_analysis",

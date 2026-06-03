@@ -7,8 +7,8 @@ import { useLanguage } from "@/context/LanguageContext";
 import Header from "@/components/layout/Header";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
-import { getUserProfile, getSymptoms } from "@/lib/firestore";
-import { UserProfile, SymptomLog, MoodType } from "@/types";
+import { getUserProfile, getSymptoms, getAgentEvents } from "@/lib/firestore";
+import { UserProfile, SymptomLog, MoodType, AgentEvent } from "@/types";
 
 // Color mapping for moods
 const moodColors: Record<MoodType, string> = {
@@ -45,6 +45,7 @@ export default function AnalyticsPage() {
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [symptomLogs, setSymptomLogs] = useState<SymptomLog[]>([]);
+  const [agentEvents, setAgentEvents] = useState<AgentEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState<
     "week" | "month" | "3months"
@@ -67,12 +68,24 @@ export default function AnalyticsPage() {
           endDate.getTime() - 90 * 24 * 60 * 60 * 1000,
         );
 
-        const [userProfile, logs] = await Promise.all([
-          getUserProfile(user.uid),
-          getSymptoms(user.uid, startDate, endDate),
-        ]);
+        const [userProfileResult, logsResult, eventsResult] =
+          await Promise.allSettled([
+            getUserProfile(user.uid),
+            getSymptoms(user.uid, startDate, endDate),
+            getAgentEvents(user.uid, 90),
+          ]);
+
+        const userProfile =
+          userProfileResult.status === "fulfilled"
+            ? userProfileResult.value
+            : null;
+        const logs = logsResult.status === "fulfilled" ? logsResult.value : [];
+        const events =
+          eventsResult.status === "fulfilled" ? eventsResult.value : [];
+
         setProfile(userProfile);
         setSymptomLogs(logs || []);
+        setAgentEvents(events || []);
       } catch (error) {
         console.error("Error loading analytics data:", error);
       } finally {
@@ -217,6 +230,48 @@ export default function AnalyticsPage() {
     (acc, log) => acc + (log.symptoms?.length || 0),
     0,
   );
+
+  // Agent evaluation metrics
+  const agentMetrics = useMemo(() => {
+    const triageEvents = agentEvents.filter((e) => e.type === "triage");
+    const highRiskTriage = triageEvents.filter(
+      (e) => e.severity === "high" || e.severity === "critical",
+    ).length;
+
+    const handoffOffered = agentEvents.filter(
+      (e) => e.type === "handoff_offered",
+    ).length;
+    const handoffConnected = agentEvents.filter(
+      (e) => e.type === "handoff_connected",
+    ).length;
+
+    const cyclePrompts = agentEvents.filter(
+      (e) => e.type === "cycle_confirmation_prompted",
+    ).length;
+    const cycleUpdates = agentEvents.filter(
+      (e) => e.type === "cycle_updated",
+    ).length;
+
+    const handoffOpportunityCount = handoffOffered + handoffConnected;
+    const handoffConversionRate =
+      handoffOpportunityCount > 0
+        ? Math.round((handoffConnected / handoffOpportunityCount) * 100)
+        : 0;
+
+    const cycleUpdateRate =
+      cyclePrompts > 0 ? Math.round((cycleUpdates / cyclePrompts) * 100) : 0;
+
+    return {
+      triageCount: triageEvents.length,
+      highRiskTriage,
+      handoffOffered,
+      handoffConnected,
+      handoffConversionRate,
+      cyclePrompts,
+      cycleUpdates,
+      cycleUpdateRate,
+    };
+  }, [agentEvents]);
 
   if (authLoading || loading) {
     return (
@@ -558,6 +613,80 @@ export default function AnalyticsPage() {
                 </Button>
               </div>
             )}
+          </Card>
+
+          {/* Agent Evaluation Metrics */}
+          <Card padding="lg" className="lg:col-span-2">
+            <h2 className="text-lg font-bold text-text-primary dark:text-white mb-4 flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary">
+                smart_toy
+              </span>
+              Agent Evaluation Metrics
+            </h2>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+              <div className="bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-900/20 dark:to-card-dark p-4 rounded-xl text-center border border-indigo-100 dark:border-indigo-800/30">
+                <div className="text-2xl font-black text-indigo-500">
+                  {agentMetrics.triageCount}
+                </div>
+                <div className="text-sm text-text-secondary mt-1">
+                  Triage Runs
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-red-50 to-white dark:from-red-900/20 dark:to-card-dark p-4 rounded-xl text-center border border-red-100 dark:border-red-800/30">
+                <div className="text-2xl font-black text-red-500">
+                  {agentMetrics.highRiskTriage}
+                </div>
+                <div className="text-sm text-text-secondary mt-1">
+                  High-Risk Flags
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-900/20 dark:to-card-dark p-4 rounded-xl text-center border border-blue-100 dark:border-blue-800/30">
+                <div className="text-2xl font-black text-blue-500">
+                  {agentMetrics.handoffConnected}
+                </div>
+                <div className="text-sm text-text-secondary mt-1">
+                  Handoffs Connected
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-900/20 dark:to-card-dark p-4 rounded-xl text-center border border-emerald-100 dark:border-emerald-800/30">
+                <div className="text-2xl font-black text-emerald-500">
+                  {agentMetrics.cycleUpdates}
+                </div>
+                <div className="text-sm text-text-secondary mt-1">
+                  Cycle Auto-Updates
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-4 rounded-xl border border-border-light dark:border-border-dark bg-white dark:bg-card-dark">
+                <p className="text-sm font-semibold text-text-primary dark:text-white mb-1">
+                  Counsellor Handoff Conversion
+                </p>
+                <p className="text-2xl font-black text-primary">
+                  {agentMetrics.handoffConversionRate}%
+                </p>
+                <p className="text-xs text-text-secondary mt-1">
+                  Connected / (Offered + Connected)
+                </p>
+              </div>
+
+              <div className="p-4 rounded-xl border border-border-light dark:border-border-dark bg-white dark:bg-card-dark">
+                <p className="text-sm font-semibold text-text-primary dark:text-white mb-1">
+                  Cycle Confirmation Update Rate
+                </p>
+                <p className="text-2xl font-black text-primary">
+                  {agentMetrics.cycleUpdateRate}%
+                </p>
+                <p className="text-xs text-text-secondary mt-1">
+                  Updated / Prompted
+                </p>
+              </div>
+            </div>
           </Card>
         </div>
 

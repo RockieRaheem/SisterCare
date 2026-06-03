@@ -16,13 +16,18 @@ import {
   updateConversationPreview,
   getUserProfile,
 } from "@/lib/firestore";
-import { ChatConversation, UserProfile } from "@/types";
+import { AgentActionStatus, ChatConversation, UserProfile } from "@/types";
 
 interface Message {
   id: string;
   sender: "user" | "sister";
   text: string;
   timestamp: Date;
+}
+
+interface ChatApiResponse {
+  response: string;
+  actionStatuses?: AgentActionStatus[];
 }
 
 const icebreakers = [
@@ -77,6 +82,9 @@ export default function ChatPage() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
+  const [agentActionStatuses, setAgentActionStatuses] = useState<
+    AgentActionStatus[]
+  >([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const conversationsRef = useRef<ChatConversation[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -502,7 +510,7 @@ export default function ChatPage() {
         // Send message to AI Agent with user context
         const makeRequest = async (
           retryCount = 0,
-        ): Promise<{ response: string }> => {
+        ): Promise<ChatApiResponse> => {
           const res = await fetch("/api/chat", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -568,6 +576,8 @@ export default function ChatPage() {
 
         const data = await makeRequest();
 
+        setAgentActionStatuses(data.actionStatuses || []);
+
         if (data.response) {
           const sisterMessage: Message = {
             id: `sister-${Date.now()}`,
@@ -614,6 +624,13 @@ export default function ChatPage() {
         }
       } catch (err) {
         console.error("Error sending message:", err);
+        setAgentActionStatuses([
+          {
+            key: "agent-error",
+            label: "Agent response failed",
+            state: "failed",
+          },
+        ]);
 
         const errorMessage: Message = {
           id: `error-${Date.now()}`,
@@ -1035,6 +1052,46 @@ export default function ChatPage() {
           {/* Messages Container */}
           <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-background-dark">
             <div className="max-w-3xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
+              {agentActionStatuses.length > 0 && (
+                <div className="bg-white dark:bg-card-dark border border-border-light dark:border-border-dark rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-sm animate-fade-in">
+                  <p className="text-[11px] sm:text-xs uppercase tracking-wide font-semibold text-text-secondary mb-2">
+                    Agent Actions
+                  </p>
+                  <div className="space-y-1.5">
+                    {agentActionStatuses.map((status) => {
+                      const icon =
+                        status.state === "done"
+                          ? "check_circle"
+                          : status.state === "failed"
+                            ? "error"
+                            : "progress_activity";
+                      const colorClass =
+                        status.state === "done"
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : status.state === "failed"
+                            ? "text-red-600 dark:text-red-400"
+                            : "text-amber-600 dark:text-amber-400";
+
+                      return (
+                        <div
+                          key={status.key}
+                          className="flex items-center gap-2.5 text-xs sm:text-sm"
+                        >
+                          <span
+                            className={`material-symbols-outlined text-base ${colorClass}`}
+                          >
+                            {icon}
+                          </span>
+                          <span className="text-text-primary dark:text-white">
+                            {status.label}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {messages.map((message) => (
                 <div
                   key={message.id}
