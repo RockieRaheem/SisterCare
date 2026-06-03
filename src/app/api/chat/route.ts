@@ -130,7 +130,7 @@ Can you tell me more about what's making you feel this way? Sometimes talking ab
 };
 
 const COUNSELLOR_REQUEST_PATTERN =
-  /(counsellor|counselor|therapist|professional help|human support|talk to someone|connect me|i need help)/i;
+  /(counsellor|counselor|therapist|professional help|human support|talk to someone|connect me|i need help|i want a human|real help|i need real|speak to someone|real person|human help|mental health support|see a doctor|see a specialist)/i;
 const PERIOD_START_PATTERN =
   /(period (started|came|has started)|i got my period|my period is here|started my period|got my periods)/i;
 
@@ -366,6 +366,28 @@ export async function POST(request: NextRequest) {
 
     let handoffText = "";
 
+    // FIRST: Check for crisis situations - these bypass the agent entirely
+    const crisisResponse = checkForCrisis(trimmedMessage);
+    if (crisisResponse) {
+      console.log("Crisis detected - using safety response");
+      return NextResponse.json({
+        response: crisisResponse,
+        source: "safety",
+        type: "agent",
+        toolsUsed: [],
+        actions: ["Crisis intervention triggered"],
+        triage,
+        actionStatuses: [
+          ...actionStatuses,
+          {
+            key: "safety",
+            label: "Safety protocol activated",
+            state: "done",
+          },
+        ],
+      });
+    }
+
     if (shouldAutoConnect && userId) {
       actionStatuses.push({
         key: "handoff",
@@ -402,7 +424,36 @@ export async function POST(request: NextRequest) {
             state: "done",
           };
 
-          handoffText = `\n\nI have connected you to ${counsellor.name} (${counsellor.title}) for dedicated support. You can continue in your counsellor support thread now.`;
+          // When user explicitly requested a counsellor, return deterministic
+          // contact response immediately — do NOT let the LLM override this.
+          if (requestedCounsellor) {
+            const statusLabel =
+              counsellor.status === "available"
+                ? "available now"
+                : counsellor.status === "busy"
+                  ? "currently in a session"
+                  : "offline (will respond when back)";
+
+            return NextResponse.json({
+              response: `I've connected you to **${counsellor.name}** — ${counsellor.title}. 💜\n\nHere are their direct contact details:\n\n📞 **Phone:** ${counsellor.phoneNumber}\n💬 **WhatsApp:** ${counsellor.whatsappNumber}\n\nThey are currently ${statusLabel} and specialise in ${counsellor.specializations.join(", ")}.\n\nYou can message them directly on WhatsApp or call now. A support thread has also been created for you in the app.`,
+              source: "agent",
+              type: "agent",
+              toolsUsed: ["counsellor_routing"],
+              actions: [`Connected to ${counsellor.name}`],
+              triage,
+              actionStatuses,
+              counsellorHandoff: {
+                name: counsellor.name,
+                title: counsellor.title,
+                phone: counsellor.phoneNumber,
+                whatsapp: counsellor.whatsappNumber,
+                photoURL: counsellor.photoURL,
+                status: counsellor.status,
+              },
+            });
+          }
+
+          handoffText = `\n\nI have connected you to ${counsellor.name} (${counsellor.title}) for dedicated support. You can reach them on WhatsApp at ${counsellor.whatsappNumber}.`;
         } else {
           actionStatuses[actionStatuses.length - 1] = {
             key: "handoff",
@@ -410,6 +461,23 @@ export async function POST(request: NextRequest) {
               "No counsellor currently available; queued for next available professional",
             state: "failed",
           };
+
+          // For explicit counsellor requests with no available counsellor,
+          // still return a deterministic response — never let LLM say "I can't connect".
+          if (requestedCounsellor) {
+            return NextResponse.json({
+              response: `I wasn't able to find an immediately available counsellor right now, but I've flagged your request for urgent follow-up. 💜\n\nIn the meantime, you can reach our counsellors directly:\n\n📞 **Sauti 116 Helpline:** Call 116 (toll-free, 24/7)\n📞 **Mental Health Uganda:** 0800 110 022 (toll-free)\n\nYou can also browse available counsellors in the [Counsellors section](/counsellors) of the app to book a session directly.`,
+              source: "agent",
+              type: "agent",
+              toolsUsed: ["counsellor_routing"],
+              actions: [
+                "Counsellor routing — no available match, flagged for follow-up",
+              ],
+              triage,
+              actionStatuses,
+            });
+          }
+
           handoffText =
             "\n\nI could not find an immediately available counsellor right now, but I have flagged this for urgent follow-up. If this is an emergency, call Sauti 116 or 999 immediately.";
         }
@@ -420,6 +488,18 @@ export async function POST(request: NextRequest) {
           label: "Counsellor routing failed",
           state: "failed",
         };
+
+        if (requestedCounsellor) {
+          return NextResponse.json({
+            response: `I encountered an issue connecting you to a counsellor right now. 💜 Please try these direct options:\n\n📞 **Sauti 116 Helpline:** Call 116 (toll-free, 24/7)\n💬 **WhatsApp:** You can also browse [our counsellors](/counsellors) in the app to reach them directly.`,
+            source: "agent",
+            type: "agent",
+            toolsUsed: [],
+            actions: ["Counsellor routing error — fallback provided"],
+            triage,
+            actionStatuses,
+          });
+        }
       }
     } else if (shouldOfferHandoff && userId) {
       try {
@@ -441,28 +521,6 @@ export async function POST(request: NextRequest) {
 
       handoffText =
         "\n\nI am concerned by what you shared. I can connect you to a professional counsellor right now. Reply: 'Connect me to a counsellor'.";
-    }
-
-    // FIRST: Check for crisis situations - these bypass the agent
-    const crisisResponse = checkForCrisis(trimmedMessage);
-    if (crisisResponse) {
-      console.log("Crisis detected - using safety response");
-      return NextResponse.json({
-        response: crisisResponse,
-        source: "safety",
-        type: "agent",
-        toolsUsed: [],
-        actions: ["Crisis intervention triggered"],
-        triage,
-        actionStatuses: [
-          ...actionStatuses,
-          {
-            key: "safety",
-            label: "Safety protocol activated",
-            state: "done",
-          },
-        ],
-      });
     }
 
     // Get API key

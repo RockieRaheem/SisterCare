@@ -1024,6 +1024,137 @@ export async function seedCounsellors(): Promise<void> {
  * Pick the best counsellor for a user based on availability, language, and specialty.
  * Uses low-cost local ranking after minimal query fetch.
  */
+// Static counsellor fallback used when Firestore collection is empty
+const STATIC_COUNSELLORS: Counsellor[] = [
+  {
+    id: "1",
+    name: "Dr. Sarah Namugga",
+    title: "Clinical Psychologist",
+    bio: "Passionate about women's mental health with over 10 years of experience helping women navigate life's challenges.",
+    specializations: [
+      "Mental Health",
+      "Reproductive Health",
+      "Pregnancy & Postpartum",
+    ],
+    photoURL:
+      "https://media.istockphoto.com/id/1061001352/photo/portrait-of-confident-senior-female-doctor-in-scrubs.webp?a=1&b=1&s=612x612&w=0&k=20&c=u3Lor1FUwqXc73oKPS6ncsOPPwA1QFlimqjT4PSvO6U=",
+    status: "available",
+    rating: 4.9,
+    reviewCount: 127,
+    yearsExperience: 10,
+    languages: ["English", "Luganda", "Swahili"],
+    phoneNumber: "+256704057370",
+    whatsappNumber: "+256704057370",
+    availableHours: {
+      start: "08:00",
+      end: "18:00",
+      days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+    },
+    sessionCount: 1240,
+    verified: true,
+    createdAt: new Date("2020-01-15"),
+  },
+  {
+    id: "2",
+    name: "Ms. Grace Achieng",
+    title: "Reproductive Health Specialist",
+    bio: "Dedicated to empowering women with knowledge about their bodies.",
+    specializations: [
+      "Menstrual Health",
+      "Reproductive Health",
+      "Sexual Health",
+    ],
+    photoURL:
+      "https://media.istockphoto.com/id/1323303738/photo/medical-doctor-indoors-portraits.webp?a=1&b=1&s=612x612&w=0&k=20&c=yZa7CUM8vn95un_1M-8rf86elGYB6oBrBP4GVIZZ2C0=",
+    status: "busy",
+    rating: 4.8,
+    reviewCount: 98,
+    yearsExperience: 8,
+    languages: ["English", "Luo"],
+    phoneNumber: "+256704057370",
+    whatsappNumber: "+256704057370",
+    availableHours: {
+      start: "09:00",
+      end: "17:00",
+      days: [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+      ],
+    },
+    sessionCount: 856,
+    verified: true,
+    createdAt: new Date("2021-03-20"),
+  },
+  {
+    id: "3",
+    name: "Dr. Faith Nakamya",
+    title: "Nutritionist & Wellness Coach",
+    bio: "Helping women optimize their health through nutrition and hormone balance.",
+    specializations: [
+      "Nutrition & Wellness",
+      "Menstrual Health",
+      "Adolescent Health",
+    ],
+    photoURL:
+      "https://media.istockphoto.com/id/2193298581/photo/smiling-doctor-looking-out-the-window-in-her-office.webp?a=1&b=1&s=612x612&w=0&k=20&c=ZYOOoyIWh6NFRK96Kgwp__gGHRf_7luFbfdpc4cf3YA=",
+    status: "available",
+    rating: 4.7,
+    reviewCount: 76,
+    yearsExperience: 6,
+    languages: ["English", "Luganda"],
+    phoneNumber: "+256704057370",
+    whatsappNumber: "+256704057370",
+    availableHours: {
+      start: "10:00",
+      end: "19:00",
+      days: ["Monday", "Wednesday", "Friday", "Saturday"],
+    },
+    sessionCount: 543,
+    verified: true,
+    createdAt: new Date("2022-06-10"),
+  },
+  {
+    id: "5",
+    name: "Dr. Patience Nabirye",
+    title: "Pregnancy & Postpartum Specialist",
+    bio: "Supporting mothers through their pregnancy journey and beyond.",
+    specializations: [
+      "Pregnancy & Postpartum",
+      "Mental Health",
+      "Reproductive Health",
+    ],
+    photoURL:
+      "https://plus.unsplash.com/premium_photo-1661740529633-ab79e4c1d5cb?w=600&auto=format&fit=crop&q=60",
+    status: "available",
+    rating: 5.0,
+    reviewCount: 156,
+    yearsExperience: 12,
+    languages: ["English", "Lusoga", "Luganda"],
+    phoneNumber: "+256704057370",
+    whatsappNumber: "+256704057370",
+    availableHours: {
+      start: "07:00",
+      end: "15:00",
+      days: [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+      ],
+    },
+    sessionCount: 1890,
+    verified: true,
+    createdAt: new Date("2019-02-14"),
+  },
+];
+
 export async function routeCounsellor(params: {
   specialty?: CounsellorSpecialty;
   preferredLanguage?: string;
@@ -1037,7 +1168,15 @@ export async function routeCounsellor(params: {
     candidates = await getCounsellors();
   }
 
-  if (candidates.length === 0) return null;
+  // Fall back to static counsellors when Firestore collection is empty
+  if (candidates.length === 0) {
+    candidates = specialty
+      ? STATIC_COUNSELLORS.filter((c) =>
+          c.specializations.includes(specialty as CounsellorSpecialty),
+        )
+      : STATIC_COUNSELLORS;
+    if (candidates.length === 0) candidates = STATIC_COUNSELLORS;
+  }
 
   const availableFirst = candidates.filter((c) => c.status === "available");
   const pool = availableFirst.length > 0 ? availableFirst : candidates;
