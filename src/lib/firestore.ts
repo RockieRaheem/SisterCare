@@ -1162,10 +1162,17 @@ export async function routeCounsellor(params: {
   const { specialty, preferredLanguage } = params;
 
   let candidates: Counsellor[] = [];
-  if (specialty) {
-    candidates = await getCounsellorsBySpecialty(specialty);
-  } else {
-    candidates = await getCounsellors();
+  try {
+    if (specialty) {
+      candidates = await getCounsellorsBySpecialty(specialty);
+    } else {
+      candidates = await getCounsellors();
+    }
+  } catch (error) {
+    console.warn(
+      "Could not query counsellors from Firestore, using static fallback:",
+      error,
+    );
   }
 
   // Fall back to static counsellors when Firestore collection is empty

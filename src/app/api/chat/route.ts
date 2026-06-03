@@ -403,20 +403,34 @@ export async function POST(request: NextRequest) {
         });
 
         if (counsellor) {
-          const handoffConversationId = await connectUserToCounsellor({
-            userId,
-            counsellorId: counsellor.id,
-            reason: requestedCounsellor ? "user_request" : "risk_detected",
-            summary: trimmedMessage,
-          });
+          let handoffConversationId: string | undefined;
+          try {
+            handoffConversationId = await connectUserToCounsellor({
+              userId,
+              counsellorId: counsellor.id,
+              reason: requestedCounsellor ? "user_request" : "risk_detected",
+              summary: trimmedMessage,
+            });
+          } catch (connectError) {
+            console.warn(
+              "Could not create counsellor thread in Firestore, continuing with direct handoff:",
+              connectError,
+            );
+          }
 
-          await logAgentEvent({
-            userId,
-            type: requestedCounsellor ? "handoff_connected" : "handoff_offered",
-            severity: triage.severity,
-            conversationId: handoffConversationId,
-            success: true,
-          });
+          try {
+            await logAgentEvent({
+              userId,
+              type: requestedCounsellor
+                ? "handoff_connected"
+                : "handoff_offered",
+              severity: triage.severity,
+              conversationId: handoffConversationId,
+              success: true,
+            });
+          } catch (eventError) {
+            console.warn("Failed to log handoff event:", eventError);
+          }
 
           actionStatuses[actionStatuses.length - 1] = {
             key: "handoff",
@@ -442,6 +456,7 @@ export async function POST(request: NextRequest) {
               actions: [`Connected to ${counsellor.name}`],
               triage,
               actionStatuses,
+              handoffThreadCreated: Boolean(handoffConversationId),
               counsellorHandoff: {
                 name: counsellor.name,
                 title: counsellor.title,
