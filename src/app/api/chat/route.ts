@@ -12,6 +12,19 @@ import {
   getCounsellors,
 } from "@/lib/firestore";
 import {
+  translateText,
+  detectLanguage,
+  textToSpeech,
+  SUPPORTED_LANGUAGES,
+  SupportedLanguageCode,
+} from "@/lib/sunbird";
+import {
+  getCachedAudio,
+  cacheAudio,
+  createAudioUrl,
+  getCacheStats,
+} from "@/lib/ttsCache";
+import {
   AgentActionStatus,
   CounsellorSpecialty,
   TriageSeverity,
@@ -207,6 +220,25 @@ function normalizeLanguageName(language?: string): string | undefined {
   return lower.charAt(0).toUpperCase() + lower.slice(1);
 }
 
+function toSupportedLanguageCode(language?: string): SupportedLanguageCode {
+  if (!language) return "eng";
+
+  const lower = language.trim().toLowerCase();
+  if (!lower) return "eng";
+  if (lower in SUPPORTED_LANGUAGES) {
+    return lower as SupportedLanguageCode;
+  }
+  if (lower === "english" || lower === "en") return "eng";
+  if (lower === "luganda" || lower === "lg") return "lug";
+  if (lower === "runyankole" || lower === "nyankole" || lower === "nyn")
+    return "nyn";
+  if (lower === "ateso" || lower === "teo") return "teo";
+  if (lower === "acholi" || lower === "ach") return "ach";
+  if (lower === "lugbara" || lower === "lgg") return "lgg";
+  if (lower === "swahili" || lower === "sw") return "sw";
+  return "eng";
+}
+
 function inferRequestedLanguage(message: string): string | undefined {
   const m = message.toLowerCase();
   const languageMap: Array<[RegExp, string]> = [
@@ -333,6 +365,7 @@ export async function POST(request: NextRequest) {
       cycleData,
       userProfile,
       conversationId,
+      userLanguage: clientLanguage,
     } = body;
 
     if (!message || typeof message !== "string") {
@@ -353,6 +386,43 @@ export async function POST(request: NextRequest) {
     const actionStatuses: AgentActionStatus[] = [];
     const triage = assessTriageSeverity(trimmedMessage);
 
+    const storedLanguage = toSupportedLanguageCode(
+      userProfile?.preferences?.language,
+    );
+    let userLanguage: SupportedLanguageCode =
+      toSupportedLanguageCode(clientLanguage) || storedLanguage || "eng";
+    let translationApplied = userLanguage !== "eng";
+    let messageForAgent = trimmedMessage;
+
+    if (!clientLanguage && !storedLanguage) {
+      try {
+        const detected = await detectLanguage(trimmedMessage);
+        userLanguage = detected.language;
+        translationApplied = userLanguage !== "eng";
+      } catch (languageError) {
+        console.warn(
+          "Language detection failed, defaulting to English:",
+          languageError,
+        );
+      }
+    }
+
+    if (userLanguage !== "eng") {
+      try {
+        const translated = await translateText(
+          trimmedMessage,
+          userLanguage,
+          "eng",
+        );
+        messageForAgent = translated.translatedText;
+      } catch (translationError) {
+        console.warn(
+          "Translation to English failed, continuing with original message:",
+          translationError,
+        );
+      }
+    }
+
     if (userId) {
       try {
         await logAgentEvent({
@@ -372,7 +442,14 @@ export async function POST(request: NextRequest) {
       state: "done",
     });
 
-    // Auto-update cycle if user confirms period start.
+    if (translationApplied) {
+      actionStatuses.push({
+        key: "language",
+        label: `Detected language: ${SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage}`,
+        state: "done",
+      });
+    }
+
     if (userId && cycleData && PERIOD_START_PATTERN.test(trimmedMessage)) {
       const parsedStartDate =
         parsePeriodStartDate(trimmedMessage) || new Date();
@@ -420,14 +497,49 @@ export async function POST(request: NextRequest) {
       requestedWhatsApp ||
       triage.severity === "critical";
 
-    let handoffText = "";
+    const localizeResponse = async (text: string) => {
+      let localizedText = text;
+      if (userLanguage !== "eng") {
+        try {
+          const translated = await translateText(text, "eng", userLanguage);
+          localizedText = translated.translatedText;
+        } catch (translationError) {
+          console.warn(
+            "Failed to translate response, using English:",
+            translationError,
+          );
+        }
+      }
 
-    // FIRST: Check for crisis situations - these bypass the agent entirely
+      let audio:
+        | { url: string; durationSeconds: number; mimeType: string }
+        | undefined;
+      try {
+        const tts = await textToSpeech(localizedText, userLanguage, 0.7);
+        audio = {
+          url: tts.audioUrl,
+          durationSeconds: tts.durationSeconds,
+          mimeType: "audio/mpeg",
+        };
+      } catch (ttsError) {
+        console.warn(
+          "TTS generation failed, continuing without audio:",
+          ttsError,
+        );
+      }
+
+      return { localizedText, audio };
+    };
+
     const crisisResponse = checkForCrisis(trimmedMessage);
     if (crisisResponse) {
-      console.log("Crisis detected - using safety response");
+      const { localizedText, audio } = await localizeResponse(crisisResponse);
       return NextResponse.json({
-        response: crisisResponse,
+        response: localizedText,
+        language: userLanguage,
+        languageName: SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
+        audio,
+        translationApplied,
         source: "safety",
         type: "agent",
         toolsUsed: [],
@@ -435,14 +547,12 @@ export async function POST(request: NextRequest) {
         triage,
         actionStatuses: [
           ...actionStatuses,
-          {
-            key: "safety",
-            label: "Safety protocol activated",
-            state: "done",
-          },
+          { key: "safety", label: "Safety protocol activated", state: "done" },
         ],
       });
     }
+
+    let handoffText = "";
 
     if (shouldAutoConnect && userId) {
       actionStatuses.push({
@@ -456,22 +566,17 @@ export async function POST(request: NextRequest) {
         const isPronounReference =
           PRONOUN_REFERENCE_PATTERN.test(trimmedMessage);
 
-        // Check if user is referring to an already-connected counsellor via pronoun
         if (isPronounReference && conversationId) {
           try {
             const activeCounsellorData =
               await getActiveCounsellorForConversation(conversationId);
             if (activeCounsellorData) {
-              // Use the active counsellor instead of re-routing
-              // Reconstruct full Counsellor object from metadata
               const allCounsellors = await getCounsellors();
               counsellor = allCounsellors.find(
                 (c) => c.id === activeCounsellorData.id,
               );
 
               if (!counsellor) {
-                // If not in full list, create a minimal Counsellor object from metadata
-                // This handles static fallback counsellors
                 counsellor = {
                   id: activeCounsellorData.id,
                   name: activeCounsellorData.name,
@@ -501,18 +606,15 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // If no active counsellor found or not a pronoun reference, route a new one
         if (!counsellor) {
-          const specialty = inferCounsellorSpecialty(trimmedMessage);
+          const specialty = inferCounsellorSpecialty(messageForAgent);
           const requestedLanguage = inferRequestedLanguage(trimmedMessage);
           const preferredLanguage =
             requestedLanguage ||
             normalizeLanguageName(userProfile?.preferences?.language) ||
+            SUPPORTED_LANGUAGES[userLanguage]?.name ||
             "English";
-          counsellor = await routeCounsellor({
-            specialty,
-            preferredLanguage,
-          });
+          counsellor = await routeCounsellor({ specialty, preferredLanguage });
         }
 
         if (counsellor) {
@@ -531,7 +633,6 @@ export async function POST(request: NextRequest) {
             );
           }
 
-          // Store active counsellor metadata on conversation for context persistence
           if (handoffConversationId) {
             try {
               await setActiveCounsellorOnConversation({
@@ -546,19 +647,15 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          try {
-            await logAgentEvent({
-              userId,
-              type: requestedCounsellor
-                ? "handoff_connected"
-                : "handoff_offered",
-              severity: triage.severity,
-              conversationId: handoffConversationId,
-              success: true,
-            });
-          } catch (eventError) {
-            console.warn("Failed to log handoff event:", eventError);
-          }
+          await logAgentEvent({
+            userId,
+            type: requestedCounsellor ? "handoff_connected" : "handoff_offered",
+            severity: triage.severity,
+            conversationId: handoffConversationId,
+            success: true,
+          }).catch((eventError) =>
+            console.warn("Failed to log handoff event:", eventError),
+          );
 
           actionStatuses[actionStatuses.length - 1] = {
             key: "handoff",
@@ -566,11 +663,18 @@ export async function POST(request: NextRequest) {
             state: "done",
           };
 
-          // When user explicitly requested a counsellor, return deterministic
-          // contact response immediately — do NOT let the LLM override this.
           if (requestedCounsellor || requestedCall || requestedWhatsApp) {
+            const { localizedText, audio } = await localizeResponse(
+              `I've matched you with **${counsellor.name}** — ${counsellor.title}. 💜\n\nI'm opening their profile so you can review their languages, specialties, and availability first. From there, you can choose whether to call or WhatsApp them.`,
+            );
+
             return NextResponse.json({
-              response: `I've matched you with **${counsellor.name}** — ${counsellor.title}. 💜\n\nI'm opening their profile so you can review their languages, specialties, and availability first. From there, you can choose whether to call or WhatsApp them.`,
+              response: localizedText,
+              language: userLanguage,
+              languageName:
+                SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
+              audio,
+              translationApplied,
               source: "agent",
               type: "agent",
               toolsUsed: ["counsellor_routing"],
@@ -605,7 +709,7 @@ export async function POST(request: NextRequest) {
             });
           }
 
-          handoffText = `\n\nI have connected you to ${counsellor.name} (${counsellor.title}) for dedicated support. You can reach them on WhatsApp at ${counsellor.whatsappNumber}.`;
+          handoffText = `\n\nI have connected you to ${counsellor.name} (${counsellor.title}) for dedicated support.`;
         } else {
           actionStatuses[actionStatuses.length - 1] = {
             key: "handoff",
@@ -614,11 +718,18 @@ export async function POST(request: NextRequest) {
             state: "failed",
           };
 
-          // For explicit counsellor requests with no available counsellor,
-          // still return a deterministic response — never let LLM say "I can't connect".
           if (requestedCounsellor) {
+            const { localizedText, audio } = await localizeResponse(
+              `I wasn't able to find an immediately available counsellor right now, but I've flagged your request for urgent follow-up. 💜\n\nIn the meantime, you can reach our counsellors directly:\n\n📞 **Sauti 116 Helpline:** Call 116 (toll-free, 24/7)\n📞 **Mental Health Uganda:** 0800 110 022 (toll-free)\n\nYou can also browse available counsellors in the [Counsellors section](/counsellors) of the app to book a session directly.`,
+            );
+
             return NextResponse.json({
-              response: `I wasn't able to find an immediately available counsellor right now, but I've flagged your request for urgent follow-up. 💜\n\nIn the meantime, you can reach our counsellors directly:\n\n📞 **Sauti 116 Helpline:** Call 116 (toll-free, 24/7)\n📞 **Mental Health Uganda:** 0800 110 022 (toll-free)\n\nYou can also browse available counsellors in the [Counsellors section](/counsellors) of the app to book a session directly.`,
+              response: localizedText,
+              language: userLanguage,
+              languageName:
+                SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
+              audio,
+              translationApplied,
               source: "agent",
               type: "agent",
               toolsUsed: ["counsellor_routing"],
@@ -642,8 +753,17 @@ export async function POST(request: NextRequest) {
         };
 
         if (requestedCounsellor) {
+          const { localizedText, audio } = await localizeResponse(
+            `I encountered an issue connecting you to a counsellor right now. 💜 Please try these direct options:\n\n📞 **Sauti 116 Helpline:** Call 116 (toll-free, 24/7)\n💬 **WhatsApp:** You can also browse [our counsellors](/counsellors) in the app to reach them directly.`,
+          );
+
           return NextResponse.json({
-            response: `I encountered an issue connecting you to a counsellor right now. 💜 Please try these direct options:\n\n📞 **Sauti 116 Helpline:** Call 116 (toll-free, 24/7)\n💬 **WhatsApp:** You can also browse [our counsellors](/counsellors) in the app to reach them directly.`,
+            response: localizedText,
+            language: userLanguage,
+            languageName:
+              SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
+            audio,
+            translationApplied,
             source: "agent",
             type: "agent",
             toolsUsed: [],
@@ -670,14 +790,11 @@ export async function POST(request: NextRequest) {
         label: "Proactive counsellor handoff offered",
         state: "done",
       });
-
       handoffText =
         "\n\nI am concerned by what you shared. I can connect you to a professional counsellor right now. Reply: 'Connect me to a counsellor'.";
     }
 
-    // Get API key
     const apiKey = process.env.GEMINI_API_KEY;
-
     if (!apiKey || apiKey.trim() === "") {
       console.warn("GEMINI_API_KEY not configured - agent cannot function");
       return NextResponse.json(
@@ -694,13 +811,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Execute the agent
     console.log(
       "Executing agent for message:",
-      trimmedMessage.substring(0, 50) + "...",
+      messageForAgent.substring(0, 50) + "...",
     );
 
-    const agentResult = await executeAgent(apiKey, trimmedMessage, {
+    const agentResult = await executeAgent(apiKey, messageForAgent, {
       userId,
       userProfile,
       cycleData: cycleData
@@ -717,9 +833,10 @@ export async function POST(request: NextRequest) {
 
     let responseText = agentResult.response;
 
-    // Proactive cycle completion check prompt
-    const needsCycleCheck = shouldPromptCycleConfirmation(cycleData);
-    if (needsCycleCheck && !PERIOD_START_PATTERN.test(trimmedMessage)) {
+    if (
+      shouldPromptCycleConfirmation(cycleData) &&
+      !PERIOD_START_PATTERN.test(trimmedMessage)
+    ) {
       responseText +=
         "\n\nQuick check-in: did your period start already? If yes, please share the exact start date so I can update your cycle predictions accurately.";
 
@@ -728,29 +845,20 @@ export async function POST(request: NextRequest) {
         label: "Cycle confirmation requested",
         state: "done",
       });
-
-      if (userId) {
-        try {
-          await logAgentEvent({
-            userId,
-            type: "cycle_confirmation_prompted",
-            severity: triage.severity,
-            success: true,
-          });
-        } catch (eventError) {
-          console.warn("Failed to log cycle confirmation prompt:", eventError);
-        }
-      }
     }
 
     if (handoffText) {
       responseText += handoffText;
     }
 
-    console.log("Agent completed. Tools used:", agentResult.toolsUsed);
+    const { localizedText, audio } = await localizeResponse(responseText);
 
     return NextResponse.json({
-      response: responseText,
+      response: localizedText,
+      language: userLanguage,
+      languageName: SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
+      audio,
+      translationApplied,
       source: "agent",
       type: "agent",
       toolsUsed: agentResult.toolsUsed,
@@ -764,10 +872,8 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Agent error:", error);
-
     const errorMessage = String(error);
 
-    // Handle rate limiting gracefully
     if (
       errorMessage.includes("RATE_LIMITED:") ||
       errorMessage.includes("429")
@@ -781,16 +887,10 @@ export async function POST(request: NextRequest) {
           retryAfter: 20,
           actionStatuses: [],
         },
-        {
-          status: 429,
-          headers: {
-            "Retry-After": "20",
-          },
-        },
+        { status: 429, headers: { "Retry-After": "20" } },
       );
     }
 
-    // Handle timeout errors
     if (
       errorMessage.includes("timeout") ||
       errorMessage.includes("AbortError") ||
@@ -808,7 +908,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fallback response for other errors
     return NextResponse.json(
       {
         response:

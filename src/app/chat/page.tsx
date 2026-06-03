@@ -17,17 +17,35 @@ import {
   getUserProfile,
 } from "@/lib/firestore";
 import { AgentActionStatus, ChatConversation, UserProfile } from "@/types";
+import {
+  speechToText,
+  SUPPORTED_LANGUAGES,
+  SupportedLanguageCode,
+} from "@/lib/sunbird";
 
 interface Message {
   id: string;
   sender: "user" | "sister";
   text: string;
   timestamp: Date;
+  language?: string;
+  audio?: {
+    url: string;
+    durationSeconds: number;
+  };
 }
 
 interface ChatApiResponse {
   response: string;
   actionStatuses?: AgentActionStatus[];
+  language?: string;
+  languageName?: string;
+  audio?: {
+    url: string;
+    durationSeconds: number;
+    mimeType: string;
+  };
+  translationApplied?: boolean;
   counsellorProfile?: {
     id: string;
     name: string;
@@ -102,56 +120,117 @@ export default function ChatPage() {
   const [counsellorProfile, setCounsellorProfile] = useState<
     ChatApiResponse["counsellorProfile"] | null
   >(null);
+  const [userLanguage, setUserLanguage] =
+    useState<SupportedLanguageCode>("eng");
+  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+  const [audioElements, setAudioElements] = useState<
+    Record<string, HTMLAudioElement>
+  >({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const conversationsRef = useRef<ChatConversation[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recordingRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
 
-  // Check for speech recognition support
+  // Check for recording support
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (SpeechRecognition) {
+      if (
+        typeof navigator !== "undefined" &&
+        navigator.mediaDevices &&
+        typeof navigator.mediaDevices.getUserMedia === "function"
+      ) {
         setSpeechSupported(true);
-        recognitionRef.current = new SpeechRecognition();
-        recognitionRef.current.continuous = false;
-        recognitionRef.current.interimResults = true;
-        recognitionRef.current.lang = "en-US";
-
-        recognitionRef.current.onresult = (event) => {
-          const transcript = Array.from(event.results)
-            .map((result) => result[0].transcript)
-            .join("");
-          setInputValue(transcript);
-        };
-
-        recognitionRef.current.onend = () => {
-          setIsListening(false);
-        };
-
-        recognitionRef.current.onerror = (event) => {
-          console.error("Speech recognition error:", event.error);
-          setIsListening(false);
-        };
       }
     }
   }, []);
 
+  useEffect(() => {
+    if (userProfile?.preferences?.language) {
+      const preferred = userProfile.preferences.language.toLowerCase();
+      if (preferred in SUPPORTED_LANGUAGES) {
+        setUserLanguage(preferred as SupportedLanguageCode);
+      }
+    }
+  }, [userProfile]);
+
   // Toggle voice input
   const toggleVoiceInput = useCallback(() => {
-    if (!recognitionRef.current) return;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError("Voice input not supported on this device");
+      return;
+    }
 
     if (isListening) {
-      recognitionRef.current.stop();
+      // Stop recording
+      if (recordingRef.current && recordingRef.current.state !== "inactive") {
+        recordingRef.current.stop();
+      }
       setIsListening(false);
     } else {
+      // Start recording
       setInputValue("");
-      recognitionRef.current.start();
-      setIsListening(true);
+      startVoiceRecording();
     }
-  }, [isListening]);
+  }, [isListening, setError]);
 
+  const startVoiceRecording = useCallback(async () => {
+    try {
+      audioChunksRef.current = [];
+      setIsListening(true);
+      setError(null);
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: "audio/webm",
+      });
+      recordingRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (event) => {
+        audioChunksRef.current.push(event.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, {
+          type: "audio/webm",
+        });
+        audioChunksRef.current = [];
+
+        // Stop all tracks
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((track) => track.stop());
+          streamRef.current = null;
+        }
+
+        // Send to Sunbird STT
+        setError(null);
+        try {
+          const result = await speechToText(audioBlob, userLanguage);
+          setInputValue(result.transcript);
+        } catch (sttError) {
+          console.error("STT error:", sttError);
+          setError(
+            "Speech-to-text conversion failed. Please try again or type your message.",
+          );
+        }
+      };
+
+      mediaRecorder.onerror = (event) => {
+        console.error("Recording error:", event.error);
+        setError("Recording failed. Please try again.");
+        setIsListening(false);
+      };
+
+      mediaRecorder.start();
+    } catch (err) {
+      console.error("Microphone access error:", err);
+      setError("Unable to access microphone. Please check permissions.");
+      setIsListening(false);
+    }
+  }, [userLanguage, setError]);
   // Keep ref in sync with state for use in callbacks
   useEffect(() => {
     conversationsRef.current = conversations;
@@ -564,6 +643,7 @@ export default function ChatPage() {
                     onboardingCompleted: userProfile.onboardingCompleted,
                   }
                 : undefined,
+              userLanguage: userLanguage,
               cycleData: userProfile?.cycleData
                 ? {
                     lastPeriodDate: userProfile.cycleData.lastPeriodDate,
@@ -618,6 +698,9 @@ export default function ChatPage() {
 
         setAgentActionStatuses(data.actionStatuses || []);
         setCounsellorProfile(data.counsellorProfile || null);
+        if (data.language) {
+          setUserLanguage(data.language as SupportedLanguageCode);
+        }
 
         if (
           data.counsellorProfile?.profileUrl &&
@@ -632,11 +715,17 @@ export default function ChatPage() {
             sender: "sister",
             text: data.response,
             timestamp: new Date(),
+            language: data.language || "eng",
+            audio: data.audio
+              ? {
+                  url: data.audio.url,
+                  durationSeconds: data.audio.durationSeconds,
+                }
+              : undefined,
           };
 
           setMessages((prev) => [...prev, sisterMessage]);
 
-          // Only save to Firestore if not a local chat
           if (!isLocalChat) {
             try {
               await addMessage(activeConversationId, {
@@ -658,7 +747,6 @@ export default function ChatPage() {
                 firebaseError.message?.includes("permission") ||
                 firebaseError.code === "permission-denied";
 
-              // Silently handle Firestore errors - chat still works
               if (isPermissionError) {
                 console.warn(
                   "Cloud sync unavailable - continuing in local mode.",
@@ -708,6 +796,7 @@ export default function ChatPage() {
       messages,
       generateTitleFromMessage,
       userProfile,
+      userLanguage,
     ],
   );
 
@@ -1207,6 +1296,73 @@ export default function ChatPage() {
                       >
                         {message.text}
                       </p>
+                      {/* Audio Player for Sister Messages */}
+                      {message.sender === "sister" && message.audio && (
+                        <div className="mt-3 pt-2 border-t border-gray-200 dark:border-gray-700">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                const audio = audioElements[message.id];
+                                if (audio) {
+                                  if (playingAudioId === message.id) {
+                                    audio.pause();
+                                    setPlayingAudioId(null);
+                                  } else {
+                                    Object.values(audioElements).forEach((a) =>
+                                      a.pause(),
+                                    );
+                                    audio.play();
+                                    setPlayingAudioId(message.id);
+                                  }
+                                }
+                              }}
+                              className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                              title={
+                                playingAudioId === message.id ? "Pause" : "Play"
+                              }
+                            >
+                              <span className="material-symbols-outlined text-base text-primary">
+                                {playingAudioId === message.id
+                                  ? "pause_circle"
+                                  : "play_circle"}
+                              </span>
+                            </button>
+                            <audio
+                              ref={(el) => {
+                                if (el) {
+                                  setAudioElements((prev) => ({
+                                    ...prev,
+                                    [message.id]: el,
+                                  }));
+                                }
+                              }}
+                              src={message.audio.url}
+                              onEnded={() => setPlayingAudioId(null)}
+                              onError={(e) => {
+                                console.error("Audio playback error:", e);
+                                setPlayingAudioId(null);
+                              }}
+                            />
+                            <span className="text-[10px] sm:text-xs text-text-secondary dark:text-gray-400">
+                              {message.audio.durationSeconds.toFixed(0)}s
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Language Badge for Sister Messages */}
+                      {message.sender === "sister" &&
+                        message.language &&
+                        message.language !== "eng" && (
+                          <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                            <span className="inline-block text-[9px] sm:text-[10px] px-2 py-1 bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary-light rounded-md font-medium">
+                              🌍{" "}
+                              {SUPPORTED_LANGUAGES[
+                                message.language as SupportedLanguageCode
+                              ]?.name || message.language}
+                            </span>
+                          </div>
+                        )}
                     </div>
                     <p className="text-[9px] sm:text-[10px] text-text-secondary dark:text-gray-500 mt-1 px-1">
                       {message.timestamp.toLocaleTimeString([], {
@@ -1252,6 +1408,26 @@ export default function ChatPage() {
           {/* Input Area - positioned above bottom nav */}
           <div className="border-t border-border-light dark:border-border-dark bg-white dark:bg-card-dark pb-[calc(var(--bottom-nav-height,72px)+env(safe-area-inset-bottom))] lg:pb-4">
             <div className="max-w-3xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
+              {/* Language Selector */}
+              <div className="mb-3 sm:mb-4 flex items-center gap-2 sm:gap-3 flex-wrap">
+                <span className="text-xs sm:text-sm text-text-secondary dark:text-gray-400 whitespace-nowrap">
+                  🌍 Language:
+                </span>
+                <select
+                  value={userLanguage}
+                  onChange={(e) =>
+                    setUserLanguage(e.target.value as SupportedLanguageCode)
+                  }
+                  className="px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg sm:rounded-xl text-text-primary dark:text-white focus:ring-2 focus:ring-primary focus:border-primary transition-all"
+                >
+                  {Object.entries(SUPPORTED_LANGUAGES).map(([code, lang]) => (
+                    <option key={code} value={code}>
+                      {lang.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {/* Icebreakers for new chats */}
               {messages.length <= 1 && (
                 <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 sm:gap-3 mb-3 sm:mb-4">
