@@ -590,7 +590,9 @@ export async function POST(request: NextRequest) {
                 photoURL: counsellor.photoURL,
                 phoneNumber: counsellor.phoneNumber,
                 whatsappNumber: counsellor.whatsappNumber,
-                profileUrl: `/counsellors?counsellorId=${counsellor.id}`,
+                profileUrl: `/counsellors/${counsellor.id}`,
+                callUrl: `tel:${counsellor.phoneNumber.replace(/[^+\d]/g, "")}`,
+                whatsappUrl: `https://wa.me/${counsellor.whatsappNumber.replace(/[^\d]/g, "")}`,
               },
               counsellorHandoff: {
                 name: counsellor.name,

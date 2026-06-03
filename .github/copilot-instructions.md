@@ -58,6 +58,8 @@ src/
 
 Every set of changes must end with **exactly one commit message** on a single line.
 
+This is not optional. If a response includes code changes and does not end with the commit message line, the response is invalid.
+
 Rules:
 
 - **One line only** — no bullet points, no multi-line descriptions, no title + body format
@@ -65,6 +67,10 @@ Rules:
 - **Present tense, imperative** — e.g. `Fix counsellor routing with static fallback`
 - **Specific** — describe what changed, not just "update files"
 - **Always provided** — every response that modifies code must include a commit message at the end
+- **Last line only** — the commit message must be the literal final line of the response
+- **Exactly one** — never include two commit messages, alternatives, or optional variants
+- **Applies to all code edits** — UI changes, backend changes, config changes, docs changes, and instruction-file changes
+- **Do not forget** — before sending any code-changing response, verify the final line starts with `Commit:`
 
 Format:
 
