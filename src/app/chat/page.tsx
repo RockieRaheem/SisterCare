@@ -34,6 +34,12 @@ interface ChatApiResponse {
     url: string;
     autoOpen?: boolean;
   };
+  handoffFallbackAction?: {
+    type: "call" | "whatsapp";
+    label: string;
+    url: string;
+    autoOpen?: boolean;
+  };
 }
 
 const icebreakers = [
@@ -585,9 +591,22 @@ export default function ChatPage() {
         setAgentActionStatuses(data.actionStatuses || []);
 
         if (data.handoffAction?.autoOpen && typeof window !== "undefined") {
-          // Browser security policies may block auto-open on some devices.
-          // We still attempt to launch the user's preferred channel immediately.
-          window.open(data.handoffAction.url, "_self");
+          // Browser/device policies can block dialer opening from web contexts.
+          // Attempt preferred action first, then fallback channel if provided.
+          const beforeHref = window.location.href;
+          window.location.href = data.handoffAction.url;
+
+          if (
+            data.handoffFallbackAction?.autoOpen &&
+            data.handoffAction.type === "call"
+          ) {
+            window.setTimeout(() => {
+              const stillSamePage = window.location.href === beforeHref;
+              if (stillSamePage) {
+                window.location.href = data.handoffFallbackAction!.url;
+              }
+            }, 1200);
+          }
         }
 
         if (data.response) {

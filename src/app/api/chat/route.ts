@@ -132,7 +132,7 @@ Can you tell me more about what's making you feel this way? Sometimes talking ab
 const COUNSELLOR_REQUEST_PATTERN =
   /(counsellor|counselor|therapist|professional help|human support|talk to someone|connect me|i need help|i want a human|real help|i need real|speak to someone|real person|human help|mental health support|see a doctor|see a specialist)/i;
 const CALL_REQUEST_PATTERN =
-  /(call (them|her|him|counsellor|counselor)|phone (them|her|him|counsellor|counselor)|dial|make (the )?call|call now|automatically call|auto.?call)/i;
+  /(call (them|her|him|counsellor|counselor)|phone (them|her|him|counsellor|counselor)|phone call|via (a )?phone call|dial|make (the )?call|make a call|call now|automatically call|auto.?call|cant you call|can't you call|call her for me|call him for me)/i;
 const WHATSAPP_REQUEST_PATTERN =
   /(whatsapp|what'?s app|message (them|her|him|counsellor|counselor)|text (them|her|him|counsellor|counselor)|chat on whatsapp|connect.*whatsapp)/i;
 const PERIOD_START_PATTERN =
@@ -495,6 +495,14 @@ export async function POST(request: NextRequest) {
                 ...preferredAction,
                 autoOpen: true,
               },
+              handoffFallbackAction: requestedCall
+                ? {
+                    type: "whatsapp",
+                    label: "Open WhatsApp chat",
+                    url: toWhatsAppHref(counsellor.whatsappNumber),
+                    autoOpen: true,
+                  }
+                : undefined,
               counsellorHandoff: {
                 name: counsellor.name,
                 title: counsellor.title,
