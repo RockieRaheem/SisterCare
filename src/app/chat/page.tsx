@@ -28,17 +28,19 @@ interface Message {
 interface ChatApiResponse {
   response: string;
   actionStatuses?: AgentActionStatus[];
-  handoffAction?: {
-    type: "call" | "whatsapp";
-    label: string;
-    url: string;
-    autoOpen?: boolean;
-  };
-  handoffFallbackAction?: {
-    type: "call" | "whatsapp";
-    label: string;
-    url: string;
-    autoOpen?: boolean;
+  counsellorProfile?: {
+    id: string;
+    name: string;
+    title: string;
+    languages: string[];
+    specializations: string[];
+    status: string;
+    rating: number;
+    reviewCount: number;
+    photoURL: string;
+    phoneNumber: string;
+    whatsappNumber: string;
+    profileUrl: string;
   };
 }
 
@@ -72,18 +74,6 @@ const WELCOME_MESSAGE: Message = {
   timestamp: new Date(),
 };
 
-function openExternalAction(url: string): void {
-  if (typeof window === "undefined") return;
-
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.target = "_self";
-  anchor.rel = "noreferrer";
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-}
-
 export default function ChatPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -109,11 +99,8 @@ export default function ChatPage() {
   const [agentActionStatuses, setAgentActionStatuses] = useState<
     AgentActionStatus[]
   >([]);
-  const [handoffAction, setHandoffAction] = useState<
-    ChatApiResponse["handoffAction"] | null
-  >(null);
-  const [handoffFallbackAction, setHandoffFallbackAction] = useState<
-    ChatApiResponse["handoffFallbackAction"] | null
+  const [counsellorProfile, setCounsellorProfile] = useState<
+    ChatApiResponse["counsellorProfile"] | null
   >(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const conversationsRef = useRef<ChatConversation[]>([]);
@@ -630,24 +617,13 @@ export default function ChatPage() {
         const data = await makeRequest();
 
         setAgentActionStatuses(data.actionStatuses || []);
-        setHandoffAction(data.handoffAction || null);
-        setHandoffFallbackAction(data.handoffFallbackAction || null);
+        setCounsellorProfile(data.counsellorProfile || null);
 
-        if (data.handoffAction?.autoOpen && typeof window !== "undefined") {
-          // Browser/device policies can block dialer opening from web contexts.
-          // Use a real link click first; keep a visible manual fallback below.
-          openExternalAction(data.handoffAction.url);
-
-          if (
-            data.handoffFallbackAction?.autoOpen &&
-            data.handoffAction.type === "call"
-          ) {
-            window.setTimeout(() => {
-              if (document.visibilityState === "visible") {
-                openExternalAction(data.handoffFallbackAction!.url);
-              }
-            }, 1200);
-          }
+        if (
+          data.counsellorProfile?.profileUrl &&
+          typeof window !== "undefined"
+        ) {
+          router.push(data.counsellorProfile.profileUrl);
         }
 
         if (data.response) {
@@ -1118,21 +1094,6 @@ export default function ChatPage() {
             </div>
           </div>
 
-          {/* Error Toast */}
-          {error && (
-            <div className="absolute top-20 left-1/2 -translate-x-1/2 z-50 bg-red-500 text-white px-4 py-2 rounded-xl shadow-lg flex items-center gap-2 animate-fade-in text-sm">
-              <span className="material-symbols-outlined text-lg">error</span>
-              <span>{error}</span>
-              <button
-                onClick={() => setError(null)}
-                className="p-1 hover:bg-white/20 rounded-lg"
-              >
-                <span className="material-symbols-outlined text-sm">close</span>
-              </button>
-            </div>
-          )}
-
-          {/* Messages Container */}
           <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-background-dark">
             <div className="max-w-3xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
               {agentActionStatuses.length > 0 && (
@@ -1175,43 +1136,35 @@ export default function ChatPage() {
                 </div>
               )}
 
-              {handoffAction && (
+              {counsellorProfile && (
                 <div className="bg-gradient-to-r from-primary to-purple-600 text-white rounded-2xl p-4 sm:p-5 shadow-lg animate-fade-in">
                   <p className="text-xs uppercase tracking-wide font-semibold opacity-80">
-                    Direct handoff
+                    Matched counsellor
                   </p>
                   <p className="mt-1 text-sm sm:text-base font-medium">
-                    {handoffAction.type === "call"
-                      ? "Tap to call your counsellor now."
-                      : "Tap to open WhatsApp with your counsellor now."}
+                    {counsellorProfile.name} is a {counsellorProfile.title}.
+                    Open their profile to review languages, specialties, and
+                    availability first.
                   </p>
                   <div className="mt-3 flex flex-col sm:flex-row gap-2">
-                    <button
-                      type="button"
-                      onClick={() => openExternalAction(handoffAction.url)}
+                    <Link
+                      href={counsellorProfile.profileUrl}
                       className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white text-primary font-semibold shadow-sm"
                     >
                       <span className="material-symbols-outlined text-lg">
-                        {handoffAction.type === "call" ? "call" : "chat"}
+                        account_circle
                       </span>
-                      {handoffAction.label}
-                    </button>
-                    {handoffFallbackAction && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          openExternalAction(handoffFallbackAction.url)
-                        }
-                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 border border-white/30 text-white font-semibold"
-                      >
-                        <span className="material-symbols-outlined text-lg">
-                          {handoffFallbackAction.type === "call"
-                            ? "call"
-                            : "chat"}
-                        </span>
-                        {handoffFallbackAction.label}
-                      </button>
-                    )}
+                      Open profile
+                    </Link>
+                    <Link
+                      href={`/counsellors?counsellorId=${counsellorProfile.id}`}
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 border border-white/30 text-white font-semibold"
+                    >
+                      <span className="material-symbols-outlined text-lg">
+                        arrow_forward
+                      </span>
+                      View counsellor page
+                    </Link>
                   </div>
                 </div>
               )}

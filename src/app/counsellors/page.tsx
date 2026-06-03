@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import Header from "@/components/layout/Header";
 import BottomNav from "@/components/layout/BottomNav";
 import CounsellorCard from "@/components/features/CounsellorCard";
 import { Counsellor, CounsellorSpecialty, CounsellorStatus } from "@/types";
 import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 // Mock counsellors data - In production, this would come from Firestore
 const mockCounsellors: Counsellor[] = [
@@ -212,6 +212,8 @@ const statusFilters: { value: CounsellorStatus | "all"; label: string }[] = [
 export default function CounsellorsPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const profileRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSpecialty, setSelectedSpecialty] = useState<
@@ -225,6 +227,7 @@ export default function CounsellorsPage() {
   );
   const [counsellors, setCounsellors] = useState<Counsellor[]>(mockCounsellors);
   const [showFilters, setShowFilters] = useState(false);
+  const selectedCounsellorId = searchParams.get("counsellorId");
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -282,6 +285,15 @@ export default function CounsellorsPage() {
     (c) => c.status === "available",
   ).length;
 
+  useEffect(() => {
+    if (!selectedCounsellorId) return;
+
+    const selectedElement = profileRefs.current[selectedCounsellorId];
+    if (selectedElement) {
+      selectedElement.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [selectedCounsellorId, filteredCounsellors]);
+
   const handleWhatsAppClick = (counsellor: Counsellor) => {
     const message = encodeURIComponent(
       `Hi ${counsellor.name}, I found you on SisterCare and would like to schedule a consultation.`,
@@ -294,6 +306,16 @@ export default function CounsellorsPage() {
 
   const handleCallClick = (counsellor: Counsellor) => {
     window.open(`tel:${counsellor.phoneNumber}`, "_self");
+  };
+
+  const handleOpenWhatsApp = (counsellor: Counsellor) => {
+    const message = encodeURIComponent(
+      `Hi ${counsellor.name}, I was matched with you on SisterCare and would like to chat about my health concern.`,
+    );
+    window.open(
+      `https://wa.me/${counsellor.whatsappNumber.replace("+", "")}?text=${message}`,
+      "_blank",
+    );
   };
 
   if (loading) {
@@ -538,12 +560,23 @@ export default function CounsellorsPage() {
         {filteredCounsellors.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
             {filteredCounsellors.map((counsellor) => (
-              <CounsellorCard
+              <div
                 key={counsellor.id}
-                counsellor={counsellor}
-                onWhatsAppClick={handleWhatsAppClick}
-                onCallClick={handleCallClick}
-              />
+                ref={(element) => {
+                  profileRefs.current[counsellor.id] = element;
+                }}
+                className={
+                  selectedCounsellorId === counsellor.id
+                    ? "ring-4 ring-primary ring-offset-2 ring-offset-bg-light dark:ring-offset-bg-dark rounded-2xl"
+                    : undefined
+                }
+              >
+                <CounsellorCard
+                  counsellor={counsellor}
+                  onWhatsAppClick={handleOpenWhatsApp}
+                  onCallClick={handleCallClick}
+                />
+              </div>
             ))}
           </div>
         ) : (

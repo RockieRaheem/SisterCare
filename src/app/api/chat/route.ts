@@ -569,50 +569,29 @@ export async function POST(request: NextRequest) {
           // When user explicitly requested a counsellor, return deterministic
           // contact response immediately — do NOT let the LLM override this.
           if (requestedCounsellor || requestedCall || requestedWhatsApp) {
-            const statusLabel =
-              counsellor.status === "available"
-                ? "available now"
-                : counsellor.status === "busy"
-                  ? "currently in a session"
-                  : "offline (will respond when back)";
-
-            const preferredAction = requestedCall
-              ? {
-                  type: "call",
-                  label: "Call counsellor now",
-                  url: toPhoneHref(counsellor.phoneNumber),
-                }
-              : {
-                  type: "whatsapp",
-                  label: "Open WhatsApp chat",
-                  url: toWhatsAppHref(counsellor.whatsappNumber),
-                };
-
-            const autoActionText = requestedCall
-              ? "I am now opening your phone dialer with the counsellor number pre-filled."
-              : "I am now opening a direct WhatsApp chat with your counsellor.";
-
             return NextResponse.json({
-              response: `I've connected you to **${counsellor.name}** — ${counsellor.title}. 💜\n\n${autoActionText}\n\nHere are their direct contact details:\n\n📞 **Phone:** ${counsellor.phoneNumber}\n💬 **WhatsApp:** ${counsellor.whatsappNumber}\n\nThey are currently ${statusLabel} and specialise in ${counsellor.specializations.join(", ")}.\n\nA support thread has also been created for you in the app.`,
+              response: `I've matched you with **${counsellor.name}** — ${counsellor.title}. 💜\n\nI'm opening their profile so you can review their languages, specialties, and availability first. From there, you can choose whether to call or WhatsApp them.`,
               source: "agent",
               type: "agent",
               toolsUsed: ["counsellor_routing"],
-              actions: [`Connected to ${counsellor.name}`],
+              actions: [`Matched to ${counsellor.name}`],
               triage,
               actionStatuses,
               handoffThreadCreated: Boolean(handoffConversationId),
-              handoffAction: {
-                ...preferredAction,
-                autoOpen: true,
+              counsellorProfile: {
+                id: counsellor.id,
+                name: counsellor.name,
+                title: counsellor.title,
+                languages: counsellor.languages,
+                specializations: counsellor.specializations,
+                status: counsellor.status,
+                rating: counsellor.rating,
+                reviewCount: counsellor.reviewCount,
+                photoURL: counsellor.photoURL,
+                phoneNumber: counsellor.phoneNumber,
+                whatsappNumber: counsellor.whatsappNumber,
+                profileUrl: `/counsellors?counsellorId=${counsellor.id}`,
               },
-              handoffFallbackAction: requestedCall
-                ? {
-                    type: "whatsapp",
-                    label: "Open WhatsApp chat",
-                    url: toWhatsAppHref(counsellor.whatsappNumber),
-                    autoOpen: true,
-                  }
-                : undefined,
               counsellorHandoff: {
                 name: counsellor.name,
                 title: counsellor.title,
