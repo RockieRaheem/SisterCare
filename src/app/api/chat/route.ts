@@ -7,6 +7,9 @@ import {
   routeCounsellor,
   saveCycleData,
   calculateNextPeriod,
+  setActiveCounsellorOnConversation,
+  getActiveCounsellorForConversation,
+  getCounsellors,
 } from "@/lib/firestore";
 import {
   AgentActionStatus,
@@ -134,7 +137,10 @@ const COUNSELLOR_REQUEST_PATTERN =
 const CALL_REQUEST_PATTERN =
   /(call (them|her|him|counsellor|counselor)|phone (them|her|him|counsellor|counselor)|phone call|via (a )?phone call|dial|make (the )?call|make a call|call now|automatically call|auto.?call|cant you call|can't you call|call her for me|call him for me)/i;
 const WHATSAPP_REQUEST_PATTERN =
-  /(whatsapp|what'?s app|message (them|her|him|counsellor|counselor)|text (them|her|him|counsellor|counselor)|chat on whatsapp|connect.*whatsapp)/i;
+  /(whatsapp|what'?s app|message (them|her|him|counsellor|counselor)|text (them|her|him|counsellor|counselor)|chat on whatsapp|connect.*whatsapp|if you cant|if you can't)/i;
+// Detect pronoun references to active counsellor ("her", "him", "them")
+const PRONOUN_REFERENCE_PATTERN =
+  /(call her|call him|whatsapp her|whatsapp him|message (her|him|them)|text (her|him|them)|her number|his number|their number|contact (her|him|them)|reach (her|him|them))/i;
 const PERIOD_START_PATTERN =
   /(period (started|came|has started)|i got my period|my period is here|started my period|got my periods)/i;
 
@@ -326,6 +332,7 @@ export async function POST(request: NextRequest) {
       userId,
       cycleData,
       userProfile,
+      conversationId,
     } = body;
 
     if (!message || typeof message !== "string") {
@@ -445,16 +452,68 @@ export async function POST(request: NextRequest) {
       });
 
       try {
-        const specialty = inferCounsellorSpecialty(trimmedMessage);
-        const requestedLanguage = inferRequestedLanguage(trimmedMessage);
-        const preferredLanguage =
-          requestedLanguage ||
-          normalizeLanguageName(userProfile?.preferences?.language) ||
-          "English";
-        const counsellor = await routeCounsellor({
-          specialty,
-          preferredLanguage,
-        });
+        let counsellor;
+        const isPronounReference =
+          PRONOUN_REFERENCE_PATTERN.test(trimmedMessage);
+
+        // Check if user is referring to an already-connected counsellor via pronoun
+        if (isPronounReference && conversationId) {
+          try {
+            const activeCounsellorData =
+              await getActiveCounsellorForConversation(conversationId);
+            if (activeCounsellorData) {
+              // Use the active counsellor instead of re-routing
+              // Reconstruct full Counsellor object from metadata
+              const allCounsellors = await getCounsellors();
+              counsellor = allCounsellors.find(
+                (c) => c.id === activeCounsellorData.id,
+              );
+
+              if (!counsellor) {
+                // If not in full list, create a minimal Counsellor object from metadata
+                // This handles static fallback counsellors
+                counsellor = {
+                  id: activeCounsellorData.id,
+                  name: activeCounsellorData.name,
+                  title: activeCounsellorData.title,
+                  bio: `${activeCounsellorData.title} specializing in ${activeCounsellorData.specializations.join(", ")}`,
+                  specializations: activeCounsellorData.specializations as any,
+                  photoURL: "",
+                  status: "available" as const,
+                  rating: 5,
+                  reviewCount: 0,
+                  yearsExperience: 1,
+                  languages: activeCounsellorData.languages,
+                  phoneNumber: activeCounsellorData.phoneNumber,
+                  whatsappNumber: activeCounsellorData.whatsappNumber,
+                  availableHours: { start: "08:00", end: "22:00", days: [] },
+                  sessionCount: 0,
+                  verified: true,
+                  createdAt: new Date(),
+                };
+              }
+            }
+          } catch (fetchErr) {
+            console.warn(
+              "Failed to fetch active counsellor, will route new one:",
+              fetchErr,
+            );
+          }
+        }
+
+        // If no active counsellor found or not a pronoun reference, route a new one
+        if (!counsellor) {
+          const specialty = inferCounsellorSpecialty(trimmedMessage);
+          const requestedLanguage = inferRequestedLanguage(trimmedMessage);
+          const preferredLanguage =
+            requestedLanguage ||
+            normalizeLanguageName(userProfile?.preferences?.language) ||
+            "English";
+          counsellor = await routeCounsellor({
+            specialty,
+            preferredLanguage,
+          });
+        }
 
         if (counsellor) {
           let handoffConversationId: string | undefined;
@@ -470,6 +529,21 @@ export async function POST(request: NextRequest) {
               "Could not create counsellor thread in Firestore, continuing with direct handoff:",
               connectError,
             );
+          }
+
+          // Store active counsellor metadata on conversation for context persistence
+          if (handoffConversationId) {
+            try {
+              await setActiveCounsellorOnConversation({
+                conversationId: handoffConversationId,
+                counsellor,
+              });
+            } catch (metadataErr) {
+              console.warn(
+                "Failed to store active counsellor metadata:",
+                metadataErr,
+              );
+            }
           }
 
           try {

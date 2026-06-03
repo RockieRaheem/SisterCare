@@ -1315,6 +1315,57 @@ export async function connectUserToCounsellor(params: {
 }
 
 /**
+ * Update conversation with active counsellor metadata for context preservation
+ */
+export async function setActiveCounsellorOnConversation(params: {
+  conversationId: string;
+  counsellor: Counsellor;
+}): Promise<void> {
+  const { conversationId, counsellor } = params;
+  await updateDoc(doc(db, "conversations", conversationId), {
+    activeCounsellorId: counsellor.id,
+    activeCounsellor: {
+      id: counsellor.id,
+      name: counsellor.name,
+      title: counsellor.title,
+      languages: counsellor.languages,
+      specializations: counsellor.specializations,
+      phoneNumber: counsellor.phoneNumber,
+      whatsappNumber: counsellor.whatsappNumber,
+    },
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/**
+ * Get active counsellor for a conversation (if one exists)
+ */
+export async function getActiveCounsellorForConversation(
+  conversationId: string,
+): Promise<{
+  id: string;
+  name: string;
+  title: string;
+  languages: string[];
+  specializations: string[];
+  phoneNumber: string;
+  whatsappNumber: string;
+} | null> {
+  try {
+    const docRef = doc(db, "conversations", conversationId);
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      return data.activeCounsellor || null;
+    }
+  } catch (err) {
+    console.warn("Failed to get active counsellor from conversation:", err);
+  }
+  return null;
+}
+
+/**
  * Log agent events for observability and evaluation metrics.
  */
 export async function logAgentEvent(params: {

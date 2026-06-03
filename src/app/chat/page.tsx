@@ -552,6 +552,7 @@ export default function ChatPage() {
               message: text.trim(),
               conversationHistory,
               userId: user.uid,
+              conversationId: activeConversationId,
               userProfile: userProfile
                 ? {
                     displayName: userProfile.displayName,

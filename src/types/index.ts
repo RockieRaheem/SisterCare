@@ -81,6 +81,17 @@ export interface ChatConversation {
   updatedAt: Date;
   lastMessage?: string;
   messageCount?: number;
+  // Counsellor context - tracks active counsellor for this conversation
+  activeCounsellorId?: string;
+  activeCounsellor?: {
+    id: string;
+    name: string;
+    title: string;
+    languages: string[];
+    specializations: string[];
+    phoneNumber: string;
+    whatsappNumber: string;
+  };
 }
 
 export type TriageSeverity = "low" | "medium" | "high" | "critical";
