@@ -27,6 +27,8 @@ import {
   Counsellor,
   CounsellorStatus,
   CounsellorSpecialty,
+  AgentEvent,
+  TriageSeverity,
 } from "@/types";
 
 // ============================================
@@ -145,26 +147,28 @@ export function calculateNextPeriod(
 ): Date {
   const today = new Date();
   today.setHours(0, 0, 0, 0); // Normalize to start of day
-  
+
   const lastPeriod = new Date(lastPeriodDate);
   lastPeriod.setHours(0, 0, 0, 0);
-  
+
   // Calculate days since last period
   const daysSinceLast = Math.floor(
-    (today.getTime() - lastPeriod.getTime()) / (1000 * 60 * 60 * 24)
+    (today.getTime() - lastPeriod.getTime()) / (1000 * 60 * 60 * 24),
   );
-  
+
   // How many complete cycles have passed?
   const cyclesPassed = Math.floor(daysSinceLast / cycleLength);
-  
+
   // Calculate the most recent period start (estimated)
   const currentCycleStart = new Date(lastPeriod);
-  currentCycleStart.setDate(currentCycleStart.getDate() + (cyclesPassed * cycleLength));
-  
+  currentCycleStart.setDate(
+    currentCycleStart.getDate() + cyclesPassed * cycleLength,
+  );
+
   // Next period is one cycle after the current cycle start
   const nextPeriod = new Date(currentCycleStart);
   nextPeriod.setDate(nextPeriod.getDate() + cycleLength);
-  
+
   return nextPeriod;
 }
 
@@ -187,40 +191,42 @@ export function getCycleInfo(
 } {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   const lastPeriod = new Date(lastPeriodDate);
   lastPeriod.setHours(0, 0, 0, 0);
-  
+
   // Calculate days since last logged period
   const daysSinceLast = Math.floor(
-    (today.getTime() - lastPeriod.getTime()) / (1000 * 60 * 60 * 24)
+    (today.getTime() - lastPeriod.getTime()) / (1000 * 60 * 60 * 24),
   );
-  
+
   // How many complete cycles have theoretically passed?
   const cyclesPassed = Math.floor(daysSinceLast / cycleLength);
-  
+
   // Calculate the estimated current cycle start date
   const currentCycleStart = new Date(lastPeriod);
-  currentCycleStart.setDate(currentCycleStart.getDate() + (cyclesPassed * cycleLength));
-  
+  currentCycleStart.setDate(
+    currentCycleStart.getDate() + cyclesPassed * cycleLength,
+  );
+
   // Day in current cycle (1-indexed)
   const daysSinceCurrentCycleStart = Math.floor(
-    (today.getTime() - currentCycleStart.getTime()) / (1000 * 60 * 60 * 24)
+    (today.getTime() - currentCycleStart.getTime()) / (1000 * 60 * 60 * 24),
   );
   const dayInCycle = daysSinceCurrentCycleStart + 1;
-  
+
   // Next period date
   const nextPeriodDate = new Date(currentCycleStart);
   nextPeriodDate.setDate(nextPeriodDate.getDate() + cycleLength);
-  
+
   // Days until next period
   const daysUntilNextPeriod = Math.floor(
-    (nextPeriodDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+    (nextPeriodDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
   );
-  
+
   // Is user currently in period phase?
   const isInPeriod = dayInCycle <= periodLength;
-  
+
   // Check if period is "late" (more than cycle length since last logged period
   // and user hasn't logged a new period)
   // We consider it "late" if we're past the first expected period and no update
@@ -228,7 +234,7 @@ export function getCycleInfo(
   firstExpectedPeriod.setDate(firstExpectedPeriod.getDate() + cycleLength);
   const isPeriodLate = cyclesPassed >= 1 && today > firstExpectedPeriod;
   const daysLate = isPeriodLate ? daysSinceLast - cycleLength : 0;
-  
+
   // Determine phase
   let phase: string;
   if (dayInCycle <= periodLength) {
@@ -240,7 +246,7 @@ export function getCycleInfo(
   } else {
     phase = "luteal";
   }
-  
+
   return {
     phase,
     dayInCycle,
@@ -729,7 +735,7 @@ export async function getCycleHistory(
 export async function getCounsellors(): Promise<Counsellor[]> {
   const counsellorsRef = collection(db, "counsellors");
   const q = query(counsellorsRef, orderBy("rating", "desc"));
-  
+
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map((doc) => ({
     id: doc.id,
@@ -741,14 +747,16 @@ export async function getCounsellors(): Promise<Counsellor[]> {
 /**
  * Get counsellors by status
  */
-export async function getCounsellorsByStatus(status: CounsellorStatus): Promise<Counsellor[]> {
+export async function getCounsellorsByStatus(
+  status: CounsellorStatus,
+): Promise<Counsellor[]> {
   const counsellorsRef = collection(db, "counsellors");
   const q = query(
-    counsellorsRef, 
+    counsellorsRef,
     where("status", "==", status),
-    orderBy("rating", "desc")
+    orderBy("rating", "desc"),
   );
-  
+
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map((doc) => ({
     id: doc.id,
@@ -760,14 +768,16 @@ export async function getCounsellorsByStatus(status: CounsellorStatus): Promise<
 /**
  * Get counsellors by specialty
  */
-export async function getCounsellorsBySpecialty(specialty: CounsellorSpecialty): Promise<Counsellor[]> {
+export async function getCounsellorsBySpecialty(
+  specialty: CounsellorSpecialty,
+): Promise<Counsellor[]> {
   const counsellorsRef = collection(db, "counsellors");
   const q = query(
-    counsellorsRef, 
+    counsellorsRef,
     where("specializations", "array-contains", specialty),
-    orderBy("rating", "desc")
+    orderBy("rating", "desc"),
   );
-  
+
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map((doc) => ({
     id: doc.id,
@@ -779,14 +789,16 @@ export async function getCounsellorsBySpecialty(specialty: CounsellorSpecialty):
 /**
  * Get a single counsellor by ID
  */
-export async function getCounsellor(counsellorId: string): Promise<Counsellor | null> {
+export async function getCounsellor(
+  counsellorId: string,
+): Promise<Counsellor | null> {
   const counsellorRef = doc(db, "counsellors", counsellorId);
   const counsellorDoc = await getDoc(counsellorRef);
-  
+
   if (!counsellorDoc.exists()) {
     return null;
   }
-  
+
   return {
     id: counsellorDoc.id,
     ...counsellorDoc.data(),
@@ -798,8 +810,8 @@ export async function getCounsellor(counsellorId: string): Promise<Counsellor | 
  * Update counsellor status
  */
 export async function updateCounsellorStatus(
-  counsellorId: string, 
-  status: CounsellorStatus
+  counsellorId: string,
+  status: CounsellorStatus,
 ): Promise<void> {
   const counsellorRef = doc(db, "counsellors", counsellorId);
   await updateDoc(counsellorRef, { status });
@@ -809,7 +821,7 @@ export async function updateCounsellorStatus(
  * Create a new counsellor (admin function)
  */
 export async function createCounsellor(
-  counsellor: Omit<Counsellor, "id" | "createdAt">
+  counsellor: Omit<Counsellor, "id" | "createdAt">,
 ): Promise<string> {
   const counsellorsRef = collection(db, "counsellors");
   const docRef = await addDoc(counsellorsRef, {
@@ -828,8 +840,13 @@ export async function seedCounsellors(): Promise<void> {
       name: "Dr. Sarah Nakamya",
       title: "Licensed Clinical Psychologist",
       bio: "With over 10 years of experience in women's mental health, I specialize in helping women navigate life transitions, anxiety, and emotional wellness. My approach is warm, non-judgmental, and rooted in evidence-based practices.",
-      specializations: ["Mental Health", "Reproductive Health", "Relationship Counselling"],
-      photoURL: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face",
+      specializations: [
+        "Mental Health",
+        "Reproductive Health",
+        "Relationship Counselling",
+      ],
+      photoURL:
+        "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face",
       status: "available",
       rating: 4.9,
       reviewCount: 156,
@@ -840,7 +857,7 @@ export async function seedCounsellors(): Promise<void> {
       availableHours: {
         start: "09:00",
         end: "17:00",
-        days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+        days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
       },
       sessionCount: 1240,
       verified: true,
@@ -849,8 +866,13 @@ export async function seedCounsellors(): Promise<void> {
       name: "Dr. Grace Achieng",
       title: "Reproductive Health Specialist",
       bio: "I am passionate about empowering women with knowledge about their bodies. Whether you're dealing with menstrual health issues, fertility concerns, or need guidance during pregnancy, I'm here to support you every step of the way.",
-      specializations: ["Menstrual Health", "Reproductive Health", "Pregnancy & Postpartum"],
-      photoURL: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop&crop=face",
+      specializations: [
+        "Menstrual Health",
+        "Reproductive Health",
+        "Pregnancy & Postpartum",
+      ],
+      photoURL:
+        "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop&crop=face",
       status: "busy",
       rating: 4.8,
       reviewCount: 203,
@@ -861,7 +883,14 @@ export async function seedCounsellors(): Promise<void> {
       availableHours: {
         start: "08:00",
         end: "16:00",
-        days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+        days: [
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday",
+        ],
       },
       sessionCount: 1890,
       verified: true,
@@ -870,8 +899,13 @@ export async function seedCounsellors(): Promise<void> {
       name: "Counsellor Mary Atim",
       title: "Adolescent Health Counsellor",
       bio: "I believe every young woman deserves access to accurate health information and a safe space to discuss her concerns. I specialize in helping teens and young adults understand their bodies and build healthy habits.",
-      specializations: ["Adolescent Health", "Menstrual Health", "Sexual Health"],
-      photoURL: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=400&fit=crop&crop=face",
+      specializations: [
+        "Adolescent Health",
+        "Menstrual Health",
+        "Sexual Health",
+      ],
+      photoURL:
+        "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=400&fit=crop&crop=face",
       status: "available",
       rating: 4.7,
       reviewCount: 89,
@@ -882,7 +916,7 @@ export async function seedCounsellors(): Promise<void> {
       availableHours: {
         start: "10:00",
         end: "18:00",
-        days: ["Monday", "Tuesday", "Wednesday", "Friday"]
+        days: ["Monday", "Tuesday", "Wednesday", "Friday"],
       },
       sessionCount: 567,
       verified: true,
@@ -891,8 +925,13 @@ export async function seedCounsellors(): Promise<void> {
       name: "Dr. Elizabeth Mugisha",
       title: "Nutrition & Wellness Expert",
       bio: "Proper nutrition is the foundation of good health. I help women understand how diet affects their menstrual cycles, energy levels, and overall well-being. Let me help you create a personalized wellness plan.",
-      specializations: ["Nutrition & Wellness", "Menstrual Health", "Reproductive Health"],
-      photoURL: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=400&fit=crop&crop=face",
+      specializations: [
+        "Nutrition & Wellness",
+        "Menstrual Health",
+        "Reproductive Health",
+      ],
+      photoURL:
+        "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=400&fit=crop&crop=face",
       status: "offline",
       rating: 4.9,
       reviewCount: 134,
@@ -903,7 +942,7 @@ export async function seedCounsellors(): Promise<void> {
       availableHours: {
         start: "09:00",
         end: "15:00",
-        days: ["Tuesday", "Wednesday", "Thursday", "Saturday"]
+        days: ["Tuesday", "Wednesday", "Thursday", "Saturday"],
       },
       sessionCount: 892,
       verified: true,
@@ -912,8 +951,13 @@ export async function seedCounsellors(): Promise<void> {
       name: "Counsellor Janet Nakabugo",
       title: "Pregnancy & Postpartum Specialist",
       bio: "Becoming a mother is a beautiful journey, but it can also be overwhelming. I provide compassionate support for women during pregnancy, childbirth, and the postpartum period, including guidance on postpartum mental health.",
-      specializations: ["Pregnancy & Postpartum", "Mental Health", "Reproductive Health"],
-      photoURL: "https://images.unsplash.com/photo-1551836022-deb4988cc6c0?w=400&h=400&fit=crop&crop=face",
+      specializations: [
+        "Pregnancy & Postpartum",
+        "Mental Health",
+        "Reproductive Health",
+      ],
+      photoURL:
+        "https://images.unsplash.com/photo-1551836022-deb4988cc6c0?w=400&h=400&fit=crop&crop=face",
       status: "available",
       rating: 4.8,
       reviewCount: 178,
@@ -924,7 +968,7 @@ export async function seedCounsellors(): Promise<void> {
       availableHours: {
         start: "08:00",
         end: "14:00",
-        days: ["Monday", "Wednesday", "Friday", "Saturday"]
+        days: ["Monday", "Wednesday", "Friday", "Saturday"],
       },
       sessionCount: 2100,
       verified: true,
@@ -933,8 +977,13 @@ export async function seedCounsellors(): Promise<void> {
       name: "Dr. Patience Akello",
       title: "Sexual Health Counsellor",
       bio: "Sexual health is an important part of overall wellness. I create a safe, confidential space where you can discuss any concerns about your sexual health without judgment. Education and empowerment are at the heart of what I do.",
-      specializations: ["Sexual Health", "Reproductive Health", "Relationship Counselling"],
-      photoURL: "https://images.unsplash.com/photo-1607990281513-2c110a25bd8c?w=400&h=400&fit=crop&crop=face",
+      specializations: [
+        "Sexual Health",
+        "Reproductive Health",
+        "Relationship Counselling",
+      ],
+      photoURL:
+        "https://images.unsplash.com/photo-1607990281513-2c110a25bd8c?w=400&h=400&fit=crop&crop=face",
       status: "busy",
       rating: 4.6,
       reviewCount: 95,
@@ -945,7 +994,7 @@ export async function seedCounsellors(): Promise<void> {
       availableHours: {
         start: "11:00",
         end: "19:00",
-        days: ["Monday", "Tuesday", "Thursday", "Friday"]
+        days: ["Monday", "Tuesday", "Thursday", "Friday"],
       },
       sessionCount: 634,
       verified: true,
@@ -963,6 +1012,135 @@ export async function seedCounsellors(): Promise<void> {
   for (const counsellor of sampleCounsellors) {
     await createCounsellor(counsellor);
   }
-  
+
   console.log("Sample counsellors seeded successfully");
+}
+
+// ============================================
+// AGENTIC WORKFLOW OPERATIONS
+// ============================================
+
+/**
+ * Pick the best counsellor for a user based on availability, language, and specialty.
+ * Uses low-cost local ranking after minimal query fetch.
+ */
+export async function routeCounsellor(params: {
+  specialty?: CounsellorSpecialty;
+  preferredLanguage?: string;
+}): Promise<Counsellor | null> {
+  const { specialty, preferredLanguage } = params;
+
+  let candidates: Counsellor[] = [];
+  if (specialty) {
+    candidates = await getCounsellorsBySpecialty(specialty);
+  } else {
+    candidates = await getCounsellors();
+  }
+
+  if (candidates.length === 0) return null;
+
+  const availableFirst = candidates.filter((c) => c.status === "available");
+  const pool = availableFirst.length > 0 ? availableFirst : candidates;
+
+  pool.sort((a, b) => {
+    const langA = preferredLanguage
+      ? a.languages.some(
+          (l) => l.toLowerCase() === preferredLanguage.toLowerCase(),
+        )
+        ? 1
+        : 0
+      : 0;
+    const langB = preferredLanguage
+      ? b.languages.some(
+          (l) => l.toLowerCase() === preferredLanguage.toLowerCase(),
+        )
+        ? 1
+        : 0
+      : 0;
+
+    if (langA !== langB) return langB - langA;
+    if (a.status !== b.status) {
+      if (a.status === "available") return -1;
+      if (b.status === "available") return 1;
+    }
+    if (a.rating !== b.rating) return b.rating - a.rating;
+    return b.reviewCount - a.reviewCount;
+  });
+
+  return pool[0] || null;
+}
+
+/**
+ * Create or reuse an active counsellor conversation and attach metadata.
+ */
+export async function connectUserToCounsellor(params: {
+  userId: string;
+  counsellorId: string;
+  reason: "user_request" | "risk_detected";
+  summary: string;
+}): Promise<string> {
+  const { userId, counsellorId, reason, summary } = params;
+  const conversationId = await getOrCreateConversation(userId, "counsellor");
+
+  await updateDoc(doc(db, "conversations", conversationId), {
+    title: "Counsellor Support",
+    counsellorId,
+    handoffReason: reason,
+    handoffSummary: summary.substring(0, 500),
+    status: "active",
+    updatedAt: serverTimestamp(),
+  });
+
+  return conversationId;
+}
+
+/**
+ * Log agent events for observability and evaluation metrics.
+ */
+export async function logAgentEvent(params: {
+  userId: string;
+  type: AgentEvent["type"];
+  severity?: TriageSeverity;
+  conversationId?: string;
+  success?: boolean;
+}): Promise<string> {
+  const { userId, type, severity, conversationId, success } = params;
+  const ref = collection(db, "users", userId, "agentEvents");
+  const docRef = await addDoc(ref, {
+    userId,
+    type,
+    severity,
+    conversationId,
+    success: success ?? true,
+    createdAt: serverTimestamp(),
+  });
+  return docRef.id;
+}
+
+/**
+ * Fetch agent evaluation events for a period in days.
+ */
+export async function getAgentEvents(
+  userId: string,
+  days: number = 30,
+): Promise<AgentEvent[]> {
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setDate(endDate.getDate() - Math.max(1, days));
+
+  const ref = collection(db, "users", userId, "agentEvents");
+  const q = query(
+    ref,
+    where("createdAt", ">=", Timestamp.fromDate(startDate)),
+    where("createdAt", "<=", Timestamp.fromDate(endDate)),
+    orderBy("createdAt", "desc"),
+    firestoreLimit(500),
+  );
+
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((d) => ({
+    id: d.id,
+    ...d.data(),
+    createdAt: d.data().createdAt?.toDate() || new Date(),
+  })) as AgentEvent[];
 }

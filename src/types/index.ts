@@ -83,6 +83,38 @@ export interface ChatConversation {
   messageCount?: number;
 }
 
+export type TriageSeverity = "low" | "medium" | "high" | "critical";
+
+export interface AgentActionStatus {
+  key: string;
+  label: string;
+  state: "pending" | "done" | "failed";
+}
+
+export interface CounsellorHandoffResult {
+  connected: boolean;
+  conversationId?: string;
+  counsellorId?: string;
+  counsellorName?: string;
+  counsellorSpecialty?: string;
+  reason: "user_request" | "risk_detected";
+}
+
+export interface AgentEvent {
+  id: string;
+  userId: string;
+  type:
+    | "triage"
+    | "handoff_offered"
+    | "handoff_connected"
+    | "cycle_confirmation_prompted"
+    | "cycle_updated";
+  severity?: TriageSeverity;
+  conversationId?: string;
+  success?: boolean;
+  createdAt: Date;
+}
+
 // Reminder Types
 export interface Reminder {
   id: string;
@@ -99,7 +131,7 @@ export interface Reminder {
 // Counsellor Types
 export type CounsellorStatus = "available" | "busy" | "offline";
 
-export type CounsellorSpecialty = 
+export type CounsellorSpecialty =
   | "Mental Health"
   | "Menstrual Health"
   | "Reproductive Health"
@@ -125,7 +157,7 @@ export interface Counsellor {
   whatsappNumber: string;
   availableHours: {
     start: string; // e.g., "09:00"
-    end: string;   // e.g., "17:00"
+    end: string; // e.g., "17:00"
     days: string[]; // e.g., ["Monday", "Tuesday", ...]
   };
   sessionCount: number;
