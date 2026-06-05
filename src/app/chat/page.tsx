@@ -64,6 +64,10 @@ interface ChatApiResponse {
 
 const CHAT_LANGUAGE_OPTIONS: SupportedLanguageCode[] = ["eng", "lug"];
 
+const isLikelyUiMarkup = (text: string) =>
+  /<div class="jsx-[^"]+"/.test(text) &&
+  text.includes("material-symbols-outlined");
+
 function isPermissionDeniedError(err: unknown): boolean {
   const e = err as { code?: string; message?: string };
   const code = (e.code || "").toLowerCase();
@@ -130,6 +134,7 @@ export default function ChatPage() {
   const [userLanguage, setUserLanguage] =
     useState<SupportedLanguageCode>("eng");
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+  const [isFreshChat, setIsFreshChat] = useState(false);
   const [audioElements, setAudioElements] = useState<
     Record<string, HTMLAudioElement>
   >({});
@@ -161,6 +166,7 @@ export default function ChatPage() {
       setConversations((prev) => [newConversation, ...prev]);
       setActiveConversationId(newChatId);
       setMessages([]);
+      setIsFreshChat(true);
       return newChatId;
     } catch (err) {
       if (isPermissionDeniedError(err)) {
@@ -179,6 +185,7 @@ export default function ChatPage() {
         setConversations((prev) => [newConversation, ...prev]);
         setActiveConversationId(localChatId);
         setMessages([]);
+        setIsFreshChat(true);
         return localChatId;
       }
 
@@ -329,10 +336,15 @@ export default function ChatPage() {
     setActionLoading(conversationId);
     try {
       setActiveConversationId(conversationId);
+      const conversationMeta = conversationsRef.current.find(
+        (conversation) => conversation.id === conversationId,
+      );
+      const isNewChat = conversationMeta?.title === "New Chat";
 
       // Skip Firestore for local chats
       if (conversationId.startsWith("local-")) {
         setMessages([]);
+        setIsFreshChat(!!isNewChat);
         setError(null);
         setSidebarOpen(false);
         return;
@@ -340,18 +352,21 @@ export default function ChatPage() {
 
       const existingMessages = await getMessages(conversationId);
 
-      if (existingMessages.length > 0) {
-        setMessages(
-          existingMessages.map((msg) => ({
+      const cleanedMessages = existingMessages
+        .filter((msg) => !isLikelyUiMarkup(msg.content))
+        .map((msg) => {
+          const sender: Message["sender"] =
+            msg.sender === "user" ? "user" : "sister";
+          return {
             id: msg.id,
-            sender: msg.sender === "user" ? "user" : "sister",
+            sender,
             text: msg.content,
             timestamp: msg.timestamp,
-          })),
-        );
-      } else {
-        setMessages([]);
-      }
+          };
+        });
+
+      setMessages(cleanedMessages);
+      setIsFreshChat(cleanedMessages.length === 0 && !!isNewChat);
       setError(null);
       setSidebarOpen(false);
     } catch (err: unknown) {
@@ -366,6 +381,7 @@ export default function ChatPage() {
       if (isPermissionError) {
         // Fall back to welcome message for permission errors
         setMessages([]);
+        setIsFreshChat(false);
         setError(null);
       } else {
         setError("Failed to load conversation. Please try again.");
@@ -409,6 +425,7 @@ export default function ChatPage() {
           setConversations([]);
           setActiveConversationId(null);
           setMessages([]);
+          setIsFreshChat(false);
           setLoading(false);
           return;
         }
@@ -419,6 +436,7 @@ export default function ChatPage() {
       } else {
         setActiveConversationId(null);
         setMessages([]);
+        setIsFreshChat(false);
       }
       setError(null);
     } catch (err: unknown) {
@@ -438,6 +456,7 @@ export default function ChatPage() {
       }
       setActiveConversationId(null);
       setMessages([]);
+      setIsFreshChat(false);
     } finally {
       setLoading(false);
     }
@@ -558,6 +577,7 @@ export default function ChatPage() {
         currentConversationId = await createFreshConversation();
         if (!currentConversationId) return;
       }
+      setIsFreshChat(false);
 
       const userMessage: Message = {
         id: `user-${Date.now()}`,
@@ -570,6 +590,17 @@ export default function ChatPage() {
       const currentMessages = [...messages, userMessage];
 
       setMessages(currentMessages);
+      setConversations((prev) =>
+        prev.map((conversation) =>
+          conversation.id === currentConversationId
+            ? {
+                ...conversation,
+                lastMessage: text.trim().substring(0, 100),
+                updatedAt: new Date(),
+              }
+            : conversation,
+        ),
+      );
       setInputValue("");
       if (inputRef.current) {
         inputRef.current.style.height = "auto";
@@ -1271,7 +1302,7 @@ export default function ChatPage() {
                 </div>
               )}
 
-              {messages.length === 0 && !isTyping && (
+              {isFreshChat && !isTyping && (
                 <div className="rounded-3xl border border-white/70 dark:border-gray-700 bg-white/85 dark:bg-card-dark/95 backdrop-blur-xl shadow-xl p-5 sm:p-7 animate-fade-in">
                   <p className="text-[11px] font-semibold tracking-[0.14em] uppercase text-text-secondary dark:text-gray-400">
                     Fresh chat
@@ -1285,6 +1316,24 @@ export default function ChatPage() {
                   </p>
                 </div>
               )}
+
+              {!activeConversationId &&
+                !isFreshChat &&
+                messages.length === 0 &&
+                !isTyping && (
+                  <div className="rounded-3xl border border-white/70 dark:border-gray-700 bg-white/80 dark:bg-card-dark/90 backdrop-blur-xl shadow-xl p-5 sm:p-7 animate-fade-in">
+                    <p className="text-[11px] font-semibold tracking-[0.14em] uppercase text-text-secondary dark:text-gray-400">
+                      No chat selected
+                    </p>
+                    <h3 className="mt-2 text-lg sm:text-2xl font-bold text-text-primary dark:text-white">
+                      Pick a conversation or start a new one
+                    </h3>
+                    <p className="mt-2 text-sm text-text-secondary dark:text-gray-300">
+                      Use the sidebar to open a previous chat or tap New Chat to
+                      begin.
+                    </p>
+                  </div>
+                )}
 
               {messages.map((message) => (
                 <div
@@ -1457,7 +1506,7 @@ export default function ChatPage() {
               </div>
 
               {/* Icebreakers for new chats */}
-              {messages.length === 0 && (
+              {isFreshChat && (
                 <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 sm:gap-3 mb-3 sm:mb-4">
                   {icebreakers.map((icebreaker) => (
                     <button
