@@ -293,6 +293,14 @@ function addLanguageIntentHint(
       /(kye kitegeeza|kyekitegeeza|kitegeeza ki|what does it mean)/i,
       "English meaning: What does this mean?",
     ],
+    [
+      /(nafunye olubuto.*(ndi mu somero|ndi mu somelo)|ndi mu somero.*nafunye olubuto)/i,
+      "English meaning: I am pregnant and still in school.",
+    ],
+    [
+      /(omusajja.*yanfunisiza olubuto.*(bazadde|bazade).*tebamanyi|bazadde.*tebamanyi.*olubuto)/i,
+      "English meaning: A man made me pregnant and my parents do not know.",
+    ],
   ];
 
   for (const [pattern, hint] of intentHints) {
@@ -308,12 +316,36 @@ function getDirectLugandaResponse(message: string): string | null {
   const m = message.toLowerCase();
 
   if (
+    /(nafunye olubuto.*(ndi mu somero|ndi mu somelo)|ndi mu somero.*nafunye olubuto)/i.test(
+      m,
+    )
+  ) {
+    return "Nkwetegereza era nsonyiwa ku buzibu bw'oyitamu. 💜 Bw'oba olina olubuto ng'okyali ku somero, oyinza okufuna obuyambi obw'obukuumi okuva eri omusomesa gw'osiga, senior woman/mentor, oba omukozi w'eby'obulamu ku ddwaliro erikuli okumpi. Oyinza okutandika n'okukebera olubuto ku ddwaliro, oluvannyuma tukole plan ennyangu ey'okukuuma obulamu bwo n'obw'omwana.";
+  }
+
+  if (/(omusajja.*yanfunisiza olubuto)/i.test(m)) {
+    return "Nsonyiwa nnyo olw'ebyo by'oyiseemu. 💜 Okwogera kino kiraga obuvumu. Ka tukole mu bukebezi: singa waliwo okutisibwa oba okukozesebwa mu bubi, saba obuyambi ku Sauti 116 (free, 24/7) oba 999/112. Era oyinza okutandika n'okukebera olubuto ku ddwaliro, olonde omuntu omukulu gw'osiga, era tukuyunge ku kansala akuyambe mu ngeri etakutisizza.";
+  }
+
+  if (
+    /(omusajja.*yanfunisiza olubuto.*(bazadde|bazade).*tebamanyi|bazadde.*tebamanyi.*olubuto)/i.test(
+      m,
+    )
+  ) {
+    return "Webale okwogerako - kino kizibu nnyo era oli wa muwendo. 💜 Tujja okukola mu bukebezi. Singa waliwo okutisibwa oba okukozesebwa mu bubi, nyiga obuyambi bw'amangu ku Sauti 116 (free, 24/7) oba 999/112. Era tusobola okusooka n'entambula eno: (1) kebera olubuto ku ddwaliro, (2) londa omuntu omukulu gw'osiga ayinza okubeera naawe, (3) tufune kansala akuyambe okwogera n'abazadde mu ngeri etali ya kutiisa.";
+  }
+
+  if (
     /(jebale|jebala|webale|gyebale|osiibye otya|oli otya|hello|hi)/i.test(m)
   ) {
     return "Gyebale ko! Ndi Sister wo era ndi wano okukuyamba. 💜 Leero oyagala twogere ku ki?";
   }
 
-  if (/(tomanyi luganda|togera luganda|toyogera luganda)/i.test(m)) {
+  if (
+    /(tomanyi luganda|tolumanyi|togera luganda|toyogera luganda|omanyi oluganda|omanyi luganda)/i.test(
+      m,
+    )
+  ) {
     return "Mmanyi Oluganda era nnyinza okwogera naawe bulungi. 💜 Nsonyiwa bw'otafunye ky'oyagala mangu. Nsaba ombuulire ekizibu kyo mu bigambo ebitono, nkuyambe bulungi.";
   }
 
