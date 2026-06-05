@@ -366,6 +366,18 @@ export default function ChatPage() {
         });
 
       setMessages(cleanedMessages);
+      const latestText = cleanedMessages.length
+        ? cleanedMessages[cleanedMessages.length - 1].text
+        : "";
+      if (isLikelyUiMarkup(conversationMeta?.lastMessage || "") || latestText) {
+        setConversations((prev) =>
+          prev.map((conversation) =>
+            conversation.id === conversationId
+              ? { ...conversation, lastMessage: latestText }
+              : conversation,
+          ),
+        );
+      }
       setIsFreshChat(cleanedMessages.length === 0 && !!isNewChat);
       setError(null);
       setSidebarOpen(false);
