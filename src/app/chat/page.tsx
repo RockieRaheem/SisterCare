@@ -99,13 +99,6 @@ const icebreakers = [
   },
 ];
 
-const WELCOME_MESSAGE: Message = {
-  id: "welcome",
-  sender: "sister",
-  text: "Hello! I'm Sister, your supportive companion here at SisterCare. 💜 I'm here to listen, answer your questions about menstrual health, and provide emotional support. How are you feeling today?",
-  timestamp: new Date(),
-};
-
 export default function ChatPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -146,6 +139,52 @@ export default function ChatPage() {
   const recordingRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+
+  const createFreshConversation = useCallback(async (): Promise<
+    string | null
+  > => {
+    if (!user) return null;
+
+    try {
+      const newChatId = await createNewChat(user.uid, "New Chat");
+      const newConversation: ChatConversation = {
+        id: newChatId,
+        userId: user.uid,
+        title: "New Chat",
+        type: "ai_support",
+        status: "active",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastMessage: "",
+        messageCount: 0,
+      };
+      setConversations((prev) => [newConversation, ...prev]);
+      setActiveConversationId(newChatId);
+      setMessages([]);
+      return newChatId;
+    } catch (err) {
+      if (isPermissionDeniedError(err)) {
+        const localChatId = `local-${Date.now()}`;
+        const newConversation: ChatConversation = {
+          id: localChatId,
+          userId: user.uid,
+          title: "New Chat",
+          type: "ai_support",
+          status: "active",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          lastMessage: "",
+          messageCount: 0,
+        };
+        setConversations((prev) => [newConversation, ...prev]);
+        setActiveConversationId(localChatId);
+        setMessages([]);
+        return localChatId;
+      }
+
+      throw err;
+    }
+  }, [user]);
 
   // Check for recording support
   useEffect(() => {
@@ -274,55 +313,16 @@ export default function ChatPage() {
 
     setActionLoading("new");
     try {
-      const newChatId = await createNewChat(user.uid, "New Chat");
-      const newConversation: ChatConversation = {
-        id: newChatId,
-        userId: user.uid,
-        title: "New Chat",
-        type: "ai_support",
-        status: "active",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        lastMessage: "",
-        messageCount: 0,
-      };
-
-      setConversations((prev) => [newConversation, ...prev]);
-      setActiveConversationId(newChatId);
-      setMessages([{ ...WELCOME_MESSAGE, timestamp: new Date() }]);
+      await createFreshConversation();
       setError(null);
       setSidebarOpen(false);
     } catch (err: unknown) {
       console.error("Error creating new chat:", err);
-
-      const isPermissionError = isPermissionDeniedError(err);
-
-      if (isPermissionError) {
-        // Create local-only chat without Firestore
-        const localChatId = `local-${Date.now()}`;
-        const newConversation: ChatConversation = {
-          id: localChatId,
-          userId: user.uid,
-          title: "New Chat",
-          type: "ai_support",
-          status: "active",
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          lastMessage: "",
-          messageCount: 0,
-        };
-        setConversations((prev) => [newConversation, ...prev]);
-        setActiveConversationId(localChatId);
-        setMessages([{ ...WELCOME_MESSAGE, timestamp: new Date() }]);
-        setError(null);
-        setSidebarOpen(false);
-      } else {
-        setError("Failed to create new chat. Please try again.");
-      }
+      setError("Failed to create new chat. Please try again.");
     } finally {
       setActionLoading(null);
     }
-  }, [user]);
+  }, [createFreshConversation, user]);
 
   // Load a specific conversation
   const loadConversation = useCallback(async (conversationId: string) => {
@@ -332,7 +332,7 @@ export default function ChatPage() {
 
       // Skip Firestore for local chats
       if (conversationId.startsWith("local-")) {
-        setMessages([{ ...WELCOME_MESSAGE, timestamp: new Date() }]);
+        setMessages([]);
         setError(null);
         setSidebarOpen(false);
         return;
@@ -350,7 +350,7 @@ export default function ChatPage() {
           })),
         );
       } else {
-        setMessages([{ ...WELCOME_MESSAGE, timestamp: new Date() }]);
+        setMessages([]);
       }
       setError(null);
       setSidebarOpen(false);
@@ -365,7 +365,7 @@ export default function ChatPage() {
 
       if (isPermissionError) {
         // Fall back to welcome message for permission errors
-        setMessages([{ ...WELCOME_MESSAGE, timestamp: new Date() }]);
+        setMessages([]);
         setError(null);
       } else {
         setError("Failed to load conversation. Please try again.");
@@ -405,8 +405,10 @@ export default function ChatPage() {
         }
 
         if (isPermissionError) {
-          // Permission error - create a local chat instead
-          await handleNewChat();
+          // Permission error - keep UI usable without creating seeded chats
+          setConversations([]);
+          setActiveConversationId(null);
+          setMessages([]);
           setLoading(false);
           return;
         }
@@ -415,7 +417,8 @@ export default function ChatPage() {
       if (userConversations.length > 0) {
         await loadConversation(userConversations[0].id);
       } else {
-        await handleNewChat();
+        setActiveConversationId(null);
+        setMessages([]);
       }
       setError(null);
     } catch (err: unknown) {
@@ -433,11 +436,12 @@ export default function ChatPage() {
       } else {
         setError("Failed to load conversations. Please try again.");
       }
-      await handleNewChat();
+      setActiveConversationId(null);
+      setMessages([]);
     } finally {
       setLoading(false);
     }
-  }, [user, loadConversation, handleNewChat]);
+  }, [user, loadConversation]);
 
   // Auth and initial load
   useEffect(() => {
@@ -472,7 +476,8 @@ export default function ChatPage() {
             if (remaining.length > 0) {
               loadConversation(remaining[0].id);
             } else {
-              handleNewChat();
+              setActiveConversationId(null);
+              setMessages([]);
             }
           }
 
@@ -488,7 +493,7 @@ export default function ChatPage() {
         setActionLoading(null);
       }
     },
-    [activeConversationId, loadConversation, handleNewChat],
+    [activeConversationId, loadConversation],
   );
 
   // Rename a chat
@@ -546,7 +551,13 @@ export default function ChatPage() {
   // Send a message
   const sendMessage = useCallback(
     async (text: string) => {
-      if (!text.trim() || !user || !activeConversationId) return;
+      if (!text.trim() || !user) return;
+
+      let currentConversationId = activeConversationId;
+      if (!currentConversationId) {
+        currentConversationId = await createFreshConversation();
+        if (!currentConversationId) return;
+      }
 
       const userMessage: Message = {
         id: `user-${Date.now()}`,
@@ -568,27 +579,29 @@ export default function ChatPage() {
 
       try {
         // Only save to Firestore if not a local chat
-        const isLocalChat = activeConversationId.startsWith("local-");
+        const isLocalChat = currentConversationId.startsWith("local-");
 
         if (!isLocalChat) {
           try {
-            await addMessage(activeConversationId, {
-              conversationId: activeConversationId,
+            await addMessage(currentConversationId, {
+              conversationId: currentConversationId,
               sender: "user",
               content: text.trim(),
             });
 
-            await updateConversationPreview(activeConversationId, text.trim());
+            await updateConversationPreview(currentConversationId, text.trim());
 
             const currentConversation = conversationsRef.current.find(
-              (c) => c.id === activeConversationId,
+              (c) => c.id === currentConversationId,
             );
             if (currentConversation?.title === "New Chat") {
               const newTitle = generateTitleFromMessage(text.trim());
-              await updateConversationTitle(activeConversationId, newTitle);
+              await updateConversationTitle(currentConversationId, newTitle);
               setConversations((prev) =>
                 prev.map((c) =>
-                  c.id === activeConversationId ? { ...c, title: newTitle } : c,
+                  c.id === currentConversationId
+                    ? { ...c, title: newTitle }
+                    : c,
                 ),
               );
             }
@@ -607,13 +620,13 @@ export default function ChatPage() {
         } else {
           // For local chats, just update the title locally
           const currentConversation = conversationsRef.current.find(
-            (c) => c.id === activeConversationId,
+            (c) => c.id === currentConversationId,
           );
           if (currentConversation?.title === "New Chat") {
             const newTitle = generateTitleFromMessage(text.trim());
             setConversations((prev) =>
               prev.map((c) =>
-                c.id === activeConversationId ? { ...c, title: newTitle } : c,
+                c.id === currentConversationId ? { ...c, title: newTitle } : c,
               ),
             );
           }
@@ -636,7 +649,7 @@ export default function ChatPage() {
               message: text.trim(),
               conversationHistory,
               userId: user.uid,
-              conversationId: activeConversationId,
+              conversationId: currentConversationId,
               userProfile: userProfile
                 ? {
                     displayName: userProfile.displayName,
@@ -728,14 +741,14 @@ export default function ChatPage() {
 
           if (!isLocalChat) {
             try {
-              await addMessage(activeConversationId, {
-                conversationId: activeConversationId,
+              await addMessage(currentConversationId, {
+                conversationId: currentConversationId,
                 sender: "ai",
                 content: data.response,
               });
 
               await updateConversationPreview(
-                activeConversationId,
+                currentConversationId,
                 data.response,
               );
             } catch (firestoreErr) {
@@ -756,7 +769,7 @@ export default function ChatPage() {
 
           setConversations((prev) =>
             prev.map((c) =>
-              c.id === activeConversationId
+              c.id === currentConversationId
                 ? {
                     ...c,
                     lastMessage: data.response.substring(0, 100),
@@ -791,6 +804,7 @@ export default function ChatPage() {
       user,
       activeConversationId,
       messages,
+      createFreshConversation,
       generateTitleFromMessage,
       userProfile,
       userLanguage,
@@ -850,12 +864,14 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background-light dark:bg-background-dark overflow-hidden">
+    <div className="relative flex flex-col h-screen overflow-hidden bg-[radial-gradient(circle_at_top,_#f4e8ff_0%,_#f7f6f8_45%,_#ffffff_100%)] dark:bg-background-dark">
+      <div className="pointer-events-none absolute -top-28 -right-16 h-72 w-72 rounded-full bg-primary/15 blur-3xl" />
+      <div className="pointer-events-none absolute top-1/3 -left-20 h-64 w-64 rounded-full bg-pink-300/20 blur-3xl" />
       {/* Main Header - Same as other pages */}
       <Header variant="app" />
 
       {/* Main Content Area */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="relative z-10 flex flex-1 overflow-hidden">
         {/* Sidebar Overlay for Mobile */}
         <div
           className={`fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-all duration-300 lg:hidden ${
@@ -867,17 +883,17 @@ export default function ChatPage() {
         {/* Sidebar - Desktop always visible, Mobile slide-in */}
         <aside
           className={`
-            fixed lg:relative z-50 h-[calc(100vh-65px)] flex flex-col 
-            bg-white dark:bg-card-dark 
-            border-r border-border-light dark:border-border-dark 
+            fixed lg:relative z-50 h-[calc(100vh-65px)] flex flex-col
+            bg-white/90 dark:bg-card-dark/95 backdrop-blur-xl
+            border-r border-white/50 dark:border-border-dark
             transition-all duration-300 ease-out
             ${sidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full lg:translate-x-0"}
-            w-[85vw] xs:w-80 sm:w-80 lg:w-72
+            w-[85vw] xs:w-80 sm:w-80 lg:w-80
           `}
         >
           <div className="flex flex-col h-full">
             {/* Sidebar Header */}
-            <div className="flex items-center justify-between p-3 sm:p-4 border-b border-border-light dark:border-border-dark">
+            <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-200/70 dark:border-border-dark">
               <div className="flex items-center gap-2 sm:gap-3">
                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center shadow-lg shadow-primary/20">
                   <span className="material-symbols-outlined text-white text-lg sm:text-xl">
@@ -908,7 +924,7 @@ export default function ChatPage() {
               <button
                 onClick={handleNewChat}
                 disabled={actionLoading === "new"}
-                className="w-full flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-white rounded-lg sm:rounded-xl font-medium text-xs sm:text-sm transition-all shadow-lg shadow-primary/25 disabled:opacity-50 touch-target"
+                className="w-full flex items-center justify-center gap-2 px-3 sm:px-4 py-3 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-white rounded-xl font-semibold text-xs sm:text-sm transition-all shadow-lg shadow-primary/25 disabled:opacity-50 touch-target"
               >
                 {actionLoading === "new" ? (
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -940,7 +956,7 @@ export default function ChatPage() {
             </div>
 
             {/* Conversations List */}
-            <div className="flex-1 overflow-y-auto px-2 space-y-1 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto px-2.5 space-y-1.5 custom-scrollbar">
               {Object.keys(groupedConversations).length === 0 ? (
                 <div className="text-center py-12 px-4">
                   <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
@@ -1023,14 +1039,14 @@ export default function ChatPage() {
                                   actionLoading !== conversation.id &&
                                   loadConversation(conversation.id)
                                 }
-                                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-all cursor-pointer ${
+                                className={`w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left transition-all cursor-pointer border ${
                                   actionLoading === conversation.id
                                     ? "opacity-50 cursor-wait"
                                     : ""
                                 } ${
                                   activeConversationId === conversation.id
-                                    ? "bg-primary/10 dark:bg-primary/20 border-l-4 border-primary"
-                                    : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                                    ? "bg-primary/10 dark:bg-primary/20 border-primary/40"
+                                    : "border-transparent hover:border-primary/20 hover:bg-white dark:hover:bg-gray-800"
                                 }`}
                               >
                                 <div
@@ -1104,8 +1120,8 @@ export default function ChatPage() {
             </div>
 
             {/* Sidebar Footer */}
-            <div className="p-3 border-t border-border-light dark:border-border-dark">
-              <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800/50">
+            <div className="p-3 border-t border-gray-200/70 dark:border-border-dark">
+              <div className="flex items-center gap-3 px-3 py-2 rounded-2xl bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-800/60">
                 <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white text-sm font-semibold">
                   {user?.displayName?.charAt(0) ||
                     user?.email?.charAt(0)?.toUpperCase() ||
@@ -1127,7 +1143,7 @@ export default function ChatPage() {
         {/* Main Chat Area */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Chat Header Bar */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border-light dark:border-border-dark bg-white dark:bg-card-dark">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200/70 dark:border-border-dark bg-white/80 dark:bg-card-dark/90 backdrop-blur-xl">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setSidebarOpen(true)}
@@ -1149,11 +1165,11 @@ export default function ChatPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-full">
+              <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 shadow-sm dark:bg-gray-800 dark:border-gray-700 rounded-full">
                 <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                 <span className="text-sm font-medium text-text-primary dark:text-white">
                   {conversations.find((c) => c.id === activeConversationId)
-                    ?.title || "Chat with Sister"}
+                    ?.title || "Start a conversation"}
                 </span>
               </div>
             </div>
@@ -1180,7 +1196,7 @@ export default function ChatPage() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-background-dark">
+          <div className="relative flex-1 overflow-y-auto bg-transparent">
             <div className="max-w-3xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
               {agentActionStatuses.length > 0 && (
                 <div className="bg-white dark:bg-card-dark border border-border-light dark:border-border-dark rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-sm animate-fade-in">
@@ -1252,6 +1268,21 @@ export default function ChatPage() {
                       View counsellor page
                     </Link>
                   </div>
+                </div>
+              )}
+
+              {messages.length === 0 && !isTyping && (
+                <div className="rounded-3xl border border-white/70 dark:border-gray-700 bg-white/85 dark:bg-card-dark/95 backdrop-blur-xl shadow-xl p-5 sm:p-7 animate-fade-in">
+                  <p className="text-[11px] font-semibold tracking-[0.14em] uppercase text-text-secondary dark:text-gray-400">
+                    Fresh chat
+                  </p>
+                  <h3 className="mt-2 text-lg sm:text-2xl font-bold text-text-primary dark:text-white">
+                    What would you like to talk about today?
+                  </h3>
+                  <p className="mt-2 text-sm text-text-secondary dark:text-gray-300">
+                    Start a new private conversation, or open a previous one
+                    from the left panel to continue exactly where you stopped.
+                  </p>
                 </div>
               )}
 
@@ -1403,7 +1434,7 @@ export default function ChatPage() {
           </div>
 
           {/* Input Area - positioned above bottom nav */}
-          <div className="border-t border-border-light dark:border-border-dark bg-white dark:bg-card-dark pb-[calc(var(--bottom-nav-height,72px)+env(safe-area-inset-bottom))] lg:pb-4">
+          <div className="border-t border-gray-200/70 dark:border-border-dark bg-white/80 dark:bg-card-dark/90 backdrop-blur-xl pb-[calc(var(--bottom-nav-height,72px)+env(safe-area-inset-bottom))] lg:pb-4">
             <div className="max-w-3xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
               {/* Language Selector */}
               <div className="mb-3 sm:mb-4 flex items-center gap-2 sm:gap-3 flex-wrap">
@@ -1426,13 +1457,13 @@ export default function ChatPage() {
               </div>
 
               {/* Icebreakers for new chats */}
-              {messages.length <= 1 && (
+              {messages.length === 0 && (
                 <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 sm:gap-3 mb-3 sm:mb-4">
                   {icebreakers.map((icebreaker) => (
                     <button
                       key={icebreaker.text}
                       onClick={() => sendMessage(icebreaker.text)}
-                      className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl sm:rounded-2xl hover:border-primary hover:shadow-md transition-all text-left group touch-target"
+                      className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-4 bg-white/90 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl sm:rounded-2xl hover:border-primary hover:shadow-md hover:-translate-y-0.5 transition-all text-left group touch-target"
                     >
                       <div
                         className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br ${icebreaker.color} flex items-center justify-center shrink-0`}
@@ -1451,7 +1482,7 @@ export default function ChatPage() {
 
               {/* Input Box */}
               <form onSubmit={handleSubmit} className="relative">
-                <div className="flex items-end gap-2 sm:gap-3 bg-gray-100 dark:bg-gray-800 rounded-xl sm:rounded-2xl p-1.5 sm:p-2 border-2 border-transparent focus-within:border-primary focus-within:bg-white dark:focus-within:bg-gray-900 transition-all">
+                <div className="flex items-end gap-2 sm:gap-3 bg-white dark:bg-gray-800 rounded-2xl p-1.5 sm:p-2 border border-gray-200 dark:border-gray-700 shadow-lg shadow-primary/5 focus-within:border-primary transition-all">
                   <textarea
                     ref={inputRef}
                     value={inputValue}
