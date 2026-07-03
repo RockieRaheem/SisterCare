@@ -919,6 +919,10 @@ export default function ChatPage() {
     {} as Record<string, ChatConversation[]>,
   );
 
+  const activeConversationTitle =
+    conversations.find((c) => c.id === activeConversationId)?.title ||
+    "Start a conversation";
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center safe-top safe-bottom">
@@ -933,9 +937,10 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="relative flex flex-col h-screen overflow-hidden bg-[radial-gradient(circle_at_top,_#f4e8ff_0%,_#f7f6f8_45%,_#ffffff_100%)] dark:bg-background-dark">
-      <div className="pointer-events-none absolute -top-28 -right-16 h-72 w-72 rounded-full bg-primary/15 blur-3xl" />
-      <div className="pointer-events-none absolute top-1/3 -left-20 h-64 w-64 rounded-full bg-pink-300/20 blur-3xl" />
+    <div className="relative flex h-screen flex-col overflow-hidden bg-[radial-gradient(circle_at_top_left,_#f3e5ff_0%,_#f8f4ff_22%,_#f9f8fb_56%,_#ffffff_100%)] dark:bg-background-dark">
+      <div className="pointer-events-none absolute -top-20 left-1/3 h-64 w-64 rounded-full bg-violet-300/30 blur-3xl" />
+      <div className="pointer-events-none absolute -right-20 top-16 h-72 w-72 rounded-full bg-fuchsia-200/35 blur-3xl" />
+      <div className="pointer-events-none absolute bottom-10 -left-24 h-72 w-72 rounded-full bg-sky-200/30 blur-3xl" />
       {/* Main Header - Same as other pages */}
       <Header variant="app" />
 
@@ -943,7 +948,7 @@ export default function ChatPage() {
       <div className="relative z-10 flex flex-1 overflow-hidden">
         {/* Sidebar Overlay for Mobile */}
         <div
-          className={`fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-all duration-300 lg:hidden ${
+          className={`fixed inset-0 z-40 bg-[#1b1025]/45 backdrop-blur-sm transition-all duration-300 lg:hidden ${
             sidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
           }`}
           onClick={() => setSidebarOpen(false)}
@@ -952,29 +957,30 @@ export default function ChatPage() {
         {/* Sidebar - Desktop always visible, Mobile slide-in */}
         <aside
           className={`
-            fixed lg:relative z-50 h-[calc(100vh-65px)] flex flex-col
-            bg-white/90 dark:bg-card-dark/95 backdrop-blur-xl
-            border-r border-white/50 dark:border-border-dark
-            transition-all duration-300 ease-out
-            ${sidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full lg:translate-x-0"}
-            w-[85vw] xs:w-80 sm:w-80 lg:w-72
+            fixed z-50 flex h-[calc(100vh-65px)] flex-col
+            border-r border-white/60 bg-white/84 backdrop-blur-2xl
+            transition-all duration-300 ease-out dark:border-border-dark dark:bg-card-dark/96
+            lg:relative
+            ${sidebarOpen ? "translate-x-0 shadow-2xl shadow-black/20" : "-translate-x-full lg:translate-x-0"}
+            w-[86vw] xs:w-80 sm:w-[22rem] lg:w-80
           `}
         >
           <div className="flex flex-col h-full">
             {/* Sidebar Header */}
-            <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-200/70 dark:border-border-dark">
+            <div className="border-b border-violet-100/80 p-3 sm:p-4 dark:border-border-dark">
+              <div className="mb-2 flex items-center justify-between">
               <div className="flex items-center gap-2 sm:gap-3">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center shadow-lg shadow-primary/20">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-purple-600 shadow-lg shadow-primary/30 sm:h-10 sm:w-10">
                   <span className="material-symbols-outlined text-white text-lg sm:text-xl">
                     chat
                   </span>
                 </div>
                 <div>
-                  <h2 className="font-semibold text-text-primary dark:text-white text-xs sm:text-sm">
-                    Chat History
+                  <h2 className="text-xs font-semibold tracking-wide text-text-primary dark:text-white sm:text-sm">
+                    SisterCare Dialogue Hub
                   </h2>
-                  <p className="text-[10px] sm:text-xs text-text-secondary dark:text-gray-400">
-                    {conversations.length} conversations
+                  <p className="text-[10px] text-text-secondary dark:text-gray-400 sm:text-xs">
+                    {conversations.length} saved conversations
                   </p>
                 </div>
               </div>
@@ -986,14 +992,24 @@ export default function ChatPage() {
                   close
                 </span>
               </button>
+              </div>
+
+              <div className="rounded-xl border border-violet-100 bg-gradient-to-r from-white to-violet-50/70 px-3 py-2 dark:border-border-dark dark:from-card-dark dark:to-card-dark/80">
+                <p className="text-[10px] uppercase tracking-[0.15em] text-text-secondary dark:text-gray-400">
+                  Private and encrypted
+                </p>
+                <p className="mt-1 text-xs font-medium text-text-primary dark:text-white">
+                  Your wellbeing conversations stay under your control.
+                </p>
+              </div>
             </div>
 
             {/* New Chat Button */}
-            <div className="p-2 sm:p-3">
+            <div className="p-2.5 sm:p-3">
               <button
                 onClick={handleNewChat}
                 disabled={actionLoading === "new"}
-                className="w-full flex items-center justify-center gap-2 px-3 sm:px-4 py-3 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-white rounded-xl font-semibold text-xs sm:text-sm transition-all shadow-lg shadow-primary/25 disabled:opacity-50 touch-target"
+                className="touch-target flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-primary to-purple-600 px-3 py-3 text-xs font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:from-primary/95 hover:to-purple-600/95 disabled:opacity-50 sm:px-4 sm:text-sm"
               >
                 {actionLoading === "new" ? (
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -1009,7 +1025,7 @@ export default function ChatPage() {
             </div>
 
             {/* Search Conversations */}
-            <div className="px-2 sm:px-3 pb-2">
+            <div className="px-2.5 pb-2 sm:px-3">
               <div className="relative">
                 <span className="material-symbols-outlined absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-text-secondary dark:text-gray-400 text-base sm:text-lg">
                   search
@@ -1019,13 +1035,13 @@ export default function ChatPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search conversations..."
-                  className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 bg-gray-100 dark:bg-gray-800 border-none rounded-lg sm:rounded-xl text-xs sm:text-sm text-text-primary dark:text-white placeholder:text-text-secondary focus:ring-2 focus:ring-primary/50 transition-all"
+                  className="w-full rounded-xl border border-transparent bg-gray-100/90 py-2 pl-9 pr-3 text-xs text-text-primary placeholder:text-text-secondary transition-all focus:border-primary/40 focus:ring-2 focus:ring-primary/35 dark:bg-gray-800 sm:py-2.5 sm:pl-10 sm:pr-4 sm:text-sm"
                 />
               </div>
             </div>
 
             {/* Conversations List */}
-            <div className="flex-1 overflow-y-auto px-2.5 space-y-1.5 custom-scrollbar">
+            <div className="custom-scrollbar flex-1 space-y-1.5 overflow-y-auto px-2.5">
               {Object.keys(groupedConversations).length === 0 ? (
                 <div className="text-center py-12 px-4">
                   <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
@@ -1108,14 +1124,14 @@ export default function ChatPage() {
                                   actionLoading !== conversation.id &&
                                   loadConversation(conversation.id)
                                 }
-                                className={`w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left transition-all cursor-pointer border shadow-sm ${
+                                className={`w-full cursor-pointer rounded-2xl border px-3 py-3 text-left shadow-sm transition-all ${
                                   actionLoading === conversation.id
                                     ? "opacity-50 cursor-wait"
                                     : ""
                                 } ${
                                   activeConversationId === conversation.id
-                                    ? "bg-white border-primary/40 shadow-md dark:bg-gray-800"
-                                    : "border-transparent hover:border-primary/20 hover:bg-white/80 dark:hover:bg-gray-800"
+                                    ? "border-primary/45 bg-gradient-to-r from-white to-violet-50 shadow-md dark:bg-gray-800"
+                                    : "border-transparent hover:border-primary/25 hover:bg-white/80 dark:hover:bg-gray-800"
                                 }`}
                               >
                                 <div
@@ -1189,8 +1205,8 @@ export default function ChatPage() {
             </div>
 
             {/* Sidebar Footer */}
-            <div className="p-3 border-t border-gray-200/70 dark:border-border-dark">
-              <div className="flex items-center gap-3 px-3 py-2 rounded-2xl bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-800/60">
+            <div className="border-t border-violet-100/80 p-3 dark:border-border-dark">
+              <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-violet-50 to-white px-3 py-2 dark:from-gray-800 dark:to-gray-800/60">
                 <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white text-sm font-semibold">
                   {user?.displayName?.charAt(0) ||
                     user?.email?.charAt(0)?.toUpperCase() ||
@@ -1212,7 +1228,8 @@ export default function ChatPage() {
         {/* Main Chat Area */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Chat Header Bar */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200/70 dark:border-border-dark bg-white/80 dark:bg-card-dark/90 backdrop-blur-xl">
+          <div className="border-b border-violet-100/80 bg-white/75 px-3 py-3 backdrop-blur-2xl dark:border-border-dark dark:bg-card-dark/92 sm:px-4">
+            <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-2">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setSidebarOpen(true)}
@@ -1233,12 +1250,14 @@ export default function ChatPage() {
               </button>
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 shadow-sm dark:bg-gray-800 dark:border-gray-700 rounded-full">
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-sm font-medium text-text-primary dark:text-white">
-                  {conversations.find((c) => c.id === activeConversationId)
-                    ?.title || "Start a conversation"}
+            <div className="hidden flex-1 items-center justify-center sm:flex">
+              <div className="inline-flex items-center gap-3 rounded-full border border-violet-200/70 bg-white/90 px-4 py-2 shadow-sm dark:border-border-dark dark:bg-gray-800">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="max-w-[260px] truncate text-sm font-medium text-text-primary dark:text-white">
+                  {activeConversationTitle}
+                </span>
+                <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary dark:bg-primary/20 dark:text-primary-light">
+                  Care mode
                 </span>
               </div>
             </div>
@@ -1263,10 +1282,28 @@ export default function ChatPage() {
                 </span>
               </Link>
             </div>
+            </div>
           </div>
 
           <div className="relative flex-1 overflow-y-auto bg-transparent">
-            <div className="max-w-4xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
+            <div className="pointer-events-none absolute inset-0 opacity-40 [background-image:radial-gradient(#caa7ea_0.6px,transparent_0.6px)] [background-size:14px_14px] dark:opacity-10" />
+            <div className="relative mx-auto max-w-5xl space-y-4 px-3 py-4 sm:space-y-6 sm:px-4 sm:py-6 lg:px-6">
+              {error && (
+                <div className="animate-fade-in rounded-2xl border border-red-200 bg-red-50/90 px-4 py-3 text-sm text-red-700 shadow-sm dark:border-red-800 dark:bg-red-950/35 dark:text-red-300">
+                  {error}
+                </div>
+              )}
+
+              <div className="rounded-2xl border border-violet-100 bg-white/70 px-4 py-3 shadow-sm backdrop-blur dark:border-border-dark dark:bg-card-dark/80">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-medium text-text-secondary dark:text-gray-400 sm:text-sm">
+                    Safe, judgment-free support with multilingual guidance.
+                  </p>
+                  <span className="hidden rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 sm:inline-flex">
+                    Live assistant
+                  </span>
+                </div>
+              </div>
               {agentActionStatuses.length > 0 && (
                 <div className="bg-white dark:bg-card-dark border border-border-light dark:border-border-dark rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-sm animate-fade-in">
                   <p className="text-[11px] sm:text-xs uppercase tracking-wide font-semibold text-text-secondary mb-2">
@@ -1393,11 +1430,11 @@ export default function ChatPage() {
               {messages.map((message) => (
                 <div
                   key={message.id}
-                  className={`flex gap-2 sm:gap-4 animate-fade-in ${message.sender === "user" ? "flex-row-reverse" : ""}`}
+                  className={`animate-fade-in flex gap-2 sm:gap-4 ${message.sender === "user" ? "flex-row-reverse" : ""}`}
                 >
                   {/* Avatar */}
                   <div
-                    className={`shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center shadow-md ${
+                    className={`shrink-0 flex h-8 w-8 items-center justify-center rounded-xl shadow-md ring-2 ring-white/80 sm:h-10 sm:w-10 ${
                       message.sender === "sister"
                         ? "bg-gradient-to-br from-primary to-purple-600"
                         : "bg-gradient-to-br from-orange-400 to-pink-500"
@@ -1410,15 +1447,26 @@ export default function ChatPage() {
 
                   {/* Message Bubble */}
                   <div
-                    className={`flex-1 max-w-[85%] sm:max-w-[80%] ${message.sender === "user" ? "flex flex-col items-end" : ""}`}
+                    className={`flex-1 max-w-[90%] sm:max-w-[82%] ${message.sender === "user" ? "flex flex-col items-end" : ""}`}
                   >
                     <div
-                      className={`px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl shadow-sm ${
+                      className={`rounded-2xl px-3 py-2.5 shadow-md sm:px-4 sm:py-3 ${
                         message.sender === "sister"
-                          ? "bg-white dark:bg-card-dark rounded-tl-sm sm:rounded-tl-md"
-                          : "bg-gradient-to-r from-primary to-purple-600 text-white rounded-tr-sm sm:rounded-tr-md"
+                          ? "rounded-tl-md border border-violet-100 bg-white/95 dark:border-border-dark dark:bg-card-dark"
+                          : "rounded-tr-md bg-gradient-to-r from-primary to-purple-600 text-white"
                       }`}
                     >
+                      <div className="mb-1 flex items-center justify-between gap-2">
+                        <span
+                          className={`text-[10px] font-semibold uppercase tracking-[0.12em] ${
+                            message.sender === "sister"
+                              ? "text-primary/90 dark:text-primary-light"
+                              : "text-white/80"
+                          }`}
+                        >
+                          {message.sender === "sister" ? "SisterCare" : "You"}
+                        </span>
+                      </div>
                       <p
                         className={`text-xs sm:text-sm leading-relaxed whitespace-pre-wrap ${
                           message.sender === "sister"
@@ -1496,7 +1544,7 @@ export default function ChatPage() {
                           </div>
                         )}
                     </div>
-                    <p className="text-[9px] sm:text-[10px] text-text-secondary dark:text-gray-500 mt-1 px-1">
+                    <p className="mt-1 px-1 text-[9px] text-text-secondary dark:text-gray-500 sm:text-[10px]">
                       {message.timestamp.toLocaleTimeString([], {
                         hour: "2-digit",
                         minute: "2-digit",
@@ -1508,13 +1556,13 @@ export default function ChatPage() {
 
               {/* Typing Indicator */}
               {isTyping && (
-                <div className="flex gap-2 sm:gap-4 animate-fade-in">
-                  <div className="shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center shadow-md">
+                <div className="animate-fade-in flex gap-2 sm:gap-4">
+                  <div className="shrink-0 flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-purple-600 shadow-md ring-2 ring-white/80 sm:h-10 sm:w-10">
                     <span className="material-symbols-outlined text-white text-base sm:text-lg">
                       spa
                     </span>
                   </div>
-                  <div className="bg-white dark:bg-card-dark rounded-xl sm:rounded-2xl rounded-tl-sm sm:rounded-tl-md px-4 sm:px-5 py-3 sm:py-4 shadow-sm">
+                  <div className="rounded-2xl rounded-tl-md border border-violet-100 bg-white px-4 py-3 shadow-sm dark:border-border-dark dark:bg-card-dark sm:px-5 sm:py-4">
                     <div className="flex gap-1.5">
                       <span
                         className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-primary rounded-full animate-bounce"
@@ -1538,11 +1586,11 @@ export default function ChatPage() {
           </div>
 
           {/* Input Area - positioned above bottom nav */}
-          <div className="border-t border-gray-200/70 dark:border-border-dark bg-white/80 dark:bg-card-dark/90 backdrop-blur-xl pb-[calc(var(--bottom-nav-height,72px)+env(safe-area-inset-bottom))] lg:pb-4">
-            <div className="max-w-3xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
+          <div className="border-t border-violet-100/80 bg-white/70 pb-[calc(var(--bottom-nav-height,72px)+env(safe-area-inset-bottom))] backdrop-blur-2xl dark:border-border-dark dark:bg-card-dark/90 lg:pb-4">
+            <div className="mx-auto max-w-4xl px-3 py-3 sm:px-4 sm:py-4">
               {/* Language Selector */}
-              <div className="mb-3 sm:mb-4 flex items-center gap-2 sm:gap-3 flex-wrap">
-                <span className="text-xs sm:text-sm text-text-secondary dark:text-gray-400 whitespace-nowrap">
+              <div className="mb-3 flex flex-wrap items-center gap-2 sm:mb-4 sm:gap-3">
+                <span className="whitespace-nowrap text-xs text-text-secondary dark:text-gray-400 sm:text-sm">
                   🌍 Language:
                 </span>
                 <select
@@ -1550,7 +1598,7 @@ export default function ChatPage() {
                   onChange={(e) =>
                     setUserLanguage(e.target.value as SupportedLanguageCode)
                   }
-                  className="px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg sm:rounded-xl text-text-primary dark:text-white focus:ring-2 focus:ring-primary focus:border-primary transition-all"
+                  className="rounded-xl border border-violet-200 bg-white px-2.5 py-1.5 text-xs text-text-primary transition-all focus:border-primary focus:ring-2 focus:ring-primary dark:border-gray-600 dark:bg-gray-800 dark:text-white sm:px-3 sm:py-2 sm:text-sm"
                 >
                   {CHAT_LANGUAGE_OPTIONS.map((code) => (
                     <option key={code} value={code}>
@@ -1562,12 +1610,12 @@ export default function ChatPage() {
 
               {/* Icebreakers for new chats */}
               {isFreshChat && messages.length === 0 && (
-                <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 sm:gap-3 lg:gap-2 mb-3 sm:mb-4 lg:max-w-lg lg:mx-auto">
+                <div className="mb-3 grid grid-cols-1 gap-2 xs:grid-cols-2 sm:mb-4 sm:gap-3 lg:mx-auto lg:max-w-2xl lg:gap-2">
                   {icebreakers.map((icebreaker) => (
                     <button
                       key={icebreaker.text}
                       onClick={() => sendMessage(icebreaker.text)}
-                      className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 lg:p-2.5 bg-white/90 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl sm:rounded-2xl hover:border-primary hover:shadow-md hover:-translate-y-0.5 transition-all text-left group touch-target"
+                      className="group touch-target flex items-center gap-2 rounded-2xl border border-violet-100 bg-white/95 p-2.5 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 sm:gap-3 sm:p-3 lg:p-2.5"
                     >
                       <div
                         className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br ${icebreaker.color} flex items-center justify-center shrink-0`}
@@ -1586,7 +1634,7 @@ export default function ChatPage() {
 
               {/* Input Box */}
               <form onSubmit={handleSubmit} className="relative">
-                <div className="flex items-end gap-2 sm:gap-3 bg-white dark:bg-gray-800 rounded-2xl p-1.5 sm:p-2 border border-gray-200 dark:border-gray-700 shadow-lg shadow-primary/5 focus-within:border-primary transition-all">
+                <div className="flex items-end gap-2 rounded-3xl border border-violet-200 bg-white/95 p-1.5 shadow-xl shadow-primary/10 transition-all focus-within:border-primary dark:border-gray-700 dark:bg-gray-800/95 sm:gap-3 sm:p-2">
                   <textarea
                     ref={inputRef}
                     value={inputValue}
@@ -1597,7 +1645,7 @@ export default function ChatPage() {
                     }
                     disabled={isTyping || isListening}
                     rows={1}
-                    className="flex-1 bg-transparent resize-none border-none focus:ring-0 focus:outline-none text-text-primary dark:text-white placeholder:text-text-secondary text-xs sm:text-sm px-2 sm:px-3 py-2 max-h-[120px] sm:max-h-[150px]"
+                    className="max-h-[120px] flex-1 resize-none border-none bg-transparent px-2 py-2 text-xs text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-0 dark:text-white sm:max-h-[150px] sm:px-3 sm:text-sm"
                   />
                   {/* Voice Input Button */}
                   {speechSupported && (
@@ -1605,7 +1653,7 @@ export default function ChatPage() {
                       type="button"
                       onClick={toggleVoiceInput}
                       disabled={isTyping}
-                      className={`p-2.5 sm:p-3 rounded-lg sm:rounded-xl transition-all touch-target ${
+                      className={`touch-target rounded-xl p-2.5 transition-all sm:p-3 ${
                         isListening
                           ? "bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/40"
                           : "bg-gray-200 dark:bg-gray-700 text-text-secondary dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600"
@@ -1620,7 +1668,7 @@ export default function ChatPage() {
                   <button
                     type="submit"
                     disabled={!inputValue.trim() || isTyping}
-                    className="p-2.5 sm:p-3 rounded-lg sm:rounded-xl bg-gradient-to-r from-primary to-purple-600 text-white hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-primary/25 touch-target"
+                    className="touch-target rounded-xl bg-gradient-to-r from-primary to-purple-600 p-2.5 text-white shadow-lg shadow-primary/25 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 sm:p-3"
                   >
                     <span className="material-symbols-outlined text-base sm:text-lg">
                       send
@@ -1629,7 +1677,8 @@ export default function ChatPage() {
                 </div>
               </form>
 
-              <p className="text-center text-[9px] sm:text-[10px] text-text-secondary dark:text-gray-500 mt-2 sm:mt-3">
+              <div className="mt-2 flex items-center justify-between gap-2 px-1 sm:mt-3">
+                <p className="text-[9px] text-text-secondary dark:text-gray-500 sm:text-[10px]">
                 Sister is an AI companion. For emergencies, call{" "}
                 <a
                   href="tel:116"
@@ -1638,7 +1687,11 @@ export default function ChatPage() {
                   Sauti 116
                 </a>{" "}
                 or see a healthcare professional.
-              </p>
+                </p>
+                <span className="hidden text-[10px] font-medium text-text-secondary dark:text-gray-500 sm:inline">
+                  Enter to send, Shift+Enter for new line
+                </span>
+              </div>
             </div>
           </div>
         </div>
