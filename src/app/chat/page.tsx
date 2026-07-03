@@ -119,6 +119,9 @@ export default function ChatPage() {
   const [editingTitle, setEditingTitle] = useState<string | null>(null);
   const [editTitleValue, setEditTitleValue] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [conversationMenuOpen, setConversationMenuOpen] = useState<
+    string | null
+  >(null);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -146,6 +149,9 @@ export default function ChatPage() {
   const streamRef = useRef<MediaStream | null>(null);
   const isFreshChat =
     activeConversationId !== null && activeConversationId === freshChatId;
+  const activeConversation = conversations.find(
+    (conversation) => conversation.id === activeConversationId,
+  );
 
   const createFreshConversation = useCallback(async (): Promise<
     string | null
@@ -312,6 +318,27 @@ export default function ChatPage() {
     }
   }, [activeConversationId, freshChatId]);
 
+  useEffect(() => {
+    setConversationMenuOpen(null);
+  }, [activeConversationId, sidebarOpen]);
+
+  // Persist draft per conversation so users can continue where they left off.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const key = `sistercare-chat-draft-${activeConversationId || "global"}`;
+    const existingDraft = window.localStorage.getItem(key) || "";
+    setInputValue(existingDraft);
+    if (inputRef.current) {
+      inputRef.current.style.height = "auto";
+    }
+  }, [activeConversationId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const key = `sistercare-chat-draft-${activeConversationId || "global"}`;
+    window.localStorage.setItem(key, inputValue);
+  }, [activeConversationId, inputValue]);
+
   // Auto-resize textarea
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputValue(e.target.value);
@@ -331,6 +358,7 @@ export default function ChatPage() {
       await createFreshConversation();
       setError(null);
       setSidebarOpen(false);
+      setConversationMenuOpen(null);
     } catch (err: unknown) {
       console.error("Error creating new chat:", err);
       setError("Failed to create new chat. Please try again.");
@@ -344,6 +372,7 @@ export default function ChatPage() {
     setActionLoading(conversationId);
     try {
       setFreshChatId(null);
+      setConversationMenuOpen(null);
       setActiveConversationId(conversationId);
       const conversationMeta = conversationsRef.current.find(
         (conversation) => conversation.id === conversationId,
@@ -640,6 +669,10 @@ export default function ChatPage() {
         ),
       );
       setInputValue("");
+        if (typeof window !== "undefined") {
+          const draftKey = `sistercare-chat-draft-${currentConversationId}`;
+          window.localStorage.removeItem(draftKey);
+        }
       if (inputRef.current) {
         inputRef.current.style.height = "auto";
       }
@@ -904,7 +937,11 @@ export default function ChatPage() {
   };
 
   // Filter conversations by search
-  const filteredConversations = conversations.filter((conv) =>
+  const sortedConversations = [...conversations].sort(
+    (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime(),
+  );
+
+  const filteredConversations = sortedConversations.filter((conv) =>
     conv.title?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
@@ -920,8 +957,15 @@ export default function ChatPage() {
   );
 
   const activeConversationTitle =
-    conversations.find((c) => c.id === activeConversationId)?.title ||
-    "Start a conversation";
+    activeConversation?.title || "Start a conversation";
+
+  const continueRecentChats = sortedConversations.slice(0, 4);
+
+  const formatConversationTime = (date: Date) =>
+    date.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
   if (authLoading || loading) {
     return (
@@ -1161,37 +1205,63 @@ export default function ChatPage() {
                                     {conversation.lastMessage ||
                                       "No messages yet"}
                                   </p>
+                                  <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-text-secondary/80 dark:text-gray-500">
+                                    Updated {formatConversationTime(conversation.updatedAt)}
+                                  </p>
                                 </div>
 
                                 {/* Action Buttons */}
-                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="relative flex items-center gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setEditTitleValue(
-                                        conversation.title || "",
+                                      setConversationMenuOpen((prev) =>
+                                        prev === conversation.id
+                                          ? null
+                                          : conversation.id,
                                       );
-                                      setEditingTitle(conversation.id);
                                     }}
                                     className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                                    title="Rename"
+                                    title="Conversation options"
                                   >
                                     <span className="material-symbols-outlined text-sm text-text-secondary dark:text-gray-400">
-                                      edit
+                                      more_horiz
                                     </span>
                                   </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setDeleteConfirm(conversation.id);
-                                    }}
-                                    className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors"
-                                    title="Delete"
-                                  >
-                                    <span className="material-symbols-outlined text-sm text-red-500">
-                                      delete
-                                    </span>
-                                  </button>
+
+                                  {conversationMenuOpen === conversation.id && (
+                                    <div className="absolute right-0 top-8 z-20 w-40 overflow-hidden rounded-xl border border-violet-100 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setEditTitleValue(
+                                            conversation.title || "",
+                                          );
+                                          setEditingTitle(conversation.id);
+                                          setConversationMenuOpen(null);
+                                        }}
+                                        className="flex w-full items-center gap-2 px-3 py-2 text-xs text-left text-text-primary hover:bg-violet-50 dark:text-white dark:hover:bg-gray-700"
+                                      >
+                                        <span className="material-symbols-outlined text-sm">
+                                          edit
+                                        </span>
+                                        Rename
+                                      </button>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setDeleteConfirm(conversation.id);
+                                          setConversationMenuOpen(null);
+                                        }}
+                                        className="flex w-full items-center gap-2 px-3 py-2 text-xs text-left text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                                      >
+                                        <span className="material-symbols-outlined text-sm">
+                                          delete
+                                        </span>
+                                        Delete
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             )}
@@ -1304,6 +1374,34 @@ export default function ChatPage() {
                   </span>
                 </div>
               </div>
+
+              {continueRecentChats.length > 0 && (
+                <div className="rounded-2xl border border-violet-100 bg-white/80 p-3 shadow-sm backdrop-blur dark:border-border-dark dark:bg-card-dark/85">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-secondary dark:text-gray-400">
+                      Continue conversation
+                    </p>
+                    <span className="text-[10px] text-text-secondary dark:text-gray-500">
+                      Recent chats
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {continueRecentChats.map((conversation) => (
+                      <button
+                        key={conversation.id}
+                        onClick={() => loadConversation(conversation.id)}
+                        className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${
+                          activeConversationId === conversation.id
+                            ? "border-primary/50 bg-primary/10 text-primary"
+                            : "border-violet-200 bg-white text-text-primary hover:border-primary/45 hover:bg-violet-50 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                        }`}
+                      >
+                        {conversation.title || "Untitled"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               {agentActionStatuses.length > 0 && (
                 <div className="bg-white dark:bg-card-dark border border-border-light dark:border-border-dark rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-sm animate-fade-in">
                   <p className="text-[11px] sm:text-xs uppercase tracking-wide font-semibold text-text-secondary mb-2">
