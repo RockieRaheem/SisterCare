@@ -68,6 +68,23 @@ const isLikelyUiMarkup = (text: string) =>
   /<div class="jsx-[^"]+"/.test(text) &&
   text.includes("material-symbols-outlined");
 
+const isLikelyDummyConversation = (conversation: ChatConversation) => {
+  const title = (conversation.title || "").toLowerCase().trim();
+  const lastMessage = (conversation.lastMessage || "").trim();
+  const hasNoContent = !lastMessage && (conversation.messageCount || 0) === 0;
+
+  // Remove old seeded/demo chats and markup-corrupted conversations from sidebar.
+  const looksSeededByTitle =
+    title.includes("dummy") ||
+    title.includes("sample") ||
+    title.includes("demo") ||
+    title.includes("default") ||
+    title === "chat 1" ||
+    title === "chat 2";
+
+  return isLikelyUiMarkup(lastMessage) || looksSeededByTitle || hasNoContent;
+};
+
 function isPermissionDeniedError(err: unknown): boolean {
   const e = err as { code?: string; message?: string };
   const code = (e.code || "").toLowerCase();
@@ -455,6 +472,14 @@ export default function ChatPage() {
     }
   }, []);
 
+  const openConversationFromSidebar = useCallback(
+    async (conversationId: string) => {
+      if (!conversationId || actionLoading === conversationId) return;
+      await loadConversation(conversationId);
+    },
+    [actionLoading, loadConversation],
+  );
+
   // Load all conversations for user
   const loadConversations = useCallback(async () => {
     if (!user) return;
@@ -475,7 +500,11 @@ export default function ChatPage() {
       let userConversations: ChatConversation[] = [];
       try {
         userConversations = await getUserConversations(user.uid);
-        setConversations(userConversations);
+        const cleanConversations = userConversations.filter(
+          (conversation) => !isLikelyDummyConversation(conversation),
+        );
+        setConversations(cleanConversations);
+        userConversations = cleanConversations;
       } catch (convErr: unknown) {
         const isPermissionError = isPermissionDeniedError(convErr);
 
@@ -1166,7 +1195,7 @@ export default function ChatPage() {
                               <div
                                 onClick={() =>
                                   actionLoading !== conversation.id &&
-                                  loadConversation(conversation.id)
+                                  openConversationFromSidebar(conversation.id)
                                 }
                                 className={`w-full cursor-pointer rounded-2xl border px-3 py-3 text-left shadow-sm transition-all ${
                                   actionLoading === conversation.id
@@ -1389,7 +1418,9 @@ export default function ChatPage() {
                     {continueRecentChats.map((conversation) => (
                       <button
                         key={conversation.id}
-                        onClick={() => loadConversation(conversation.id)}
+                        onClick={() =>
+                          openConversationFromSidebar(conversation.id)
+                        }
                         className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${
                           activeConversationId === conversation.id
                             ? "border-primary/50 bg-primary/10 text-primary"
