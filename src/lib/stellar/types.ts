@@ -13,6 +13,26 @@ export interface StellarAnchorMetadata {
   submittedAt?: string;
 }
 
+export interface StellarNetworkConfig {
+  networkName: "testnet" | "mainnet" | "futurenet";
+  networkPassphrase: string;
+  horizonUrl: string;
+  issuerPublicKey?: string;
+  issuerSecretKey?: string;
+}
+
+export interface StellarSubmissionResult {
+  submitted: boolean;
+  dryRun: boolean;
+  network: StellarNetworkConfig["networkName"];
+  proof: StellarProofRecord;
+  transactionHash?: string;
+  ledger?: number;
+  anchorKey?: string;
+  horizonResponse?: Record<string, unknown>;
+  error?: string;
+}
+
 export interface CounsellorVerificationFields {
   counsellorId: string;
   displayName: string;

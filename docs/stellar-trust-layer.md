@@ -194,9 +194,33 @@ Builds a proof record for:
 - `health_passport`
 - `wellness_record`
 
+If `submit` is not set to `false`, the route also submits an issuer-signed Stellar transaction that anchors the proof hash in a `manageData` entry on the configured Stellar network.
+
 ### `POST /api/stellar/verify`
 
 Verifies that the provided fields match the anchored payload hash.
+
+## Live Submission Behavior
+
+When the following environment variables are configured, SisterCare submits proofs to Stellar automatically:
+
+- `STELLAR_NETWORK` - `testnet`, `mainnet`, or `futurenet`
+- `STELLAR_NETWORK_PASSPHRASE` - optional override for the network passphrase
+- `STELLAR_HORIZON_URL` - Horizon endpoint for the selected network
+- `STELLAR_ISSUER_PUBLIC_KEY` - public key for the SisterCare issuer account
+- `STELLAR_ISSUER_SECRET_KEY` - secret key used to sign proof transactions
+
+If the issuer secret is missing, the backend stays safe and returns a dry-run proof response rather than failing the request.
+
+## What Gets Written On Chain
+
+Each submitted transaction writes one `manageData` entry:
+
+- Key: `sc:<kindCode>:<proofIdPrefix>` where `kindCode` is `cc`, `hp`, or `wr`
+- Value: the canonical payload hash of the proof
+- Memo: short proof reference derived from the proof ID
+
+The actual health data, counsellor documents, and verification evidence remain off-chain.
 
 ## Recommended Release Strategy
 
