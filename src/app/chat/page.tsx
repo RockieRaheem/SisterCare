@@ -134,7 +134,7 @@ export default function ChatPage() {
   const [userLanguage, setUserLanguage] =
     useState<SupportedLanguageCode>("eng");
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
-  const [isFreshChat, setIsFreshChat] = useState(false);
+  const [freshChatId, setFreshChatId] = useState<string | null>(null);
   const [audioElements, setAudioElements] = useState<
     Record<string, HTMLAudioElement>
   >({});
@@ -144,6 +144,8 @@ export default function ChatPage() {
   const recordingRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+  const isFreshChat =
+    activeConversationId !== null && activeConversationId === freshChatId;
 
   const createFreshConversation = useCallback(async (): Promise<
     string | null
@@ -166,7 +168,7 @@ export default function ChatPage() {
       setConversations((prev) => [newConversation, ...prev]);
       setActiveConversationId(newChatId);
       setMessages([]);
-      setIsFreshChat(true);
+      setFreshChatId(newChatId);
       return newChatId;
     } catch (err) {
       if (isPermissionDeniedError(err)) {
@@ -185,7 +187,7 @@ export default function ChatPage() {
         setConversations((prev) => [newConversation, ...prev]);
         setActiveConversationId(localChatId);
         setMessages([]);
-        setIsFreshChat(true);
+        setFreshChatId(localChatId);
         return localChatId;
       }
 
@@ -304,6 +306,12 @@ export default function ChatPage() {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
+  useEffect(() => {
+    if (freshChatId && activeConversationId !== freshChatId) {
+      setFreshChatId(null);
+    }
+  }, [activeConversationId, freshChatId]);
+
   // Auto-resize textarea
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputValue(e.target.value);
@@ -335,16 +343,15 @@ export default function ChatPage() {
   const loadConversation = useCallback(async (conversationId: string) => {
     setActionLoading(conversationId);
     try {
+      setFreshChatId(null);
       setActiveConversationId(conversationId);
       const conversationMeta = conversationsRef.current.find(
         (conversation) => conversation.id === conversationId,
       );
-      const isNewChat = conversationMeta?.title === "New Chat";
 
       // Skip Firestore for local chats
       if (conversationId.startsWith("local-")) {
         setMessages([]);
-        setIsFreshChat(!!isNewChat);
         setError(null);
         setSidebarOpen(false);
         return;
@@ -378,7 +385,23 @@ export default function ChatPage() {
           ),
         );
       }
-      setIsFreshChat(cleanedMessages.length === 0 && !!isNewChat);
+      if (conversationMeta?.title === "New Chat" && cleanedMessages.length) {
+        const newTitle = generateTitleFromMessage(cleanedMessages[0].text);
+        setConversations((prev) =>
+          prev.map((conversation) =>
+            conversation.id === conversationId
+              ? { ...conversation, title: newTitle }
+              : conversation,
+          ),
+        );
+        if (!conversationId.startsWith("local-")) {
+          try {
+            await updateConversationTitle(conversationId, newTitle);
+          } catch (titleErr) {
+            console.warn("Could not update chat title on load:", titleErr);
+          }
+        }
+      }
       setError(null);
       setSidebarOpen(false);
     } catch (err: unknown) {
@@ -393,7 +416,6 @@ export default function ChatPage() {
       if (isPermissionError) {
         // Fall back to welcome message for permission errors
         setMessages([]);
-        setIsFreshChat(false);
         setError(null);
       } else {
         setError("Failed to load conversation. Please try again.");
@@ -437,7 +459,7 @@ export default function ChatPage() {
           setConversations([]);
           setActiveConversationId(null);
           setMessages([]);
-          setIsFreshChat(false);
+          setFreshChatId(null);
           setLoading(false);
           return;
         }
@@ -448,7 +470,7 @@ export default function ChatPage() {
       } else {
         setActiveConversationId(null);
         setMessages([]);
-        setIsFreshChat(false);
+        setFreshChatId(null);
       }
       setError(null);
     } catch (err: unknown) {
@@ -468,7 +490,7 @@ export default function ChatPage() {
       }
       setActiveConversationId(null);
       setMessages([]);
-      setIsFreshChat(false);
+      setFreshChatId(null);
     } finally {
       setLoading(false);
     }
@@ -512,6 +534,10 @@ export default function ChatPage() {
             }
           }
 
+          if (conversationId === freshChatId) {
+            setFreshChatId(null);
+          }
+
           return remaining;
         });
 
@@ -524,7 +550,7 @@ export default function ChatPage() {
         setActionLoading(null);
       }
     },
-    [activeConversationId, loadConversation],
+    [activeConversationId, freshChatId, loadConversation],
   );
 
   // Rename a chat
@@ -589,7 +615,7 @@ export default function ChatPage() {
         currentConversationId = await createFreshConversation();
         if (!currentConversationId) return;
       }
-      setIsFreshChat(false);
+      setFreshChatId(null);
 
       const userMessage: Message = {
         id: `user-${Date.now()}`,
@@ -931,7 +957,7 @@ export default function ChatPage() {
             border-r border-white/50 dark:border-border-dark
             transition-all duration-300 ease-out
             ${sidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full lg:translate-x-0"}
-            w-[85vw] xs:w-80 sm:w-80 lg:w-80
+            w-[85vw] xs:w-80 sm:w-80 lg:w-72
           `}
         >
           <div className="flex flex-col h-full">
@@ -1082,14 +1108,14 @@ export default function ChatPage() {
                                   actionLoading !== conversation.id &&
                                   loadConversation(conversation.id)
                                 }
-                                className={`w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left transition-all cursor-pointer border ${
+                                className={`w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left transition-all cursor-pointer border shadow-sm ${
                                   actionLoading === conversation.id
                                     ? "opacity-50 cursor-wait"
                                     : ""
                                 } ${
                                   activeConversationId === conversation.id
-                                    ? "bg-primary/10 dark:bg-primary/20 border-primary/40"
-                                    : "border-transparent hover:border-primary/20 hover:bg-white dark:hover:bg-gray-800"
+                                    ? "bg-white border-primary/40 shadow-md dark:bg-gray-800"
+                                    : "border-transparent hover:border-primary/20 hover:bg-white/80 dark:hover:bg-gray-800"
                                 }`}
                               >
                                 <div
@@ -1240,7 +1266,7 @@ export default function ChatPage() {
           </div>
 
           <div className="relative flex-1 overflow-y-auto bg-transparent">
-            <div className="max-w-3xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
+            <div className="max-w-4xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
               {agentActionStatuses.length > 0 && (
                 <div className="bg-white dark:bg-card-dark border border-border-light dark:border-border-dark rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-sm animate-fade-in">
                   <p className="text-[11px] sm:text-xs uppercase tracking-wide font-semibold text-text-secondary mb-2">
@@ -1314,8 +1340,8 @@ export default function ChatPage() {
                 </div>
               )}
 
-              {isFreshChat && !isTyping && (
-                <div className="rounded-3xl border border-white/70 dark:border-gray-700 bg-white/85 dark:bg-card-dark/95 backdrop-blur-xl shadow-xl p-5 sm:p-7 animate-fade-in">
+              {isFreshChat && messages.length === 0 && !isTyping && (
+                <div className="rounded-3xl border border-white/70 dark:border-gray-700 bg-white/85 dark:bg-card-dark/95 backdrop-blur-xl shadow-xl p-5 sm:p-6 lg:p-5 lg:max-w-lg lg:mx-auto animate-fade-in">
                   <p className="text-[11px] font-semibold tracking-[0.14em] uppercase text-text-secondary dark:text-gray-400">
                     Fresh chat
                   </p>
@@ -1343,6 +1369,23 @@ export default function ChatPage() {
                     <p className="mt-2 text-sm text-text-secondary dark:text-gray-300">
                       Use the sidebar to open a previous chat or tap New Chat to
                       begin.
+                    </p>
+                  </div>
+                )}
+
+              {activeConversationId &&
+                !isFreshChat &&
+                messages.length === 0 &&
+                !isTyping && (
+                  <div className="rounded-3xl border border-white/70 dark:border-gray-700 bg-white/80 dark:bg-card-dark/90 backdrop-blur-xl shadow-xl p-5 sm:p-7 lg:max-w-lg lg:mx-auto animate-fade-in">
+                    <p className="text-[11px] font-semibold tracking-[0.14em] uppercase text-text-secondary dark:text-gray-400">
+                      No messages yet
+                    </p>
+                    <h3 className="mt-2 text-lg sm:text-2xl font-bold text-text-primary dark:text-white">
+                      Start the conversation
+                    </h3>
+                    <p className="mt-2 text-sm text-text-secondary dark:text-gray-300">
+                      Say hello or ask a question to continue this chat.
                     </p>
                   </div>
                 )}
@@ -1518,13 +1561,13 @@ export default function ChatPage() {
               </div>
 
               {/* Icebreakers for new chats */}
-              {isFreshChat && (
-                <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 sm:gap-3 mb-3 sm:mb-4">
+              {isFreshChat && messages.length === 0 && (
+                <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 sm:gap-3 lg:gap-2 mb-3 sm:mb-4 lg:max-w-lg lg:mx-auto">
                   {icebreakers.map((icebreaker) => (
                     <button
                       key={icebreaker.text}
                       onClick={() => sendMessage(icebreaker.text)}
-                      className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-4 bg-white/90 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl sm:rounded-2xl hover:border-primary hover:shadow-md hover:-translate-y-0.5 transition-all text-left group touch-target"
+                      className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 lg:p-2.5 bg-white/90 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl sm:rounded-2xl hover:border-primary hover:shadow-md hover:-translate-y-0.5 transition-all text-left group touch-target"
                     >
                       <div
                         className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br ${icebreaker.color} flex items-center justify-center shrink-0`}
