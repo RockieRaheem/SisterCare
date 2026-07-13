@@ -42,6 +42,7 @@ export default function DashboardPage() {
   const [moodLogged, setMoodLogged] = useState(false);
   const [moodLogging, setMoodLogging] = useState(false);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
+  const [dismissedPeriodBanner, setDismissedPeriodBanner] = useState(false);
   const [cycleInfo, setCycleInfo] = useState<{
     phase: string;
     dayInCycle: number;
@@ -110,6 +111,21 @@ export default function DashboardPage() {
 
     checkOnboarding();
   }, [user, authLoading, router, authProfile]);
+
+  // Restore dismissed period banner state from localStorage
+  useEffect(() => {
+    try {
+      const val = localStorage.getItem("sc_dismissed_period_banner");
+      if (val === "true") setDismissedPeriodBanner(true);
+    } catch {}
+  }, []);
+
+  const handleDismissPeriodBanner = () => {
+    setDismissedPeriodBanner(true);
+    try {
+      localStorage.setItem("sc_dismissed_period_banner", "true");
+    } catch {}
+  };
 
   // Load dashboard data only AFTER onboarding is verified
   useEffect(() => {
@@ -333,8 +349,15 @@ export default function DashboardPage() {
         )}
 
         {/* Late Period Update Reminder */}
-        {cycleInfo?.isPeriodLate && (
-          <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl">
+        {cycleInfo?.isPeriodLate && !dismissedPeriodBanner && (
+          <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl relative">
+            <button
+              onClick={handleDismissPeriodBanner}
+              className="absolute top-3 right-3 text-amber-400 hover:text-amber-600 dark:hover:text-amber-200 transition-colors"
+              aria-label="Dismiss"
+            >
+              <span className="material-symbols-outlined text-xl">close</span>
+            </button>
             <div className="flex items-start gap-3">
               <span className="material-symbols-outlined text-amber-500 text-2xl">
                 update
@@ -349,11 +372,20 @@ export default function DashboardPage() {
                     String(cycleInfo.daysLate),
                   )}
                 </p>
-                <Link href="/profile">
-                  <Button variant="secondary" size="sm" icon="edit_calendar">
-                    {t.dashboard.updatePeriodDate}
+                <div className="flex gap-2">
+                  <Link href="/profile">
+                    <Button variant="secondary" size="sm" icon="edit_calendar">
+                      {t.dashboard.updatePeriodDate}
+                    </Button>
+                  </Link>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleDismissPeriodBanner}
+                  >
+                    Dismiss
                   </Button>
-                </Link>
+                </div>
               </div>
             </div>
           </div>

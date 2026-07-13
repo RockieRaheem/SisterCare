@@ -155,7 +155,7 @@ const WHATSAPP_REQUEST_PATTERN =
 const PRONOUN_REFERENCE_PATTERN =
   /(call her|call him|whatsapp her|whatsapp him|message (her|him|them)|text (her|him|them)|her number|his number|their number|contact (her|him|them)|reach (her|him|them))/i;
 const PERIOD_START_PATTERN =
-  /(period (started|came|has started)|i got my period|my period is here|started my period|got my periods)/i;
+  /(period (started|came|has started|began|arrived)|i got my period|my period is here|started my period|got my periods|(started|began).*\d+\s*(day|week)s?\s*ago|backtrack|go back|update.*period)/i;
 
 function toPhoneHref(phoneNumber: string): string {
   return `tel:${phoneNumber.replace(/[^+\d]/g, "")}`;
@@ -1257,27 +1257,6 @@ export async function POST(request: NextRequest) {
     });
 
     let responseText = agentResult.response;
-
-    const isPregnant = userProfile?.pregnancyData?.isPregnant ?? false;
-    if (
-      !isPregnant &&
-      shouldPromptCycleConfirmation(cycleData) &&
-      !PERIOD_START_PATTERN.test(trimmedMessage)
-    ) {
-      if (isSignificantlyOverdue(cycleData)) {
-        responseText +=
-          "\n\nI noticed your period is a bit later than expected. Did it start? If not, we can talk through it — sometimes stress or other factors can cause a delay. And if you think you might be pregnant, I'm here to support you every step of the way.";
-      } else {
-        responseText +=
-          "\n\nQuick check-in: did your period start already? If yes, please share the exact start date so I can update your cycle predictions accurately.";
-      }
-
-      actionStatuses.push({
-        key: "cycle-confirmation",
-        label: "Cycle confirmation requested",
-        state: "done",
-      });
-    }
 
     if (handoffText) {
       responseText += handoffText;
