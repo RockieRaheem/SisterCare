@@ -62,7 +62,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className="">
       <head>
         <link
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL@20..48,100..700,0..1&display=swap"
           rel="stylesheet"
         />
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -105,6 +105,7 @@ export default function RootLayout({
         />
       </head>
       <body
+        suppressHydrationWarning
         className={`${manrope.variable} font-display bg-background-light dark:bg-background-dark text-text-primary dark:text-white min-h-screen antialiased`}
       >
         {/* Live region for screen reader announcements */}

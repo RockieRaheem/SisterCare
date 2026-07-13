@@ -4,7 +4,6 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import { useTheme } from "@/context/ThemeContext";
 import Header from "@/components/layout/Header";
 import {
   addMessage,
@@ -16,7 +15,18 @@ import {
   updateConversationPreview,
   getUserProfile,
 } from "@/lib/firestore";
-import { AgentActionStatus, ChatConversation, UserProfile } from "@/types";
+import {
+  loadLocalConversations,
+  saveLocalConversation,
+  deleteLocalConversation,
+  createLocalConversation,
+  updateLocalConversationTitle,
+  touchLocalConversation,
+  loadLocalMessages,
+  saveLocalMessage,
+  cleanDeletedTombstones,
+} from "@/lib/localChatStore";
+import { AgentActionStatus, ChatConversation, UserProfile, ChatMessage } from "@/types";
 import {
   speechToText,
   SUPPORTED_LANGUAGES,
@@ -253,46 +263,28 @@ export default function ChatPage() {
   const createFreshConversation = useCallback(async (): Promise<string | null> => {
     if (!user) return null;
 
-    try {
-      const newChatId = await createNewChat(user.uid, "New Chat");
-      const newConversation: ChatConversation = {
-        id: newChatId,
-        userId: user.uid,
-        title: "New Chat",
-        type: "ai_support",
-        status: "active",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        lastMessage: "",
-        messageCount: 0,
-      };
-      setConversations((prev) => [newConversation, ...prev]);
-      setActiveConversationId(newChatId);
-      setMessages([]);
-      setFreshChatId(newChatId);
-      return newChatId;
-    } catch (err) {
-      if (isPermissionDeniedError(err)) {
-        const localChatId = `local-${Date.now()}`;
-        const newConversation: ChatConversation = {
-          id: localChatId,
-          userId: user.uid,
-          title: "New Chat",
-          type: "ai_support",
-          status: "active",
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          lastMessage: "",
-          messageCount: 0,
-        };
-        setConversations((prev) => [newConversation, ...prev]);
-        setActiveConversationId(localChatId);
-        setMessages([]);
-        setFreshChatId(localChatId);
-        return localChatId;
-      }
+    // Always create locally for instant reliability
+    const localConv = createLocalConversation(user.uid, "New Chat");
+    setConversations((prev) => [localConv, ...prev]);
+    setActiveConversationId(localConv.id);
+    setMessages([]);
+    setFreshChatId(localConv.id);
 
-      throw err;
+    // Try to also create in Firestore for multi-device sync
+    try {
+      const firestoreId = await createNewChat(user.uid, "New Chat");
+      // Link local ID to Firestore ID
+      const updated = { ...localConv, id: firestoreId, title: "New Chat" };
+      saveLocalConversation(updated);
+      setConversations((prev) =>
+        prev.map((c) => (c.id === localConv.id ? updated : c)),
+      );
+      setActiveConversationId(firestoreId);
+      setFreshChatId(firestoreId);
+      return firestoreId;
+    } catch {
+      // Local-only is fine
+      return localConv.id;
     }
   }, [user]);
 
@@ -353,9 +345,7 @@ export default function ChatPage() {
       };
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, {
-          type: "audio/webm",
-        });
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
         audioChunksRef.current = [];
 
         if (streamRef.current) {
@@ -367,21 +357,18 @@ export default function ChatPage() {
         try {
           const result = await speechToText(audioBlob, userLanguage);
           setInputValue(result.transcript);
-        } catch (sttError) {
-          console.error("STT error:", sttError);
+        } catch {
           setError("Speech-to-text conversion failed. Please try again or type your message.");
         }
       };
 
-      mediaRecorder.onerror = (event) => {
-        console.error("Recording error:", event.error);
+      mediaRecorder.onerror = () => {
         setError("Recording failed. Please try again.");
         setIsListening(false);
       };
 
       mediaRecorder.start();
-    } catch (err) {
-      console.error("Microphone access error:", err);
+    } catch {
       setError("Unable to access microphone. Please check permissions.");
       setIsListening(false);
     }
@@ -452,9 +439,7 @@ export default function ChatPage() {
     try {
       const raw = window.localStorage.getItem(`sistercare-pinned-${user.uid}`);
       if (raw) setPinnedIds(new Set(JSON.parse(raw)));
-    } catch {
-      // ignore
-    }
+    } catch {}
   }, [user]);
 
   const togglePinned = useCallback(
@@ -481,8 +466,7 @@ export default function ChatPage() {
     try {
       await signOut();
       router.push("/auth/login");
-    } catch (err) {
-      console.error("Error signing out:", err);
+    } catch {
       setSigningOut(false);
     }
   }, [signOut, router]);
@@ -528,15 +512,13 @@ export default function ChatPage() {
 
   const handleNewChat = useCallback(async () => {
     if (!user) return;
-
     setActionLoading("new");
     try {
       await createFreshConversation();
       setError(null);
       setSidebarOpen(false);
       setConversationMenuOpen(null);
-    } catch (err: unknown) {
-      console.error("Error creating new chat:", err);
+    } catch {
       setError("Failed to create new chat. Please try again.");
     } finally {
       setActionLoading(null);
@@ -544,98 +526,90 @@ export default function ChatPage() {
   }, [createFreshConversation, user]);
 
   const loadConversation = useCallback(async (conversationId: string) => {
+    if (!conversationId) return;
     setActionLoading(conversationId);
-    try {
-      setFreshChatId(null);
-      setConversationMenuOpen(null);
-      setActiveConversationId(conversationId);
-      const conversationMeta = conversationsRef.current.find(
-        (conversation) => conversation.id === conversationId,
-      );
+    setFreshChatId(null);
+    setConversationMenuOpen(null);
+    setActiveConversationId(conversationId);
+    setMessages([]);
 
-      if (conversationId.startsWith("local-")) {
-        setMessages([]);
-        setError(null);
-        setSidebarOpen(false);
-        setContextMenuId(null);
-        return;
+    // Load messages from local storage first (always works)
+    try {
+      const localMessages = loadLocalMessages(conversationId);
+      const cleaned = localMessages
+        .filter((msg) => !isLikelyUiMarkup(msg.content))
+        .map((msg) => ({
+          id: msg.id,
+          sender: (msg.sender === "user" ? "user" : "sister") as Message["sender"],
+          text: msg.content,
+          timestamp: msg.timestamp,
+        }));
+
+      if (cleaned.length > 0) {
+        setMessages(cleaned);
       }
 
-      const existingMessages = await getMessages(conversationId);
-
-      const cleanedMessages = existingMessages
-        .filter((msg) => !isLikelyUiMarkup(msg.content))
-        .map((msg) => {
-          const sender: Message["sender"] =
-            msg.sender === "user" ? "user" : "sister";
-          return {
+      // Try loading from Firestore for fresh data
+      try {
+        const firestoreMessages = await getMessages(conversationId);
+        const firestoreCleaned = firestoreMessages
+          .filter((msg) => !isLikelyUiMarkup(msg.content))
+          .map((msg) => ({
             id: msg.id,
-            sender,
+            sender: (msg.sender === "user" ? "user" : "sister") as Message["sender"],
             text: msg.content,
             timestamp: msg.timestamp,
-          };
-        });
-
-      setMessages(cleanedMessages);
-      const latestText = cleanedMessages.length
-        ? cleanedMessages[cleanedMessages.length - 1].text
-        : "";
-      if (isLikelyUiMarkup(conversationMeta?.lastMessage || "") || latestText) {
-        setConversations((prev) =>
-          prev.map((conversation) =>
-            conversation.id === conversationId
-              ? { ...conversation, lastMessage: latestText }
-              : conversation,
-          ),
-        );
+          }));
+        if (firestoreCleaned.length > 0) {
+          setMessages(firestoreCleaned);
+          firestoreCleaned.forEach((msg) => {
+            saveLocalMessage(conversationId, {
+              id: msg.id,
+              conversationId,
+              sender: msg.sender === "user" ? "user" : "ai",
+              content: msg.text,
+              timestamp: msg.timestamp,
+              read: true,
+            });
+          });
+        }
+      } catch {
+        // Local data is sufficient
       }
-      if (conversationMeta?.title === "New Chat" && cleanedMessages.length) {
-        const newTitle = generateTitleFromMessage(cleanedMessages[0].text);
-        setConversations((prev) =>
-          prev.map((conversation) =>
-            conversation.id === conversationId
-              ? { ...conversation, title: newTitle }
-              : conversation,
-          ),
-        );
-        if (!conversationId.startsWith("local-")) {
-          try {
-            await updateConversationTitle(conversationId, newTitle);
-          } catch (titleErr) {
-            console.warn("Could not update chat title on load:", titleErr);
-          }
+
+      // If we have no messages at all, try loading from local storage as final fallback
+      if (cleaned.length === 0) {
+        const finalLocal = loadLocalMessages(conversationId);
+        if (finalLocal.length > 0) {
+          setMessages(
+            finalLocal
+              .filter((msg) => !isLikelyUiMarkup(msg.content))
+              .map((msg) => ({
+                id: msg.id,
+                sender: (msg.sender === "user" ? "user" : "sister") as Message["sender"],
+                text: msg.content,
+                timestamp: msg.timestamp,
+              })),
+          );
         }
       }
+
       setError(null);
-      setSidebarOpen(false);
-      setContextMenuId(null);
-    } catch (err: unknown) {
-      const isPermissionError = isPermissionDeniedError(err);
-
-      if (isPermissionError) {
-        console.warn("Conversation access denied - using local fallback.");
-      } else {
-        console.error("Error loading conversation:", err);
-      }
-
-      if (isPermissionError) {
-        setMessages([]);
-        setError(null);
-      } else {
-        setError("Failed to load conversation. Please try again.");
-      }
-      setSidebarOpen(false);
-    } finally {
-      setActionLoading(null);
+    } catch {
+      setMessages([]);
     }
+    setSidebarOpen(false);
+    setContextMenuId(null);
+    setActionLoading(null);
   }, []);
 
   const openConversationFromSidebar = useCallback(
     async (conversationId: string) => {
-      if (!conversationId || actionLoading === conversationId) return;
+      if (!conversationId) return;
+      if (conversationId === activeConversationId) return;
       await loadConversation(conversationId);
     },
-    [actionLoading, loadConversation],
+    [activeConversationId, loadConversation],
   );
 
   const loadConversations = useCallback(async () => {
@@ -645,66 +619,54 @@ export default function ChatPage() {
       try {
         const profile = await getUserProfile(user.uid);
         setUserProfile(profile);
-      } catch (profileErr) {
-        if (!isPermissionDeniedError(profileErr)) {
-          console.warn("Could not load user profile:", profileErr);
-        }
-      }
+      } catch {}
+    } catch {}
 
-      let userConversations: ChatConversation[] = [];
-      try {
-        userConversations = await getUserConversations(user.uid);
-        const cleanConversations = userConversations.filter(
-          (conversation) => !isLikelyDummyConversation(conversation),
-        );
-        setConversations(cleanConversations);
-        userConversations = cleanConversations;
-      } catch (convErr: unknown) {
-        const isPermissionError = isPermissionDeniedError(convErr);
+    // Load from local storage first (instant, always works)
+    const localConversations = loadLocalConversations(user.uid);
 
-        if (!isPermissionError) {
-          console.warn("Could not load conversations:", convErr);
-        }
+    // Try Firestore
+    let firestoreConvs: ChatConversation[] = [];
+    try {
+      firestoreConvs = await getUserConversations(user.uid);
+      const cleanFirestore = firestoreConvs.filter(
+        (c) => !isLikelyDummyConversation(c),
+      );
+      // Sync Firestore conversations to local storage
+      cleanFirestore.forEach((c) => saveLocalConversation(c));
+      // Clean tombstones for conversations that still exist in Firestore
+      cleanDeletedTombstones(cleanFirestore.map((c) => c.id));
+    } catch {}
 
-        if (isPermissionError) {
-          setConversations([]);
-          setActiveConversationId(null);
-          setMessages([]);
-          setFreshChatId(null);
-          setLoading(false);
-          return;
-        }
-      }
+    // Merge: prefer local data (which has delete tombstones), supplemented by Firestore
+    const merged = loadLocalConversations(user.uid);
 
-      if (userConversations.length > 0) {
-        await loadConversation(userConversations[0].id);
-      } else {
-        setActiveConversationId(null);
-        setMessages([]);
-        setFreshChatId(null);
-      }
-      setError(null);
-    } catch (err: unknown) {
-      const isPermissionError = isPermissionDeniedError(err);
+    if (merged.length > 0) {
+      setConversations(merged);
 
-      if (isPermissionError) {
-        console.warn("Conversations access denied - using local fallback.");
-      } else {
-        console.error("Error loading conversations:", err);
-      }
-
-      if (isPermissionError) {
-        setError(null);
-      } else {
-        setError("Failed to load conversations. Please try again.");
-      }
+      // If there was a previously active conversation (from local state), load it
+      const lastActiveId = window.localStorage.getItem("sistercare-last-active");
+      const targetConv = lastActiveId && merged.find((c) => c.id === lastActiveId)
+        ? merged.find((c) => c.id === lastActiveId)!
+        : merged[0];
+      await loadConversation(targetConv.id);
+    } else {
+      setConversations([]);
       setActiveConversationId(null);
       setMessages([]);
       setFreshChatId(null);
-    } finally {
-      setLoading(false);
     }
+
+    setError(null);
+    setLoading(false);
   }, [user, loadConversation]);
+
+  // Save last active conversation ID for persistence across refreshes
+  useEffect(() => {
+    if (activeConversationId && typeof window !== "undefined") {
+      window.localStorage.setItem("sistercare-last-active", activeConversationId);
+    }
+  }, [activeConversationId]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -721,44 +683,38 @@ export default function ChatPage() {
     async (conversationId: string) => {
       setActionLoading(`delete-${conversationId}`);
       try {
-        if (!conversationId.startsWith("local-")) {
-          try {
-            await deleteConversation(conversationId);
-          } catch (firestoreErr) {
-            console.warn("Could not delete from Firestore:", firestoreErr);
+        // Always delete locally first (instant, permanent)
+        deleteLocalConversation(conversationId);
+
+        // Try Firestore sync
+        try {
+          await deleteConversation(conversationId);
+        } catch {}
+
+        setConversations((prev) => prev.filter((c) => c.id !== conversationId));
+        setDeleteModalId(null);
+        setContextMenuId(null);
+
+        if (conversationId === activeConversationId) {
+          // Navigate to another conversation or clear
+          const remaining = conversations.filter((c) => c.id !== conversationId);
+          if (remaining.length > 0) {
+            loadConversation(remaining[0].id);
+          } else {
+            setActiveConversationId(null);
+            setMessages([]);
+            setFreshChatId(null);
           }
         }
 
-        setConversations((prev) => {
-          const remaining = prev.filter((c) => c.id !== conversationId);
-
-          if (conversationId === activeConversationId) {
-            if (remaining.length > 0) {
-              loadConversation(remaining[0].id);
-            } else {
-              setActiveConversationId(null);
-              setMessages([]);
-            }
-          }
-
-          if (conversationId === freshChatId) {
-            setFreshChatId(null);
-          }
-
-          return remaining;
-        });
-
-        setDeleteModalId(null);
-        setContextMenuId(null);
         setError(null);
-      } catch (err) {
-        console.error("Error deleting chat:", err);
+      } catch {
         setError("Failed to delete chat. Please try again.");
       } finally {
         setActionLoading(null);
       }
     },
-    [activeConversationId, freshChatId, loadConversation],
+    [activeConversationId, conversations, loadConversation],
   );
 
   const handleRenameChat = useCallback(
@@ -770,26 +726,23 @@ export default function ChatPage() {
 
       setActionLoading(`rename-${conversationId}`);
       try {
-        if (!conversationId.startsWith("local-")) {
-          try {
-            await updateConversationTitle(conversationId, editTitleValue.trim());
-          } catch (firestoreErr) {
-            console.warn("Could not update title in Firestore:", firestoreErr);
-          }
-        }
+        // Always update locally
+        updateLocalConversationTitle(conversationId, editTitleValue.trim());
+
+        // Try Firestore sync
+        try {
+          await updateConversationTitle(conversationId, editTitleValue.trim());
+        } catch {}
 
         setConversations((prev) =>
           prev.map((c) =>
-            c.id === conversationId
-              ? { ...c, title: editTitleValue.trim() }
-              : c,
+            c.id === conversationId ? { ...c, title: editTitleValue.trim() } : c,
           ),
         );
         setEditingTitle(null);
         setEditTitleValue("");
         setError(null);
-      } catch (err) {
-        console.error("Error renaming chat:", err);
+      } catch {
         setError("Failed to rename chat. Please try again.");
       } finally {
         setActionLoading(null);
@@ -801,9 +754,7 @@ export default function ChatPage() {
   const generateTitleFromMessage = useCallback((message: string): string => {
     const words = message.split(" ").slice(0, 5);
     let title = words.join(" ");
-    if (message.split(" ").length > 5) {
-      title += "...";
-    }
+    if (message.split(" ").length > 5) title += "...";
     return title.substring(0, 30);
   }, []);
 
@@ -828,78 +779,61 @@ export default function ChatPage() {
       const currentMessages = [...messages, userMessage];
 
       setMessages(currentMessages);
+      touchLocalConversation(currentConversationId, text.trim());
+
+      // Auto-generate title from the very first user message
+      const generatedTitle = generateTitleFromMessage(text.trim());
+
       setConversations((prev) =>
-        prev.map((conversation) =>
-          conversation.id === currentConversationId
+        prev.map((c) =>
+          c.id === currentConversationId
             ? {
-                ...conversation,
+                ...c,
                 lastMessage: text.trim().substring(0, 100),
                 updatedAt: new Date(),
+                title: c.title === "New Chat" || c.title === "New Conversation" || c.title === "Untitled"
+                  ? generatedTitle
+                  : c.title,
               }
-            : conversation,
+            : c,
         ),
       );
-      setInputValue("");
-        if (typeof window !== "undefined") {
-          const draftKey = `sistercare-chat-draft-${currentConversationId}`;
-          window.localStorage.removeItem(draftKey);
-        }
-      if (inputRef.current) {
-        inputRef.current.style.height = "auto";
+
+      // Persist title update locally + Firestore if it was the default
+      const currentConv = conversationsRef.current.find((c) => c.id === currentConversationId);
+      if (currentConv && ["New Chat", "New Conversation", "Untitled"].includes(currentConv.title)) {
+        updateLocalConversationTitle(currentConversationId, generatedTitle);
+        try { await updateConversationTitle(currentConversationId, generatedTitle); } catch {}
       }
+      setInputValue("");
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(`sistercare-chat-draft-${currentConversationId}`);
+      }
+      if (inputRef.current) inputRef.current.style.height = "auto";
       setIsTyping(true);
       setError(null);
 
+      // Save user message locally
+      saveLocalMessage(currentConversationId, {
+        id: userMessage.id,
+        conversationId: currentConversationId,
+        sender: "user",
+        content: text.trim(),
+        timestamp: userMessage.timestamp,
+        read: true,
+      });
+
+      // Try Firestore for user message
       try {
-        const isLocalChat = currentConversationId.startsWith("local-");
+        await addMessage(currentConversationId, {
+          conversationId: currentConversationId,
+          sender: "user",
+          content: text.trim(),
+        });
+        await updateConversationPreview(currentConversationId, text.trim());
+      } catch {}
 
-        if (!isLocalChat) {
-          try {
-            await addMessage(currentConversationId, {
-              conversationId: currentConversationId,
-              sender: "user",
-              content: text.trim(),
-            });
-
-            await updateConversationPreview(currentConversationId, text.trim());
-
-            const currentConversation = conversationsRef.current.find(
-              (c) => c.id === currentConversationId,
-            );
-            if (currentConversation?.title === "New Chat") {
-              const newTitle = generateTitleFromMessage(text.trim());
-              await updateConversationTitle(currentConversationId, newTitle);
-              setConversations((prev) =>
-                prev.map((c) =>
-                  c.id === currentConversationId
-                    ? { ...c, title: newTitle }
-                    : c,
-                ),
-              );
-            }
-          } catch (firestoreErr) {
-            const isPermissionError = isPermissionDeniedError(firestoreErr);
-
-            if (isPermissionError) {
-              console.warn("Cloud sync unavailable - continuing in local mode.");
-            } else {
-              console.warn("Could not save to Firestore:", firestoreErr);
-            }
-          }
-        } else {
-          const currentConversation = conversationsRef.current.find(
-            (c) => c.id === currentConversationId,
-          );
-          if (currentConversation?.title === "New Chat") {
-            const newTitle = generateTitleFromMessage(text.trim());
-            setConversations((prev) =>
-              prev.map((c) =>
-                c.id === currentConversationId ? { ...c, title: newTitle } : c,
-              ),
-            );
-          }
-        }
-
+      try {
         const conversationHistory = currentMessages.slice(-10).map((msg) => ({
           role: msg.sender === "user" ? "user" : "assistant",
           content: msg.text,
@@ -939,10 +873,8 @@ export default function ChatPage() {
 
           if (res.status === 429 && retryCount < 2) {
             const retryAfter = parseInt(
-              res.headers.get("Retry-After") || "30",
-              10,
+              res.headers.get("Retry-After") || "30", 10,
             );
-
             const waitMessage: Message = {
               id: `wait-${Date.now()}`,
               sender: "sister",
@@ -950,20 +882,13 @@ export default function ChatPage() {
               timestamp: new Date(),
             };
             setMessages((prev) => [...prev, waitMessage]);
-
-            await new Promise((resolve) =>
-              setTimeout(resolve, retryAfter * 1000),
-            );
-
+            await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
             setMessages((prev) => prev.filter((m) => m.id !== waitMessage.id));
-
             return makeRequest(retryCount + 1);
           }
 
           if (!res.ok) {
-            throw new Error(
-              data.response || data.error || "Failed to get response",
-            );
+            throw new Error(data.response || data.error || "Failed to get response");
           }
 
           return data;
@@ -977,10 +902,7 @@ export default function ChatPage() {
           setUserLanguage(data.language as SupportedLanguageCode);
         }
 
-        if (
-          data.counsellorProfile?.profileUrl &&
-          typeof window !== "undefined"
-        ) {
+        if (data.counsellorProfile?.profileUrl && typeof window !== "undefined") {
           router.push(data.counsellorProfile.profileUrl);
         }
 
@@ -992,65 +914,54 @@ export default function ChatPage() {
             timestamp: new Date(),
             language: data.language || "eng",
             audio: data.audio
-              ? {
-                  url: data.audio.url,
-                  durationSeconds: data.audio.durationSeconds,
-                }
+              ? { url: data.audio.url, durationSeconds: data.audio.durationSeconds }
               : undefined,
             animate: true,
           };
 
           setMessages((prev) => [...prev, sisterMessage]);
 
-          if (!isLocalChat) {
-            try {
-              await addMessage(currentConversationId, {
-                conversationId: currentConversationId,
-                sender: "ai",
-                content: data.response,
-              });
+          // Save AI response locally
+          saveLocalMessage(currentConversationId, {
+            id: sisterMessage.id,
+            conversationId: currentConversationId,
+            sender: "ai",
+            content: data.response,
+            timestamp: sisterMessage.timestamp,
+            read: true,
+          });
 
-              await updateConversationPreview(
-                currentConversationId,
-                data.response,
-              );
-            } catch (firestoreErr) {
-              const isPermissionError = isPermissionDeniedError(firestoreErr);
+          touchLocalConversation(currentConversationId, data.response);
 
-              if (isPermissionError) {
-                console.warn("Cloud sync unavailable - continuing in local mode.");
-              } else {
-                console.warn("Could not save AI response to Firestore:", firestoreErr);
-              }
-            }
-          }
+          // Try Firestore for AI response
+          try {
+            await addMessage(currentConversationId, {
+              conversationId: currentConversationId,
+              sender: "ai",
+              content: data.response,
+            });
+            await updateConversationPreview(currentConversationId, data.response);
+          } catch {}
 
           setConversations((prev) =>
             prev.map((c) =>
               c.id === currentConversationId
-                ? {
-                    ...c,
-                    lastMessage: data.response.substring(0, 100),
-                    updatedAt: new Date(),
-                  }
+                ? { ...c, lastMessage: data.response.substring(0, 100), updatedAt: new Date() }
                 : c,
             ),
           );
         }
-      } catch (err) {
-        console.error("Error sending message:", err);
-        setAgentActionStatuses([
-          {
-            key: "agent-error",
-            label: "Agent response failed",
-            state: "failed",
-          },
-        ]);
+      } catch {
+        setAgentActionStatuses([{
+          key: "agent-error",
+          label: "Agent response failed",
+          state: "failed",
+        }]);
 
         const errorMessage: Message = {
           id: `error-${Date.now()}`,
           sender: "sister",
-          text: "I'm sorry, I'm having a little trouble right now. Please try again in a moment. Remember, I'm here to support you! 💜",
+          text: "I'm sorry, I'm having a little trouble right now. Please try again in a moment.",
           timestamp: new Date(),
           animate: true,
         };
@@ -1059,15 +970,7 @@ export default function ChatPage() {
         setIsTyping(false);
       }
     },
-    [
-      user,
-      activeConversationId,
-      messages,
-      createFreshConversation,
-      generateTitleFromMessage,
-      userProfile,
-      userLanguage,
-    ],
+    [user, activeConversationId, messages, createFreshConversation, generateTitleFromMessage, userProfile, userLanguage],
   );
 
   const isOverLimit = inputValue.length > MAX_MESSAGE_LENGTH;
@@ -1178,9 +1081,17 @@ export default function ChatPage() {
 
     return (
       <div
+        role="button"
+        tabIndex={0}
         onClick={() => !isBusy && openConversationFromSidebar(conversation.id)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            !isBusy && openConversationFromSidebar(conversation.id);
+          }
+        }}
         className={`group relative flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all duration-150 ${
-          isBusy ? "cursor-wait opacity-50" : ""
+          isBusy ? "cursor-wait opacity-50" : "hover:bg-black/[0.03] dark:hover:bg-white/[0.04]"
         } ${
           isActive
             ? "bg-primary/[0.08] shadow-sm dark:bg-primary/[0.12]"
@@ -1242,9 +1153,7 @@ export default function ChatPage() {
                 }}
                 className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs text-text-primary transition-colors hover:bg-black/[0.04] dark:text-white dark:hover:bg-white/5"
               >
-                <span className="material-symbols-outlined text-sm">
-                  {isPinned ? "push_pin" : "push_pin"}
-                </span>
+                <span className="material-symbols-outlined text-sm">push_pin</span>
                 {isPinned ? "Unpin" : "Pin to top"}
               </button>
               <button
@@ -1363,10 +1272,7 @@ export default function ChatPage() {
           >
             <span className="material-symbols-outlined text-xl">menu</span>
           </button>
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-2"
-          >
+          <Link href="/dashboard" className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-purple-600">
               <span className="material-symbols-outlined text-[18px] text-white">spa</span>
             </div>
@@ -1399,9 +1305,7 @@ export default function ChatPage() {
           </Link>
           <div className="ml-1 flex items-center">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary to-purple-600 text-xs font-semibold text-white">
-              {user?.displayName?.charAt(0) ||
-                user?.email?.charAt(0)?.toUpperCase() ||
-                "U"}
+              {user?.displayName?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || "U"}
             </div>
           </div>
         </div>
@@ -1416,7 +1320,7 @@ export default function ChatPage() {
           onClick={() => setSidebarOpen(false)}
         />
 
-        {/* Sidebar */}
+        {/* Sidebar — reduced width */}
         <aside
           className={`
             fixed z-40 flex h-[calc(100vh-3.5rem)] flex-col
@@ -1426,61 +1330,69 @@ export default function ChatPage() {
             dark:border-white/[0.06] dark:bg-[#191123]
             lg:relative lg:shadow-none
             ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
-            ${sidebarCollapsed ? "lg:w-[4.5rem]" : "lg:w-[20rem]"}
-            w-[20rem]
+            ${sidebarCollapsed ? "lg:w-[4.5rem]" : "lg:w-64"}
+            w-72
           `}
         >
           <div className="flex h-full flex-col">
             {/* Sidebar Header */}
-            <div className={`flex items-center gap-2 border-b border-black/[0.04] px-4 py-3 dark:border-white/[0.06] ${sidebarCollapsed ? "lg:justify-center lg:px-2" : "justify-between"}`}>
-              <div className={`flex items-center gap-2.5 ${sidebarCollapsed ? "lg:hidden" : ""}`}>
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-purple-600">
-                  <span className="material-symbols-outlined text-[18px] text-white">spa</span>
+            <div className={`flex items-center border-b border-black/[0.04] dark:border-white/[0.06] ${sidebarCollapsed ? "lg:justify-center lg:px-0" : "justify-between px-3"} py-2.5`}>
+              <div className={`flex items-center gap-2 ${sidebarCollapsed ? "lg:hidden" : "px-1"}`}>
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-purple-600">
+                  <span className="material-symbols-outlined text-sm text-white">spa</span>
                 </div>
-                <span className="text-sm font-semibold text-text-primary dark:text-white">
+                <span className="text-xs font-semibold text-text-primary dark:text-white">
                   Conversations
                 </span>
               </div>
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => setSidebarCollapsed((prev) => !prev)}
-                  className="hidden h-8 w-8 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06] lg:flex"
+                  className="sidebar-icon-hover inline-flex hidden h-8 w-8 items-center justify-center rounded-lg text-text-secondary dark:text-gray-400 lg:flex"
                   title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
                 >
-                  <span className="material-symbols-outlined text-lg">
-                    {sidebarCollapsed ? "panel_open" : "panel_close"}
+                  <span className="material-symbols-outlined text-sm">
+                    {sidebarCollapsed ? "keyboard_double_arrow_right" : "keyboard_double_arrow_left"}
                   </span>
                 </button>
                 <button
                   onClick={() => setSidebarOpen(false)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06] lg:hidden"
+                  className="sidebar-icon-hover flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary dark:text-gray-400 lg:hidden"
                 >
-                  <span className="material-symbols-outlined text-lg">close</span>
+                  <span className="material-symbols-outlined text-sm">close</span>
                 </button>
               </div>
             </div>
 
             {/* New Chat + Search */}
-            <div className="space-y-2.5 px-3 pb-2 pt-3">
-              <button
-                onClick={handleNewChat}
-                disabled={actionLoading === "new"}
-                className={`touch-target flex w-full items-center justify-center gap-2 rounded-xl bg-primary/10 py-2.5 text-sm font-medium text-primary transition-all hover:bg-primary/20 disabled:opacity-50 dark:bg-primary/15 dark:text-primary-light dark:hover:bg-primary/25 ${sidebarCollapsed ? "lg:px-0" : "px-3"}`}
-              >
-                {actionLoading === "new" ? (
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined text-lg">add</span>
-                    <span className={sidebarCollapsed ? "lg:hidden" : ""}>
-                      New conversation
-                    </span>
-                  </>
+            <div className="space-y-1 px-2 pb-2 pt-2.5">
+              {/* New chat button */}
+              <div className="relative group">
+                <button
+                  onClick={handleNewChat}
+                  disabled={actionLoading === "new"}
+                  className={`sidebar-icon-hover inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary/10 py-2 text-xs font-medium text-primary transition-all duration-200 hover:bg-primary/20 disabled:opacity-50 dark:bg-primary/15 dark:text-primary-light dark:hover:bg-primary/25 ${sidebarCollapsed ? "lg:mx-auto lg:w-9 lg:h-9 lg:rounded-xl lg:px-0" : "px-3"}`}
+                >
+                  {actionLoading === "new" ? (
+                    <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-sm">add</span>
+                      <span className={sidebarCollapsed ? "lg:hidden" : ""}>New</span>
+                    </>
+                  )}
+                </button>
+                {sidebarCollapsed && (
+                  <div className="sidebar-tooltip pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 rounded-lg bg-gray-900 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-all duration-200 group-hover:opacity-100 dark:bg-gray-700 whitespace-nowrap">
+                    New chat
+                  </div>
                 )}
-              </button>
+              </div>
+
+              {/* Search */}
               <div className={`${sidebarCollapsed ? "lg:hidden" : ""}`}>
                 <div className="relative">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-sm text-text-secondary/60 dark:text-gray-500">
+                  <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-text-secondary/60 dark:text-gray-500">
                     search
                   </span>
                   <input
@@ -1488,74 +1400,85 @@ export default function ChatPage() {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search conversations..."
-                    className="w-full rounded-xl border border-transparent bg-black/[0.04] py-2.5 pl-9 pr-3 text-sm text-text-primary placeholder:text-text-secondary/50 transition-colors focus:border-primary/30 focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary/20 dark:bg-white/[0.05] dark:text-white dark:focus:bg-white/[0.07]"
+                    placeholder="Search..."
+                    className="w-full rounded-xl border border-transparent bg-black/[0.04] py-2 pl-8 pr-3 text-xs text-text-primary placeholder:text-text-secondary/50 transition-colors focus:border-primary/30 focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary/20 dark:bg-white/[0.05] dark:text-white dark:focus:bg-white/[0.07]"
                   />
                 </div>
               </div>
             </div>
 
             {/* Conversations List */}
-            <div
-              className={`custom-scrollbar flex-1 overflow-y-auto px-2 py-1 ${sidebarCollapsed ? "lg:hidden" : ""}`}
-            >
+            <div className={`custom-scrollbar flex-1 overflow-y-auto px-1.5 py-1 ${sidebarCollapsed ? "lg:hidden" : ""}`}>
               {pinnedConversations.length === 0 &&
               Object.keys(groupedConversations).length === 0 ? (
-                <div className="flex flex-col items-center px-4 py-16 text-center">
-                  <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-black/[0.03] dark:bg-white/[0.05]">
-                    <span className="material-symbols-outlined text-2xl text-text-secondary/50 dark:text-gray-400">
+                <div className="flex flex-col items-center px-4 py-12 text-center">
+                  <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-black/[0.03] dark:bg-white/[0.05]">
+                    <span className="material-symbols-outlined text-xl text-text-secondary/50 dark:text-gray-400">
                       forum
                     </span>
                   </div>
-                  <p className="text-sm font-medium text-text-secondary dark:text-gray-400">
+                  <p className="text-xs font-medium text-text-secondary dark:text-gray-400">
                     {searchQuery ? "No matching chats" : "No conversations yet"}
                   </p>
                   {!searchQuery && (
-                    <p className="mt-1 text-xs text-text-secondary/50 dark:text-gray-500">
-                      Start a new conversation above
+                    <p className="mt-1 text-[10px] text-text-secondary/50 dark:text-gray-500">
+                      Tap New to start
                     </p>
                   )}
                 </div>
               ) : (
                 <>
                   {pinnedConversations.length > 0 && (
-                    <div className="mb-3">
-                      <p className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-text-secondary/50 dark:text-gray-500">
-                        <span className="material-symbols-outlined text-xs">push_pin</span>
+                    <div className="mb-2">
+                      <p className="flex items-center gap-1.5 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-widest text-text-secondary/50 dark:text-gray-500">
+                        <span className="material-symbols-outlined text-[10px]">push_pin</span>
                         Pinned
                       </p>
                       <div className="space-y-0.5">
-                        {pinnedConversations.map((conversation) => (
-                          <div key={conversation.id}>
-                            {renderConversationRow(conversation)}
-                          </div>
+                        {pinnedConversations.map((conv) => (
+                          <div key={conv.id}>{renderConversationRow(conv)}</div>
                         ))}
                       </div>
                     </div>
                   )}
 
-                  {Object.entries(groupedConversations).map(
-                    ([dateGroup, convs]) => (
-                      <div key={dateGroup} className="mb-3">
-                        <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-text-secondary/50 dark:text-gray-500">
-                          {dateGroup}
-                        </p>
-                        <div className="space-y-0.5">
-                          {convs.map((conversation) => (
-                            <div key={conversation.id}>
-                              {renderConversationRow(conversation)}
-                            </div>
-                          ))}
-                        </div>
+                  {Object.entries(groupedConversations).map(([dateGroup, convs]) => (
+                    <div key={dateGroup} className="mb-2">
+                      <p className="px-2.5 py-1 text-[9px] font-semibold uppercase tracking-widest text-text-secondary/50 dark:text-gray-500">
+                        {dateGroup}
+                      </p>
+                      <div className="space-y-0.5">
+                        {convs.map((conv) => (
+                          <div key={conv.id}>{renderConversationRow(conv)}</div>
+                        ))}
                       </div>
-                    ),
-                  )}
+                    </div>
+                  ))}
                 </>
               )}
             </div>
 
+            {/* Bottom: collapsed sidebar search shortcut */}
+            <div className={`border-t border-black/[0.04] dark:border-white/[0.06] ${sidebarCollapsed ? "lg:block" : "hidden"}`}>
+              {/* Search button — replaces the down arrow when collapsed */}
+              <div className="relative group flex justify-center px-1.5 py-1">
+                <button
+                  onClick={() => {
+                    setSidebarCollapsed(false);
+                    setTimeout(() => searchInputRef.current?.focus(), 100);
+                  }}
+                  className="sidebar-icon-hover flex h-9 w-9 items-center justify-center rounded-xl text-text-secondary dark:text-gray-400"
+                >
+                  <span className="material-symbols-outlined text-sm">search</span>
+                </button>
+                <div className="sidebar-tooltip pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 rounded-lg bg-gray-900 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-all duration-200 group-hover:opacity-100 dark:bg-gray-700 whitespace-nowrap">
+                  Search conversations
+                </div>
+              </div>
+            </div>
+
             {/* Bottom profile */}
-            <div className="border-t border-black/[0.04] p-2 dark:border-white/[0.06]">
+            <div className={`border-t border-black/[0.04] p-1.5 dark:border-white/[0.06] ${sidebarCollapsed ? "lg:border-t-0" : ""}`}>
               {profileMenuOpen && (
                 <div className="absolute bottom-full left-2 right-2 z-20 mb-1.5 overflow-hidden rounded-xl border border-black/[0.06] bg-white py-1 shadow-lg dark:border-white/10 dark:bg-gray-800">
                   <Link
@@ -1585,27 +1508,31 @@ export default function ChatPage() {
                   </button>
                 </div>
               )}
-              <button
-                onClick={() => setProfileMenuOpen((prev) => !prev)}
-                className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-colors hover:bg-black/[0.03] dark:hover:bg-white/[0.05]"
-              >
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-purple-600 text-xs font-semibold text-white">
-                  {user?.displayName?.charAt(0) ||
-                    user?.email?.charAt(0)?.toUpperCase() ||
-                    "U"}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-medium text-text-primary dark:text-white">
+              <div className={`relative group ${sidebarCollapsed ? "lg:flex lg:justify-center" : ""}`}>
+                <button
+                  onClick={() => setProfileMenuOpen((prev) => !prev)}
+                  className={`sidebar-icon-hover flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left ${
+                    sidebarCollapsed ? "lg:justify-center lg:w-9 lg:h-9 lg:px-0" : ""
+                  }`}
+                >
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-purple-600 text-[10px] font-semibold text-white">
+                    {user?.displayName?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || "U"}
+                  </div>
+                  <div className={`min-w-0 flex-1 ${sidebarCollapsed ? "lg:hidden" : ""}`}>
+                    <p className="truncate text-[11px] font-medium text-text-primary dark:text-white">
+                      {user?.displayName || user?.email?.split("@")[0] || "User"}
+                    </p>
+                  </div>
+                  <span className={`material-symbols-outlined text-xs text-text-secondary/60 dark:text-gray-500 ${sidebarCollapsed ? "lg:hidden" : ""}`}>
+                    {profileMenuOpen ? "expand_less" : "expand_more"}
+                  </span>
+                </button>
+                {sidebarCollapsed && (
+                  <div className="sidebar-tooltip pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 rounded-lg bg-gray-900 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-all duration-200 group-hover:opacity-100 dark:bg-gray-700 whitespace-nowrap">
                     {user?.displayName || user?.email?.split("@")[0] || "User"}
-                  </p>
-                  <p className="truncate text-[10px] text-text-secondary/60 dark:text-gray-500">
-                    {user?.email}
-                  </p>
-                </div>
-                <span className="material-symbols-outlined text-sm text-text-secondary/60 dark:text-gray-500">
-                  {profileMenuOpen ? "expand_less" : "expand_more"}
-                </span>
-              </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </aside>
@@ -1613,31 +1540,29 @@ export default function ChatPage() {
         {/* Main Chat Area */}
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Subtle chat header bar */}
-          <div className="flex items-center justify-between border-b border-black/[0.04] bg-white/50 px-3 py-2 backdrop-blur-sm dark:border-white/[0.05] dark:bg-[#140e1a]/50">
+          <div className="flex items-center justify-between border-b border-black/[0.04] bg-white/50 px-3 py-1.5 backdrop-blur-sm dark:border-white/[0.05] dark:bg-[#140e1a]/50">
             <div className="flex min-w-0 items-center gap-1">
               {sidebarCollapsed && (
                 <button
                   onClick={() => setSidebarCollapsed(false)}
-                  className="hidden h-8 w-8 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06] lg:flex"
+                  className="hidden h-7 w-7 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06] lg:flex"
                 >
-                  <span className="material-symbols-outlined">dock_to_right</span>
+                  <span className="material-symbols-outlined text-sm">dock_to_right</span>
                 </button>
               )}
               {activeConversation && (
-                <div className="flex items-center gap-2 text-xs text-text-secondary/60 dark:text-gray-500">
+                <div className="flex items-center gap-1.5 text-[10px] text-text-secondary/50 dark:text-gray-500">
                   <span>{activeConversation.messageCount || 0} messages</span>
-                  <span className="h-1 w-1 rounded-full bg-current" />
-                  <span>
-                    {activeConversation.type === "counsellor" ? "Counsellor" : "AI Support"}
-                  </span>
+                  <span className="h-0.5 w-0.5 rounded-full bg-current" />
+                  <span>{activeConversation.type === "counsellor" ? "Counsellor" : "AI"}</span>
                 </div>
               )}
             </div>
             <button
               onClick={handleNewChat}
-              className="flex h-7 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-text-secondary transition-colors hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06]"
+              className="flex h-6 items-center gap-1 rounded-lg px-1.5 text-[10px] font-medium text-text-secondary transition-colors hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06]"
             >
-              <span className="material-symbols-outlined text-sm">add</span>
+              <span className="material-symbols-outlined text-xs">add</span>
               New
             </button>
           </div>
@@ -1670,23 +1595,15 @@ export default function ChatPage() {
                     <div className="space-y-1.5">
                       {agentActionStatuses.map((status) => {
                         const icon =
-                          status.state === "done"
-                            ? "check_circle"
-                            : status.state === "failed"
-                              ? "error"
-                              : "progress_activity";
+                          status.state === "done" ? "check_circle" :
+                          status.state === "failed" ? "error" : "progress_activity";
                         const colorClass =
-                          status.state === "done"
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : status.state === "failed"
-                              ? "text-red-500 dark:text-red-400"
-                              : "text-amber-500 dark:text-amber-400";
-
+                          status.state === "done" ? "text-emerald-600 dark:text-emerald-400" :
+                          status.state === "failed" ? "text-red-500 dark:text-red-400" :
+                          "text-amber-500 dark:text-amber-400";
                         return (
                           <div key={status.key} className="flex items-center gap-2.5 text-xs">
-                            <span className={`material-symbols-outlined text-sm ${colorClass}`}>
-                              {icon}
-                            </span>
+                            <span className={`material-symbols-outlined text-sm ${colorClass}`}>{icon}</span>
                             <span className="text-text-primary dark:text-white">{status.label}</span>
                           </div>
                         );
@@ -1745,12 +1662,8 @@ export default function ChatPage() {
                             onClick={() => sendMessage(icebreaker.text)}
                             className="group flex items-center gap-3 rounded-2xl border border-black/[0.06] bg-white p-3.5 text-left shadow-sm transition-all hover:border-primary/30 hover:shadow-md hover:shadow-primary/5 dark:border-white/10 dark:bg-white/[0.04] dark:hover:bg-white/[0.07]"
                           >
-                            <div
-                              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${icebreaker.color} shadow-sm`}
-                            >
-                              <span className="material-symbols-outlined text-lg text-white">
-                                {icebreaker.icon}
-                              </span>
+                            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${icebreaker.color} shadow-sm`}>
+                              <span className="material-symbols-outlined text-lg text-white">{icebreaker.icon}</span>
                             </div>
                             <span className="text-sm font-medium leading-snug text-text-primary dark:text-gray-200">
                               {icebreaker.text}
@@ -1772,13 +1685,13 @@ export default function ChatPage() {
                         <span className="text-[10px] font-semibold uppercase tracking-widest text-text-secondary/50 dark:text-gray-500">
                           Jump back in
                         </span>
-                        {continueRecentChats.map((conversation) => (
+                        {continueRecentChats.map((c) => (
                           <button
-                            key={conversation.id}
-                            onClick={() => openConversationFromSidebar(conversation.id)}
+                            key={c.id}
+                            onClick={() => openConversationFromSidebar(c.id)}
                             className="rounded-full border border-black/[0.08] bg-white px-3.5 py-1.5 text-xs font-medium text-text-primary transition-all hover:border-primary/40 hover:bg-primary/5 dark:border-white/10 dark:bg-white/[0.04] dark:text-white"
                           >
-                            {conversation.title || "Untitled"}
+                            {c.title || "Untitled"}
                           </button>
                         ))}
                       </div>
@@ -1807,10 +1720,7 @@ export default function ChatPage() {
 
                       if (isSister) {
                         return (
-                          <div
-                            key={message.id}
-                            className="group flex items-start gap-3 animate-fade-in"
-                          >
+                          <div key={message.id} className="group flex items-start gap-3 animate-fade-in">
                             <div className="sticky top-0 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-purple-600 shadow-sm">
                               <span className="material-symbols-outlined text-sm text-white">spa</span>
                             </div>
@@ -1828,9 +1738,7 @@ export default function ChatPage() {
                                   <StreamedText
                                     text={message.text}
                                     animate={message.animate}
-                                    onTick={() => {
-                                      if (!showScrollButton) scrollToBottom();
-                                    }}
+                                    onTick={() => { if (!showScrollButton) scrollToBottom(); }}
                                   />
                                 </p>
                               </div>
@@ -1885,23 +1793,16 @@ export default function ChatPage() {
 
                       // User message
                       return (
-                        <div
-                          key={message.id}
-                          className="group flex justify-end animate-fade-in"
-                        >
+                        <div key={message.id} className="group flex justify-end animate-fade-in">
                           <div className="flex max-w-[80%] flex-col items-end sm:max-w-[70%]">
                             <div className="rounded-2xl rounded-br-sm bg-primary px-4 py-2.5 text-white shadow-md shadow-primary/20">
-                              <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                                {message.text}
-                              </p>
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.text}</p>
                             </div>
                             <div className="mt-1 flex items-center gap-1.5 px-1">
                               <span className="text-[9px] text-text-secondary/40 dark:text-gray-600">
                                 {formatRelativeTime(message.timestamp)}
                               </span>
-                              <span className="material-symbols-outlined text-[9px] text-text-secondary/30 dark:text-gray-600">
-                                check
-                              </span>
+                              <span className="material-symbols-outlined text-[9px] text-text-secondary/30 dark:text-gray-600">check</span>
                             </div>
                           </div>
                         </div>
@@ -1922,9 +1823,7 @@ export default function ChatPage() {
                         <span className="h-2 w-2 animate-bounce rounded-full bg-primary/50" style={{ animationDelay: "150ms" }} />
                         <span className="h-2 w-2 animate-bounce rounded-full bg-primary/50" style={{ animationDelay: "300ms" }} />
                       </div>
-                      <span className="text-xs text-text-secondary/70 dark:text-gray-400">
-                        Sister is thinking...
-                      </span>
+                      <span className="text-xs text-text-secondary/70 dark:text-gray-400">Sister is thinking...</span>
                     </div>
                   </div>
                 )}
@@ -1945,27 +1844,21 @@ export default function ChatPage() {
 
           {/* Composer */}
           <div className="border-t border-black/[0.04] bg-white/80 backdrop-blur-md dark:border-white/[0.05] dark:bg-[#140e1a]/80">
-            <div className="mx-auto max-w-3xl px-3 py-3 sm:px-4 sm:py-4">
+            <div className="mx-auto max-w-3xl px-3 py-2.5 sm:px-4 sm:py-3">
               <form onSubmit={handleSubmit} className="relative">
                 <div className="flex items-end gap-1.5 rounded-2xl border border-black/[0.08] bg-white p-1.5 shadow-sm transition-all focus-within:border-primary/40 focus-within:shadow-md dark:border-white/10 dark:bg-white/[0.05] sm:gap-2 sm:p-2">
                   <div className="relative shrink-0">
                     <select
                       value={userLanguage}
-                      onChange={(e) =>
-                        setUserLanguage(e.target.value as SupportedLanguageCode)
-                      }
+                      onChange={(e) => setUserLanguage(e.target.value as SupportedLanguageCode)}
                       title="Reply language"
                       className="h-9 w-9 cursor-pointer appearance-none rounded-xl bg-transparent text-center text-xs text-text-secondary transition-colors hover:bg-black/[0.04] focus:outline-none focus:ring-1 focus:ring-primary/40 dark:text-gray-400 dark:hover:bg-white/10 sm:h-10 sm:w-10"
                     >
                       {CHAT_LANGUAGE_OPTIONS.map((code) => (
-                        <option key={code} value={code}>
-                          {SUPPORTED_LANGUAGES[code].name}
-                        </option>
+                        <option key={code} value={code}>{SUPPORTED_LANGUAGES[code].name}</option>
                       ))}
                     </select>
-                    <span className="material-symbols-outlined pointer-events-none absolute inset-0 flex items-center justify-center text-lg text-text-secondary dark:text-gray-400">
-                      language
-                    </span>
+                    <span className="material-symbols-outlined pointer-events-none absolute inset-0 flex items-center justify-center text-lg text-text-secondary dark:text-gray-400">language</span>
                   </div>
                   <textarea
                     ref={inputRef}
@@ -1989,9 +1882,7 @@ export default function ChatPage() {
                       }`}
                       title={isListening ? "Stop listening" : "Voice input"}
                     >
-                      <span className="material-symbols-outlined text-lg">
-                        {isListening ? "mic_off" : "mic"}
-                      </span>
+                      <span className="material-symbols-outlined text-lg">{isListening ? "mic_off" : "mic"}</span>
                     </button>
                   )}
                   <button
@@ -1999,35 +1890,23 @@ export default function ChatPage() {
                     disabled={!inputValue.trim() || isTyping || isOverLimit}
                     className="touch-target shrink-0 rounded-xl bg-primary p-2.5 text-white shadow-sm transition-all hover:bg-primary-dark hover:shadow-md disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:shadow-none"
                   >
-                    <span className="material-symbols-outlined text-lg">
-                      {isTyping ? "hourglass_top" : "arrow_upward"}
-                    </span>
+                    <span className="material-symbols-outlined text-lg">{isTyping ? "hourglass_top" : "arrow_upward"}</span>
                   </button>
                 </div>
               </form>
 
-              <div className="mt-2.5 flex items-center justify-between gap-2 px-1">
+              <div className="mt-2 flex items-center justify-between gap-2 px-1">
                 <p className="text-[9px] text-text-secondary/50 dark:text-gray-500 sm:text-[10px]">
                   Sister is an AI companion. For emergencies, call{" "}
-                  <a href="tel:116" className="font-medium text-primary hover:underline">
-                    Sauti 116
-                  </a>
+                  <a href="tel:116" className="font-medium text-primary hover:underline">Sauti 116</a>
                 </p>
                 <div className="flex items-center gap-3">
                   {inputValue.length > MAX_MESSAGE_LENGTH - 200 && (
-                    <span
-                      className={`text-[10px] font-medium ${
-                        isOverLimit
-                          ? "text-red-500"
-                          : "text-text-secondary/50 dark:text-gray-500"
-                      }`}
-                    >
+                    <span className={`text-[10px] font-medium ${isOverLimit ? "text-red-500" : "text-text-secondary/50 dark:text-gray-500"}`}>
                       {inputValue.length}/{MAX_MESSAGE_LENGTH}
                     </span>
                   )}
-                  <span className="hidden text-[9px] text-text-secondary/40 dark:text-gray-500 sm:inline">
-                    Enter to send
-                  </span>
+                  <span className="hidden text-[9px] text-text-secondary/40 dark:text-gray-500 sm:inline">Enter to send</span>
                 </div>
               </div>
             </div>
@@ -2036,26 +1915,12 @@ export default function ChatPage() {
       </div>
 
       <style jsx global>{`
-        @keyframes fade-in {
-          from { opacity: 0; transform: translateY(6px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in {
-          animation: fade-in 0.3s ease-out;
-        }
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(139, 92, 246, 0.2);
-          border-radius: 2px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(139, 92, 246, 0.35);
-        }
+        @keyframes fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fade-in 0.3s ease-out; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(139, 92, 246, 0.2); border-radius: 2px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(139, 92, 246, 0.35); }
       `}</style>
     </div>
   );
