@@ -33,9 +33,6 @@ interface Message {
     url: string;
     durationSeconds: number;
   };
-  // Client-only presentation hint - true for a reply that just arrived so it
-  // plays a one-time reveal animation. Never set for history loaded from
-  // Firestore, so re-opening a chat never replays the effect.
   animate?: boolean;
 }
 
@@ -67,16 +64,8 @@ interface ChatApiResponse {
 }
 
 const CHAT_LANGUAGE_OPTIONS: SupportedLanguageCode[] = ["eng", "lug"];
-// Mirrors the server-side limit in src/app/api/chat/route.ts so the
-// composer can guard before a doomed request round-trips.
 const MAX_MESSAGE_LENGTH = 2000;
 
-/**
- * Reveals text progressively the first time it mounts (a freshly-arrived
- * reply), then stays static forever after. History loaded from Firestore
- * renders instantly via `animate=false`. Purely a presentation effect -
- * `message.text` (the real value used for copy/persistence) never changes.
- */
 function StreamedText({
   text,
   animate,
@@ -96,8 +85,6 @@ function StreamedText({
     let i = 0;
     const step = () => {
       if (cancelled) return;
-      // Reveal a few characters per frame-ish tick - fast enough to feel
-      // instant for short replies, visible as a stream for longer ones.
       i = Math.min(text.length, i + Math.max(2, Math.round(text.length / 90)));
       setVisibleLength(i);
       onTick?.();
@@ -109,8 +96,6 @@ function StreamedText({
     return () => {
       cancelled = true;
     };
-    // Only run once per mounted message - `text` and `animate` are fixed
-    // for the lifetime of a given message id.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -126,7 +111,6 @@ const isLikelyDummyConversation = (conversation: ChatConversation) => {
   const lastMessage = (conversation.lastMessage || "").trim();
   const hasNoContent = !lastMessage && (conversation.messageCount || 0) === 0;
 
-  // Remove old seeded/demo chats and markup-corrupted conversations from sidebar.
   const looksSeededByTitle =
     title.includes("dummy") ||
     title.includes("sample") ||
@@ -173,14 +157,53 @@ const icebreakers = [
   },
 ];
 
+function formatRelativeTime(date: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) {
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    return days[date.getDay()];
+  }
+  const d = String(date.getDate()).padStart(2, "0");
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  return `${d}/${m}`;
+}
+
+function formatDateSeparator(date: Date): string {
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const dayDiff = Math.round(
+    (startOfToday.getTime() - startOfDate.getTime()) / (1000 * 60 * 60 * 24),
+  );
+
+  if (dayDiff <= 0) return "Today";
+  if (dayDiff === 1) return "Yesterday";
+  if (dayDiff < 7) {
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    return days[date.getDay()];
+  }
+  const month = date.toLocaleDateString("en-US", { month: "short" });
+  const day = date.getDate();
+  const year = date.getFullYear();
+  const isCurrentYear = year === now.getFullYear();
+  return isCurrentYear ? `${month} ${day}` : `${month} ${day}, ${year}`;
+}
+
 export default function ChatPage() {
   const { user, loading: authLoading, signOut } = useAuth();
   const router = useRouter();
 
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
-  const [activeConversationId, setActiveConversationId] = useState<
-    string | null
-  >(null);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -188,39 +211,27 @@ export default function ChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [editingTitle, setEditingTitle] = useState<string | null>(null);
   const [editTitleValue, setEditTitleValue] = useState("");
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [conversationMenuOpen, setConversationMenuOpen] = useState<
-    string | null
-  >(null);
+  const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
+  const [conversationMenuOpen, setConversationMenuOpen] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
-  const [agentActionStatuses, setAgentActionStatuses] = useState<
-    AgentActionStatus[]
-  >([]);
-  const [counsellorProfile, setCounsellorProfile] = useState<
-    ChatApiResponse["counsellorProfile"] | null
-  >(null);
-  const [userLanguage, setUserLanguage] =
-    useState<SupportedLanguageCode>("eng");
+  const [agentActionStatuses, setAgentActionStatuses] = useState<AgentActionStatus[]>([]);
+  const [counsellorProfile, setCounsellorProfile] = useState<ChatApiResponse["counsellorProfile"] | null>(null);
+  const [userLanguage, setUserLanguage] = useState<SupportedLanguageCode>("eng");
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const [freshChatId, setFreshChatId] = useState<string | null>(null);
-  const [audioElements, setAudioElements] = useState<
-    Record<string, HTMLAudioElement>
-  >({});
-  // UI-only additions below — presentation state, no data/agent logic involved.
+  const [audioElements, setAudioElements] = useState<Record<string, HTMLAudioElement>>({});
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
-  // Pin is a client-only convenience (localStorage per user) - no Firestore
-  // schema change needed since it never has to sync across devices to be
-  // useful, and keeps this a pure presentation feature.
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set());
+  const [contextMenuId, setContextMenuId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const conversationsRef = useRef<ChatConversation[]>([]);
@@ -235,9 +246,7 @@ export default function ChatPage() {
     (conversation) => conversation.id === activeConversationId,
   );
 
-  const createFreshConversation = useCallback(async (): Promise<
-    string | null
-  > => {
+  const createFreshConversation = useCallback(async (): Promise<string | null> => {
     if (!user) return null;
 
     try {
@@ -283,7 +292,6 @@ export default function ChatPage() {
     }
   }, [user]);
 
-  // Check for recording support
   useEffect(() => {
     if (typeof window !== "undefined") {
       if (
@@ -305,7 +313,6 @@ export default function ChatPage() {
     }
   }, [userProfile]);
 
-  // Toggle voice input
   const toggleVoiceInput = useCallback(() => {
     if (!navigator.mediaDevices?.getUserMedia) {
       setError("Voice input not supported on this device");
@@ -313,17 +320,15 @@ export default function ChatPage() {
     }
 
     if (isListening) {
-      // Stop recording
       if (recordingRef.current && recordingRef.current.state !== "inactive") {
         recordingRef.current.stop();
       }
       setIsListening(false);
     } else {
-      // Start recording
       setInputValue("");
       startVoiceRecording();
     }
-  }, [isListening, setError]);
+  }, [isListening]);
 
   const startVoiceRecording = useCallback(async () => {
     try {
@@ -349,22 +354,18 @@ export default function ChatPage() {
         });
         audioChunksRef.current = [];
 
-        // Stop all tracks
         if (streamRef.current) {
           streamRef.current.getTracks().forEach((track) => track.stop());
           streamRef.current = null;
         }
 
-        // Send to Sunbird STT
         setError(null);
         try {
           const result = await speechToText(audioBlob, userLanguage);
           setInputValue(result.transcript);
         } catch (sttError) {
           console.error("STT error:", sttError);
-          setError(
-            "Speech-to-text conversion failed. Please try again or type your message.",
-          );
+          setError("Speech-to-text conversion failed. Please try again or type your message.");
         }
       };
 
@@ -380,8 +381,8 @@ export default function ChatPage() {
       setError("Unable to access microphone. Please check permissions.");
       setIsListening(false);
     }
-  }, [userLanguage, setError]);
-  // Keep ref in sync with state for use in callbacks
+  }, [userLanguage]);
+
   useEffect(() => {
     conversationsRef.current = conversations;
   }, [conversations]);
@@ -395,8 +396,6 @@ export default function ChatPage() {
     setShowScrollButton(false);
   }, [messages, scrollToBottom]);
 
-  // Track scroll position so we can surface a "jump to latest" button
-  // once the user has scrolled up to read earlier messages.
   const handleMessagesScroll = useCallback(() => {
     const el = messagesContainerRef.current;
     if (!el) return;
@@ -404,9 +403,6 @@ export default function ChatPage() {
     setShowScrollButton(distanceFromBottom > 240);
   }, []);
 
-  // Power-user shortcut: Cmd/Ctrl+K reveals the sidebar (if needed) and
-  // focuses conversation search, matching the convention from Linear/Slack/
-  // ChatGPT-style apps.
   useEffect(() => {
     const handleKeydown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
@@ -420,13 +416,19 @@ export default function ChatPage() {
     return () => window.removeEventListener("keydown", handleKeydown);
   }, []);
 
-  // Auto-dismiss transient errors so the thread doesn't stay cluttered -
-  // the user can also dismiss manually via the close button.
   useEffect(() => {
     if (!error) return;
     const timer = window.setTimeout(() => setError(null), 6000);
     return () => window.clearTimeout(timer);
   }, [error]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (contextMenuId) setContextMenuId(null);
+    };
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, [contextMenuId]);
 
   const copyMessageText = useCallback((id: string, text: string) => {
     if (typeof navigator === "undefined" || !navigator.clipboard) return;
@@ -447,7 +449,7 @@ export default function ChatPage() {
       const raw = window.localStorage.getItem(`sistercare-pinned-${user.uid}`);
       if (raw) setPinnedIds(new Set(JSON.parse(raw)));
     } catch {
-      // Corrupt/old value - ignore and start fresh.
+      // ignore
     }
   }, [user]);
 
@@ -492,7 +494,6 @@ export default function ChatPage() {
     setProfileMenuOpen(false);
   }, [activeConversationId, sidebarOpen]);
 
-  // Persist draft per conversation so users can continue where they left off.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const key = `sistercare-chat-draft-${activeConversationId || "global"}`;
@@ -500,8 +501,6 @@ export default function ChatPage() {
     setInputValue(existingDraft);
     if (inputRef.current) {
       inputRef.current.style.height = "auto";
-      // Auto-focus the composer on desktop when switching chats - skipped on
-      // small screens so we don't pop the virtual keyboard unexpectedly.
       if (window.innerWidth >= 1024) {
         inputRef.current.focus();
       }
@@ -514,7 +513,6 @@ export default function ChatPage() {
     window.localStorage.setItem(key, inputValue);
   }, [activeConversationId, inputValue]);
 
-  // Auto-resize textarea
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputValue(e.target.value);
     if (inputRef.current) {
@@ -524,7 +522,6 @@ export default function ChatPage() {
     }
   };
 
-  // Create new chat
   const handleNewChat = useCallback(async () => {
     if (!user) return;
 
@@ -542,7 +539,6 @@ export default function ChatPage() {
     }
   }, [createFreshConversation, user]);
 
-  // Load a specific conversation
   const loadConversation = useCallback(async (conversationId: string) => {
     setActionLoading(conversationId);
     try {
@@ -553,11 +549,11 @@ export default function ChatPage() {
         (conversation) => conversation.id === conversationId,
       );
 
-      // Skip Firestore for local chats
       if (conversationId.startsWith("local-")) {
         setMessages([]);
         setError(null);
         setSidebarOpen(false);
+        setContextMenuId(null);
         return;
       }
 
@@ -608,6 +604,7 @@ export default function ChatPage() {
       }
       setError(null);
       setSidebarOpen(false);
+      setContextMenuId(null);
     } catch (err: unknown) {
       const isPermissionError = isPermissionDeniedError(err);
 
@@ -618,7 +615,6 @@ export default function ChatPage() {
       }
 
       if (isPermissionError) {
-        // Fall back to welcome message for permission errors
         setMessages([]);
         setError(null);
       } else {
@@ -638,12 +634,10 @@ export default function ChatPage() {
     [actionLoading, loadConversation],
   );
 
-  // Load all conversations for user
   const loadConversations = useCallback(async () => {
     if (!user) return;
 
     try {
-      // Load user profile for agent context - handle permission errors gracefully
       try {
         const profile = await getUserProfile(user.uid);
         setUserProfile(profile);
@@ -651,10 +645,8 @@ export default function ChatPage() {
         if (!isPermissionDeniedError(profileErr)) {
           console.warn("Could not load user profile:", profileErr);
         }
-        // Continue without profile - chat can still work
       }
 
-      // Try to load conversations - handle permission errors
       let userConversations: ChatConversation[] = [];
       try {
         userConversations = await getUserConversations(user.uid);
@@ -671,7 +663,6 @@ export default function ChatPage() {
         }
 
         if (isPermissionError) {
-          // Permission error - keep UI usable without creating seeded chats
           setConversations([]);
           setActiveConversationId(null);
           setMessages([]);
@@ -699,8 +690,7 @@ export default function ChatPage() {
       }
 
       if (isPermissionError) {
-        // Still allow chat to work locally without cloud sync
-        setError(null); // Don't show error - just use local chat
+        setError(null);
       } else {
         setError("Failed to load conversations. Please try again.");
       }
@@ -712,7 +702,6 @@ export default function ChatPage() {
     }
   }, [user, loadConversation]);
 
-  // Auth and initial load
   useEffect(() => {
     if (!authLoading && !user) {
       router.push("/auth/login");
@@ -724,12 +713,10 @@ export default function ChatPage() {
     }
   }, [user, authLoading, router, loading, loadConversations]);
 
-  // Delete a chat
   const handleDeleteChat = useCallback(
     async (conversationId: string) => {
       setActionLoading(`delete-${conversationId}`);
       try {
-        // Only delete from Firestore if not a local chat
         if (!conversationId.startsWith("local-")) {
           try {
             await deleteConversation(conversationId);
@@ -757,7 +744,8 @@ export default function ChatPage() {
           return remaining;
         });
 
-        setDeleteConfirm(null);
+        setDeleteModalId(null);
+        setContextMenuId(null);
         setError(null);
       } catch (err) {
         console.error("Error deleting chat:", err);
@@ -769,7 +757,6 @@ export default function ChatPage() {
     [activeConversationId, freshChatId, loadConversation],
   );
 
-  // Rename a chat
   const handleRenameChat = useCallback(
     async (conversationId: string) => {
       if (!editTitleValue.trim()) {
@@ -779,13 +766,9 @@ export default function ChatPage() {
 
       setActionLoading(`rename-${conversationId}`);
       try {
-        // Only update Firestore if not a local chat
         if (!conversationId.startsWith("local-")) {
           try {
-            await updateConversationTitle(
-              conversationId,
-              editTitleValue.trim(),
-            );
+            await updateConversationTitle(conversationId, editTitleValue.trim());
           } catch (firestoreErr) {
             console.warn("Could not update title in Firestore:", firestoreErr);
           }
@@ -811,7 +794,6 @@ export default function ChatPage() {
     [editTitleValue],
   );
 
-  // Generate title from first message
   const generateTitleFromMessage = useCallback((message: string): string => {
     const words = message.split(" ").slice(0, 5);
     let title = words.join(" ");
@@ -821,7 +803,6 @@ export default function ChatPage() {
     return title.substring(0, 30);
   }, []);
 
-  // Send a message
   const sendMessage = useCallback(
     async (text: string) => {
       if (!text.trim() || !user) return;
@@ -840,7 +821,6 @@ export default function ChatPage() {
         timestamp: new Date(),
       };
 
-      // Get current messages before updating state
       const currentMessages = [...messages, userMessage];
 
       setMessages(currentMessages);
@@ -867,7 +847,6 @@ export default function ChatPage() {
       setError(null);
 
       try {
-        // Only save to Firestore if not a local chat
         const isLocalChat = currentConversationId.startsWith("local-");
 
         if (!isLocalChat) {
@@ -897,17 +876,13 @@ export default function ChatPage() {
           } catch (firestoreErr) {
             const isPermissionError = isPermissionDeniedError(firestoreErr);
 
-            // Silently handle Firestore errors - chat still works
             if (isPermissionError) {
-              console.warn(
-                "Cloud sync unavailable - continuing in local mode.",
-              );
+              console.warn("Cloud sync unavailable - continuing in local mode.");
             } else {
               console.warn("Could not save to Firestore:", firestoreErr);
             }
           }
         } else {
-          // For local chats, just update the title locally
           const currentConversation = conversationsRef.current.find(
             (c) => c.id === currentConversationId,
           );
@@ -921,13 +896,11 @@ export default function ChatPage() {
           }
         }
 
-        // Use currentMessages which includes the new user message
         const conversationHistory = currentMessages.slice(-10).map((msg) => ({
           role: msg.sender === "user" ? "user" : "assistant",
           content: msg.text,
         }));
 
-        // Send message to AI Agent with user context
         const makeRequest = async (
           retryCount = 0,
         ): Promise<ChatApiResponse> => {
@@ -960,14 +933,12 @@ export default function ChatPage() {
 
           const data = await res.json();
 
-          // Handle rate limiting with auto-retry
           if (res.status === 429 && retryCount < 2) {
             const retryAfter = parseInt(
               res.headers.get("Retry-After") || "30",
               10,
             );
 
-            // Show temporary waiting message
             const waitMessage: Message = {
               id: `wait-${Date.now()}`,
               sender: "sister",
@@ -976,12 +947,10 @@ export default function ChatPage() {
             };
             setMessages((prev) => [...prev, waitMessage]);
 
-            // Wait and retry
             await new Promise((resolve) =>
               setTimeout(resolve, retryAfter * 1000),
             );
 
-            // Remove the waiting message before retry
             setMessages((prev) => prev.filter((m) => m.id !== waitMessage.id));
 
             return makeRequest(retryCount + 1);
@@ -1045,14 +1014,9 @@ export default function ChatPage() {
               const isPermissionError = isPermissionDeniedError(firestoreErr);
 
               if (isPermissionError) {
-                console.warn(
-                  "Cloud sync unavailable - continuing in local mode.",
-                );
+                console.warn("Cloud sync unavailable - continuing in local mode.");
               } else {
-                console.warn(
-                  "Could not save AI response to Firestore:",
-                  firestoreErr,
-                );
+                console.warn("Could not save AI response to Firestore:", firestoreErr);
               }
             }
           }
@@ -1118,31 +1082,21 @@ export default function ChatPage() {
     }
   };
 
-  const formatDate = (date: Date) => {
+  const formatDateGroup = (date: Date) => {
     const now = new Date();
-    const startOfToday = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-    );
-    const startOfDate = new Date(
-      date.getFullYear(),
-      date.getMonth(),
-      date.getDate(),
-    );
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     const dayDiff = Math.round(
-      (startOfToday.getTime() - startOfDate.getTime()) /
-        (1000 * 60 * 60 * 24),
+      (startOfToday.getTime() - startOfDate.getTime()) / (1000 * 60 * 60 * 24),
     );
 
     if (dayDiff <= 0) return "Today";
     if (dayDiff === 1) return "Yesterday";
-    if (dayDiff <= 7) return "Previous 7 Days";
-    if (dayDiff <= 30) return "Previous 30 Days";
+    if (dayDiff < 7) return "Earlier this week";
+    if (dayDiff < 30) return "Earlier this month";
     return "Older";
   };
 
-  // Filter conversations by search
   const sortedConversations = [...conversations].sort(
     (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime(),
   );
@@ -1158,10 +1112,9 @@ export default function ChatPage() {
     (conv) => !pinnedIds.has(conv.id) && matchesSearch(conv),
   );
 
-  // Group the remaining (unpinned) conversations by date
   const groupedConversations = filteredConversations.reduce(
     (acc, conv) => {
-      const dateKey = formatDate(conv.updatedAt);
+      const dateKey = formatDateGroup(conv.updatedAt);
       if (!acc[dateKey]) acc[dateKey] = [];
       acc[dateKey].push(conv);
       return acc;
@@ -1174,37 +1127,27 @@ export default function ChatPage() {
 
   const continueRecentChats = sortedConversations.slice(0, 4);
 
-  // Derives which empty-state hero to show. Same three mutually-exclusive
-  // conditions the page already used, just centralized so we render one
-  // hero instead of three near-duplicate blocks.
   const emptyStateContent = isFreshChat
     ? {
         key: "fresh",
-        eyebrow: "Fresh chat",
-        title: "What would you like to talk about today?",
-        subtitle:
-          "Start a new private conversation, or open a previous one from the sidebar to continue exactly where you stopped.",
+        title: "What's on your mind?",
+        subtitle: "Ask a question or pick a topic to get started.",
         showIcebreakers: true,
       }
     : !activeConversationId
       ? {
           key: "none",
-          eyebrow: "No chat selected",
-          title: "Pick a conversation or start a new one",
-          subtitle:
-            "Use the sidebar to open a previous chat or tap New Chat to begin.",
+          title: "Select a conversation",
+          subtitle: "Choose a chat from the sidebar or start a new one.",
           showIcebreakers: false,
         }
       : {
           key: "empty",
-          eyebrow: "No messages yet",
-          title: "Start the conversation",
-          subtitle: "Say hello or ask a question to continue this chat.",
+          title: "No messages yet",
+          subtitle: "Say something to begin this conversation.",
           showIcebreakers: false,
         };
 
-  // Shared row renderer for both the Pinned section and the date-grouped
-  // list below it, so the two never visually drift apart.
   const renderConversationRow = (conversation: ChatConversation) => {
     const isActive = activeConversationId === conversation.id;
     const isPinned = pinnedIds.has(conversation.id);
@@ -1229,69 +1172,53 @@ export default function ChatPage() {
       );
     }
 
-    if (deleteConfirm === conversation.id) {
-      return (
-        <div className="mx-1 space-y-2 rounded-xl bg-red-50 p-3 dark:bg-red-900/20">
-          <p className="text-xs font-medium text-red-600 dark:text-red-400">
-            Delete this chat? This can&apos;t be undone.
-          </p>
-          <div className="flex gap-2">
-            <button
-              onClick={() => handleDeleteChat(conversation.id)}
-              disabled={actionLoading === `delete-${conversation.id}`}
-              className="flex-1 rounded-lg bg-red-500 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-600 disabled:opacity-50"
-            >
-              {actionLoading === `delete-${conversation.id}` ? (
-                <div className="mx-auto h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              ) : (
-                "Delete"
-              )}
-            </button>
-            <button
-              onClick={() => setDeleteConfirm(null)}
-              className="flex-1 rounded-lg bg-gray-200 px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      );
-    }
-
     return (
       <div
         onClick={() => !isBusy && openConversationFromSidebar(conversation.id)}
-        className={`flex w-full cursor-pointer items-center gap-2.5 rounded-lg border-l-[3px] py-2 pr-2 text-left transition-colors ${
+        className={`group relative flex w-full cursor-pointer items-center gap-2.5 rounded-lg py-2.5 pl-3 pr-2 text-left transition-all duration-150 ${
           isBusy ? "cursor-wait opacity-50" : ""
         } ${
           isActive
-            ? "border-l-primary bg-primary/[0.08] pl-[9px] dark:bg-primary/[0.12]"
-            : "border-l-transparent pl-3 hover:bg-black/[0.04] dark:hover:bg-white/[0.05]"
+            ? "bg-primary/[0.07] dark:bg-primary/[0.12]"
+            : "hover:bg-black/[0.03] dark:hover:bg-white/[0.04]"
         }`}
       >
         <div className="min-w-0 flex-1">
-          <p
-            className={`truncate text-[13px] font-medium ${
-              isActive
-                ? "text-primary dark:text-white"
-                : "text-text-primary dark:text-gray-200"
-            }`}
-          >
-            {isBusy ? "Loading..." : conversation.title || "Untitled"}
-          </p>
-          <p className="mt-0.5 truncate text-xs text-text-secondary/80 dark:text-gray-500">
-            {conversation.lastMessage || "No messages yet"}
-          </p>
+          <div className="flex items-center gap-2">
+            <span
+              className={`truncate text-sm font-medium ${
+                isActive
+                  ? "text-primary dark:text-white"
+                  : "text-text-primary dark:text-gray-200"
+              }`}
+            >
+              {isBusy ? "Loading..." : conversation.title || "Untitled"}
+            </span>
+            {isPinned && (
+              <span className="material-symbols-outlined shrink-0 text-[10px] text-text-secondary/50 dark:text-gray-500">
+                push_pin
+              </span>
+            )}
+          </div>
+          <div className="mt-0.5 flex items-center gap-2">
+            <p className="truncate text-xs text-text-secondary/70 dark:text-gray-500">
+              {conversation.lastMessage || "No messages yet"}
+            </p>
+            {conversation.lastMessage && (
+              <span className="shrink-0 text-[10px] text-text-secondary/40 dark:text-gray-600">
+                {formatRelativeTime(conversation.updatedAt)}
+              </span>
+            )}
+          </div>
         </div>
 
-        {/* Actions - hover-reveal on desktop, always visible on touch */}
-        <div className="relative flex shrink-0 items-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100">
+        <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
           <button
             onClick={(e) => {
               e.stopPropagation();
               togglePinned(conversation.id);
             }}
-            className={`rounded-md p-1.5 transition-colors hover:bg-black/[0.06] dark:hover:bg-white/10 ${
+            className={`rounded-md p-1 transition-colors hover:bg-black/[0.06] dark:hover:bg-white/10 ${
               isPinned ? "text-primary" : "text-text-secondary dark:text-gray-400"
             }`}
             title={isPinned ? "Unpin" : "Pin"}
@@ -1306,11 +1233,11 @@ export default function ChatPage() {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setConversationMenuOpen((prev) =>
+              setContextMenuId((prev) =>
                 prev === conversation.id ? null : conversation.id,
               );
             }}
-            className="rounded-md p-1.5 text-text-secondary transition-colors hover:bg-black/[0.06] dark:text-gray-400 dark:hover:bg-white/10"
+            className="rounded-md p-1 text-text-secondary transition-colors hover:bg-black/[0.06] dark:text-gray-400 dark:hover:bg-white/10"
             title="More options"
           >
             <span className="material-symbols-outlined text-sm">
@@ -1318,47 +1245,44 @@ export default function ChatPage() {
             </span>
           </button>
 
-          {conversationMenuOpen === conversation.id && (
-            <div className="absolute right-0 top-8 z-20 w-40 overflow-hidden rounded-xl border border-black/[0.08] bg-white shadow-lg dark:border-white/10 dark:bg-gray-800">
+          {contextMenuId === conversation.id && (
+            <div
+              className="absolute right-2 top-full z-30 mt-0.5 w-44 overflow-hidden rounded-xl border border-black/[0.06] bg-white py-1 shadow-lg dark:border-white/10 dark:bg-gray-800"
+              onClick={(e) => e.stopPropagation()}
+            >
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
+                onClick={() => {
                   togglePinned(conversation.id);
-                  setConversationMenuOpen(null);
+                  setContextMenuId(null);
                 }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-text-primary hover:bg-black/[0.04] dark:text-white dark:hover:bg-white/5"
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs text-text-primary transition-colors hover:bg-black/[0.04] dark:text-white dark:hover:bg-white/5"
               >
                 <span className="material-symbols-outlined text-sm">
-                  push_pin
+                  {isPinned ? "push_pin" : "push_pin"}
                 </span>
                 {isPinned ? "Unpin" : "Pin"}
               </button>
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
+                onClick={() => {
                   setEditTitleValue(conversation.title || "");
                   setEditingTitle(conversation.id);
-                  setConversationMenuOpen(null);
+                  setContextMenuId(null);
                 }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-text-primary hover:bg-black/[0.04] dark:text-white dark:hover:bg-white/5"
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs text-text-primary transition-colors hover:bg-black/[0.04] dark:text-white dark:hover:bg-white/5"
               >
-                <span className="material-symbols-outlined text-sm">
-                  edit
-                </span>
+                <span className="material-symbols-outlined text-sm">edit</span>
                 Rename
               </button>
+              <div className="my-1 border-t border-black/[0.06] dark:border-white/[0.08]" />
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDeleteConfirm(conversation.id);
-                  setConversationMenuOpen(null);
+                onClick={() => {
+                  setDeleteModalId(conversation.id);
+                  setContextMenuId(null);
                 }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
               >
-                <span className="material-symbols-outlined text-sm">
-                  delete
-                </span>
-                Delete
+                <span className="material-symbols-outlined text-sm">delete</span>
+                Delete conversation
               </button>
             </div>
           )}
@@ -1366,6 +1290,22 @@ export default function ChatPage() {
       </div>
     );
   };
+
+  // Compute date separators for messages
+  const messagesWithSeparators: { type: "separator"; date: Date; label: string } | { type: "message"; message: Message }[] = [];
+  let lastDateKey = "";
+  messages.forEach((message) => {
+    const dateKey = `${message.timestamp.getFullYear()}-${message.timestamp.getMonth()}-${message.timestamp.getDate()}`;
+    if (dateKey !== lastDateKey) {
+      messagesWithSeparators.push({
+        type: "separator",
+        date: message.timestamp,
+        label: formatDateSeparator(message.timestamp),
+      });
+      lastDateKey = dateKey;
+    }
+    messagesWithSeparators.push({ type: "message", message });
+  });
 
   if (authLoading || loading) {
     return (
@@ -1382,10 +1322,52 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-white dark:bg-[#140c1b]">
-      {/* Main Header - Same as other pages */}
       <Header variant="app" />
 
-      {/* Main Content Area */}
+      {/* Delete Confirmation Modal */}
+      {deleteModalId && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={() => setDeleteModalId(null)}
+        >
+          <div
+            className="mx-4 w-full max-w-sm animate-fade-in rounded-2xl bg-white p-6 shadow-2xl dark:bg-gray-800"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+              <span className="material-symbols-outlined text-2xl text-red-600 dark:text-red-400">
+                delete_forever
+              </span>
+            </div>
+            <h3 className="mb-2 text-center text-lg font-semibold text-text-primary dark:text-white">
+              Delete conversation?
+            </h3>
+            <p className="mb-6 text-center text-sm text-text-secondary dark:text-gray-400">
+              This will permanently remove this chat and all its messages. This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteModalId(null)}
+                className="flex-1 rounded-xl border border-black/[0.08] bg-white px-4 py-2.5 text-sm font-medium text-text-primary transition-colors hover:bg-black/[0.03] dark:border-white/10 dark:bg-transparent dark:text-white dark:hover:bg-white/5"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteChat(deleteModalId)}
+                disabled={actionLoading === `delete-${deleteModalId}`}
+                className="flex-1 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+              >
+                {actionLoading === `delete-${deleteModalId}` ? (
+                  <div className="mx-auto h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                ) : (
+                  "Delete"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar Overlay for Mobile */}
         <div
@@ -1395,22 +1377,22 @@ export default function ChatPage() {
           onClick={() => setSidebarOpen(false)}
         />
 
-        {/* Sidebar - Desktop always visible (collapsible), Mobile slide-in */}
+        {/* Sidebar */}
         <aside
           className={`
             fixed z-50 flex h-[calc(100vh-65px)] flex-col
-            border-r border-black/[0.07] bg-[#faf9fb]
-            transition-all duration-200 ease-out dark:border-white/[0.08] dark:bg-[#180f20]
+            border-r border-black/[0.06] bg-[#faf9fb]
+            transition-all duration-200 ease-out dark:border-white/[0.07] dark:bg-[#180f20]
             lg:relative
             ${sidebarOpen ? "translate-x-0 shadow-2xl shadow-black/20" : "-translate-x-full lg:translate-x-0"}
-            ${sidebarCollapsed ? "lg:w-[4.25rem]" : "lg:w-[17.5rem]"}
+            ${sidebarCollapsed ? "lg:w-[4.25rem]" : "lg:w-[19rem]"}
             w-[86vw] xs:w-80 sm:w-[22rem]
           `}
         >
           <div className="flex h-full flex-col">
             {/* Sidebar Header */}
             <div
-              className={`flex items-center gap-2 p-3 ${sidebarCollapsed ? "lg:justify-center lg:px-2" : "justify-between"}`}
+              className={`flex items-center gap-2 border-b border-black/[0.05] px-3 py-3 dark:border-white/[0.06] ${sidebarCollapsed ? "lg:justify-center lg:px-2" : "justify-between"}`}
             >
               <Link
                 href="/dashboard"
@@ -1451,28 +1433,23 @@ export default function ChatPage() {
                   onClick={() => setSidebarOpen(false)}
                   className="touch-target rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06] lg:hidden"
                 >
-                  <span className="material-symbols-outlined text-xl">
-                    close
-                  </span>
+                  <span className="material-symbols-outlined text-xl">close</span>
                 </button>
               </div>
             </div>
 
             {/* New Chat Button */}
-            <div className="px-3 pb-2">
+            <div className="px-3 pb-2 pt-2">
               <button
                 onClick={handleNewChat}
                 disabled={actionLoading === "new"}
-                title="New chat"
-                className={`touch-target flex w-full items-center justify-center gap-2 rounded-xl border border-black/[0.08] bg-white py-2.5 text-sm font-medium text-text-primary shadow-sm transition-colors hover:bg-black/[0.03] disabled:opacity-50 dark:border-white/[0.1] dark:bg-white/[0.03] dark:text-white dark:hover:bg-white/[0.07] ${sidebarCollapsed ? "lg:px-0" : "px-3"}`}
+                className={`touch-target flex w-full items-center justify-center gap-2 rounded-xl bg-primary/10 py-2.5 text-sm font-medium text-primary transition-all hover:bg-primary/20 disabled:opacity-50 dark:bg-primary/15 dark:text-primary-light dark:hover:bg-primary/25 ${sidebarCollapsed ? "lg:px-0" : "px-3"}`}
               >
                 {actionLoading === "new" ? (
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                 ) : (
                   <>
-                    <span className="material-symbols-outlined text-lg text-primary">
-                      add
-                    </span>
+                    <span className="material-symbols-outlined text-lg">add</span>
                     <span className={sidebarCollapsed ? "lg:hidden" : ""}>
                       New chat
                     </span>
@@ -1481,10 +1458,8 @@ export default function ChatPage() {
               </button>
             </div>
 
-            {/* Search Conversations */}
-            <div
-              className={`px-3 pb-3 ${sidebarCollapsed ? "lg:hidden" : ""}`}
-            >
+            {/* Search */}
+            <div className={`px-3 pb-2 ${sidebarCollapsed ? "lg:hidden" : ""}`}>
               <div className="relative">
                 <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-base text-text-secondary dark:text-gray-500">
                   search
@@ -1494,12 +1469,14 @@ export default function ChatPage() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search chats"
-                  className="w-full rounded-lg border border-transparent bg-black/[0.04] py-2 pl-8 pr-11 text-[13px] text-text-primary placeholder:text-text-secondary/70 transition-colors focus:border-primary/40 focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary/30 dark:bg-white/[0.05] dark:text-white dark:focus:bg-white/[0.08]"
+                  placeholder="Search chats..."
+                  className="w-full rounded-lg border border-transparent bg-black/[0.04] py-2 pl-8 pr-11 text-[13px] text-text-primary placeholder:text-text-secondary/60 transition-colors focus:border-primary/30 focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary/20 dark:bg-white/[0.05] dark:text-white dark:focus:bg-white/[0.07]"
                 />
-                <span className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 rounded border border-black/10 px-1.5 py-0.5 text-[9px] font-medium text-text-secondary/70 dark:border-white/10 dark:text-gray-500 sm:inline-block">
-                  ⌘K
-                </span>
+                {!searchQuery && (
+                  <span className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 rounded border border-black/10 px-1.5 py-0.5 text-[9px] font-medium text-text-secondary/60 dark:border-white/10 dark:text-gray-500 sm:inline-block">
+                    ⌘K
+                  </span>
+                )}
               </div>
             </div>
 
@@ -1527,8 +1504,8 @@ export default function ChatPage() {
               ) : (
                 <>
                   {pinnedConversations.length > 0 && (
-                    <div className="mb-3">
-                      <p className="flex items-center gap-1 px-2 py-1.5 text-[11px] font-medium uppercase tracking-wide text-text-secondary/70 dark:text-gray-500">
+                    <div className="mb-2">
+                      <p className="flex items-center gap-1.5 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-text-secondary/60 dark:text-gray-500">
                         <span className="material-symbols-outlined text-xs">
                           push_pin
                         </span>
@@ -1536,7 +1513,7 @@ export default function ChatPage() {
                       </p>
                       <div className="space-y-0.5">
                         {pinnedConversations.map((conversation) => (
-                          <div key={conversation.id} className="group relative">
+                          <div key={conversation.id}>
                             {renderConversationRow(conversation)}
                           </div>
                         ))}
@@ -1546,13 +1523,13 @@ export default function ChatPage() {
 
                   {Object.entries(groupedConversations).map(
                     ([dateGroup, convs]) => (
-                      <div key={dateGroup} className="mb-3">
-                        <p className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wide text-text-secondary/70 dark:text-gray-500">
+                      <div key={dateGroup} className="mb-2">
+                        <p className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-text-secondary/60 dark:text-gray-500">
                           {dateGroup}
                         </p>
                         <div className="space-y-0.5">
                           {convs.map((conversation) => (
-                            <div key={conversation.id} className="group relative">
+                            <div key={conversation.id}>
                               {renderConversationRow(conversation)}
                             </div>
                           ))}
@@ -1564,55 +1541,47 @@ export default function ChatPage() {
               )}
             </div>
 
-            {/* Sidebar Footer - Profile menu */}
-            <div className="relative border-t border-black/[0.06] p-2 dark:border-white/[0.08]">
+            {/* Sidebar Footer */}
+            <div className="relative border-t border-black/[0.05] p-2 dark:border-white/[0.06]">
               {profileMenuOpen && (
-                <div className="absolute bottom-full left-2 right-2 z-20 mb-1.5 overflow-hidden rounded-xl border border-black/[0.08] bg-white py-1 shadow-lg dark:border-white/10 dark:bg-gray-800">
+                <div className="absolute bottom-full left-2 right-2 z-20 mb-1.5 overflow-hidden rounded-xl border border-black/[0.06] bg-white py-1 shadow-lg dark:border-white/10 dark:bg-gray-800">
                   <Link
                     href="/settings"
                     onClick={() => setProfileMenuOpen(false)}
-                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13px] text-text-primary hover:bg-black/[0.04] dark:text-white dark:hover:bg-white/5"
+                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13px] text-text-primary transition-colors hover:bg-black/[0.04] dark:text-white dark:hover:bg-white/5"
                   >
-                    <span className="material-symbols-outlined text-[18px]">
-                      settings
-                    </span>
+                    <span className="material-symbols-outlined text-[18px]">settings</span>
                     Settings
                   </Link>
                   <Link
                     href="/profile"
                     onClick={() => setProfileMenuOpen(false)}
-                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13px] text-text-primary hover:bg-black/[0.04] dark:text-white dark:hover:bg-white/5"
+                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13px] text-text-primary transition-colors hover:bg-black/[0.04] dark:text-white dark:hover:bg-white/5"
                   >
-                    <span className="material-symbols-outlined text-[18px]">
-                      account_circle
-                    </span>
+                    <span className="material-symbols-outlined text-[18px]">account_circle</span>
                     Profile
                   </Link>
-                  <div className="my-1 border-t border-black/[0.06] dark:border-white/[0.08]" />
+                  <div className="my-1 border-t border-black/[0.05] dark:border-white/[0.08]" />
                   <button
                     onClick={handleSignOut}
                     disabled={signingOut}
-                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13px] text-red-600 hover:bg-red-50 disabled:opacity-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13px] text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50 dark:text-red-400 dark:hover:bg-red-900/20"
                   >
-                    <span className="material-symbols-outlined text-[18px]">
-                      logout
-                    </span>
+                    <span className="material-symbols-outlined text-[18px]">logout</span>
                     {signingOut ? "Signing out..." : "Sign out"}
                   </button>
                 </div>
               )}
               <button
                 onClick={() => setProfileMenuOpen((prev) => !prev)}
-                className={`flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors hover:bg-black/[0.04] dark:hover:bg-white/[0.06] ${sidebarCollapsed ? "lg:justify-center" : ""}`}
+                className={`flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors hover:bg-black/[0.03] dark:hover:bg-white/[0.05] ${sidebarCollapsed ? "lg:justify-center" : ""}`}
               >
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-purple-600 text-[13px] font-semibold text-white">
                   {user?.displayName?.charAt(0) ||
                     user?.email?.charAt(0)?.toUpperCase() ||
                     "U"}
                 </div>
-                <div
-                  className={`min-w-0 flex-1 ${sidebarCollapsed ? "lg:hidden" : ""}`}
-                >
+                <div className={`min-w-0 flex-1 ${sidebarCollapsed ? "lg:hidden" : ""}`}>
                   <p className="truncate text-[13px] font-medium text-text-primary dark:text-white">
                     {user?.displayName || user?.email?.split("@")[0] || "User"}
                   </p>
@@ -1623,7 +1592,7 @@ export default function ChatPage() {
                 <span
                   className={`material-symbols-outlined text-base text-text-secondary dark:text-gray-500 ${sidebarCollapsed ? "lg:hidden" : ""}`}
                 >
-                  {profileMenuOpen ? "expand_more" : "expand_less"}
+                  {profileMenuOpen ? "expand_less" : "expand_more"}
                 </span>
               </button>
             </div>
@@ -1633,7 +1602,7 @@ export default function ChatPage() {
         {/* Main Chat Area */}
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Chat Header Bar */}
-          <div className="flex items-center justify-between gap-2 border-b border-black/[0.06] px-3 py-2.5 dark:border-white/[0.08] sm:px-4">
+          <div className="flex items-center justify-between gap-2 border-b border-black/[0.05] bg-white/80 px-3 py-2.5 backdrop-blur-sm dark:border-white/[0.06] dark:bg-[#140c1b]/80 sm:px-4">
             <div className="flex min-w-0 items-center gap-1">
               <button
                 onClick={() => setSidebarOpen(true)}
@@ -1645,11 +1614,8 @@ export default function ChatPage() {
                 <button
                   onClick={() => setSidebarCollapsed(false)}
                   className="hidden rounded-lg p-2 text-text-secondary transition-colors hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06] lg:flex"
-                  title="Expand sidebar"
                 >
-                  <span className="material-symbols-outlined">
-                    dock_to_right
-                  </span>
+                  <span className="material-symbols-outlined">dock_to_right</span>
                 </button>
               )}
               <button
@@ -1671,7 +1637,7 @@ export default function ChatPage() {
               <Link
                 href="/library"
                 className="rounded-lg p-2 text-text-secondary transition-colors hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06]"
-                title="Library"
+                title="Health Library"
               >
                 <span className="material-symbols-outlined">menu_book</span>
               </Link>
@@ -1686,151 +1652,137 @@ export default function ChatPage() {
           </div>
 
           <div className="relative flex-1 overflow-hidden">
-          <div
-            ref={messagesContainerRef}
-            onScroll={handleMessagesScroll}
-            className="h-full overflow-y-auto"
-          >
-            <div className="mx-auto max-w-3xl space-y-4 px-4 py-5 sm:space-y-5 sm:px-6 sm:py-8">
-              {error && (
-                <div className="animate-fade-in flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
-                  <span className="material-symbols-outlined mt-0.5 text-base">
-                    error
-                  </span>
-                  <p className="flex-1">{error}</p>
-                  <button
-                    onClick={() => setError(null)}
-                    className="rounded-md p-0.5 text-red-500 transition-colors hover:bg-red-100 dark:text-red-300 dark:hover:bg-red-900/40"
-                    title="Dismiss"
-                  >
-                    <span className="material-symbols-outlined text-base">
-                      close
-                    </span>
-                  </button>
-                </div>
-              )}
-
-              {agentActionStatuses.length > 0 && (
-                <div className="animate-fade-in rounded-xl border border-black/[0.07] bg-black/[0.015] p-3 dark:border-white/10 dark:bg-white/[0.02] sm:p-4">
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-text-secondary sm:text-xs">
-                    Agent Actions
-                  </p>
-                  <div className="space-y-1.5">
-                    {agentActionStatuses.map((status) => {
-                      const icon =
-                        status.state === "done"
-                          ? "check_circle"
-                          : status.state === "failed"
-                            ? "error"
-                            : "progress_activity";
-                      const colorClass =
-                        status.state === "done"
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : status.state === "failed"
-                            ? "text-red-600 dark:text-red-400"
-                            : "text-amber-600 dark:text-amber-400";
-
-                      return (
-                        <div
-                          key={status.key}
-                          className="flex items-center gap-2.5 text-xs sm:text-sm"
-                        >
-                          <span
-                            className={`material-symbols-outlined text-base ${colorClass}`}
-                          >
-                            {icon}
-                          </span>
-                          <span className="text-text-primary dark:text-white">
-                            {status.label}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {counsellorProfile && (
-                <div className="bg-gradient-to-r from-primary to-purple-600 text-white rounded-2xl p-4 sm:p-5 shadow-lg animate-fade-in">
-                  <p className="text-xs uppercase tracking-wide font-semibold opacity-80">
-                    Matched counsellor
-                  </p>
-                  <p className="mt-1 text-sm sm:text-base font-medium">
-                    {counsellorProfile.name} is a {counsellorProfile.title}.
-                    Open their profile to review languages, specialties, and
-                    availability first.
-                  </p>
-                  <div className="mt-3 flex flex-col sm:flex-row gap-2">
-                    <Link
-                      href={counsellorProfile.profileUrl}
-                      className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white text-primary font-semibold shadow-sm"
+            <div
+              ref={messagesContainerRef}
+              onScroll={handleMessagesScroll}
+              className="h-full overflow-y-auto"
+            >
+              <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
+                {error && (
+                  <div className="mb-4 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
+                    <span className="material-symbols-outlined mt-0.5 text-base">error</span>
+                    <p className="flex-1">{error}</p>
+                    <button
+                      onClick={() => setError(null)}
+                      className="rounded-md p-0.5 text-red-500 transition-colors hover:bg-red-100 dark:text-red-300 dark:hover:bg-red-900/40"
                     >
-                      <span className="material-symbols-outlined text-lg">
-                        account_circle
-                      </span>
-                      Open profile
-                    </Link>
-                    <Link
-                      href={`/counsellors?counsellorId=${counsellorProfile.id}`}
-                      className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 border border-white/30 text-white font-semibold"
-                    >
-                      <span className="material-symbols-outlined text-lg">
-                        arrow_forward
-                      </span>
-                      View counsellor page
-                    </Link>
+                      <span className="material-symbols-outlined text-base">close</span>
+                    </button>
                   </div>
-                </div>
-              )}
+                )}
 
-              {messages.length === 0 && !isTyping && (
-                <div className="flex min-h-[50vh] flex-col items-center justify-center px-2 py-6 text-center animate-fade-in sm:min-h-[55vh]">
-                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-purple-600 shadow-md shadow-primary/20">
-                    <span className="material-symbols-outlined text-xl text-white">
-                      spa
-                    </span>
-                  </div>
-                  <p className="text-[11px] font-semibold tracking-[0.14em] uppercase text-text-secondary dark:text-gray-500">
-                    {emptyStateContent.eyebrow}
-                  </p>
-                  <h3 className="mt-2 max-w-md text-xl font-semibold text-text-primary dark:text-white sm:text-2xl">
-                    {emptyStateContent.title}
-                  </h3>
-                  <p className="mt-2 max-w-sm text-sm text-text-secondary dark:text-gray-400">
-                    {emptyStateContent.subtitle}
-                  </p>
-                  <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-medium text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    Private, judgment-free, and available in multiple languages
-                  </p>
+                {agentActionStatuses.length > 0 && (
+                  <div className="mb-4 animate-fade-in rounded-xl border border-black/[0.06] bg-black/[0.015] p-3 dark:border-white/10 dark:bg-white/[0.02] sm:p-4">
+                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-text-secondary sm:text-xs">
+                      Agent Actions
+                    </p>
+                    <div className="space-y-1.5">
+                      {agentActionStatuses.map((status) => {
+                        const icon =
+                          status.state === "done"
+                            ? "check_circle"
+                            : status.state === "failed"
+                              ? "error"
+                              : "progress_activity";
+                        const colorClass =
+                          status.state === "done"
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : status.state === "failed"
+                              ? "text-red-600 dark:text-red-400"
+                              : "text-amber-600 dark:text-amber-400";
 
-                  {emptyStateContent.showIcebreakers && (
-                    <div className="mt-7 grid w-full max-w-xl grid-cols-1 gap-2 xs:grid-cols-2">
-                      {icebreakers.map((icebreaker) => (
-                        <button
-                          key={icebreaker.text}
-                          onClick={() => sendMessage(icebreaker.text)}
-                          className="group touch-target flex items-center gap-2.5 rounded-xl border border-black/[0.07] bg-white p-2.5 text-left transition-colors hover:border-primary/30 hover:bg-primary/[0.03] dark:border-white/10 dark:bg-white/[0.03] dark:hover:bg-white/[0.06] sm:gap-3 sm:p-3"
-                        >
+                        return (
                           <div
-                            className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gradient-to-br ${icebreaker.color} flex items-center justify-center shrink-0`}
+                            key={status.key}
+                            className="flex items-center gap-2.5 text-xs sm:text-sm"
                           >
-                            <span className="material-symbols-outlined text-white text-sm sm:text-base">
-                              {icebreaker.icon}
+                            <span className={`material-symbols-outlined text-base ${colorClass}`}>
+                              {icon}
+                            </span>
+                            <span className="text-text-primary dark:text-white">
+                              {status.label}
                             </span>
                           </div>
-                          <span className="text-xs sm:text-sm text-text-primary dark:text-gray-300 leading-tight">
-                            {icebreaker.text}
-                          </span>
-                        </button>
-                      ))}
+                        );
+                      })}
                     </div>
-                  )}
+                  </div>
+                )}
 
-                  {!emptyStateContent.showIcebreakers &&
-                    continueRecentChats.length > 0 && (
-                      <div className="mt-7 flex w-full max-w-xl flex-wrap items-center justify-center gap-2">
-                        <span className="text-[11px] font-medium uppercase tracking-wide text-text-secondary/70 dark:text-gray-500">
+                {counsellorProfile && (
+                  <div className="mb-4 animate-fade-in rounded-2xl bg-gradient-to-r from-primary to-purple-600 p-4 text-white shadow-lg sm:p-5">
+                    <p className="text-xs font-semibold uppercase tracking-wide opacity-80">
+                      Matched counsellor
+                    </p>
+                    <p className="mt-1 text-sm font-medium sm:text-base">
+                      {counsellorProfile.name} is a {counsellorProfile.title}.
+                      Open their profile to review languages, specialties, and
+                      availability first.
+                    </p>
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                      <Link
+                        href={counsellorProfile.profileUrl}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-primary shadow-sm transition-colors hover:bg-gray-50"
+                      >
+                        <span className="material-symbols-outlined text-lg">account_circle</span>
+                        Open profile
+                      </Link>
+                      <Link
+                        href={`/counsellors?counsellorId=${counsellorProfile.id}`}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+                      >
+                        <span className="material-symbols-outlined text-lg">arrow_forward</span>
+                        View counsellor page
+                      </Link>
+                    </div>
+                  </div>
+                )}
+
+                {messages.length === 0 && !isTyping && (
+                  <div className="flex min-h-[40vh] flex-col items-center justify-center px-2 py-8 text-center animate-fade-in">
+                    <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-purple-600 shadow-lg shadow-primary/20">
+                      <span className="material-symbols-outlined text-2xl text-white">spa</span>
+                    </div>
+                    <h3 className="text-xl font-semibold text-text-primary dark:text-white sm:text-2xl">
+                      {emptyStateContent.title}
+                    </h3>
+                    <p className="mt-1.5 text-sm text-text-secondary dark:text-gray-400">
+                      {emptyStateContent.subtitle}
+                    </p>
+
+                    {emptyStateContent.showIcebreakers && (
+                      <div className="mt-6 grid w-full max-w-lg grid-cols-1 gap-2 xs:grid-cols-2">
+                        {icebreakers.map((icebreaker) => (
+                          <button
+                            key={icebreaker.text}
+                            onClick={() => sendMessage(icebreaker.text)}
+                            className="group touch-target flex items-center gap-2.5 rounded-xl border border-black/[0.07] bg-white p-3 text-left transition-all hover:border-primary/30 hover:shadow-sm dark:border-white/10 dark:bg-white/[0.03] dark:hover:bg-white/[0.06]"
+                          >
+                            <div
+                              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${icebreaker.color}`}
+                            >
+                              <span className="material-symbols-outlined text-base text-white">
+                                {icebreaker.icon}
+                              </span>
+                            </div>
+                            <span className="text-sm leading-tight text-text-primary dark:text-gray-300">
+                              {icebreaker.text}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {!emptyStateContent.showIcebreakers && activeConversationId && (
+                      <p className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-medium text-primary dark:bg-primary/20 dark:text-primary-light">
+                        <span className="material-symbols-outlined text-sm">edit</span>
+                        Type a message below to start
+                      </p>
+                    )}
+
+                    {!emptyStateContent.showIcebreakers && !activeConversationId && continueRecentChats.length > 0 && (
+                      <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+                        <span className="text-[10px] font-semibold uppercase tracking-widest text-text-secondary/60 dark:text-gray-500">
                           Jump back in
                         </span>
                         {continueRecentChats.map((conversation) => (
@@ -1846,199 +1798,164 @@ export default function ChatPage() {
                         ))}
                       </div>
                     )}
-                </div>
-              )}
+                  </div>
+                )}
 
-              {messages.map((message) => {
-                const isSister = message.sender === "sister";
-
-                // Assistant replies read as plain document text (no card) -
-                // only the user's own messages get a bubble, which is what
-                // actually needs a visual "sent" affordance.
-                if (isSister) {
-                  return (
-                    <div key={message.id} className="group animate-fade-in flex gap-2.5 sm:gap-3">
-                      <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-purple-600 sm:h-7 sm:w-7">
-                        <span className="material-symbols-outlined text-[13px] text-white sm:text-sm">
-                          spa
-                        </span>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[13px] leading-relaxed text-text-primary whitespace-pre-wrap dark:text-gray-100 sm:text-[14.5px]">
-                          <StreamedText
-                            text={message.text}
-                            animate={message.animate}
-                            onTick={() => {
-                              if (!showScrollButton) scrollToBottom();
-                            }}
-                          />
-                        </p>
-
-                        {message.audio && (
-                          <div className="mt-2.5 flex items-center gap-2">
-                            <button
-                              onClick={() => {
-                                const audio = audioElements[message.id];
-                                if (audio) {
-                                  if (playingAudioId === message.id) {
-                                    audio.pause();
-                                    setPlayingAudioId(null);
-                                  } else {
-                                    Object.values(audioElements).forEach((a) =>
-                                      a.pause(),
-                                    );
-                                    audio.play();
-                                    setPlayingAudioId(message.id);
-                                  }
-                                }
-                              }}
-                              className="rounded-lg p-1.5 text-primary transition-colors hover:bg-primary/10"
-                              title={
-                                playingAudioId === message.id ? "Pause" : "Play"
-                              }
-                            >
-                              <span className="material-symbols-outlined text-base">
-                                {playingAudioId === message.id
-                                  ? "pause_circle"
-                                  : "play_circle"}
-                              </span>
-                            </button>
-                            <audio
-                              ref={(el) => {
-                                if (el) {
-                                  setAudioElements((prev) => ({
-                                    ...prev,
-                                    [message.id]: el,
-                                  }));
-                                }
-                              }}
-                              src={message.audio.url}
-                              onEnded={() => setPlayingAudioId(null)}
-                              onError={(e) => {
-                                console.error("Audio playback error:", e);
-                                setPlayingAudioId(null);
-                              }}
-                            />
-                            <span className="text-xs text-text-secondary dark:text-gray-400">
-                              {message.audio.durationSeconds.toFixed(0)}s
+                {/* Messages with date separators */}
+                {messages.length > 0 && (
+                  <div className="space-y-5">
+                    {(messagesWithSeparators as Array<{ type: string; message?: Message; date?: Date; label?: string }>).map((item, idx) => {
+                      if (item.type === "separator") {
+                        return (
+                          <div key={`sep-${idx}`} className="flex items-center gap-3 py-1">
+                            <div className="flex-1 border-t border-black/[0.06] dark:border-white/[0.06]" />
+                            <span className="shrink-0 text-[11px] font-medium text-text-secondary/60 dark:text-gray-500">
+                              {item.label}
                             </span>
+                            <div className="flex-1 border-t border-black/[0.06] dark:border-white/[0.06]" />
                           </div>
-                        )}
+                        );
+                      }
 
-                        {message.language && message.language !== "eng" && (
-                          <span className="mt-2 inline-block rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary dark:bg-primary/20 dark:text-primary-light">
-                            🌍{" "}
-                            {SUPPORTED_LANGUAGES[
-                              message.language as SupportedLanguageCode
-                            ]?.name || message.language}
-                          </span>
-                        )}
+                      const message = item.message!;
+                      const isSister = message.sender === "sister";
 
-                        <div className="mt-1.5 flex items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
-                          <span className="text-[10px] text-text-secondary dark:text-gray-500">
-                            {message.timestamp.toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
-                          <button
-                            onClick={() =>
-                              copyMessageText(message.id, message.text)
-                            }
-                            className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] text-text-secondary transition-colors hover:bg-black/5 hover:text-text-primary dark:text-gray-500 dark:hover:bg-white/10 dark:hover:text-white"
-                            title="Copy message"
-                          >
-                            <span className="material-symbols-outlined text-xs">
-                              {copiedMessageId === message.id
-                                ? "check"
-                                : "content_copy"}
-                            </span>
-                            {copiedMessageId === message.id ? "Copied" : "Copy"}
-                          </button>
+                      if (isSister) {
+                        return (
+                          <div key={message.id} className="group flex gap-3 animate-fade-in">
+                            <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-purple-600">
+                              <span className="material-symbols-outlined text-sm text-white">spa</span>
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-baseline gap-2">
+                                <span className="text-xs font-semibold text-primary dark:text-primary-light">
+                                  Sister
+                                </span>
+                                <span className="text-[10px] text-text-secondary/50 dark:text-gray-600">
+                                  {formatRelativeTime(message.timestamp)}
+                                </span>
+                              </div>
+                              <p className="mt-1 text-sm leading-relaxed text-text-primary whitespace-pre-wrap dark:text-gray-100">
+                                <StreamedText
+                                  text={message.text}
+                                  animate={message.animate}
+                                  onTick={() => {
+                                    if (!showScrollButton) scrollToBottom();
+                                  }}
+                                />
+                              </p>
+
+                              {message.audio && (
+                                <div className="mt-2 flex items-center gap-2">
+                                  <button
+                                    onClick={() => {
+                                      const audio = audioElements[message.id];
+                                      if (audio) {
+                                        if (playingAudioId === message.id) {
+                                          audio.pause();
+                                          setPlayingAudioId(null);
+                                        } else {
+                                          Object.values(audioElements).forEach((a) => a.pause());
+                                          audio.play();
+                                          setPlayingAudioId(message.id);
+                                        }
+                                      }
+                                    }}
+                                    className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/20 dark:bg-primary/20 dark:text-primary-light"
+                                  >
+                                    <span className="material-symbols-outlined text-sm">
+                                      {playingAudioId === message.id ? "pause_circle" : "play_circle"}
+                                    </span>
+                                    {message.audio.durationSeconds.toFixed(0)}s
+                                  </button>
+                                </div>
+                              )}
+
+                              {message.language && message.language !== "eng" && (
+                                <span className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary dark:bg-primary/20 dark:text-primary-light">
+                                  <span className="material-symbols-outlined text-[10px]">language</span>
+                                  {SUPPORTED_LANGUAGES[message.language as SupportedLanguageCode]?.name || message.language}
+                                </span>
+                              )}
+
+                              <div className="mt-1 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                                <button
+                                  onClick={() => copyMessageText(message.id, message.text)}
+                                  className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] text-text-secondary transition-colors hover:bg-black/5 hover:text-text-primary dark:text-gray-500 dark:hover:bg-white/10 dark:hover:text-white"
+                                >
+                                  <span className="material-symbols-outlined text-[10px]">
+                                    {copiedMessageId === message.id ? "check" : "content_copy"}
+                                  </span>
+                                  {copiedMessageId === message.id ? "Copied" : "Copy"}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // User message
+                      return (
+                        <div key={message.id} className="group flex justify-end animate-fade-in">
+                          <div className="flex max-w-[80%] flex-col items-end sm:max-w-[70%]">
+                            <div className="rounded-2xl rounded-br-sm bg-primary px-4 py-2.5 text-white shadow-sm">
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                                {message.text}
+                              </p>
+                            </div>
+                            <div className="mt-0.5 flex items-center gap-1.5 px-1">
+                              <span className="text-[10px] text-text-secondary/50 dark:text-gray-600">
+                                {formatRelativeTime(message.timestamp)}
+                              </span>
+                              <span className="material-symbols-outlined text-[10px] text-text-secondary/40 dark:text-gray-600">
+                                check
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  );
-                }
+                      );
+                    })}
+                  </div>
+                )}
 
-                // User turn - the one place a bubble is intentional, since it
-                // is the clearest "this is what I sent" signal.
-                return (
-                  <div
-                    key={message.id}
-                    className="group animate-fade-in flex justify-end"
-                  >
-                    <div className="flex max-w-[85%] flex-col items-end sm:max-w-[70%]">
-                      <div className="rounded-2xl rounded-tr-sm bg-primary px-3.5 py-2.5 text-white sm:px-4 sm:py-2.5">
-                        <p className="text-[13px] leading-relaxed whitespace-pre-wrap sm:text-[14.5px]">
-                          {message.text}
-                        </p>
+                {/* Typing Indicator */}
+                {isTyping && (
+                  <div className="mt-5 animate-fade-in flex items-center gap-3">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-purple-600">
+                      <span className="material-symbols-outlined text-sm text-white">spa</span>
+                    </div>
+                    <div className="flex items-center gap-2.5 rounded-2xl bg-black/[0.04] px-4 py-2.5 dark:bg-white/[0.05]">
+                      <div className="flex gap-1">
+                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60" style={{ animationDelay: "0ms" }} />
+                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60" style={{ animationDelay: "150ms" }} />
+                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60" style={{ animationDelay: "300ms" }} />
                       </div>
-                      <span className="mt-1 px-1 text-[10px] text-text-secondary opacity-100 transition-opacity dark:text-gray-500 sm:opacity-0 sm:group-hover:opacity-100">
-                        {message.timestamp.toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                      <span className="text-xs text-text-secondary dark:text-gray-400">
+                        Sister is thinking...
                       </span>
                     </div>
                   </div>
-                );
-              })}
+                )}
 
-              {/* Typing Indicator */}
-              {isTyping && (
-                <div className="animate-fade-in flex items-center gap-2.5 sm:gap-3">
-                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-purple-600 sm:h-7 sm:w-7">
-                    <span className="material-symbols-outlined text-[13px] text-white sm:text-sm">
-                      spa
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex gap-1">
-                      <span
-                        className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60"
-                        style={{ animationDelay: "0ms" }}
-                      />
-                      <span
-                        className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60"
-                        style={{ animationDelay: "150ms" }}
-                      />
-                      <span
-                        className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60"
-                        style={{ animationDelay: "300ms" }}
-                      />
-                    </div>
-                    <span className="text-xs text-text-secondary dark:text-gray-400">
-                      Sister is thinking...
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              <div ref={messagesEndRef} />
+                <div ref={messagesEndRef} />
+              </div>
             </div>
+
+            {showScrollButton && (
+              <button
+                onClick={scrollToBottom}
+                className="absolute bottom-4 left-1/2 z-20 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border border-black/[0.06] bg-white text-text-primary shadow-md transition-all hover:-translate-y-0.5 hover:shadow-lg dark:border-white/10 dark:bg-gray-800 dark:text-white"
+              >
+                <span className="material-symbols-outlined text-lg">arrow_downward</span>
+              </button>
+            )}
           </div>
 
-          {showScrollButton && (
-            <button
-              onClick={scrollToBottom}
-              className="absolute bottom-4 left-1/2 z-20 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border border-black/[0.08] bg-white text-text-primary shadow-md transition-transform hover:-translate-y-0.5 dark:border-white/10 dark:bg-gray-800 dark:text-white"
-              title="Scroll to latest"
-            >
-              <span className="material-symbols-outlined text-lg">
-                arrow_downward
-              </span>
-            </button>
-          )}
-          </div>
-
-          {/* Input Area - positioned above bottom nav */}
-          <div className="border-t border-black/[0.06] bg-white pb-[calc(var(--bottom-nav-height,72px)+env(safe-area-inset-bottom))] dark:border-white/[0.08] dark:bg-[#140c1b] lg:pb-4">
+          {/* Input Area */}
+          <div className="border-t border-black/[0.05] bg-white pb-[calc(var(--bottom-nav-height,72px)+env(safe-area-inset-bottom))] dark:border-white/[0.06] dark:bg-[#140c1b] lg:pb-4">
             <div className="mx-auto max-w-3xl px-3 py-3 sm:px-4 sm:py-4">
-              {/* Input Box */}
               <form onSubmit={handleSubmit} className="relative">
-                <div className="flex items-end gap-1.5 rounded-2xl border border-black/[0.09] bg-white p-1.5 shadow-sm transition-colors focus-within:border-primary/50 focus-within:shadow-md dark:border-white/10 dark:bg-white/[0.04] sm:gap-2 sm:p-2">
-                  {/* Language Selector - compact icon control */}
+                <div className="flex items-end gap-1.5 rounded-2xl border border-black/[0.08] bg-white p-1.5 shadow-sm transition-all focus-within:border-primary/40 focus-within:shadow-md dark:border-white/10 dark:bg-white/[0.04] sm:gap-2 sm:p-2">
                   <div className="relative shrink-0">
                     <select
                       value={userLanguage}
@@ -2068,9 +1985,8 @@ export default function ChatPage() {
                     }
                     disabled={isTyping || isListening}
                     rows={1}
-                    className="max-h-[120px] flex-1 resize-none border-none bg-transparent px-1 py-2.5 text-[13px] text-text-primary placeholder:text-text-secondary/70 focus:outline-none focus:ring-0 dark:text-white sm:max-h-[150px] sm:px-2 sm:text-sm"
+                    className="max-h-[120px] flex-1 resize-none border-none bg-transparent px-1 py-2.5 text-[13px] text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-0 dark:text-white sm:max-h-[150px] sm:px-2 sm:text-sm"
                   />
-                  {/* Voice Input Button */}
                   {speechSupported && (
                     <button
                       type="button"
@@ -2091,7 +2007,7 @@ export default function ChatPage() {
                   <button
                     type="submit"
                     disabled={!inputValue.trim() || isTyping || isOverLimit}
-                    className="touch-target shrink-0 rounded-xl bg-primary p-2.5 text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:opacity-100 dark:disabled:bg-gray-700"
+                    className="touch-target shrink-0 rounded-xl bg-primary p-2.5 text-white transition-all hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <span className="material-symbols-outlined text-lg">
                       {isTyping ? "hourglass_top" : "arrow_upward"}
@@ -2101,15 +2017,14 @@ export default function ChatPage() {
               </form>
 
               <div className="mt-2 flex items-center justify-between gap-2 px-1 sm:mt-3">
-                <p className="text-[9px] text-text-secondary dark:text-gray-500 sm:text-[10px]">
-                Sister is an AI companion. For emergencies, call{" "}
-                <a
-                  href="tel:116"
-                  className="text-primary hover:underline font-medium"
-                >
-                  Sauti 116
-                </a>{" "}
-                or see a healthcare professional.
+                <p className="text-[9px] text-text-secondary/70 dark:text-gray-500 sm:text-[10px]">
+                  Sister is an AI companion. For emergencies, call{" "}
+                  <a
+                    href="tel:116"
+                    className="font-medium text-primary hover:underline"
+                  >
+                    Sauti 116
+                  </a>
                 </p>
                 <div className="flex items-center gap-3">
                   {inputValue.length > MAX_MESSAGE_LENGTH - 200 && (
@@ -2123,7 +2038,7 @@ export default function ChatPage() {
                       {inputValue.length}/{MAX_MESSAGE_LENGTH}
                     </span>
                   )}
-                  <span className="hidden text-[10px] font-medium text-text-secondary dark:text-gray-500 sm:inline">
+                  <span className="hidden text-[10px] font-medium text-text-secondary/60 dark:text-gray-500 sm:inline">
                     Enter to send, Shift+Enter for new line
                   </span>
                 </div>
@@ -2133,33 +2048,26 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* Custom Styles */}
       <style jsx global>{`
         @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
         }
         .animate-fade-in {
           animation: fade-in 0.3s ease-out;
         }
         .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
+          width: 5px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
           background: transparent;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(139, 92, 246, 0.3);
+          background: rgba(139, 92, 246, 0.25);
           border-radius: 3px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(139, 92, 246, 0.5);
+          background: rgba(139, 92, 246, 0.4);
         }
       `}</style>
     </div>
