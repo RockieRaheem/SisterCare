@@ -33,6 +33,10 @@ interface Message {
     url: string;
     durationSeconds: number;
   };
+  // Client-only presentation hint - true for a reply that just arrived so it
+  // plays a one-time reveal animation. Never set for history loaded from
+  // Firestore, so re-opening a chat never replays the effect.
+  animate?: boolean;
 }
 
 interface ChatApiResponse {
@@ -63,6 +67,55 @@ interface ChatApiResponse {
 }
 
 const CHAT_LANGUAGE_OPTIONS: SupportedLanguageCode[] = ["eng", "lug"];
+// Mirrors the server-side limit in src/app/api/chat/route.ts so the
+// composer can guard before a doomed request round-trips.
+const MAX_MESSAGE_LENGTH = 2000;
+
+/**
+ * Reveals text progressively the first time it mounts (a freshly-arrived
+ * reply), then stays static forever after. History loaded from Firestore
+ * renders instantly via `animate=false`. Purely a presentation effect -
+ * `message.text` (the real value used for copy/persistence) never changes.
+ */
+function StreamedText({
+  text,
+  animate,
+  onTick,
+}: {
+  text: string;
+  animate?: boolean;
+  onTick?: () => void;
+}) {
+  const [visibleLength, setVisibleLength] = useState(
+    animate ? 0 : text.length,
+  );
+
+  useEffect(() => {
+    if (!animate) return;
+    let cancelled = false;
+    let i = 0;
+    const step = () => {
+      if (cancelled) return;
+      // Reveal a few characters per frame-ish tick - fast enough to feel
+      // instant for short replies, visible as a stream for longer ones.
+      i = Math.min(text.length, i + Math.max(2, Math.round(text.length / 90)));
+      setVisibleLength(i);
+      onTick?.();
+      if (i < text.length) {
+        window.setTimeout(step, 16);
+      }
+    };
+    step();
+    return () => {
+      cancelled = true;
+    };
+    // Only run once per mounted message - `text` and `animate` are fixed
+    // for the lifetime of a given message id.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return <>{text.slice(0, visibleLength)}</>;
+}
 
 const isLikelyUiMarkup = (text: string) =>
   /<div class="jsx-[^"]+"/.test(text) &&
@@ -168,6 +221,7 @@ export default function ChatPage() {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const conversationsRef = useRef<ChatConversation[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const recordingRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
@@ -346,6 +400,30 @@ export default function ChatPage() {
     setShowScrollButton(distanceFromBottom > 240);
   }, []);
 
+  // Power-user shortcut: Cmd/Ctrl+K reveals the sidebar (if needed) and
+  // focuses conversation search, matching the convention from Linear/Slack/
+  // ChatGPT-style apps.
+  useEffect(() => {
+    const handleKeydown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSidebarCollapsed(false);
+        setSidebarOpen(true);
+        window.setTimeout(() => searchInputRef.current?.focus(), 50);
+      }
+    };
+    window.addEventListener("keydown", handleKeydown);
+    return () => window.removeEventListener("keydown", handleKeydown);
+  }, []);
+
+  // Auto-dismiss transient errors so the thread doesn't stay cluttered -
+  // the user can also dismiss manually via the close button.
+  useEffect(() => {
+    if (!error) return;
+    const timer = window.setTimeout(() => setError(null), 6000);
+    return () => window.clearTimeout(timer);
+  }, [error]);
+
   const copyMessageText = useCallback((id: string, text: string) => {
     if (typeof navigator === "undefined" || !navigator.clipboard) return;
     navigator.clipboard
@@ -389,6 +467,11 @@ export default function ChatPage() {
     setInputValue(existingDraft);
     if (inputRef.current) {
       inputRef.current.style.height = "auto";
+      // Auto-focus the composer on desktop when switching chats - skipped on
+      // small screens so we don't pop the virtual keyboard unexpectedly.
+      if (window.innerWidth >= 1024) {
+        inputRef.current.focus();
+      }
     }
   }, [activeConversationId]);
 
@@ -908,6 +991,7 @@ export default function ChatPage() {
                   durationSeconds: data.audio.durationSeconds,
                 }
               : undefined,
+            animate: true,
           };
 
           setMessages((prev) => [...prev, sisterMessage]);
@@ -967,6 +1051,7 @@ export default function ChatPage() {
           sender: "sister",
           text: "I'm sorry, I'm having a little trouble right now. Please try again in a moment. Remember, I'm here to support you! 💜",
           timestamp: new Date(),
+          animate: true,
         };
         setMessages((prev) => [...prev, errorMessage]);
       } finally {
@@ -984,14 +1069,18 @@ export default function ChatPage() {
     ],
   );
 
+  const isOverLimit = inputValue.length > MAX_MESSAGE_LENGTH;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isOverLimit) return;
     sendMessage(inputValue);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
+      if (isOverLimit) return;
       sendMessage(inputValue);
     }
   };
@@ -1219,12 +1308,16 @@ export default function ChatPage() {
                   search
                 </span>
                 <input
+                  ref={searchInputRef}
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search conversations..."
-                  className="w-full rounded-xl border border-transparent bg-gray-100/90 py-2 pl-9 pr-3 text-xs text-text-primary placeholder:text-text-secondary transition-all focus:border-primary/40 focus:ring-2 focus:ring-primary/35 dark:bg-gray-800 sm:py-2.5 sm:pl-10 sm:pr-4 sm:text-sm"
+                  className="w-full rounded-xl border border-transparent bg-gray-100/90 py-2 pl-9 pr-12 text-xs text-text-primary placeholder:text-text-secondary transition-all focus:border-primary/40 focus:ring-2 focus:ring-primary/35 dark:bg-gray-800 sm:py-2.5 sm:pl-10 sm:pr-14 sm:text-sm"
                 />
+                <span className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[9px] font-semibold text-text-secondary dark:border-gray-700 dark:bg-gray-900 dark:text-gray-500 sm:inline-block">
+                  ⌘K
+                </span>
               </div>
             </div>
 
@@ -1314,14 +1407,14 @@ export default function ChatPage() {
                                   actionLoading !== conversation.id &&
                                   openConversationFromSidebar(conversation.id)
                                 }
-                                className={`flex w-full cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-all ${
+                                className={`flex w-full cursor-pointer items-center gap-3 rounded-xl border-y border-r py-2.5 pr-3 text-left transition-all ${
                                   actionLoading === conversation.id
                                     ? "opacity-50 cursor-wait"
                                     : ""
                                 } ${
                                   activeConversationId === conversation.id
-                                    ? "border-primary/25 bg-primary/10 dark:bg-primary/15"
-                                    : "border-transparent hover:border-transparent hover:bg-black/[0.04] dark:hover:bg-white/5"
+                                    ? "border-y-transparent border-r-transparent border-l-[3px] border-l-primary bg-primary/[0.07] pl-[9px] dark:bg-primary/10"
+                                    : "border-transparent pl-3 hover:bg-black/[0.04] dark:hover:bg-white/5"
                                 }`}
                               >
                                 <div
@@ -1554,23 +1647,37 @@ export default function ChatPage() {
             <div className="pointer-events-none absolute inset-0 opacity-40 [background-image:radial-gradient(#caa7ea_0.6px,transparent_0.6px)] [background-size:14px_14px] dark:opacity-10" />
             <div className="relative mx-auto max-w-3xl space-y-4 px-3 py-4 sm:space-y-6 sm:px-4 sm:py-6 lg:px-6">
               {error && (
-                <div className="animate-fade-in rounded-2xl border border-red-200 bg-red-50/90 px-4 py-3 text-sm text-red-700 shadow-sm dark:border-red-800 dark:bg-red-950/35 dark:text-red-300">
-                  {error}
+                <div className="animate-fade-in flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50/90 px-4 py-3 text-sm text-red-700 shadow-sm dark:border-red-800 dark:bg-red-950/35 dark:text-red-300">
+                  <span className="material-symbols-outlined mt-0.5 text-base">
+                    error
+                  </span>
+                  <p className="flex-1">{error}</p>
+                  <button
+                    onClick={() => setError(null)}
+                    className="rounded-md p-0.5 text-red-500 transition-colors hover:bg-red-100 dark:text-red-300 dark:hover:bg-red-900/40"
+                    title="Dismiss"
+                  >
+                    <span className="material-symbols-outlined text-base">
+                      close
+                    </span>
+                  </button>
                 </div>
               )}
 
-              <div className="rounded-2xl border border-violet-100 bg-white/70 px-4 py-3 shadow-sm backdrop-blur dark:border-border-dark dark:bg-card-dark/80">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-xs font-medium text-text-secondary dark:text-gray-400 sm:text-sm">
-                    Safe, judgment-free support with multilingual guidance.
-                  </p>
-                  <span className="hidden rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 sm:inline-flex">
-                    Live assistant
-                  </span>
+              {messages.length === 0 && (
+                <div className="rounded-2xl border border-violet-100 bg-white/70 px-4 py-3 shadow-sm backdrop-blur dark:border-border-dark dark:bg-card-dark/80">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-medium text-text-secondary dark:text-gray-400 sm:text-sm">
+                      Safe, judgment-free support with multilingual guidance.
+                    </p>
+                    <span className="hidden rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 sm:inline-flex">
+                      Live assistant
+                    </span>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {continueRecentChats.length > 0 && (
+              {messages.length === 0 && continueRecentChats.length > 0 && (
                 <div className="rounded-2xl border border-violet-100 bg-white/80 p-3 shadow-sm backdrop-blur dark:border-border-dark dark:bg-card-dark/85">
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-secondary dark:text-gray-400">
@@ -1752,7 +1859,17 @@ export default function ChatPage() {
                               : "text-white"
                           }`}
                         >
-                          {message.text}
+                          {isSister ? (
+                            <StreamedText
+                              text={message.text}
+                              animate={message.animate}
+                              onTick={() => {
+                                if (!showScrollButton) scrollToBottom();
+                              }}
+                            />
+                          ) : (
+                            message.text
+                          )}
                         </p>
                         {/* Audio Player for Sister Messages */}
                         {isSister && message.audio && (
@@ -1855,27 +1972,30 @@ export default function ChatPage() {
 
               {/* Typing Indicator */}
               {isTyping && (
-                <div className="animate-fade-in flex gap-2 sm:gap-4">
-                  <div className="shrink-0 flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-purple-600 shadow-md ring-2 ring-white/80 sm:h-10 sm:w-10">
-                    <span className="material-symbols-outlined text-white text-base sm:text-lg">
+                <div className="animate-fade-in flex gap-2 sm:gap-3">
+                  <div className="shrink-0 flex h-7 w-7 items-center justify-center rounded-full shadow-sm ring-2 ring-white/80 bg-gradient-to-br from-primary to-purple-600 sm:h-8 sm:w-8">
+                    <span className="material-symbols-outlined text-white text-sm sm:text-base">
                       spa
                     </span>
                   </div>
-                  <div className="rounded-2xl rounded-tl-md border border-violet-100 bg-white px-4 py-3 shadow-sm dark:border-border-dark dark:bg-card-dark sm:px-5 sm:py-4">
+                  <div className="flex items-center gap-2.5 rounded-2xl rounded-tl-sm bg-white/70 px-3.5 py-2.5 dark:bg-white/[0.04] sm:px-4 sm:py-3">
                     <div className="flex gap-1.5">
                       <span
-                        className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-primary rounded-full animate-bounce"
+                        className="w-1.5 h-1.5 bg-primary/70 rounded-full animate-bounce"
                         style={{ animationDelay: "0ms" }}
                       />
                       <span
-                        className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-primary rounded-full animate-bounce"
+                        className="w-1.5 h-1.5 bg-primary/70 rounded-full animate-bounce"
                         style={{ animationDelay: "150ms" }}
                       />
                       <span
-                        className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-primary rounded-full animate-bounce"
+                        className="w-1.5 h-1.5 bg-primary/70 rounded-full animate-bounce"
                         style={{ animationDelay: "300ms" }}
                       />
                     </div>
+                    <span className="text-xs text-text-secondary dark:text-gray-400">
+                      Sister is thinking...
+                    </span>
                   </div>
                 </div>
               )}
@@ -1955,7 +2075,7 @@ export default function ChatPage() {
                   )}
                   <button
                     type="submit"
-                    disabled={!inputValue.trim() || isTyping}
+                    disabled={!inputValue.trim() || isTyping || isOverLimit}
                     className="touch-target rounded-xl bg-gradient-to-r from-primary to-purple-600 p-2.5 text-white shadow-lg shadow-primary/25 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 sm:p-3"
                   >
                     <span className="material-symbols-outlined text-base sm:text-lg">
@@ -1976,9 +2096,22 @@ export default function ChatPage() {
                 </a>{" "}
                 or see a healthcare professional.
                 </p>
-                <span className="hidden text-[10px] font-medium text-text-secondary dark:text-gray-500 sm:inline">
-                  Enter to send, Shift+Enter for new line
-                </span>
+                <div className="flex items-center gap-3">
+                  {inputValue.length > MAX_MESSAGE_LENGTH - 200 && (
+                    <span
+                      className={`text-[10px] font-medium ${
+                        isOverLimit
+                          ? "text-red-500"
+                          : "text-text-secondary dark:text-gray-500"
+                      }`}
+                    >
+                      {inputValue.length}/{MAX_MESSAGE_LENGTH}
+                    </span>
+                  )}
+                  <span className="hidden text-[10px] font-medium text-text-secondary dark:text-gray-500 sm:inline">
+                    Enter to send, Shift+Enter for new line
+                  </span>
+                </div>
               </div>
             </div>
           </div>
