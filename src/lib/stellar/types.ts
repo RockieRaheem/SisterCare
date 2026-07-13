@@ -33,7 +33,7 @@ export interface StellarSubmissionResult {
   error?: string;
 }
 
-export interface CounsellorVerificationFields {
+export interface CounsellorVerificationFields extends Record<string, unknown> {
   counsellorId: string;
   displayName: string;
   title: string;
@@ -48,7 +48,7 @@ export interface CounsellorVerificationFields {
   status: "verified" | "expired" | "revoked";
 }
 
-export interface HealthPassportFields {
+export interface HealthPassportFields extends Record<string, unknown> {
   passportId: string;
   userIdHash: string;
   subjectVersion: string;
@@ -60,7 +60,7 @@ export interface HealthPassportFields {
   issuer: string;
 }
 
-export interface WellnessRecordFields {
+export interface WellnessRecordFields extends Record<string, unknown> {
   recordId: string;
   userIdHash: string;
   recordType: "period_log" | "symptom_log" | "mood_log" | "session_note";
