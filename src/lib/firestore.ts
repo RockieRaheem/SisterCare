@@ -1118,6 +1118,354 @@ export async function seedCounsellors(): Promise<void> {
 // ============================================
 
 /**
+ * Days of the week in order (consistent with Counsellor.availableHours.days)
+ */
+const DAYS_OF_WEEK = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+
+/**
+ * Evaluate whether a counsellor is currently available based on their
+ * availableHours schedule and current time. Returns both immediate
+ * availability and the next available time slot.
+ */
+function evaluateTimeAvailability(counsellor: Counsellor): {
+  isAvailableNow: boolean;
+  nextAvailableTime: string | null;
+} {
+  const now = new Date();
+  const currentDay = DAYS_OF_WEEK[now.getDay()];
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  const { availableHours } = counsellor;
+  const todayInSchedule = availableHours.days.some(
+    (d) => d.toLowerCase() === currentDay.toLowerCase(),
+  );
+
+  if (!todayInSchedule) {
+    // Find the next available day
+    for (let i = 1; i <= 7; i++) {
+      const nextDayIndex = (now.getDay() + i) % 7;
+      const nextDay = DAYS_OF_WEEK[nextDayIndex];
+      if (
+        availableHours.days.some(
+          (d) => d.toLowerCase() === nextDay.toLowerCase(),
+        )
+      ) {
+        return {
+          isAvailableNow: false,
+          nextAvailableTime: `${nextDay} at ${availableHours.start}`,
+        };
+      }
+    }
+    return { isAvailableNow: false, nextAvailableTime: null };
+  }
+
+  const [startH, startM] = availableHours.start.split(":").map(Number);
+  const [endH, endM] = availableHours.end.split(":").map(Number);
+  const startMinutes = startH * 60 + startM;
+  const endMinutes = endH * 60 + endM;
+
+  const isAvailableNow =
+    currentMinutes >= startMinutes && currentMinutes < endMinutes;
+
+  if (!isAvailableNow) {
+    if (currentMinutes < startMinutes) {
+      return {
+        isAvailableNow: false,
+        nextAvailableTime: `Today at ${availableHours.start}`,
+      };
+    }
+    // Find next available day
+    for (let i = 1; i <= 7; i++) {
+      const nextDayIndex = (now.getDay() + i) % 7;
+      const nextDay = DAYS_OF_WEEK[nextDayIndex];
+      if (
+        availableHours.days.some(
+          (d) => d.toLowerCase() === nextDay.toLowerCase(),
+        )
+      ) {
+        return {
+          isAvailableNow: false,
+          nextAvailableTime: `${nextDay} at ${availableHours.start}`,
+        };
+      }
+    }
+  }
+
+  return { isAvailableNow, nextAvailableTime: null };
+}
+
+/**
+ * Count active conversations per counsellor for load-balancing.
+ * Returns a Map of counsellorId → active conversation count.
+ */
+async function getCounsellorLoads(): Promise<Map<string, number>> {
+  const loadMap = new Map<string, number>();
+  try {
+    const conversationsRef = collection(db, "conversations");
+    const q = query(
+      conversationsRef,
+      where("type", "==", "counsellor"),
+      where("status", "==", "active"),
+    );
+    const snapshot = await getDocs(q);
+    for (const doc of snapshot.docs) {
+      const data = doc.data();
+      const counsellorId = data.activeCounsellorId || data.counsellorId;
+      if (counsellorId) {
+        loadMap.set(counsellorId, (loadMap.get(counsellorId) || 0) + 1);
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to count counsellor loads:", err);
+  }
+  return loadMap;
+}
+
+/**
+ * Score a counsellor for a given assignment request.
+ * Returns a score from 0-100 where higher is better.
+ */
+function calculateCounsellorScore(
+  counsellor: Counsellor,
+  params: {
+    specialty?: CounsellorSpecialty;
+    preferredLanguage?: string;
+  },
+  availability: { isAvailableNow: boolean; nextAvailableTime: string | null },
+  activeLoad: number,
+): number {
+  let score = 0;
+
+  // 1. Time-based availability (35 points)
+  if (availability.isAvailableNow && counsellor.status === "available") {
+    score += 35;
+  } else if (availability.isAvailableNow) {
+    score += 20; // Available time-wise but marked busy/offline
+  } else if (counsellor.status === "available") {
+    score += 10; // Marked available but outside hours
+  }
+
+  // 2. Language match (30 points)
+  if (params.preferredLanguage) {
+    const exactLangMatch = counsellor.languages.some(
+      (l) => l.toLowerCase() === params.preferredLanguage!.toLowerCase(),
+    );
+    if (exactLangMatch) {
+      score += 30;
+    } else {
+      // Partial match — check if any language starts with same root
+      const partialMatch = counsellor.languages.some((l) =>
+        params
+          .preferredLanguage!.toLowerCase()
+          .startsWith(l.substring(0, 3).toLowerCase()),
+      );
+      if (partialMatch) score += 10;
+    }
+  } else {
+    score += 15; // No preference — neutral
+  }
+
+  // 3. Specialty match (20 points)
+  if (params.specialty) {
+    if (
+      counsellor.specializations.includes(params.specialty)
+    ) {
+      score += 20;
+    } else {
+      // Check if any overlapping coverage
+      const hasRelated = counsellor.specializations.some((s) => {
+        if (params.specialty === "Mental Health")
+          return true; // Mental Health is universal
+        if (params.specialty === "Menstrual Health")
+          return ["Reproductive Health", "Pregnancy & Postpartum"].includes(s);
+        if (params.specialty === "Reproductive Health")
+          return ["Menstrual Health", "Pregnancy & Postpartum", "Sexual Health"].includes(s);
+        if (params.specialty === "Pregnancy & Postpartum")
+          return ["Reproductive Health", "Menstrual Health"].includes(s);
+        if (params.specialty === "Sexual Health")
+          return ["Reproductive Health", "Adolescent Health"].includes(s);
+        if (params.specialty === "Adolescent Health")
+          return ["Mental Health", "Menstrual Health"].includes(s);
+        if (params.specialty === "Relationship Counselling")
+          return ["Mental Health"].includes(s);
+        if (params.specialty === "Nutrition & Wellness")
+          return ["Menstrual Health", "Adolescent Health"].includes(s);
+        return false;
+      });
+      if (hasRelated) score += 8;
+    }
+  } else {
+    score += 10; // No preference — neutral
+  }
+
+  // 4. Load balancing (10 points) — fewer active conversations = better
+  if (activeLoad === 0) {
+    score += 10;
+  } else if (activeLoad === 1) {
+    score += 7;
+  } else if (activeLoad === 2) {
+    score += 4;
+  } else if (activeLoad >= 5) {
+    score -= 5; // Penalty for overloaded
+  }
+
+  // 5. Rating bonus (5 points)
+  score += Math.min(5, counsellor.rating);
+
+  return score;
+}
+
+/**
+ * Auto-update counsellor statuses based on time availability.
+ * This batch updates all counsellors whose scheduled availability
+ * does not match their current status.
+ */
+export async function batchUpdateCounsellorAvailability(): Promise<{
+  updated: number;
+  errors: number;
+}> {
+  let updated = 0;
+  let errors = 0;
+
+  try {
+    const counsellors = await getCounsellors();
+    for (const counsellor of counsellors) {
+      try {
+        const { isAvailableNow } = evaluateTimeAvailability(counsellor);
+        const correctStatus: CounsellorStatus = isAvailableNow
+          ? "available"
+          : "offline";
+
+        if (counsellor.status !== correctStatus) {
+          await updateCounsellorStatus(counsellor.id, correctStatus);
+          updated++;
+        }
+      } catch {
+        errors++;
+      }
+    }
+  } catch (err) {
+    console.error("Failed to batch update counsellor availability:", err);
+    errors++;
+  }
+
+  return { updated, errors };
+}
+
+/**
+ * Auto-update a single counsellor's status based on time availability.
+ * Lightweight — meant to be called during routing for the selected counsellor.
+ */
+export async function autoUpdateCounsellorStatus(
+  counsellorId: string,
+): Promise<CounsellorStatus | null> {
+  try {
+    const counsellor = await getCounsellor(counsellorId);
+    if (!counsellor) return null;
+
+    const { isAvailableNow } = evaluateTimeAvailability(counsellor);
+    const correctStatus: CounsellorStatus = isAvailableNow
+      ? "available"
+      : "offline";
+
+    if (counsellor.status !== correctStatus) {
+      await updateCounsellorStatus(counsellorId, correctStatus);
+    }
+    return correctStatus;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Assign the best counsellor for a user using intelligent scoring.
+ *
+ * Algorithm:
+ * 1. Fetch counsellors from Firestore (by specialty if given, otherwise all)
+ * 2. Fall back to static counsellors if Firestore is empty
+ * 3. Evaluate time-based availability for each counsellor
+ * 4. Count active conversation loads for load balancing
+ * 5. Score each counsellor on: availability, language match, specialty,
+ *    load balance, and rating
+ * 6. Return the highest-scoring counsellor
+ */
+export async function assignCounsellor(params: {
+  specialty?: CounsellorSpecialty;
+  preferredLanguage?: string;
+  userId?: string;
+}): Promise<Counsellor | null> {
+  const { specialty, preferredLanguage } = params;
+
+  // 1. Fetch candidate counsellors
+  let candidates: Counsellor[] = [];
+  try {
+    if (specialty) {
+      candidates = await getCounsellorsBySpecialty(specialty);
+    } else {
+      candidates = await getCounsellors();
+    }
+  } catch (error) {
+    console.warn("Firestore counsellor fetch failed, using static:", error);
+  }
+
+  if (candidates.length === 0) {
+    candidates = specialty
+      ? STATIC_COUNSELLORS.filter((c) =>
+          c.specializations.includes(specialty as CounsellorSpecialty),
+        )
+      : STATIC_COUNSELLORS;
+    if (candidates.length === 0) candidates = STATIC_COUNSELLORS;
+  }
+
+  // 2. If language filter is strict, try static fallback
+  if (preferredLanguage) {
+    const hasAnyLang = candidates.some((c) =>
+      c.languages.some((l) => l.toLowerCase() === preferredLanguage.toLowerCase()),
+    );
+    if (!hasAnyLang) {
+      const staticLangs = STATIC_COUNSELLORS.filter((c) =>
+        c.languages.some((l) => l.toLowerCase() === preferredLanguage.toLowerCase()),
+      );
+      if (staticLangs.length > 0) candidates = staticLangs;
+    }
+  }
+
+  // 3. Evaluate availability and loads
+  const availabilityCache = new Map<string, {
+    isAvailableNow: boolean;
+    nextAvailableTime: string | null;
+  }>();
+  for (const c of candidates) {
+    availabilityCache.set(c.id, evaluateTimeAvailability(c));
+  }
+
+  const loadMap = await getCounsellorLoads();
+
+  // 4. Score and rank
+  const scored = candidates.map((c) => ({
+    counsellor: c,
+    score: calculateCounsellorScore(
+      c,
+      { specialty, preferredLanguage },
+      availabilityCache.get(c.id)!,
+      loadMap.get(c.id) || 0,
+    ),
+  }));
+
+  scored.sort((a, b) => b.score - a.score);
+
+  return scored.length > 0 ? scored[0].counsellor : null;
+}
+
+/**
  * Pick the best counsellor for a user based on availability, language, and specialty.
  * Uses low-cost local ranking after minimal query fetch.
  */
@@ -1308,83 +1656,7 @@ export async function routeCounsellor(params: {
   specialty?: CounsellorSpecialty;
   preferredLanguage?: string;
 }): Promise<Counsellor | null> {
-  const { specialty, preferredLanguage } = params;
-
-  let candidates: Counsellor[] = [];
-  try {
-    if (specialty) {
-      candidates = await getCounsellorsBySpecialty(specialty);
-    } else {
-      candidates = await getCounsellors();
-    }
-  } catch (error) {
-    console.warn(
-      "Could not query counsellors from Firestore, using static fallback:",
-      error,
-    );
-  }
-
-  // Fall back to static counsellors when Firestore collection is empty
-  if (candidates.length === 0) {
-    candidates = specialty
-      ? STATIC_COUNSELLORS.filter((c) =>
-          c.specializations.includes(specialty as CounsellorSpecialty),
-        )
-      : STATIC_COUNSELLORS;
-    if (candidates.length === 0) candidates = STATIC_COUNSELLORS;
-  }
-
-  const languageMatched = preferredLanguage
-    ? candidates.filter((c) =>
-        c.languages.some(
-          (l) => l.toLowerCase() === preferredLanguage.toLowerCase(),
-        ),
-      )
-    : [];
-
-  if (preferredLanguage && languageMatched.length === 0) {
-    const staticLanguageMatched = STATIC_COUNSELLORS.filter((c) =>
-      c.languages.some(
-        (l) => l.toLowerCase() === preferredLanguage.toLowerCase(),
-      ),
-    );
-
-    if (staticLanguageMatched.length > 0) {
-      candidates = staticLanguageMatched;
-    }
-  }
-
-  const languagePool =
-    languageMatched.length > 0 ? languageMatched : candidates;
-  const availableFirst = languagePool.filter((c) => c.status === "available");
-  const pool = availableFirst.length > 0 ? availableFirst : languagePool;
-
-  pool.sort((a, b) => {
-    const langA = preferredLanguage
-      ? a.languages.some(
-          (l) => l.toLowerCase() === preferredLanguage.toLowerCase(),
-        )
-        ? 1
-        : 0
-      : 0;
-    const langB = preferredLanguage
-      ? b.languages.some(
-          (l) => l.toLowerCase() === preferredLanguage.toLowerCase(),
-        )
-        ? 1
-        : 0
-      : 0;
-
-    if (langA !== langB) return langB - langA;
-    if (a.status !== b.status) {
-      if (a.status === "available") return -1;
-      if (b.status === "available") return 1;
-    }
-    if (a.rating !== b.rating) return b.rating - a.rating;
-    return b.reviewCount - a.reviewCount;
-  });
-
-  return pool[0] || null;
+  return assignCounsellor(params);
 }
 
 /**

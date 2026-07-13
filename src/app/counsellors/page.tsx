@@ -12,6 +12,62 @@ import {
   COUNSELLOR_SPECIALTIES,
   COUNSELLOR_STATUS_FILTERS,
 } from "@/lib/counsellors";
+import { getCounsellors, getCounsellor } from "@/lib/firestore";
+
+const DAYS_OF_WEEK = [
+  "Sunday", "Monday", "Tuesday", "Wednesday",
+  "Thursday", "Friday", "Saturday",
+];
+
+function checkTimeAvailability(counsellor: Counsellor): {
+  isAvailableNow: boolean;
+  nextAvailableTime: string | null;
+  statusOverride: CounsellorStatus | null;
+} {
+  const now = new Date();
+  const currentDay = DAYS_OF_WEEK[now.getDay()];
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const { availableHours } = counsellor;
+
+  const todayInSchedule = availableHours.days.some(
+    (d) => d.toLowerCase() === currentDay.toLowerCase(),
+  );
+
+  if (!todayInSchedule) {
+    for (let i = 1; i <= 7; i++) {
+      const nextDay = DAYS_OF_WEEK[(now.getDay() + i) % 7];
+      if (availableHours.days.some((d) => d.toLowerCase() === nextDay.toLowerCase())) {
+        return {
+          isAvailableNow: false,
+          nextAvailableTime: `${nextDay} at ${availableHours.start}`,
+          statusOverride: "offline",
+        };
+      }
+    }
+    return { isAvailableNow: false, nextAvailableTime: null, statusOverride: "offline" };
+  }
+
+  const [startH, startM] = availableHours.start.split(":").map(Number);
+  const [endH, endM] = availableHours.end.split(":").map(Number);
+  const startMinutes = startH * 60 + startM;
+  const endMinutes = endH * 60 + endM;
+  const isAvailableNow = currentMinutes >= startMinutes && currentMinutes < endMinutes;
+  const statusOverride: CounsellorStatus = isAvailableNow ? "available" : "offline";
+
+  if (!isAvailableNow) {
+    if (currentMinutes < startMinutes) {
+      return { isAvailableNow: false, nextAvailableTime: `Today at ${availableHours.start}`, statusOverride };
+    }
+    for (let i = 1; i <= 7; i++) {
+      const nextDay = DAYS_OF_WEEK[(now.getDay() + i) % 7];
+      if (availableHours.days.some((d) => d.toLowerCase() === nextDay.toLowerCase())) {
+        return { isAvailableNow: false, nextAvailableTime: `${nextDay} at ${availableHours.start}`, statusOverride };
+      }
+    }
+  }
+
+  return { isAvailableNow, nextAvailableTime: null, statusOverride };
+}
 
 export default function CounsellorsPage() {
   const { user, loading } = useAuth();
@@ -32,6 +88,7 @@ export default function CounsellorsPage() {
   const [counsellors, setCounsellors] =
     useState<Counsellor[]>(COUNSELLOR_DIRECTORY);
   const [showFilters, setShowFilters] = useState(false);
+  const [loadingCounsellors, setLoadingCounsellors] = useState(true);
   const selectedCounsellorId = searchParams.get("counsellorId");
 
   // Redirect if not authenticated
@@ -40,6 +97,30 @@ export default function CounsellorsPage() {
       router.push("/auth/login");
     }
   }, [user, loading, router]);
+
+  // Load counsellors from Firestore with real-time availability
+  useEffect(() => {
+    if (!user) return;
+    const loadCounsellors = async () => {
+      try {
+        const firestoreCounsellors = await getCounsellors();
+        if (firestoreCounsellors.length > 0) {
+          const withAvailability = firestoreCounsellors.map((c) => {
+            const { statusOverride } = checkTimeAvailability(c);
+            const effectiveStatus =
+              statusOverride === "available" ? "available" : c.status;
+            return { ...c, status: effectiveStatus as CounsellorStatus };
+          });
+          setCounsellors(withAvailability);
+        }
+      } catch {
+        // Keep static directory as fallback
+      } finally {
+        setLoadingCounsellors(false);
+      }
+    };
+    loadCounsellors();
+  }, [user]);
 
   // Filter and sort counsellors
   const filteredCounsellors = useMemo(() => {

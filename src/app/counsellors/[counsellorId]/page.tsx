@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -8,14 +8,29 @@ import Header from "@/components/layout/Header";
 import BottomNav from "@/components/layout/BottomNav";
 import { useAuth } from "@/context/AuthContext";
 import { getCounsellorById } from "@/lib/counsellors";
+import { getCounsellor as getCounsellorFromFirestore } from "@/lib/firestore";
+import { Counsellor, CounsellorStatus } from "@/types";
 
 export default function CounsellorProfilePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const params = useParams<{ counsellorId: string }>();
-
-  const counsellor = getCounsellorById(params.counsellorId);
+  const [counsellor, setCounsellor] = useState<Counsellor | null>(() =>
+    getCounsellorById(params.counsellorId),
+  );
   const canContact = Boolean(counsellor);
+
+  useEffect(() => {
+    const loadFromFirestore = async () => {
+      try {
+        const fsCounsellor = await getCounsellorFromFirestore(params.counsellorId);
+        if (fsCounsellor) setCounsellor(fsCounsellor);
+      } catch {
+        // Keep static fallback
+      }
+    };
+    if (params.counsellorId) loadFromFirestore();
+  }, [params.counsellorId]);
 
   useEffect(() => {
     if (!loading && !user) {
