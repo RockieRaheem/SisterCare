@@ -8,7 +8,22 @@ export interface UserProfile {
   updatedAt: Date;
   onboardingCompleted: boolean;
   cycleData: CycleData | null;
+  pregnancyData: PregnancyData | null;
   preferences: UserPreferences;
+}
+
+export interface PregnancyData {
+  isPregnant: boolean;
+  estimatedDueDate?: Date;
+  lastMenstrualPeriodDate?: Date;
+  trimester?: "first" | "second" | "third";
+  weeksPregnant?: number;
+  conceptionDate?: Date;
+  notes?: string;
+  gaveBirth: boolean;
+  birthDate?: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface CycleData {
@@ -119,7 +134,9 @@ export interface AgentEvent {
     | "handoff_offered"
     | "handoff_connected"
     | "cycle_confirmation_prompted"
-    | "cycle_updated";
+    | "cycle_updated"
+    | "pregnancy_updated"
+    | "birth_recorded";
   severity?: TriageSeverity;
   conversationId?: string;
   success?: boolean;

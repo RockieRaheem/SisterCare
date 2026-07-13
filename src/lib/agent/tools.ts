@@ -291,6 +291,73 @@ export const AGENT_TOOLS = [
     },
   },
   {
+    name: "update_pregnancy_status",
+    description:
+      "Record that the user is pregnant, or update their pregnancy information including estimated due date, trimester, and weeks pregnant. Also use this to set a pregnancy reminder. When the user says they're pregnant, ask for the estimated due date or last period date to calculate the due date.",
+    parameters: {
+      type: "object",
+      properties: {
+        userId: {
+          type: "string",
+          description: "The user's unique identifier",
+        },
+        isPregnant: {
+          type: "boolean",
+          description: "Whether the user is currently pregnant",
+        },
+        estimatedDueDate: {
+          type: "string",
+          description: "Estimated due date (ISO string, e.g. '2026-12-25')",
+        },
+        trimester: {
+          type: "string",
+          enum: ["first", "second", "third"],
+          description: "Current trimester of pregnancy",
+        },
+        weeksPregnant: {
+          type: "number",
+          description: "How many weeks pregnant the user is",
+        },
+        lastMenstrualPeriodDate: {
+          type: "string",
+          description: "First day of last menstrual period before pregnancy (ISO string). Used to calculate due date.",
+        },
+        notes: {
+          type: "string",
+          description: "Additional notes about the pregnancy",
+        },
+      },
+      required: ["userId", "isPregnant"],
+    },
+  },
+  {
+    name: "record_birth",
+    description:
+      "Record that the user has given birth. This clears pregnancy tracking data and resumes normal menstrual cycle tracking using the birth date as the starting point for the new cycle. Use this when the user says they've given birth or their baby has arrived.",
+    parameters: {
+      type: "object",
+      properties: {
+        userId: {
+          type: "string",
+          description: "The user's unique identifier",
+        },
+        birthDate: {
+          type: "string",
+          description: "Date the baby was born (ISO string, defaults to today)",
+        },
+        babyHealth: {
+          type: "string",
+          description: "How the baby is doing (optional, e.g. 'healthy', 'needs care')",
+        },
+        motherHealth: {
+          type: "string",
+          description: "How the mother is feeling after birth (optional)",
+        },
+      },
+      required: ["userId"],
+    },
+  },
+  {
     name: "get_personalized_tips",
     description:
       "Get personalized health tips based on the user's current cycle phase, recent symptoms, and health goals. Use this to provide tailored advice.",

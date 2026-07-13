@@ -449,6 +449,20 @@ function shouldPromptCycleConfirmation(cycleData?: {
   return info.daysUntilNextPeriod <= 1 || info.isPeriodLate;
 }
 
+function isSignificantlyOverdue(cycleData?: {
+  lastPeriodDate: string | Date;
+  cycleLength: number;
+  periodLength: number;
+}): boolean {
+  if (!cycleData) return false;
+  const info = getCycleInfo(
+    new Date(cycleData.lastPeriodDate),
+    cycleData.cycleLength,
+    cycleData.periodLength,
+  );
+  return info.daysLate >= 7;
+}
+
 /**
  * Check for crisis situations - these need immediate human-written responses
  * The agent is bypassed for safety-critical situations
@@ -1228,17 +1242,35 @@ export async function POST(request: NextRequest) {
             currentPhase: cycleData.currentPhase,
           }
         : undefined,
+      pregnancyData: userProfile?.pregnancyData
+        ? {
+            isPregnant: userProfile.pregnancyData.isPregnant ?? false,
+            estimatedDueDate:
+              userProfile.pregnancyData.estimatedDueDate?.toISOString(),
+            trimester: userProfile.pregnancyData.trimester,
+            weeksPregnant: userProfile.pregnancyData.weeksPregnant,
+            gaveBirth: userProfile.pregnancyData.gaveBirth ?? false,
+            birthDate: userProfile.pregnancyData.birthDate?.toISOString(),
+          }
+        : undefined,
       conversationHistory,
     });
 
     let responseText = agentResult.response;
 
+    const isPregnant = userProfile?.pregnancyData?.isPregnant ?? false;
     if (
+      !isPregnant &&
       shouldPromptCycleConfirmation(cycleData) &&
       !PERIOD_START_PATTERN.test(trimmedMessage)
     ) {
-      responseText +=
-        "\n\nQuick check-in: did your period start already? If yes, please share the exact start date so I can update your cycle predictions accurately.";
+      if (isSignificantlyOverdue(cycleData)) {
+        responseText +=
+          "\n\nI noticed your period is a bit later than expected. Did it start? If not, we can talk through it — sometimes stress or other factors can cause a delay. And if you think you might be pregnant, I'm here to support you every step of the way.";
+      } else {
+        responseText +=
+          "\n\nQuick check-in: did your period start already? If yes, please share the exact start date so I can update your cycle predictions accurately.";
+      }
 
       actionStatuses.push({
         key: "cycle-confirmation",

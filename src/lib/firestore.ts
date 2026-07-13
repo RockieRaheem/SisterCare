@@ -18,6 +18,7 @@ import { db } from "./firebase";
 import {
   UserProfile,
   CycleData,
+  PregnancyData,
   UserPreferences,
   ChatMessage,
   ChatConversation,
@@ -61,6 +62,7 @@ export async function createUserProfile(
     updatedAt: new Date(),
     onboardingCompleted: false,
     cycleData: null,
+    pregnancyData: null,
     preferences: DEFAULT_PREFERENCES,
   };
 
@@ -91,6 +93,17 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
             ...data.cycleData,
             lastPeriodDate: data.cycleData.lastPeriodDate?.toDate(),
             nextPeriodDate: data.cycleData.nextPeriodDate?.toDate(),
+          }
+        : null,
+      pregnancyData: data.pregnancyData
+        ? {
+            ...data.pregnancyData,
+            estimatedDueDate: data.pregnancyData.estimatedDueDate?.toDate(),
+            lastMenstrualPeriodDate: data.pregnancyData.lastMenstrualPeriodDate?.toDate(),
+            conceptionDate: data.pregnancyData.conceptionDate?.toDate(),
+            birthDate: data.pregnancyData.birthDate?.toDate(),
+            createdAt: data.pregnancyData.createdAt?.toDate(),
+            updatedAt: data.pregnancyData.updatedAt?.toDate(),
           }
         : null,
     } as UserProfile;
@@ -335,6 +348,90 @@ export async function completeOnboarding(
       nextPeriodDate: Timestamp.fromDate(nextPeriodDate),
     },
     onboardingCompleted: true,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+// ============================================
+// PREGNANCY DATA OPERATIONS
+// ============================================
+
+/**
+ * Save or update pregnancy data for a user
+ */
+export async function savePregnancyData(
+  uid: string,
+  pregnancyData: Partial<PregnancyData>,
+): Promise<void> {
+  const docRef = doc(db, "users", uid);
+  const userDoc = await getDoc(docRef);
+
+  if (userDoc.exists()) {
+    const currentPreg = userDoc.data().pregnancyData || {};
+    const timestamp = new Date();
+    const updatedPregnancyData = {
+      ...currentPreg,
+      ...pregnancyData,
+      updatedAt: timestamp,
+      isPregnant: pregnancyData.isPregnant ?? currentPreg.isPregnant ?? false,
+      gaveBirth: pregnancyData.gaveBirth ?? currentPreg.gaveBirth ?? false,
+      estimatedDueDate: pregnancyData.estimatedDueDate
+        ? Timestamp.fromDate(pregnancyData.estimatedDueDate)
+        : currentPreg.estimatedDueDate,
+      lastMenstrualPeriodDate: pregnancyData.lastMenstrualPeriodDate
+        ? Timestamp.fromDate(pregnancyData.lastMenstrualPeriodDate)
+        : currentPreg.lastMenstrualPeriodDate,
+      conceptionDate: pregnancyData.conceptionDate
+        ? Timestamp.fromDate(pregnancyData.conceptionDate)
+        : currentPreg.conceptionDate,
+      birthDate: pregnancyData.birthDate
+        ? Timestamp.fromDate(pregnancyData.birthDate)
+        : currentPreg.birthDate,
+      createdAt: currentPreg.createdAt || Timestamp.fromDate(timestamp),
+    };
+
+    await updateDoc(docRef, {
+      pregnancyData: updatedPregnancyData,
+      updatedAt: serverTimestamp(),
+    });
+  }
+}
+
+/**
+ * Clear pregnancy data and resume normal cycle tracking after birth
+ */
+export async function clearPregnancyData(uid: string): Promise<void> {
+  const docRef = doc(db, "users", uid);
+  await updateDoc(docRef, {
+    pregnancyData: null,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/**
+ * Resume cycle tracking after birth by setting the birth date as last period start
+ */
+export async function updateCycleAfterBirth(
+  uid: string,
+  birthDate: Date,
+  cycleLength: number = 28,
+  periodLength: number = 5,
+): Promise<void> {
+  const nextPeriodDate = calculateNextPeriod(birthDate, cycleLength);
+  const { phase } = getCurrentPhase(birthDate, cycleLength, periodLength);
+
+  const docRef = doc(db, "users", uid);
+  await updateDoc(docRef, {
+    cycleData: {
+      lastPeriodDate: Timestamp.fromDate(birthDate),
+      cycleLength,
+      periodLength,
+      nextPeriodDate: Timestamp.fromDate(nextPeriodDate),
+      currentPhase: phase,
+      symptoms: [],
+      history: [],
+    },
+    pregnancyData: null,
     updatedAt: serverTimestamp(),
   });
 }

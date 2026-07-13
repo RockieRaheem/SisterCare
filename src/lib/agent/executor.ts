@@ -23,6 +23,9 @@ import {
   getSymptoms,
   saveCycleData,
   calculateNextPeriod,
+  savePregnancyData,
+  clearPregnancyData,
+  updateCycleAfterBirth,
 } from "../firestore";
 import { MoodType, FlowIntensity } from "@/types";
 
@@ -39,10 +42,20 @@ interface ToolResult {
   error?: string;
 }
 
+interface PregnancyDataContext {
+  isPregnant: boolean;
+  estimatedDueDate?: string;
+  trimester?: string;
+  weeksPregnant?: number;
+  gaveBirth: boolean;
+  birthDate?: string;
+}
+
 interface AgentContext {
   userId?: string;
   userProfile?: UserProfileData;
   cycleData?: CycleDataContext;
+  pregnancyData?: PregnancyDataContext;
   conversationHistory: Array<{ role: string; content: string }>;
 }
 
@@ -74,7 +87,7 @@ const AGENT_SYSTEM_PROMPT = `You are "Sister", a warm and caring AI companion on
 
 ### 1. MEMORY & CONTEXT
 - You MUST remember everything discussed in this conversation
-- If the user tells you their period started, REMEMBER IT
+- If the user tells you their period started, REMEMBER IT and call update_period_start
 - If the user gives you a name to call yourself, USE THAT NAME from then on
 - When asked "what is my name" - check the USER'S NAME field in your context
 - If asked about their cycle and you have CYCLE DATA, use it to calculate the answer
@@ -85,25 +98,48 @@ const AGENT_SYSTEM_PROMPT = `You are "Sister", a warm and caring AI companion on
 - When user reports symptoms → Call log_symptoms tool
 - NEVER say "I don't know" if you have tools that can find the answer
 
-### 3. CONVERSATIONAL STYLE
+### 3. PREGNANCY TRACKING
+- If the user says they are pregnant (e.g., "I'm pregnant", "I think I'm pregnant", "I am expecting"):
+  1. Congratulate them warmly 💜
+  2. Politely ask for their estimated due date OR the first day of their last period to calculate the due date and trimester
+  3. Call the update_pregnancy_status tool with isPregnant=true and the date info
+  4. Set a reminder for prenatal check-ups if appropriate
+- Once pregnancy is recorded, YOU MUST:
+  - Give pregnancy-appropriate advice (nutrition, rest, antenatal care)
+  - Talk about their pregnancy context in future conversations
+  - Remind them about the importance of antenatal visits
+  - Do NOT ask about their period or cycle while pregnant
+- When the user says they have given birth ("I gave birth", "the baby is here", "I delivered"):
+  1. Congratulate them warmly
+  2. Call the record_birth tool with the birth date
+  3. Resume normal cycle tracking after birth
+  4. Offer postpartum care advice
+
+### 4. OVERDUE PERIOD PROMPTING
+- If cycle data shows the period is late/overdue, gently ask if it started
+- If user says "not yet" or "no", acknowledge and say you'll check again later
+- If user says "I'm late" or "could I be pregnant", respond supportively and suggest a pregnancy test
+- Track repeated "not yet" responses and keep checking naturally in future chats
+
+### 5. CONVERSATIONAL STYLE
 - Be warm but not overly formal - talk like a caring older sister
 - Don't repeat the same greeting ("Hello! I'm Sister...") in every message
 - Reference what the user JUST said
 - Keep responses concise - 2-4 sentences usually enough
 - Use 1-2 emojis max (💜, 🌸, 🌷)
 
-### 4. HANDLING UNKNOWN SITUATIONS
+### 6. HANDLING UNKNOWN SITUATIONS
 - If you don't have cycle data: "I don't have your cycle info yet. Let me help you set it up in Settings."
 - If asked something you can't answer: "I'm not sure about that, but I can help you with..."
 - NEVER say "I'm sorry, I'm having trouble" unless there's an actual error
 - NEVER say "I'm not sure how to respond to that" - always try your best
 
-### 5. PERSONALIZATION
+### 7. PERSONALIZATION
 - If the user asks you to choose a name, pick a caring African/Ugandan name starting with their requested letter
 - Remember nicknames they give you or ask you to use
 - Address them by their name when you know it
 
-### 6. LANGUAGE ENFORCEMENT
+### 8. LANGUAGE ENFORCEMENT
 - If the user message contains a line in this exact format: "MANDATORY LANGUAGE MODE: <Language>", you MUST write the entire reply only in that language
 - When this mode is present, never answer in English
 - Keep the same empathy and helpfulness while using the required language
@@ -116,6 +152,8 @@ const AGENT_SYSTEM_PROMPT = `You are "Sister", a warm and caring AI companion on
 ## Examples of GOOD responses:
 - User: "how many days until my period?" → "You have 12 days until your next period, which should start around March 15th. 🌸"
 - User: "my period started" → "Got it! I've updated your cycle. Your next period should be around April 2nd. How are you feeling? 💜"
+- User: "I'm pregnant" → "Oh wow, congratulations! 🎉💜 I'm so happy for you! Do you know your estimated due date or when your last period was? That will help me calculate your due date and trimester so I can support you throughout your journey."
+- User: "I gave birth yesterday" → "Congratulations on your beautiful baby! 🎉💜 I've updated your profile to begin tracking your cycles again. How are you and the baby feeling? Remember to rest and accept help when offered."
 - User: "what's my name?" → "Your name is [name from context]. How can I help you today?"
 
 ## Examples of BAD responses (NEVER DO THESE):
@@ -486,6 +524,98 @@ async function executeTool(
             action: persisted
               ? "Your cycle data has been updated. Predictions will now be more accurate."
               : "Period recorded. Sign in to save your data permanently.",
+            persisted,
+          },
+          success: true,
+        };
+      }
+
+      case "update_pregnancy_status": {
+        const isPregnant = args.isPregnant as boolean;
+        const dueDate = args.estimatedDueDate
+          ? new Date(args.estimatedDueDate as string)
+          : null;
+        const trimester = args.trimester as string | undefined;
+        const weeksPregnant = args.weeksPregnant as number | undefined;
+        const lmpDate = args.lastMenstrualPeriodDate
+          ? new Date(args.lastMenstrualPeriodDate as string)
+          : null;
+        const notes = args.notes as string | undefined;
+
+        // If we have LMP but no due date, calculate due date (40 weeks from LMP)
+        let calculatedDueDate = dueDate;
+        if (!calculatedDueDate && lmpDate) {
+          calculatedDueDate = new Date(lmpDate);
+          calculatedDueDate.setDate(calculatedDueDate.getDate() + 280); // 40 weeks
+        }
+
+        let persisted = false;
+        if (context.userId) {
+          try {
+            await savePregnancyData(context.userId, {
+              isPregnant,
+              estimatedDueDate: calculatedDueDate || undefined,
+              lastMenstrualPeriodDate: lmpDate || undefined,
+              trimester: (trimester as "first" | "second" | "third") || undefined,
+              weeksPregnant,
+              notes,
+              gaveBirth: false,
+            });
+            persisted = true;
+          } catch (error) {
+            console.error("[Agent] Failed to save pregnancy data:", error);
+          }
+        }
+
+        return {
+          toolName: name,
+          result: {
+            success: true,
+            isPregnant,
+            estimatedDueDate: calculatedDueDate?.toISOString() || null,
+            trimester: trimester || (calculatedDueDate ? calculateTrimester(calculatedDueDate) : null),
+            message: isPregnant
+              ? `Pregnancy recorded. Due date: ${calculatedDueDate?.toLocaleDateString() || "to be confirmed"}.`
+              : "Pregnancy status updated.",
+            persisted,
+          },
+          success: true,
+        };
+      }
+
+      case "record_birth": {
+        const birthDate = args.birthDate
+          ? new Date(args.birthDate as string)
+          : new Date();
+        const motherHealth = args.motherHealth as string | undefined;
+
+        let persisted = false;
+        if (context.userId) {
+          try {
+            // Save birth info to pregnancy data
+            await savePregnancyData(context.userId, {
+              gaveBirth: true,
+              birthDate,
+              isPregnant: false,
+              notes: motherHealth ? `After birth: ${motherHealth}` : undefined,
+            });
+            // Resume cycle tracking with birth date as new cycle start
+            const cycleLength = context.cycleData?.cycleLength || 28;
+            const periodLength = context.cycleData?.periodLength || 5;
+            await updateCycleAfterBirth(context.userId, birthDate, cycleLength, periodLength);
+            persisted = true;
+          } catch (error) {
+            console.error("[Agent] Failed to record birth:", error);
+          }
+        }
+
+        return {
+          toolName: name,
+          result: {
+            success: true,
+            birthDate: birthDate.toISOString(),
+            message: `Birth recorded for ${birthDate.toLocaleDateString()}. Your cycle tracking has resumed.`,
+            motherHealth: motherHealth || "Not specified",
             persisted,
           },
           success: true,
@@ -1610,6 +1740,30 @@ IMPORTANT: When asked "when is my next period" or "how many days until my period
     enhancedSystemPrompt += `\n\n=== CYCLE DATA ===\nNo cycle data available. If user asks about their cycle, say:\n"I don't have your cycle information yet. Would you like to set it up? You can do this in Settings or just tell me when your last period started."\n===================`;
   }
 
+  // Inject pregnancy context
+  if (context.pregnancyData) {
+    const pd = context.pregnancyData;
+    if (pd.isPregnant) {
+      enhancedSystemPrompt += `\n\n=== PREGNANCY DATA ===
+The user is CURRENTLY PREGNANT.
+Due date: ${pd.estimatedDueDate ? new Date(pd.estimatedDueDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "Not yet provided"}
+Trimester: ${pd.trimester || "Not yet determined"}
+Weeks pregnant: ${pd.weeksPregnant ? `${pd.weeksPregnant} weeks` : "Not yet calculated"}
+
+IMPORTANT:
+- Do NOT ask about periods or cycle while the user is pregnant
+- Give pregnancy-appropriate advice when asked
+- If the user says they've given birth, call record_birth tool
+===========================`;
+    } else if (pd.gaveBirth) {
+      enhancedSystemPrompt += `\n\n=== POSTPARTUM DATA ===
+The user has recently given birth (birth date: ${pd.birthDate ? new Date(pd.birthDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "recently"}).
+Cycle tracking has resumed from the birth date.
+Offer postpartum care advice when appropriate.
+===========================`;
+    }
+  }
+
   const requestBody = {
     contents,
     systemInstruction: {
@@ -1769,6 +1923,23 @@ IMPORTANT: When asked "when is my next period" or "how many days until my period
     toolsUsed,
     actions,
   };
+}
+
+/**
+ * Calculate trimester from due date (rough estimate based on current date vs due date)
+ */
+function calculateTrimester(dueDate: Date): string {
+  const now = new Date();
+  const totalPregnancyDays = 280; // 40 weeks
+  const daysElapsed = Math.floor(
+    (dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+  );
+  const daysPregnant = totalPregnancyDays - daysElapsed;
+  const weeksPregnant = Math.floor(daysPregnant / 7);
+
+  if (weeksPregnant <= 13) return "first";
+  if (weeksPregnant <= 27) return "second";
+  return "third";
 }
 
 // Clean and format response for chat display
