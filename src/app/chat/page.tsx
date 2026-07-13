@@ -217,6 +217,10 @@ export default function ChatPage() {
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  // Pin is a client-only convenience (localStorage per user) - no Firestore
+  // schema change needed since it never has to sync across devices to be
+  // useful, and keeps this a pure presentation feature.
+  const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const conversationsRef = useRef<ChatConversation[]>([]);
@@ -436,6 +440,35 @@ export default function ChatPage() {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!user || typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(`sistercare-pinned-${user.uid}`);
+      if (raw) setPinnedIds(new Set(JSON.parse(raw)));
+    } catch {
+      // Corrupt/old value - ignore and start fresh.
+    }
+  }, [user]);
+
+  const togglePinned = useCallback(
+    (conversationId: string) => {
+      if (!user) return;
+      setPinnedIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(conversationId)) next.delete(conversationId);
+        else next.add(conversationId);
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(
+            `sistercare-pinned-${user.uid}`,
+            JSON.stringify(Array.from(next)),
+          );
+        }
+        return next;
+      });
+    },
+    [user],
+  );
 
   const handleSignOut = useCallback(async () => {
     setSigningOut(true);
@@ -1114,11 +1147,18 @@ export default function ChatPage() {
     (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime(),
   );
 
-  const filteredConversations = sortedConversations.filter((conv) =>
-    conv.title?.toLowerCase().includes(searchQuery.toLowerCase()),
+  const matchesSearch = (conv: ChatConversation) =>
+    (conv.title || "").toLowerCase().includes(searchQuery.toLowerCase());
+
+  const pinnedConversations = sortedConversations.filter(
+    (conv) => pinnedIds.has(conv.id) && matchesSearch(conv),
   );
 
-  // Group conversations by date
+  const filteredConversations = sortedConversations.filter(
+    (conv) => !pinnedIds.has(conv.id) && matchesSearch(conv),
+  );
+
+  // Group the remaining (unpinned) conversations by date
   const groupedConversations = filteredConversations.reduce(
     (acc, conv) => {
       const dateKey = formatDate(conv.updatedAt);
@@ -1133,12 +1173,6 @@ export default function ChatPage() {
     activeConversation?.title || "Start a conversation";
 
   const continueRecentChats = sortedConversations.slice(0, 4);
-
-  const formatConversationTime = (date: Date) =>
-    date.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
 
   // Derives which empty-state hero to show. Same three mutually-exclusive
   // conditions the page already used, just centralized so we render one
@@ -1169,12 +1203,176 @@ export default function ChatPage() {
           showIcebreakers: false,
         };
 
+  // Shared row renderer for both the Pinned section and the date-grouped
+  // list below it, so the two never visually drift apart.
+  const renderConversationRow = (conversation: ChatConversation) => {
+    const isActive = activeConversationId === conversation.id;
+    const isPinned = pinnedIds.has(conversation.id);
+    const isBusy = actionLoading === conversation.id;
+
+    if (editingTitle === conversation.id) {
+      return (
+        <div className="px-2 py-1">
+          <input
+            type="text"
+            value={editTitleValue}
+            onChange={(e) => setEditTitleValue(e.target.value)}
+            onBlur={() => handleRenameChat(conversation.id)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleRenameChat(conversation.id);
+              if (e.key === "Escape") setEditingTitle(null);
+            }}
+            className="w-full rounded-lg border-2 border-primary bg-white px-3 py-2 text-sm text-text-primary focus:outline-none dark:bg-gray-800 dark:text-white"
+            autoFocus
+          />
+        </div>
+      );
+    }
+
+    if (deleteConfirm === conversation.id) {
+      return (
+        <div className="mx-1 space-y-2 rounded-xl bg-red-50 p-3 dark:bg-red-900/20">
+          <p className="text-xs font-medium text-red-600 dark:text-red-400">
+            Delete this chat? This can&apos;t be undone.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleDeleteChat(conversation.id)}
+              disabled={actionLoading === `delete-${conversation.id}`}
+              className="flex-1 rounded-lg bg-red-500 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-600 disabled:opacity-50"
+            >
+              {actionLoading === `delete-${conversation.id}` ? (
+                <div className="mx-auto h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              ) : (
+                "Delete"
+              )}
+            </button>
+            <button
+              onClick={() => setDeleteConfirm(null)}
+              className="flex-1 rounded-lg bg-gray-200 px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div
+        onClick={() => !isBusy && openConversationFromSidebar(conversation.id)}
+        className={`flex w-full cursor-pointer items-center gap-2.5 rounded-lg border-l-[3px] py-2 pr-2 text-left transition-colors ${
+          isBusy ? "cursor-wait opacity-50" : ""
+        } ${
+          isActive
+            ? "border-l-primary bg-primary/[0.08] pl-[9px] dark:bg-primary/[0.12]"
+            : "border-l-transparent pl-3 hover:bg-black/[0.04] dark:hover:bg-white/[0.05]"
+        }`}
+      >
+        <div className="min-w-0 flex-1">
+          <p
+            className={`truncate text-[13px] font-medium ${
+              isActive
+                ? "text-primary dark:text-white"
+                : "text-text-primary dark:text-gray-200"
+            }`}
+          >
+            {isBusy ? "Loading..." : conversation.title || "Untitled"}
+          </p>
+          <p className="mt-0.5 truncate text-xs text-text-secondary/80 dark:text-gray-500">
+            {conversation.lastMessage || "No messages yet"}
+          </p>
+        </div>
+
+        {/* Actions - hover-reveal on desktop, always visible on touch */}
+        <div className="relative flex shrink-0 items-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              togglePinned(conversation.id);
+            }}
+            className={`rounded-md p-1.5 transition-colors hover:bg-black/[0.06] dark:hover:bg-white/10 ${
+              isPinned ? "text-primary" : "text-text-secondary dark:text-gray-400"
+            }`}
+            title={isPinned ? "Unpin" : "Pin"}
+          >
+            <span
+              className="material-symbols-outlined text-sm"
+              style={isPinned ? { fontVariationSettings: "'FILL' 1" } : undefined}
+            >
+              push_pin
+            </span>
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setConversationMenuOpen((prev) =>
+                prev === conversation.id ? null : conversation.id,
+              );
+            }}
+            className="rounded-md p-1.5 text-text-secondary transition-colors hover:bg-black/[0.06] dark:text-gray-400 dark:hover:bg-white/10"
+            title="More options"
+          >
+            <span className="material-symbols-outlined text-sm">
+              more_horiz
+            </span>
+          </button>
+
+          {conversationMenuOpen === conversation.id && (
+            <div className="absolute right-0 top-8 z-20 w-40 overflow-hidden rounded-xl border border-black/[0.08] bg-white shadow-lg dark:border-white/10 dark:bg-gray-800">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  togglePinned(conversation.id);
+                  setConversationMenuOpen(null);
+                }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-text-primary hover:bg-black/[0.04] dark:text-white dark:hover:bg-white/5"
+              >
+                <span className="material-symbols-outlined text-sm">
+                  push_pin
+                </span>
+                {isPinned ? "Unpin" : "Pin"}
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditTitleValue(conversation.title || "");
+                  setEditingTitle(conversation.id);
+                  setConversationMenuOpen(null);
+                }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-text-primary hover:bg-black/[0.04] dark:text-white dark:hover:bg-white/5"
+              >
+                <span className="material-symbols-outlined text-sm">
+                  edit
+                </span>
+                Rename
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDeleteConfirm(conversation.id);
+                  setConversationMenuOpen(null);
+                }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+              >
+                <span className="material-symbols-outlined text-sm">
+                  delete
+                </span>
+                Delete
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center safe-top safe-bottom">
+      <div className="flex min-h-screen items-center justify-center bg-white safe-top safe-bottom dark:bg-[#140c1b]">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-text-secondary dark:text-gray-400 text-sm sm:text-base">
+          <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-primary border-t-transparent" />
+          <p className="text-sm text-text-secondary dark:text-gray-400">
             Loading chat...
           </p>
         </div>
@@ -1183,19 +1381,16 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="relative flex h-screen flex-col overflow-hidden bg-[radial-gradient(circle_at_top_left,_#f3e5ff_0%,_#f8f4ff_22%,_#f9f8fb_56%,_#ffffff_100%)] dark:bg-background-dark">
-      <div className="pointer-events-none absolute -top-20 left-1/3 h-64 w-64 rounded-full bg-violet-300/30 blur-3xl" />
-      <div className="pointer-events-none absolute -right-20 top-16 h-72 w-72 rounded-full bg-fuchsia-200/35 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-10 -left-24 h-72 w-72 rounded-full bg-sky-200/30 blur-3xl" />
+    <div className="flex h-screen flex-col overflow-hidden bg-white dark:bg-[#140c1b]">
       {/* Main Header - Same as other pages */}
       <Header variant="app" />
 
       {/* Main Content Area */}
-      <div className="relative z-10 flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden">
         {/* Sidebar Overlay for Mobile */}
         <div
-          className={`fixed inset-0 z-40 bg-[#1b1025]/45 backdrop-blur-sm transition-all duration-300 lg:hidden ${
-            sidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+          className={`fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] transition-opacity duration-200 lg:hidden ${
+            sidebarOpen ? "opacity-100" : "pointer-events-none opacity-0"
           }`}
           onClick={() => setSidebarOpen(false)}
         />
@@ -1204,49 +1399,48 @@ export default function ChatPage() {
         <aside
           className={`
             fixed z-50 flex h-[calc(100vh-65px)] flex-col
-            border-r border-white/60 bg-white/84 backdrop-blur-2xl
-            transition-all duration-300 ease-out dark:border-border-dark dark:bg-card-dark/96
+            border-r border-black/[0.07] bg-[#faf9fb]
+            transition-all duration-200 ease-out dark:border-white/[0.08] dark:bg-[#180f20]
             lg:relative
             ${sidebarOpen ? "translate-x-0 shadow-2xl shadow-black/20" : "-translate-x-full lg:translate-x-0"}
-            ${sidebarCollapsed ? "lg:w-[4.5rem]" : "lg:w-80"}
+            ${sidebarCollapsed ? "lg:w-[4.25rem]" : "lg:w-[17.5rem]"}
             w-[86vw] xs:w-80 sm:w-[22rem]
           `}
         >
-          <div className="flex flex-col h-full">
+          <div className="flex h-full flex-col">
             {/* Sidebar Header */}
-            <div className="border-b border-violet-100/80 p-3 sm:p-4 dark:border-border-dark">
-              <div className="mb-2 flex items-center justify-between gap-2">
-              <div
-                className={`flex min-w-0 items-center gap-2 sm:gap-3 ${sidebarCollapsed ? "lg:hidden" : ""}`}
+            <div
+              className={`flex items-center gap-2 p-3 ${sidebarCollapsed ? "lg:justify-center lg:px-2" : "justify-between"}`}
+            >
+              <Link
+                href="/dashboard"
+                className={`flex min-w-0 items-center gap-2.5 ${sidebarCollapsed ? "lg:hidden" : ""}`}
               >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-purple-600 shadow-lg shadow-primary/30 sm:h-10 sm:w-10">
-                  <span className="material-symbols-outlined text-white text-lg sm:text-xl">
-                    chat
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-purple-600">
+                  <span className="material-symbols-outlined text-[18px] text-white">
+                    spa
                   </span>
                 </div>
-                <div className="min-w-0">
-                  <h2 className="truncate text-xs font-semibold tracking-wide text-text-primary dark:text-white sm:text-sm">
-                    SisterCare Dialogue Hub
-                  </h2>
-                  <p className="truncate text-[10px] text-text-secondary dark:text-gray-400 sm:text-xs">
-                    {conversations.length} saved conversation
-                    {conversations.length === 1 ? "" : "s"}
-                  </p>
-                </div>
-              </div>
+                <span className="truncate text-sm font-semibold text-text-primary dark:text-white">
+                  SisterCare
+                </span>
+              </Link>
 
               {sidebarCollapsed && (
-                <div className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-purple-600 shadow-lg shadow-primary/30 lg:flex">
-                  <span className="material-symbols-outlined text-white text-lg">
-                    chat
+                <Link
+                  href="/dashboard"
+                  className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-purple-600 lg:flex"
+                >
+                  <span className="material-symbols-outlined text-[18px] text-white">
+                    spa
                   </span>
-                </div>
+                </Link>
               )}
 
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-0.5">
                 <button
                   onClick={() => setSidebarCollapsed((prev) => !prev)}
-                  className="touch-target hidden rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 lg:flex"
+                  className="hidden rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06] lg:flex"
                   title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
                 >
                   <span className="material-symbols-outlined text-lg">
@@ -1255,44 +1449,32 @@ export default function ChatPage() {
                 </button>
                 <button
                   onClick={() => setSidebarOpen(false)}
-                  className="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg sm:rounded-xl transition-colors lg:hidden touch-target"
+                  className="touch-target rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06] lg:hidden"
                 >
-                  <span className="material-symbols-outlined text-text-secondary dark:text-gray-400 text-xl">
+                  <span className="material-symbols-outlined text-xl">
                     close
                   </span>
                 </button>
               </div>
-              </div>
-
-              {!sidebarCollapsed && (
-                <div className="rounded-xl border border-violet-100 bg-gradient-to-r from-white to-violet-50/70 px-3 py-2 dark:border-border-dark dark:from-card-dark dark:to-card-dark/80">
-                  <p className="text-[10px] uppercase tracking-[0.15em] text-text-secondary dark:text-gray-400">
-                    Private and encrypted
-                  </p>
-                  <p className="mt-1 text-xs font-medium text-text-primary dark:text-white">
-                    Your wellbeing conversations stay under your control.
-                  </p>
-                </div>
-              )}
             </div>
 
             {/* New Chat Button */}
-            <div className="p-2.5 sm:p-3">
+            <div className="px-3 pb-2">
               <button
                 onClick={handleNewChat}
                 disabled={actionLoading === "new"}
                 title="New chat"
-                className={`touch-target flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-primary to-purple-600 py-3 text-xs font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:from-primary/95 hover:to-purple-600/95 disabled:opacity-50 sm:text-sm ${sidebarCollapsed ? "lg:px-0" : "px-3 sm:px-4"}`}
+                className={`touch-target flex w-full items-center justify-center gap-2 rounded-xl border border-black/[0.08] bg-white py-2.5 text-sm font-medium text-text-primary shadow-sm transition-colors hover:bg-black/[0.03] disabled:opacity-50 dark:border-white/[0.1] dark:bg-white/[0.03] dark:text-white dark:hover:bg-white/[0.07] ${sidebarCollapsed ? "lg:px-0" : "px-3"}`}
               >
                 {actionLoading === "new" ? (
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                 ) : (
                   <>
-                    <span className="material-symbols-outlined text-xl">
+                    <span className="material-symbols-outlined text-lg text-primary">
                       add
                     </span>
                     <span className={sidebarCollapsed ? "lg:hidden" : ""}>
-                      New Chat
+                      New chat
                     </span>
                   </>
                 )}
@@ -1301,10 +1483,10 @@ export default function ChatPage() {
 
             {/* Search Conversations */}
             <div
-              className={`px-2.5 pb-2 sm:px-3 ${sidebarCollapsed ? "lg:hidden" : ""}`}
+              className={`px-3 pb-3 ${sidebarCollapsed ? "lg:hidden" : ""}`}
             >
               <div className="relative">
-                <span className="material-symbols-outlined absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-text-secondary dark:text-gray-400 text-base sm:text-lg">
+                <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-base text-text-secondary dark:text-gray-500">
                   search
                 </span>
                 <input
@@ -1312,10 +1494,10 @@ export default function ChatPage() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search conversations..."
-                  className="w-full rounded-xl border border-transparent bg-gray-100/90 py-2 pl-9 pr-12 text-xs text-text-primary placeholder:text-text-secondary transition-all focus:border-primary/40 focus:ring-2 focus:ring-primary/35 dark:bg-gray-800 sm:py-2.5 sm:pl-10 sm:pr-14 sm:text-sm"
+                  placeholder="Search chats"
+                  className="w-full rounded-lg border border-transparent bg-black/[0.04] py-2 pl-8 pr-11 text-[13px] text-text-primary placeholder:text-text-secondary/70 transition-colors focus:border-primary/40 focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary/30 dark:bg-white/[0.05] dark:text-white dark:focus:bg-white/[0.08]"
                 />
-                <span className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[9px] font-semibold text-text-secondary dark:border-gray-700 dark:bg-gray-900 dark:text-gray-500 sm:inline-block">
+                <span className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 rounded border border-black/10 px-1.5 py-0.5 text-[9px] font-medium text-text-secondary/70 dark:border-white/10 dark:text-gray-500 sm:inline-block">
                   ⌘K
                 </span>
               </div>
@@ -1323,206 +1505,75 @@ export default function ChatPage() {
 
             {/* Conversations List */}
             <div
-              className={`custom-scrollbar flex-1 space-y-1.5 overflow-y-auto px-2.5 ${sidebarCollapsed ? "lg:hidden" : ""}`}
+              className={`custom-scrollbar flex-1 overflow-y-auto px-2 pb-2 ${sidebarCollapsed ? "lg:hidden" : ""}`}
             >
-              {Object.keys(groupedConversations).length === 0 ? (
-                <div className="text-center py-12 px-4">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-3xl text-text-secondary dark:text-gray-400">
+              {pinnedConversations.length === 0 &&
+              Object.keys(groupedConversations).length === 0 ? (
+                <div className="px-4 py-12 text-center">
+                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-black/[0.04] dark:bg-white/[0.05]">
+                    <span className="material-symbols-outlined text-2xl text-text-secondary dark:text-gray-400">
                       forum
                     </span>
                   </div>
                   <p className="text-sm text-text-secondary dark:text-gray-400">
-                    No conversations yet
+                    {searchQuery ? "No matching chats" : "No conversations yet"}
                   </p>
-                  <p className="text-xs text-text-secondary/60 dark:text-gray-500 mt-1">
-                    Start a new chat to begin
-                  </p>
+                  {!searchQuery && (
+                    <p className="mt-1 text-xs text-text-secondary/60 dark:text-gray-500">
+                      Start a new chat to begin
+                    </p>
+                  )}
                 </div>
               ) : (
-                Object.entries(groupedConversations).map(
-                  ([dateGroup, convs]) => (
-                    <div key={dateGroup} className="mb-4">
-                      <p className="px-3 py-2 text-[11px] font-semibold text-text-secondary dark:text-gray-500 uppercase tracking-wider">
-                        {dateGroup}
+                <>
+                  {pinnedConversations.length > 0 && (
+                    <div className="mb-3">
+                      <p className="flex items-center gap-1 px-2 py-1.5 text-[11px] font-medium uppercase tracking-wide text-text-secondary/70 dark:text-gray-500">
+                        <span className="material-symbols-outlined text-xs">
+                          push_pin
+                        </span>
+                        Pinned
                       </p>
-                      <div className="space-y-1">
-                        {convs.map((conversation) => (
-                          <div key={conversation.id} className="relative group">
-                            {editingTitle === conversation.id ? (
-                              <div className="px-2 py-1">
-                                <input
-                                  type="text"
-                                  value={editTitleValue}
-                                  onChange={(e) =>
-                                    setEditTitleValue(e.target.value)
-                                  }
-                                  onBlur={() =>
-                                    handleRenameChat(conversation.id)
-                                  }
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter")
-                                      handleRenameChat(conversation.id);
-                                    if (e.key === "Escape")
-                                      setEditingTitle(null);
-                                  }}
-                                  className="w-full px-3 py-2 text-sm bg-gray-100 dark:bg-gray-800 border-2 border-primary rounded-lg text-text-primary dark:text-white focus:outline-none"
-                                  autoFocus
-                                />
-                              </div>
-                            ) : deleteConfirm === conversation.id ? (
-                              <div className="mx-2 p-3 bg-red-50 dark:bg-red-900/20 rounded-xl space-y-2">
-                                <p className="text-xs text-red-600 dark:text-red-400 font-medium">
-                                  Delete this chat?
-                                </p>
-                                <div className="flex gap-2">
-                                  <button
-                                    onClick={() =>
-                                      handleDeleteChat(conversation.id)
-                                    }
-                                    disabled={
-                                      actionLoading ===
-                                      `delete-${conversation.id}`
-                                    }
-                                    className="flex-1 px-3 py-1.5 text-xs bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 transition-colors font-medium"
-                                  >
-                                    {actionLoading ===
-                                    `delete-${conversation.id}` ? (
-                                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" />
-                                    ) : (
-                                      "Delete"
-                                    )}
-                                  </button>
-                                  <button
-                                    onClick={() => setDeleteConfirm(null)}
-                                    className="flex-1 px-3 py-1.5 text-xs bg-gray-200 dark:bg-gray-700 text-text-primary dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors font-medium"
-                                  >
-                                    Cancel
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <div
-                                onClick={() =>
-                                  actionLoading !== conversation.id &&
-                                  openConversationFromSidebar(conversation.id)
-                                }
-                                className={`flex w-full cursor-pointer items-center gap-3 rounded-xl border-y border-r py-2.5 pr-3 text-left transition-all ${
-                                  actionLoading === conversation.id
-                                    ? "opacity-50 cursor-wait"
-                                    : ""
-                                } ${
-                                  activeConversationId === conversation.id
-                                    ? "border-y-transparent border-r-transparent border-l-[3px] border-l-primary bg-primary/[0.07] pl-[9px] dark:bg-primary/10"
-                                    : "border-transparent pl-3 hover:bg-black/[0.04] dark:hover:bg-white/5"
-                                }`}
-                              >
-                                <div
-                                  className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${
-                                    activeConversationId === conversation.id
-                                      ? "bg-primary text-white"
-                                      : "bg-gray-100 dark:bg-gray-800 text-text-secondary dark:text-gray-400"
-                                  }`}
-                                >
-                                  <span className="material-symbols-outlined text-base">
-                                    chat_bubble
-                                  </span>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p
-                                    className={`text-sm font-medium truncate ${
-                                      activeConversationId === conversation.id
-                                        ? "text-primary dark:text-white"
-                                        : "text-text-primary dark:text-white"
-                                    }`}
-                                  >
-                                    {actionLoading === conversation.id
-                                      ? "Loading..."
-                                      : conversation.title || "Untitled"}
-                                  </p>
-                                  <p className="text-xs text-text-secondary dark:text-gray-500 truncate mt-0.5">
-                                    {conversation.lastMessage ||
-                                      "No messages yet"}
-                                  </p>
-                                  <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-text-secondary/80 dark:text-gray-500">
-                                    Updated {formatConversationTime(conversation.updatedAt)}
-                                  </p>
-                                </div>
-
-                                {/* Action Buttons */}
-                                <div className="relative flex items-center gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setConversationMenuOpen((prev) =>
-                                        prev === conversation.id
-                                          ? null
-                                          : conversation.id,
-                                      );
-                                    }}
-                                    className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                                    title="Conversation options"
-                                  >
-                                    <span className="material-symbols-outlined text-sm text-text-secondary dark:text-gray-400">
-                                      more_horiz
-                                    </span>
-                                  </button>
-
-                                  {conversationMenuOpen === conversation.id && (
-                                    <div className="absolute right-0 top-8 z-20 w-40 overflow-hidden rounded-xl border border-violet-100 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setEditTitleValue(
-                                            conversation.title || "",
-                                          );
-                                          setEditingTitle(conversation.id);
-                                          setConversationMenuOpen(null);
-                                        }}
-                                        className="flex w-full items-center gap-2 px-3 py-2 text-xs text-left text-text-primary hover:bg-violet-50 dark:text-white dark:hover:bg-gray-700"
-                                      >
-                                        <span className="material-symbols-outlined text-sm">
-                                          edit
-                                        </span>
-                                        Rename
-                                      </button>
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setDeleteConfirm(conversation.id);
-                                          setConversationMenuOpen(null);
-                                        }}
-                                        className="flex w-full items-center gap-2 px-3 py-2 text-xs text-left text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
-                                      >
-                                        <span className="material-symbols-outlined text-sm">
-                                          delete
-                                        </span>
-                                        Delete
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
+                      <div className="space-y-0.5">
+                        {pinnedConversations.map((conversation) => (
+                          <div key={conversation.id} className="group relative">
+                            {renderConversationRow(conversation)}
                           </div>
                         ))}
                       </div>
                     </div>
-                  ),
-                )
+                  )}
+
+                  {Object.entries(groupedConversations).map(
+                    ([dateGroup, convs]) => (
+                      <div key={dateGroup} className="mb-3">
+                        <p className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wide text-text-secondary/70 dark:text-gray-500">
+                          {dateGroup}
+                        </p>
+                        <div className="space-y-0.5">
+                          {convs.map((conversation) => (
+                            <div key={conversation.id} className="group relative">
+                              {renderConversationRow(conversation)}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ),
+                  )}
+                </>
               )}
             </div>
 
             {/* Sidebar Footer - Profile menu */}
-            <div className="relative border-t border-violet-100/80 p-3 dark:border-border-dark">
+            <div className="relative border-t border-black/[0.06] p-2 dark:border-white/[0.08]">
               {profileMenuOpen && (
-                <div className="absolute bottom-full left-3 right-3 z-20 mb-2 overflow-hidden rounded-xl border border-violet-100 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                <div className="absolute bottom-full left-2 right-2 z-20 mb-1.5 overflow-hidden rounded-xl border border-black/[0.08] bg-white py-1 shadow-lg dark:border-white/10 dark:bg-gray-800">
                   <Link
                     href="/settings"
                     onClick={() => setProfileMenuOpen(false)}
-                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs text-text-primary hover:bg-violet-50 dark:text-white dark:hover:bg-gray-700"
+                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13px] text-text-primary hover:bg-black/[0.04] dark:text-white dark:hover:bg-white/5"
                   >
-                    <span className="material-symbols-outlined text-sm">
+                    <span className="material-symbols-outlined text-[18px]">
                       settings
                     </span>
                     Settings
@@ -1530,19 +1581,20 @@ export default function ChatPage() {
                   <Link
                     href="/profile"
                     onClick={() => setProfileMenuOpen(false)}
-                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs text-text-primary hover:bg-violet-50 dark:text-white dark:hover:bg-gray-700"
+                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13px] text-text-primary hover:bg-black/[0.04] dark:text-white dark:hover:bg-white/5"
                   >
-                    <span className="material-symbols-outlined text-sm">
+                    <span className="material-symbols-outlined text-[18px]">
                       account_circle
                     </span>
                     Profile
                   </Link>
+                  <div className="my-1 border-t border-black/[0.06] dark:border-white/[0.08]" />
                   <button
                     onClick={handleSignOut}
                     disabled={signingOut}
-                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs text-red-600 hover:bg-red-50 disabled:opacity-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13px] text-red-600 hover:bg-red-50 disabled:opacity-50 dark:text-red-400 dark:hover:bg-red-900/20"
                   >
-                    <span className="material-symbols-outlined text-sm">
+                    <span className="material-symbols-outlined text-[18px]">
                       logout
                     </span>
                     {signingOut ? "Signing out..." : "Sign out"}
@@ -1551,25 +1603,25 @@ export default function ChatPage() {
               )}
               <button
                 onClick={() => setProfileMenuOpen((prev) => !prev)}
-                className={`flex w-full items-center gap-3 rounded-2xl bg-gradient-to-r from-violet-50 to-white px-3 py-2 text-left transition-colors hover:from-violet-100 dark:from-gray-800 dark:to-gray-800/60 dark:hover:from-gray-700 ${sidebarCollapsed ? "lg:justify-center" : ""}`}
+                className={`flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors hover:bg-black/[0.04] dark:hover:bg-white/[0.06] ${sidebarCollapsed ? "lg:justify-center" : ""}`}
               >
-                <div className="w-9 h-9 shrink-0 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white text-sm font-semibold">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-purple-600 text-[13px] font-semibold text-white">
                   {user?.displayName?.charAt(0) ||
                     user?.email?.charAt(0)?.toUpperCase() ||
                     "U"}
                 </div>
                 <div
-                  className={`flex-1 min-w-0 ${sidebarCollapsed ? "lg:hidden" : ""}`}
+                  className={`min-w-0 flex-1 ${sidebarCollapsed ? "lg:hidden" : ""}`}
                 >
-                  <p className="text-sm font-medium text-text-primary dark:text-white truncate">
+                  <p className="truncate text-[13px] font-medium text-text-primary dark:text-white">
                     {user?.displayName || user?.email?.split("@")[0] || "User"}
                   </p>
-                  <p className="text-xs text-text-secondary dark:text-gray-400 truncate">
+                  <p className="truncate text-xs text-text-secondary dark:text-gray-500">
                     {user?.email}
                   </p>
                 </div>
                 <span
-                  className={`material-symbols-outlined text-base text-text-secondary dark:text-gray-400 ${sidebarCollapsed ? "lg:hidden" : ""}`}
+                  className={`material-symbols-outlined text-base text-text-secondary dark:text-gray-500 ${sidebarCollapsed ? "lg:hidden" : ""}`}
                 >
                   {profileMenuOpen ? "expand_more" : "expand_less"}
                 </span>
@@ -1579,62 +1631,57 @@ export default function ChatPage() {
         </aside>
 
         {/* Main Chat Area */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex min-w-0 flex-1 flex-col">
           {/* Chat Header Bar */}
-          <div className="border-b border-violet-100/80 bg-white/75 px-3 py-3 backdrop-blur-2xl dark:border-border-dark dark:bg-card-dark/92 sm:px-4">
-            <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-2">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between gap-2 border-b border-black/[0.06] px-3 py-2.5 dark:border-white/[0.08] sm:px-4">
+            <div className="flex min-w-0 items-center gap-1">
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors lg:hidden"
+                className="rounded-lg p-2 text-text-secondary transition-colors hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06] lg:hidden"
               >
-                <span className="material-symbols-outlined text-text-primary dark:text-white">
-                  menu
-                </span>
+                <span className="material-symbols-outlined">menu</span>
               </button>
+              {sidebarCollapsed && (
+                <button
+                  onClick={() => setSidebarCollapsed(false)}
+                  className="hidden rounded-lg p-2 text-text-secondary transition-colors hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06] lg:flex"
+                  title="Expand sidebar"
+                >
+                  <span className="material-symbols-outlined">
+                    dock_to_right
+                  </span>
+                </button>
+              )}
               <button
                 onClick={handleNewChat}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+                className="rounded-lg p-2 text-text-secondary transition-colors hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06]"
                 title="New chat"
               >
-                <span className="material-symbols-outlined text-text-primary dark:text-white">
-                  edit_square
-                </span>
+                <span className="material-symbols-outlined">edit_square</span>
               </button>
-            </div>
-
-            <div className="hidden flex-1 items-center justify-center sm:flex">
-              <div className="inline-flex items-center gap-3 rounded-full border border-violet-200/70 bg-white/90 px-4 py-2 shadow-sm dark:border-border-dark dark:bg-gray-800">
-                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="max-w-[260px] truncate text-sm font-medium text-text-primary dark:text-white">
+              <div className="ml-1 flex min-w-0 items-center gap-2">
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
+                <span className="truncate text-sm font-medium text-text-primary dark:text-white">
                   {activeConversationTitle}
-                </span>
-                <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary dark:bg-primary/20 dark:text-primary-light">
-                  Care mode
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1">
               <Link
                 href="/library"
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+                className="rounded-lg p-2 text-text-secondary transition-colors hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06]"
                 title="Library"
               >
-                <span className="material-symbols-outlined text-text-primary dark:text-white">
-                  menu_book
-                </span>
+                <span className="material-symbols-outlined">menu_book</span>
               </Link>
               <Link
                 href="/dashboard"
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+                className="rounded-lg p-2 text-text-secondary transition-colors hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06]"
                 title="Dashboard"
               >
-                <span className="material-symbols-outlined text-text-primary dark:text-white">
-                  dashboard
-                </span>
+                <span className="material-symbols-outlined">dashboard</span>
               </Link>
-            </div>
             </div>
           </div>
 
@@ -1642,12 +1689,11 @@ export default function ChatPage() {
           <div
             ref={messagesContainerRef}
             onScroll={handleMessagesScroll}
-            className="h-full overflow-y-auto bg-transparent"
+            className="h-full overflow-y-auto"
           >
-            <div className="pointer-events-none absolute inset-0 opacity-40 [background-image:radial-gradient(#caa7ea_0.6px,transparent_0.6px)] [background-size:14px_14px] dark:opacity-10" />
-            <div className="relative mx-auto max-w-3xl space-y-4 px-3 py-4 sm:space-y-6 sm:px-4 sm:py-6 lg:px-6">
+            <div className="mx-auto max-w-3xl space-y-4 px-4 py-5 sm:space-y-5 sm:px-6 sm:py-8">
               {error && (
-                <div className="animate-fade-in flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50/90 px-4 py-3 text-sm text-red-700 shadow-sm dark:border-red-800 dark:bg-red-950/35 dark:text-red-300">
+                <div className="animate-fade-in flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
                   <span className="material-symbols-outlined mt-0.5 text-base">
                     error
                   </span>
@@ -1664,51 +1710,9 @@ export default function ChatPage() {
                 </div>
               )}
 
-              {messages.length === 0 && (
-                <div className="rounded-2xl border border-violet-100 bg-white/70 px-4 py-3 shadow-sm backdrop-blur dark:border-border-dark dark:bg-card-dark/80">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-xs font-medium text-text-secondary dark:text-gray-400 sm:text-sm">
-                      Safe, judgment-free support with multilingual guidance.
-                    </p>
-                    <span className="hidden rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 sm:inline-flex">
-                      Live assistant
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {messages.length === 0 && continueRecentChats.length > 0 && (
-                <div className="rounded-2xl border border-violet-100 bg-white/80 p-3 shadow-sm backdrop-blur dark:border-border-dark dark:bg-card-dark/85">
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-secondary dark:text-gray-400">
-                      Continue conversation
-                    </p>
-                    <span className="text-[10px] text-text-secondary dark:text-gray-500">
-                      Recent chats
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {continueRecentChats.map((conversation) => (
-                      <button
-                        key={conversation.id}
-                        onClick={() =>
-                          openConversationFromSidebar(conversation.id)
-                        }
-                        className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${
-                          activeConversationId === conversation.id
-                            ? "border-primary/50 bg-primary/10 text-primary"
-                            : "border-violet-200 bg-white text-text-primary hover:border-primary/45 hover:bg-violet-50 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                        }`}
-                      >
-                        {conversation.title || "Untitled"}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
               {agentActionStatuses.length > 0 && (
-                <div className="bg-white dark:bg-card-dark border border-border-light dark:border-border-dark rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-sm animate-fade-in">
-                  <p className="text-[11px] sm:text-xs uppercase tracking-wide font-semibold text-text-secondary mb-2">
+                <div className="animate-fade-in rounded-xl border border-black/[0.07] bg-black/[0.015] p-3 dark:border-white/10 dark:bg-white/[0.02] sm:p-4">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-text-secondary sm:text-xs">
                     Agent Actions
                   </p>
                   <div className="space-y-1.5">
@@ -1780,34 +1784,38 @@ export default function ChatPage() {
               )}
 
               {messages.length === 0 && !isTyping && (
-                <div className="flex min-h-[45vh] flex-col items-center justify-center px-2 py-6 text-center animate-fade-in sm:min-h-[50vh]">
-                  <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-purple-600 shadow-lg shadow-primary/30">
-                    <span className="material-symbols-outlined text-2xl text-white">
+                <div className="flex min-h-[50vh] flex-col items-center justify-center px-2 py-6 text-center animate-fade-in sm:min-h-[55vh]">
+                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-purple-600 shadow-md shadow-primary/20">
+                    <span className="material-symbols-outlined text-xl text-white">
                       spa
                     </span>
                   </div>
-                  <p className="text-[11px] font-semibold tracking-[0.14em] uppercase text-text-secondary dark:text-gray-400">
+                  <p className="text-[11px] font-semibold tracking-[0.14em] uppercase text-text-secondary dark:text-gray-500">
                     {emptyStateContent.eyebrow}
                   </p>
-                  <h3 className="mt-2 max-w-md text-xl font-bold text-text-primary dark:text-white sm:text-2xl">
+                  <h3 className="mt-2 max-w-md text-xl font-semibold text-text-primary dark:text-white sm:text-2xl">
                     {emptyStateContent.title}
                   </h3>
-                  <p className="mt-2 max-w-sm text-sm text-text-secondary dark:text-gray-300">
+                  <p className="mt-2 max-w-sm text-sm text-text-secondary dark:text-gray-400">
                     {emptyStateContent.subtitle}
+                  </p>
+                  <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-medium text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    Private, judgment-free, and available in multiple languages
                   </p>
 
                   {emptyStateContent.showIcebreakers && (
-                    <div className="mt-6 grid w-full max-w-xl grid-cols-1 gap-2 xs:grid-cols-2">
+                    <div className="mt-7 grid w-full max-w-xl grid-cols-1 gap-2 xs:grid-cols-2">
                       {icebreakers.map((icebreaker) => (
                         <button
                           key={icebreaker.text}
                           onClick={() => sendMessage(icebreaker.text)}
-                          className="group touch-target flex items-center gap-2 rounded-2xl border border-violet-100 bg-white/95 p-2.5 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 sm:gap-3 sm:p-3"
+                          className="group touch-target flex items-center gap-2.5 rounded-xl border border-black/[0.07] bg-white p-2.5 text-left transition-colors hover:border-primary/30 hover:bg-primary/[0.03] dark:border-white/10 dark:bg-white/[0.03] dark:hover:bg-white/[0.06] sm:gap-3 sm:p-3"
                         >
                           <div
-                            className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br ${icebreaker.color} flex items-center justify-center shrink-0`}
+                            className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gradient-to-br ${icebreaker.color} flex items-center justify-center shrink-0`}
                           >
-                            <span className="material-symbols-outlined text-white text-sm sm:text-lg">
+                            <span className="material-symbols-outlined text-white text-sm sm:text-base">
                               {icebreaker.icon}
                             </span>
                           </div>
@@ -1818,153 +1826,160 @@ export default function ChatPage() {
                       ))}
                     </div>
                   )}
+
+                  {!emptyStateContent.showIcebreakers &&
+                    continueRecentChats.length > 0 && (
+                      <div className="mt-7 flex w-full max-w-xl flex-wrap items-center justify-center gap-2">
+                        <span className="text-[11px] font-medium uppercase tracking-wide text-text-secondary/70 dark:text-gray-500">
+                          Jump back in
+                        </span>
+                        {continueRecentChats.map((conversation) => (
+                          <button
+                            key={conversation.id}
+                            onClick={() =>
+                              openConversationFromSidebar(conversation.id)
+                            }
+                            className="rounded-full border border-black/[0.08] bg-white px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:border-primary/40 hover:bg-primary/5 dark:border-white/10 dark:bg-white/[0.04] dark:text-white"
+                          >
+                            {conversation.title || "Untitled"}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                 </div>
               )}
 
               {messages.map((message) => {
                 const isSister = message.sender === "sister";
-                return (
-                  <div
-                    key={message.id}
-                    className={`group animate-fade-in flex gap-2 sm:gap-3 ${isSister ? "" : "flex-row-reverse"}`}
-                  >
-                    {/* Avatar */}
-                    <div
-                      className={`shrink-0 flex h-7 w-7 items-center justify-center rounded-full shadow-sm ring-2 ring-white/80 sm:h-8 sm:w-8 ${
-                        isSister
-                          ? "bg-gradient-to-br from-primary to-purple-600"
-                          : "bg-gradient-to-br from-orange-400 to-pink-500"
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-white text-sm sm:text-base">
-                        {isSister ? "spa" : "person"}
-                      </span>
-                    </div>
 
-                    {/* Message Content */}
-                    <div
-                      className={`flex-1 max-w-[88%] sm:max-w-[78%] ${isSister ? "" : "flex flex-col items-end"}`}
-                    >
-                      <div
-                        className={
-                          isSister
-                            ? "rounded-2xl rounded-tl-sm bg-white/70 px-3.5 py-2.5 dark:bg-white/[0.04] sm:px-4 sm:py-3"
-                            : "rounded-2xl rounded-tr-sm bg-gradient-to-r from-primary to-purple-600 px-3.5 py-2.5 text-white shadow-md sm:px-4 sm:py-3"
-                        }
-                      >
-                        <p
-                          className={`text-[13px] sm:text-sm leading-relaxed whitespace-pre-wrap ${
-                            isSister
-                              ? "text-text-primary dark:text-gray-100"
-                              : "text-white"
-                          }`}
-                        >
-                          {isSister ? (
-                            <StreamedText
-                              text={message.text}
-                              animate={message.animate}
-                              onTick={() => {
-                                if (!showScrollButton) scrollToBottom();
+                // Assistant replies read as plain document text (no card) -
+                // only the user's own messages get a bubble, which is what
+                // actually needs a visual "sent" affordance.
+                if (isSister) {
+                  return (
+                    <div key={message.id} className="group animate-fade-in flex gap-2.5 sm:gap-3">
+                      <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-purple-600 sm:h-7 sm:w-7">
+                        <span className="material-symbols-outlined text-[13px] text-white sm:text-sm">
+                          spa
+                        </span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[13px] leading-relaxed text-text-primary whitespace-pre-wrap dark:text-gray-100 sm:text-[14.5px]">
+                          <StreamedText
+                            text={message.text}
+                            animate={message.animate}
+                            onTick={() => {
+                              if (!showScrollButton) scrollToBottom();
+                            }}
+                          />
+                        </p>
+
+                        {message.audio && (
+                          <div className="mt-2.5 flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                const audio = audioElements[message.id];
+                                if (audio) {
+                                  if (playingAudioId === message.id) {
+                                    audio.pause();
+                                    setPlayingAudioId(null);
+                                  } else {
+                                    Object.values(audioElements).forEach((a) =>
+                                      a.pause(),
+                                    );
+                                    audio.play();
+                                    setPlayingAudioId(message.id);
+                                  }
+                                }
+                              }}
+                              className="rounded-lg p-1.5 text-primary transition-colors hover:bg-primary/10"
+                              title={
+                                playingAudioId === message.id ? "Pause" : "Play"
+                              }
+                            >
+                              <span className="material-symbols-outlined text-base">
+                                {playingAudioId === message.id
+                                  ? "pause_circle"
+                                  : "play_circle"}
+                              </span>
+                            </button>
+                            <audio
+                              ref={(el) => {
+                                if (el) {
+                                  setAudioElements((prev) => ({
+                                    ...prev,
+                                    [message.id]: el,
+                                  }));
+                                }
+                              }}
+                              src={message.audio.url}
+                              onEnded={() => setPlayingAudioId(null)}
+                              onError={(e) => {
+                                console.error("Audio playback error:", e);
+                                setPlayingAudioId(null);
                               }}
                             />
-                          ) : (
-                            message.text
-                          )}
-                        </p>
-                        {/* Audio Player for Sister Messages */}
-                        {isSister && message.audio && (
-                          <div className="mt-3 pt-2 border-t border-black/5 dark:border-white/10">
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => {
-                                  const audio = audioElements[message.id];
-                                  if (audio) {
-                                    if (playingAudioId === message.id) {
-                                      audio.pause();
-                                      setPlayingAudioId(null);
-                                    } else {
-                                      Object.values(audioElements).forEach((a) =>
-                                        a.pause(),
-                                      );
-                                      audio.play();
-                                      setPlayingAudioId(message.id);
-                                    }
-                                  }
-                                }}
-                                className="p-1.5 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors"
-                                title={
-                                  playingAudioId === message.id ? "Pause" : "Play"
-                                }
-                              >
-                                <span className="material-symbols-outlined text-base text-primary">
-                                  {playingAudioId === message.id
-                                    ? "pause_circle"
-                                    : "play_circle"}
-                                </span>
-                              </button>
-                              <audio
-                                ref={(el) => {
-                                  if (el) {
-                                    setAudioElements((prev) => ({
-                                      ...prev,
-                                      [message.id]: el,
-                                    }));
-                                  }
-                                }}
-                                src={message.audio.url}
-                                onEnded={() => setPlayingAudioId(null)}
-                                onError={(e) => {
-                                  console.error("Audio playback error:", e);
-                                  setPlayingAudioId(null);
-                                }}
-                              />
-                              <span className="text-[10px] sm:text-xs text-text-secondary dark:text-gray-400">
-                                {message.audio.durationSeconds.toFixed(0)}s
-                              </span>
-                            </div>
+                            <span className="text-xs text-text-secondary dark:text-gray-400">
+                              {message.audio.durationSeconds.toFixed(0)}s
+                            </span>
                           </div>
                         )}
 
-                        {/* Language Badge for Sister Messages */}
-                        {isSister &&
-                          message.language &&
-                          message.language !== "eng" && (
-                            <div className="mt-2 pt-2 border-t border-black/5 dark:border-white/10">
-                              <span className="inline-block text-[9px] sm:text-[10px] px-2 py-1 bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary-light rounded-md font-medium">
-                                🌍{" "}
-                                {SUPPORTED_LANGUAGES[
-                                  message.language as SupportedLanguageCode
-                                ]?.name || message.language}
-                              </span>
-                            </div>
-                          )}
-                      </div>
-
-                      {/* Meta row: timestamp + copy - always visible on touch, hover-reveal on desktop */}
-                      <div
-                        className={`mt-1 flex items-center gap-2 px-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 ${isSister ? "" : "flex-row-reverse"}`}
-                      >
-                        <p className="text-[9px] text-text-secondary dark:text-gray-500 sm:text-[10px]">
-                          {message.timestamp.toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </p>
-                        <button
-                          onClick={() =>
-                            copyMessageText(message.id, message.text)
-                          }
-                          className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] text-text-secondary transition-colors hover:bg-black/5 hover:text-text-primary dark:text-gray-500 dark:hover:bg-white/10 dark:hover:text-white sm:text-[10px]"
-                          title="Copy message"
-                        >
-                          <span className="material-symbols-outlined text-xs">
-                            {copiedMessageId === message.id
-                              ? "check"
-                              : "content_copy"}
+                        {message.language && message.language !== "eng" && (
+                          <span className="mt-2 inline-block rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary dark:bg-primary/20 dark:text-primary-light">
+                            🌍{" "}
+                            {SUPPORTED_LANGUAGES[
+                              message.language as SupportedLanguageCode
+                            ]?.name || message.language}
                           </span>
-                          {copiedMessageId === message.id ? "Copied" : "Copy"}
-                        </button>
+                        )}
+
+                        <div className="mt-1.5 flex items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+                          <span className="text-[10px] text-text-secondary dark:text-gray-500">
+                            {message.timestamp.toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                          <button
+                            onClick={() =>
+                              copyMessageText(message.id, message.text)
+                            }
+                            className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] text-text-secondary transition-colors hover:bg-black/5 hover:text-text-primary dark:text-gray-500 dark:hover:bg-white/10 dark:hover:text-white"
+                            title="Copy message"
+                          >
+                            <span className="material-symbols-outlined text-xs">
+                              {copiedMessageId === message.id
+                                ? "check"
+                                : "content_copy"}
+                            </span>
+                            {copiedMessageId === message.id ? "Copied" : "Copy"}
+                          </button>
+                        </div>
                       </div>
+                    </div>
+                  );
+                }
+
+                // User turn - the one place a bubble is intentional, since it
+                // is the clearest "this is what I sent" signal.
+                return (
+                  <div
+                    key={message.id}
+                    className="group animate-fade-in flex justify-end"
+                  >
+                    <div className="flex max-w-[85%] flex-col items-end sm:max-w-[70%]">
+                      <div className="rounded-2xl rounded-tr-sm bg-primary px-3.5 py-2.5 text-white sm:px-4 sm:py-2.5">
+                        <p className="text-[13px] leading-relaxed whitespace-pre-wrap sm:text-[14.5px]">
+                          {message.text}
+                        </p>
+                      </div>
+                      <span className="mt-1 px-1 text-[10px] text-text-secondary opacity-100 transition-opacity dark:text-gray-500 sm:opacity-0 sm:group-hover:opacity-100">
+                        {message.timestamp.toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
                     </div>
                   </div>
                 );
@@ -1972,24 +1987,24 @@ export default function ChatPage() {
 
               {/* Typing Indicator */}
               {isTyping && (
-                <div className="animate-fade-in flex gap-2 sm:gap-3">
-                  <div className="shrink-0 flex h-7 w-7 items-center justify-center rounded-full shadow-sm ring-2 ring-white/80 bg-gradient-to-br from-primary to-purple-600 sm:h-8 sm:w-8">
-                    <span className="material-symbols-outlined text-white text-sm sm:text-base">
+                <div className="animate-fade-in flex items-center gap-2.5 sm:gap-3">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-purple-600 sm:h-7 sm:w-7">
+                    <span className="material-symbols-outlined text-[13px] text-white sm:text-sm">
                       spa
                     </span>
                   </div>
-                  <div className="flex items-center gap-2.5 rounded-2xl rounded-tl-sm bg-white/70 px-3.5 py-2.5 dark:bg-white/[0.04] sm:px-4 sm:py-3">
-                    <div className="flex gap-1.5">
+                  <div className="flex items-center gap-2">
+                    <div className="flex gap-1">
                       <span
-                        className="w-1.5 h-1.5 bg-primary/70 rounded-full animate-bounce"
+                        className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60"
                         style={{ animationDelay: "0ms" }}
                       />
                       <span
-                        className="w-1.5 h-1.5 bg-primary/70 rounded-full animate-bounce"
+                        className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60"
                         style={{ animationDelay: "150ms" }}
                       />
                       <span
-                        className="w-1.5 h-1.5 bg-primary/70 rounded-full animate-bounce"
+                        className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60"
                         style={{ animationDelay: "300ms" }}
                       />
                     </div>
@@ -2007,7 +2022,7 @@ export default function ChatPage() {
           {showScrollButton && (
             <button
               onClick={scrollToBottom}
-              className="absolute bottom-4 right-4 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-violet-200 bg-white text-primary shadow-lg transition-transform hover:-translate-y-0.5 dark:border-gray-700 dark:bg-gray-800 sm:right-8"
+              className="absolute bottom-4 left-1/2 z-20 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border border-black/[0.08] bg-white text-text-primary shadow-md transition-transform hover:-translate-y-0.5 dark:border-white/10 dark:bg-gray-800 dark:text-white"
               title="Scroll to latest"
             >
               <span className="material-symbols-outlined text-lg">
@@ -2018,31 +2033,31 @@ export default function ChatPage() {
           </div>
 
           {/* Input Area - positioned above bottom nav */}
-          <div className="border-t border-violet-100/80 bg-white/70 pb-[calc(var(--bottom-nav-height,72px)+env(safe-area-inset-bottom))] backdrop-blur-2xl dark:border-border-dark dark:bg-card-dark/90 lg:pb-4">
+          <div className="border-t border-black/[0.06] bg-white pb-[calc(var(--bottom-nav-height,72px)+env(safe-area-inset-bottom))] dark:border-white/[0.08] dark:bg-[#140c1b] lg:pb-4">
             <div className="mx-auto max-w-3xl px-3 py-3 sm:px-4 sm:py-4">
-              {/* Language Selector */}
-              <div className="mb-3 flex flex-wrap items-center gap-2 sm:mb-3 sm:gap-3">
-                <span className="whitespace-nowrap text-xs text-text-secondary dark:text-gray-400 sm:text-sm">
-                  🌍 Language:
-                </span>
-                <select
-                  value={userLanguage}
-                  onChange={(e) =>
-                    setUserLanguage(e.target.value as SupportedLanguageCode)
-                  }
-                  className="rounded-xl border border-violet-200 bg-white px-2.5 py-1.5 text-xs text-text-primary transition-all focus:border-primary focus:ring-2 focus:ring-primary dark:border-gray-600 dark:bg-gray-800 dark:text-white sm:px-3 sm:py-2 sm:text-sm"
-                >
-                  {CHAT_LANGUAGE_OPTIONS.map((code) => (
-                    <option key={code} value={code}>
-                      {SUPPORTED_LANGUAGES[code].name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
               {/* Input Box */}
               <form onSubmit={handleSubmit} className="relative">
-                <div className="flex items-end gap-2 rounded-3xl border border-violet-200 bg-white/95 p-1.5 shadow-xl shadow-primary/10 transition-all focus-within:border-primary dark:border-gray-700 dark:bg-gray-800/95 sm:gap-3 sm:p-2">
+                <div className="flex items-end gap-1.5 rounded-2xl border border-black/[0.09] bg-white p-1.5 shadow-sm transition-colors focus-within:border-primary/50 focus-within:shadow-md dark:border-white/10 dark:bg-white/[0.04] sm:gap-2 sm:p-2">
+                  {/* Language Selector - compact icon control */}
+                  <div className="relative shrink-0">
+                    <select
+                      value={userLanguage}
+                      onChange={(e) =>
+                        setUserLanguage(e.target.value as SupportedLanguageCode)
+                      }
+                      title="Reply language"
+                      className="h-9 w-9 cursor-pointer appearance-none rounded-xl bg-transparent text-center text-xs text-text-secondary transition-colors hover:bg-black/[0.04] focus:outline-none focus:ring-1 focus:ring-primary/40 dark:text-gray-400 dark:hover:bg-white/10 sm:h-10 sm:w-10"
+                    >
+                      {CHAT_LANGUAGE_OPTIONS.map((code) => (
+                        <option key={code} value={code}>
+                          {SUPPORTED_LANGUAGES[code].name}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="material-symbols-outlined pointer-events-none absolute inset-0 flex items-center justify-center text-lg text-text-secondary dark:text-gray-400">
+                      language
+                    </span>
+                  </div>
                   <textarea
                     ref={inputRef}
                     value={inputValue}
@@ -2053,7 +2068,7 @@ export default function ChatPage() {
                     }
                     disabled={isTyping || isListening}
                     rows={1}
-                    className="max-h-[120px] flex-1 resize-none border-none bg-transparent px-2 py-2 text-xs text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-0 dark:text-white sm:max-h-[150px] sm:px-3 sm:text-sm"
+                    className="max-h-[120px] flex-1 resize-none border-none bg-transparent px-1 py-2.5 text-[13px] text-text-primary placeholder:text-text-secondary/70 focus:outline-none focus:ring-0 dark:text-white sm:max-h-[150px] sm:px-2 sm:text-sm"
                   />
                   {/* Voice Input Button */}
                   {speechSupported && (
@@ -2061,14 +2076,14 @@ export default function ChatPage() {
                       type="button"
                       onClick={toggleVoiceInput}
                       disabled={isTyping}
-                      className={`touch-target rounded-xl p-2.5 transition-all sm:p-3 ${
+                      className={`touch-target shrink-0 rounded-xl p-2.5 transition-colors sm:p-2.5 ${
                         isListening
-                          ? "bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/40"
-                          : "bg-gray-200 dark:bg-gray-700 text-text-secondary dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600"
+                          ? "animate-pulse bg-red-500 text-white"
+                          : "text-text-secondary hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/10"
                       }`}
                       title={isListening ? "Stop listening" : "Voice input"}
                     >
-                      <span className="material-symbols-outlined text-base sm:text-lg">
+                      <span className="material-symbols-outlined text-lg">
                         {isListening ? "mic_off" : "mic"}
                       </span>
                     </button>
@@ -2076,10 +2091,10 @@ export default function ChatPage() {
                   <button
                     type="submit"
                     disabled={!inputValue.trim() || isTyping || isOverLimit}
-                    className="touch-target rounded-xl bg-gradient-to-r from-primary to-purple-600 p-2.5 text-white shadow-lg shadow-primary/25 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 sm:p-3"
+                    className="touch-target shrink-0 rounded-xl bg-primary p-2.5 text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:opacity-100 dark:disabled:bg-gray-700"
                   >
-                    <span className="material-symbols-outlined text-base sm:text-lg">
-                      send
+                    <span className="material-symbols-outlined text-lg">
+                      {isTyping ? "hourglass_top" : "arrow_upward"}
                     </span>
                   </button>
                 </div>
