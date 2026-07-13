@@ -121,7 +121,7 @@ const icebreakers = [
 ];
 
 export default function ChatPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
   const router = useRouter();
 
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
@@ -158,7 +158,14 @@ export default function ChatPage() {
   const [audioElements, setAudioElements] = useState<
     Record<string, HTMLAudioElement>
   >({});
+  // UI-only additions below — presentation state, no data/agent logic involved.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const conversationsRef = useRef<ChatConversation[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const recordingRef = useRef<MediaRecorder | null>(null);
@@ -327,7 +334,41 @@ export default function ChatPage() {
 
   useEffect(() => {
     scrollToBottom();
+    setShowScrollButton(false);
   }, [messages, scrollToBottom]);
+
+  // Track scroll position so we can surface a "jump to latest" button
+  // once the user has scrolled up to read earlier messages.
+  const handleMessagesScroll = useCallback(() => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    setShowScrollButton(distanceFromBottom > 240);
+  }, []);
+
+  const copyMessageText = useCallback((id: string, text: string) => {
+    if (typeof navigator === "undefined" || !navigator.clipboard) return;
+    navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        setCopiedMessageId(id);
+        setTimeout(() => {
+          setCopiedMessageId((prev) => (prev === id ? null : prev));
+        }, 1800);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSignOut = useCallback(async () => {
+    setSigningOut(true);
+    try {
+      await signOut();
+      router.push("/auth/login");
+    } catch (err) {
+      console.error("Error signing out:", err);
+      setSigningOut(false);
+    }
+  }, [signOut, router]);
 
   useEffect(() => {
     if (freshChatId && activeConversationId !== freshChatId) {
@@ -337,6 +378,7 @@ export default function ChatPage() {
 
   useEffect(() => {
     setConversationMenuOpen(null);
+    setProfileMenuOpen(false);
   }, [activeConversationId, sidebarOpen]);
 
   // Persist draft per conversation so users can continue where they left off.
@@ -956,13 +998,26 @@ export default function ChatPage() {
 
   const formatDate = (date: Date) => {
     const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+    const startOfDate = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+    );
+    const dayDiff = Math.round(
+      (startOfToday.getTime() - startOfDate.getTime()) /
+        (1000 * 60 * 60 * 24),
+    );
 
-    if (days === 0) return "Today";
-    if (days === 1) return "Yesterday";
-    if (days < 7) return `${days} days ago`;
-    return date.toLocaleDateString([], { month: "short", day: "numeric" });
+    if (dayDiff <= 0) return "Today";
+    if (dayDiff === 1) return "Yesterday";
+    if (dayDiff <= 7) return "Previous 7 Days";
+    if (dayDiff <= 30) return "Previous 30 Days";
+    return "Older";
   };
 
   // Filter conversations by search
@@ -996,6 +1051,35 @@ export default function ChatPage() {
       minute: "2-digit",
     });
 
+  // Derives which empty-state hero to show. Same three mutually-exclusive
+  // conditions the page already used, just centralized so we render one
+  // hero instead of three near-duplicate blocks.
+  const emptyStateContent = isFreshChat
+    ? {
+        key: "fresh",
+        eyebrow: "Fresh chat",
+        title: "What would you like to talk about today?",
+        subtitle:
+          "Start a new private conversation, or open a previous one from the sidebar to continue exactly where you stopped.",
+        showIcebreakers: true,
+      }
+    : !activeConversationId
+      ? {
+          key: "none",
+          eyebrow: "No chat selected",
+          title: "Pick a conversation or start a new one",
+          subtitle:
+            "Use the sidebar to open a previous chat or tap New Chat to begin.",
+          showIcebreakers: false,
+        }
+      : {
+          key: "empty",
+          eyebrow: "No messages yet",
+          title: "Start the conversation",
+          subtitle: "Say hello or ask a question to continue this chat.",
+          showIcebreakers: false,
+        };
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center safe-top safe-bottom">
@@ -1027,7 +1111,7 @@ export default function ChatPage() {
           onClick={() => setSidebarOpen(false)}
         />
 
-        {/* Sidebar - Desktop always visible, Mobile slide-in */}
+        {/* Sidebar - Desktop always visible (collapsible), Mobile slide-in */}
         <aside
           className={`
             fixed z-50 flex h-[calc(100vh-65px)] flex-col
@@ -1035,46 +1119,72 @@ export default function ChatPage() {
             transition-all duration-300 ease-out dark:border-border-dark dark:bg-card-dark/96
             lg:relative
             ${sidebarOpen ? "translate-x-0 shadow-2xl shadow-black/20" : "-translate-x-full lg:translate-x-0"}
-            w-[86vw] xs:w-80 sm:w-[22rem] lg:w-80
+            ${sidebarCollapsed ? "lg:w-[4.5rem]" : "lg:w-80"}
+            w-[86vw] xs:w-80 sm:w-[22rem]
           `}
         >
           <div className="flex flex-col h-full">
             {/* Sidebar Header */}
             <div className="border-b border-violet-100/80 p-3 sm:p-4 dark:border-border-dark">
-              <div className="mb-2 flex items-center justify-between">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-purple-600 shadow-lg shadow-primary/30 sm:h-10 sm:w-10">
+              <div className="mb-2 flex items-center justify-between gap-2">
+              <div
+                className={`flex min-w-0 items-center gap-2 sm:gap-3 ${sidebarCollapsed ? "lg:hidden" : ""}`}
+              >
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-purple-600 shadow-lg shadow-primary/30 sm:h-10 sm:w-10">
                   <span className="material-symbols-outlined text-white text-lg sm:text-xl">
                     chat
                   </span>
                 </div>
-                <div>
-                  <h2 className="text-xs font-semibold tracking-wide text-text-primary dark:text-white sm:text-sm">
+                <div className="min-w-0">
+                  <h2 className="truncate text-xs font-semibold tracking-wide text-text-primary dark:text-white sm:text-sm">
                     SisterCare Dialogue Hub
                   </h2>
-                  <p className="text-[10px] text-text-secondary dark:text-gray-400 sm:text-xs">
-                    {conversations.length} saved conversations
+                  <p className="truncate text-[10px] text-text-secondary dark:text-gray-400 sm:text-xs">
+                    {conversations.length} saved conversation
+                    {conversations.length === 1 ? "" : "s"}
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => setSidebarOpen(false)}
-                className="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg sm:rounded-xl transition-colors lg:hidden touch-target"
-              >
-                <span className="material-symbols-outlined text-text-secondary dark:text-gray-400 text-xl">
-                  close
-                </span>
-              </button>
+
+              {sidebarCollapsed && (
+                <div className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-purple-600 shadow-lg shadow-primary/30 lg:flex">
+                  <span className="material-symbols-outlined text-white text-lg">
+                    chat
+                  </span>
+                </div>
+              )}
+
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setSidebarCollapsed((prev) => !prev)}
+                  className="touch-target hidden rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 lg:flex"
+                  title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                >
+                  <span className="material-symbols-outlined text-lg">
+                    {sidebarCollapsed ? "dock_to_right" : "dock_to_left"}
+                  </span>
+                </button>
+                <button
+                  onClick={() => setSidebarOpen(false)}
+                  className="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg sm:rounded-xl transition-colors lg:hidden touch-target"
+                >
+                  <span className="material-symbols-outlined text-text-secondary dark:text-gray-400 text-xl">
+                    close
+                  </span>
+                </button>
+              </div>
               </div>
 
-              <div className="rounded-xl border border-violet-100 bg-gradient-to-r from-white to-violet-50/70 px-3 py-2 dark:border-border-dark dark:from-card-dark dark:to-card-dark/80">
-                <p className="text-[10px] uppercase tracking-[0.15em] text-text-secondary dark:text-gray-400">
-                  Private and encrypted
-                </p>
-                <p className="mt-1 text-xs font-medium text-text-primary dark:text-white">
-                  Your wellbeing conversations stay under your control.
-                </p>
-              </div>
+              {!sidebarCollapsed && (
+                <div className="rounded-xl border border-violet-100 bg-gradient-to-r from-white to-violet-50/70 px-3 py-2 dark:border-border-dark dark:from-card-dark dark:to-card-dark/80">
+                  <p className="text-[10px] uppercase tracking-[0.15em] text-text-secondary dark:text-gray-400">
+                    Private and encrypted
+                  </p>
+                  <p className="mt-1 text-xs font-medium text-text-primary dark:text-white">
+                    Your wellbeing conversations stay under your control.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* New Chat Button */}
@@ -1082,7 +1192,8 @@ export default function ChatPage() {
               <button
                 onClick={handleNewChat}
                 disabled={actionLoading === "new"}
-                className="touch-target flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-primary to-purple-600 px-3 py-3 text-xs font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:from-primary/95 hover:to-purple-600/95 disabled:opacity-50 sm:px-4 sm:text-sm"
+                title="New chat"
+                className={`touch-target flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-primary to-purple-600 py-3 text-xs font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:from-primary/95 hover:to-purple-600/95 disabled:opacity-50 sm:text-sm ${sidebarCollapsed ? "lg:px-0" : "px-3 sm:px-4"}`}
               >
                 {actionLoading === "new" ? (
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -1091,14 +1202,18 @@ export default function ChatPage() {
                     <span className="material-symbols-outlined text-xl">
                       add
                     </span>
-                    <span>New Chat</span>
+                    <span className={sidebarCollapsed ? "lg:hidden" : ""}>
+                      New Chat
+                    </span>
                   </>
                 )}
               </button>
             </div>
 
             {/* Search Conversations */}
-            <div className="px-2.5 pb-2 sm:px-3">
+            <div
+              className={`px-2.5 pb-2 sm:px-3 ${sidebarCollapsed ? "lg:hidden" : ""}`}
+            >
               <div className="relative">
                 <span className="material-symbols-outlined absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-text-secondary dark:text-gray-400 text-base sm:text-lg">
                   search
@@ -1114,7 +1229,9 @@ export default function ChatPage() {
             </div>
 
             {/* Conversations List */}
-            <div className="custom-scrollbar flex-1 space-y-1.5 overflow-y-auto px-2.5">
+            <div
+              className={`custom-scrollbar flex-1 space-y-1.5 overflow-y-auto px-2.5 ${sidebarCollapsed ? "lg:hidden" : ""}`}
+            >
               {Object.keys(groupedConversations).length === 0 ? (
                 <div className="text-center py-12 px-4">
                   <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
@@ -1197,24 +1314,24 @@ export default function ChatPage() {
                                   actionLoading !== conversation.id &&
                                   openConversationFromSidebar(conversation.id)
                                 }
-                                className={`w-full cursor-pointer rounded-2xl border px-3 py-3 text-left shadow-sm transition-all ${
+                                className={`flex w-full cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-all ${
                                   actionLoading === conversation.id
                                     ? "opacity-50 cursor-wait"
                                     : ""
                                 } ${
                                   activeConversationId === conversation.id
-                                    ? "border-primary/45 bg-gradient-to-r from-white to-violet-50 shadow-md dark:bg-gray-800"
-                                    : "border-transparent hover:border-primary/25 hover:bg-white/80 dark:hover:bg-gray-800"
+                                    ? "border-primary/25 bg-primary/10 dark:bg-primary/15"
+                                    : "border-transparent hover:border-transparent hover:bg-black/[0.04] dark:hover:bg-white/5"
                                 }`}
                               >
                                 <div
-                                  className={`shrink-0 w-9 h-9 rounded-lg flex items-center justify-center ${
+                                  className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${
                                     activeConversationId === conversation.id
                                       ? "bg-primary text-white"
                                       : "bg-gray-100 dark:bg-gray-800 text-text-secondary dark:text-gray-400"
                                   }`}
                                 >
-                                  <span className="material-symbols-outlined text-lg">
+                                  <span className="material-symbols-outlined text-base">
                                     chat_bubble
                                   </span>
                                 </div>
@@ -1303,15 +1420,54 @@ export default function ChatPage() {
               )}
             </div>
 
-            {/* Sidebar Footer */}
-            <div className="border-t border-violet-100/80 p-3 dark:border-border-dark">
-              <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-violet-50 to-white px-3 py-2 dark:from-gray-800 dark:to-gray-800/60">
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white text-sm font-semibold">
+            {/* Sidebar Footer - Profile menu */}
+            <div className="relative border-t border-violet-100/80 p-3 dark:border-border-dark">
+              {profileMenuOpen && (
+                <div className="absolute bottom-full left-3 right-3 z-20 mb-2 overflow-hidden rounded-xl border border-violet-100 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                  <Link
+                    href="/settings"
+                    onClick={() => setProfileMenuOpen(false)}
+                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs text-text-primary hover:bg-violet-50 dark:text-white dark:hover:bg-gray-700"
+                  >
+                    <span className="material-symbols-outlined text-sm">
+                      settings
+                    </span>
+                    Settings
+                  </Link>
+                  <Link
+                    href="/profile"
+                    onClick={() => setProfileMenuOpen(false)}
+                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs text-text-primary hover:bg-violet-50 dark:text-white dark:hover:bg-gray-700"
+                  >
+                    <span className="material-symbols-outlined text-sm">
+                      account_circle
+                    </span>
+                    Profile
+                  </Link>
+                  <button
+                    onClick={handleSignOut}
+                    disabled={signingOut}
+                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs text-red-600 hover:bg-red-50 disabled:opacity-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                  >
+                    <span className="material-symbols-outlined text-sm">
+                      logout
+                    </span>
+                    {signingOut ? "Signing out..." : "Sign out"}
+                  </button>
+                </div>
+              )}
+              <button
+                onClick={() => setProfileMenuOpen((prev) => !prev)}
+                className={`flex w-full items-center gap-3 rounded-2xl bg-gradient-to-r from-violet-50 to-white px-3 py-2 text-left transition-colors hover:from-violet-100 dark:from-gray-800 dark:to-gray-800/60 dark:hover:from-gray-700 ${sidebarCollapsed ? "lg:justify-center" : ""}`}
+              >
+                <div className="w-9 h-9 shrink-0 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white text-sm font-semibold">
                   {user?.displayName?.charAt(0) ||
                     user?.email?.charAt(0)?.toUpperCase() ||
                     "U"}
                 </div>
-                <div className="flex-1 min-w-0">
+                <div
+                  className={`flex-1 min-w-0 ${sidebarCollapsed ? "lg:hidden" : ""}`}
+                >
                   <p className="text-sm font-medium text-text-primary dark:text-white truncate">
                     {user?.displayName || user?.email?.split("@")[0] || "User"}
                   </p>
@@ -1319,7 +1475,12 @@ export default function ChatPage() {
                     {user?.email}
                   </p>
                 </div>
-              </div>
+                <span
+                  className={`material-symbols-outlined text-base text-text-secondary dark:text-gray-400 ${sidebarCollapsed ? "lg:hidden" : ""}`}
+                >
+                  {profileMenuOpen ? "expand_more" : "expand_less"}
+                </span>
+              </button>
             </div>
           </div>
         </aside>
@@ -1384,9 +1545,14 @@ export default function ChatPage() {
             </div>
           </div>
 
-          <div className="relative flex-1 overflow-y-auto bg-transparent">
+          <div className="relative flex-1 overflow-hidden">
+          <div
+            ref={messagesContainerRef}
+            onScroll={handleMessagesScroll}
+            className="h-full overflow-y-auto bg-transparent"
+          >
             <div className="pointer-events-none absolute inset-0 opacity-40 [background-image:radial-gradient(#caa7ea_0.6px,transparent_0.6px)] [background-size:14px_14px] dark:opacity-10" />
-            <div className="relative mx-auto max-w-5xl space-y-4 px-3 py-4 sm:space-y-6 sm:px-4 sm:py-6 lg:px-6">
+            <div className="relative mx-auto max-w-3xl space-y-4 px-3 py-4 sm:space-y-6 sm:px-4 sm:py-6 lg:px-6">
               {error && (
                 <div className="animate-fade-in rounded-2xl border border-red-200 bg-red-50/90 px-4 py-3 text-sm text-red-700 shadow-sm dark:border-red-800 dark:bg-red-950/35 dark:text-red-300">
                   {error}
@@ -1506,182 +1672,186 @@ export default function ChatPage() {
                 </div>
               )}
 
-              {isFreshChat && messages.length === 0 && !isTyping && (
-                <div className="rounded-3xl border border-white/70 dark:border-gray-700 bg-white/85 dark:bg-card-dark/95 backdrop-blur-xl shadow-xl p-5 sm:p-6 lg:p-5 lg:max-w-lg lg:mx-auto animate-fade-in">
+              {messages.length === 0 && !isTyping && (
+                <div className="flex min-h-[45vh] flex-col items-center justify-center px-2 py-6 text-center animate-fade-in sm:min-h-[50vh]">
+                  <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-purple-600 shadow-lg shadow-primary/30">
+                    <span className="material-symbols-outlined text-2xl text-white">
+                      spa
+                    </span>
+                  </div>
                   <p className="text-[11px] font-semibold tracking-[0.14em] uppercase text-text-secondary dark:text-gray-400">
-                    Fresh chat
+                    {emptyStateContent.eyebrow}
                   </p>
-                  <h3 className="mt-2 text-lg sm:text-2xl font-bold text-text-primary dark:text-white">
-                    What would you like to talk about today?
+                  <h3 className="mt-2 max-w-md text-xl font-bold text-text-primary dark:text-white sm:text-2xl">
+                    {emptyStateContent.title}
                   </h3>
-                  <p className="mt-2 text-sm text-text-secondary dark:text-gray-300">
-                    Start a new private conversation, or open a previous one
-                    from the left panel to continue exactly where you stopped.
+                  <p className="mt-2 max-w-sm text-sm text-text-secondary dark:text-gray-300">
+                    {emptyStateContent.subtitle}
                   </p>
+
+                  {emptyStateContent.showIcebreakers && (
+                    <div className="mt-6 grid w-full max-w-xl grid-cols-1 gap-2 xs:grid-cols-2">
+                      {icebreakers.map((icebreaker) => (
+                        <button
+                          key={icebreaker.text}
+                          onClick={() => sendMessage(icebreaker.text)}
+                          className="group touch-target flex items-center gap-2 rounded-2xl border border-violet-100 bg-white/95 p-2.5 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 sm:gap-3 sm:p-3"
+                        >
+                          <div
+                            className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br ${icebreaker.color} flex items-center justify-center shrink-0`}
+                          >
+                            <span className="material-symbols-outlined text-white text-sm sm:text-lg">
+                              {icebreaker.icon}
+                            </span>
+                          </div>
+                          <span className="text-xs sm:text-sm text-text-primary dark:text-gray-300 leading-tight">
+                            {icebreaker.text}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
-              {!activeConversationId &&
-                !isFreshChat &&
-                messages.length === 0 &&
-                !isTyping && (
-                  <div className="rounded-3xl border border-white/70 dark:border-gray-700 bg-white/80 dark:bg-card-dark/90 backdrop-blur-xl shadow-xl p-5 sm:p-7 animate-fade-in">
-                    <p className="text-[11px] font-semibold tracking-[0.14em] uppercase text-text-secondary dark:text-gray-400">
-                      No chat selected
-                    </p>
-                    <h3 className="mt-2 text-lg sm:text-2xl font-bold text-text-primary dark:text-white">
-                      Pick a conversation or start a new one
-                    </h3>
-                    <p className="mt-2 text-sm text-text-secondary dark:text-gray-300">
-                      Use the sidebar to open a previous chat or tap New Chat to
-                      begin.
-                    </p>
-                  </div>
-                )}
-
-              {activeConversationId &&
-                !isFreshChat &&
-                messages.length === 0 &&
-                !isTyping && (
-                  <div className="rounded-3xl border border-white/70 dark:border-gray-700 bg-white/80 dark:bg-card-dark/90 backdrop-blur-xl shadow-xl p-5 sm:p-7 lg:max-w-lg lg:mx-auto animate-fade-in">
-                    <p className="text-[11px] font-semibold tracking-[0.14em] uppercase text-text-secondary dark:text-gray-400">
-                      No messages yet
-                    </p>
-                    <h3 className="mt-2 text-lg sm:text-2xl font-bold text-text-primary dark:text-white">
-                      Start the conversation
-                    </h3>
-                    <p className="mt-2 text-sm text-text-secondary dark:text-gray-300">
-                      Say hello or ask a question to continue this chat.
-                    </p>
-                  </div>
-                )}
-
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`animate-fade-in flex gap-2 sm:gap-4 ${message.sender === "user" ? "flex-row-reverse" : ""}`}
-                >
-                  {/* Avatar */}
+              {messages.map((message) => {
+                const isSister = message.sender === "sister";
+                return (
                   <div
-                    className={`shrink-0 flex h-8 w-8 items-center justify-center rounded-xl shadow-md ring-2 ring-white/80 sm:h-10 sm:w-10 ${
-                      message.sender === "sister"
-                        ? "bg-gradient-to-br from-primary to-purple-600"
-                        : "bg-gradient-to-br from-orange-400 to-pink-500"
-                    }`}
+                    key={message.id}
+                    className={`group animate-fade-in flex gap-2 sm:gap-3 ${isSister ? "" : "flex-row-reverse"}`}
                   >
-                    <span className="material-symbols-outlined text-white text-base sm:text-lg">
-                      {message.sender === "sister" ? "spa" : "person"}
-                    </span>
-                  </div>
-
-                  {/* Message Bubble */}
-                  <div
-                    className={`flex-1 max-w-[90%] sm:max-w-[82%] ${message.sender === "user" ? "flex flex-col items-end" : ""}`}
-                  >
+                    {/* Avatar */}
                     <div
-                      className={`rounded-2xl px-3 py-2.5 shadow-md sm:px-4 sm:py-3 ${
-                        message.sender === "sister"
-                          ? "rounded-tl-md border border-violet-100 bg-white/95 dark:border-border-dark dark:bg-card-dark"
-                          : "rounded-tr-md bg-gradient-to-r from-primary to-purple-600 text-white"
+                      className={`shrink-0 flex h-7 w-7 items-center justify-center rounded-full shadow-sm ring-2 ring-white/80 sm:h-8 sm:w-8 ${
+                        isSister
+                          ? "bg-gradient-to-br from-primary to-purple-600"
+                          : "bg-gradient-to-br from-orange-400 to-pink-500"
                       }`}
                     >
-                      <div className="mb-1 flex items-center justify-between gap-2">
-                        <span
-                          className={`text-[10px] font-semibold uppercase tracking-[0.12em] ${
-                            message.sender === "sister"
-                              ? "text-primary/90 dark:text-primary-light"
-                              : "text-white/80"
+                      <span className="material-symbols-outlined text-white text-sm sm:text-base">
+                        {isSister ? "spa" : "person"}
+                      </span>
+                    </div>
+
+                    {/* Message Content */}
+                    <div
+                      className={`flex-1 max-w-[88%] sm:max-w-[78%] ${isSister ? "" : "flex flex-col items-end"}`}
+                    >
+                      <div
+                        className={
+                          isSister
+                            ? "rounded-2xl rounded-tl-sm bg-white/70 px-3.5 py-2.5 dark:bg-white/[0.04] sm:px-4 sm:py-3"
+                            : "rounded-2xl rounded-tr-sm bg-gradient-to-r from-primary to-purple-600 px-3.5 py-2.5 text-white shadow-md sm:px-4 sm:py-3"
+                        }
+                      >
+                        <p
+                          className={`text-[13px] sm:text-sm leading-relaxed whitespace-pre-wrap ${
+                            isSister
+                              ? "text-text-primary dark:text-gray-100"
+                              : "text-white"
                           }`}
                         >
-                          {message.sender === "sister" ? "SisterCare" : "You"}
-                        </span>
-                      </div>
-                      <p
-                        className={`text-xs sm:text-sm leading-relaxed whitespace-pre-wrap ${
-                          message.sender === "sister"
-                            ? "text-text-primary dark:text-gray-200"
-                            : "text-white"
-                        }`}
-                      >
-                        {message.text}
-                      </p>
-                      {/* Audio Player for Sister Messages */}
-                      {message.sender === "sister" && message.audio && (
-                        <div className="mt-3 pt-2 border-t border-gray-200 dark:border-gray-700">
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => {
-                                const audio = audioElements[message.id];
-                                if (audio) {
-                                  if (playingAudioId === message.id) {
-                                    audio.pause();
-                                    setPlayingAudioId(null);
-                                  } else {
-                                    Object.values(audioElements).forEach((a) =>
-                                      a.pause(),
-                                    );
-                                    audio.play();
-                                    setPlayingAudioId(message.id);
+                          {message.text}
+                        </p>
+                        {/* Audio Player for Sister Messages */}
+                        {isSister && message.audio && (
+                          <div className="mt-3 pt-2 border-t border-black/5 dark:border-white/10">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => {
+                                  const audio = audioElements[message.id];
+                                  if (audio) {
+                                    if (playingAudioId === message.id) {
+                                      audio.pause();
+                                      setPlayingAudioId(null);
+                                    } else {
+                                      Object.values(audioElements).forEach((a) =>
+                                        a.pause(),
+                                      );
+                                      audio.play();
+                                      setPlayingAudioId(message.id);
+                                    }
                                   }
+                                }}
+                                className="p-1.5 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors"
+                                title={
+                                  playingAudioId === message.id ? "Pause" : "Play"
                                 }
-                              }}
-                              className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                              title={
-                                playingAudioId === message.id ? "Pause" : "Play"
-                              }
-                            >
-                              <span className="material-symbols-outlined text-base text-primary">
-                                {playingAudioId === message.id
-                                  ? "pause_circle"
-                                  : "play_circle"}
+                              >
+                                <span className="material-symbols-outlined text-base text-primary">
+                                  {playingAudioId === message.id
+                                    ? "pause_circle"
+                                    : "play_circle"}
+                                </span>
+                              </button>
+                              <audio
+                                ref={(el) => {
+                                  if (el) {
+                                    setAudioElements((prev) => ({
+                                      ...prev,
+                                      [message.id]: el,
+                                    }));
+                                  }
+                                }}
+                                src={message.audio.url}
+                                onEnded={() => setPlayingAudioId(null)}
+                                onError={(e) => {
+                                  console.error("Audio playback error:", e);
+                                  setPlayingAudioId(null);
+                                }}
+                              />
+                              <span className="text-[10px] sm:text-xs text-text-secondary dark:text-gray-400">
+                                {message.audio.durationSeconds.toFixed(0)}s
                               </span>
-                            </button>
-                            <audio
-                              ref={(el) => {
-                                if (el) {
-                                  setAudioElements((prev) => ({
-                                    ...prev,
-                                    [message.id]: el,
-                                  }));
-                                }
-                              }}
-                              src={message.audio.url}
-                              onEnded={() => setPlayingAudioId(null)}
-                              onError={(e) => {
-                                console.error("Audio playback error:", e);
-                                setPlayingAudioId(null);
-                              }}
-                            />
-                            <span className="text-[10px] sm:text-xs text-text-secondary dark:text-gray-400">
-                              {message.audio.durationSeconds.toFixed(0)}s
-                            </span>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Language Badge for Sister Messages */}
-                      {message.sender === "sister" &&
-                        message.language &&
-                        message.language !== "eng" && (
-                          <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                            <span className="inline-block text-[9px] sm:text-[10px] px-2 py-1 bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary-light rounded-md font-medium">
-                              🌍{" "}
-                              {SUPPORTED_LANGUAGES[
-                                message.language as SupportedLanguageCode
-                              ]?.name || message.language}
-                            </span>
+                            </div>
                           </div>
                         )}
+
+                        {/* Language Badge for Sister Messages */}
+                        {isSister &&
+                          message.language &&
+                          message.language !== "eng" && (
+                            <div className="mt-2 pt-2 border-t border-black/5 dark:border-white/10">
+                              <span className="inline-block text-[9px] sm:text-[10px] px-2 py-1 bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary-light rounded-md font-medium">
+                                🌍{" "}
+                                {SUPPORTED_LANGUAGES[
+                                  message.language as SupportedLanguageCode
+                                ]?.name || message.language}
+                              </span>
+                            </div>
+                          )}
+                      </div>
+
+                      {/* Meta row: timestamp + copy - always visible on touch, hover-reveal on desktop */}
+                      <div
+                        className={`mt-1 flex items-center gap-2 px-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 ${isSister ? "" : "flex-row-reverse"}`}
+                      >
+                        <p className="text-[9px] text-text-secondary dark:text-gray-500 sm:text-[10px]">
+                          {message.timestamp.toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                        <button
+                          onClick={() =>
+                            copyMessageText(message.id, message.text)
+                          }
+                          className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] text-text-secondary transition-colors hover:bg-black/5 hover:text-text-primary dark:text-gray-500 dark:hover:bg-white/10 dark:hover:text-white sm:text-[10px]"
+                          title="Copy message"
+                        >
+                          <span className="material-symbols-outlined text-xs">
+                            {copiedMessageId === message.id
+                              ? "check"
+                              : "content_copy"}
+                          </span>
+                          {copiedMessageId === message.id ? "Copied" : "Copy"}
+                        </button>
+                      </div>
                     </div>
-                    <p className="mt-1 px-1 text-[9px] text-text-secondary dark:text-gray-500 sm:text-[10px]">
-                      {message.timestamp.toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </p>
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
               {/* Typing Indicator */}
               {isTyping && (
@@ -1714,11 +1884,24 @@ export default function ChatPage() {
             </div>
           </div>
 
+          {showScrollButton && (
+            <button
+              onClick={scrollToBottom}
+              className="absolute bottom-4 right-4 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-violet-200 bg-white text-primary shadow-lg transition-transform hover:-translate-y-0.5 dark:border-gray-700 dark:bg-gray-800 sm:right-8"
+              title="Scroll to latest"
+            >
+              <span className="material-symbols-outlined text-lg">
+                arrow_downward
+              </span>
+            </button>
+          )}
+          </div>
+
           {/* Input Area - positioned above bottom nav */}
           <div className="border-t border-violet-100/80 bg-white/70 pb-[calc(var(--bottom-nav-height,72px)+env(safe-area-inset-bottom))] backdrop-blur-2xl dark:border-border-dark dark:bg-card-dark/90 lg:pb-4">
-            <div className="mx-auto max-w-4xl px-3 py-3 sm:px-4 sm:py-4">
+            <div className="mx-auto max-w-3xl px-3 py-3 sm:px-4 sm:py-4">
               {/* Language Selector */}
-              <div className="mb-3 flex flex-wrap items-center gap-2 sm:mb-4 sm:gap-3">
+              <div className="mb-3 flex flex-wrap items-center gap-2 sm:mb-3 sm:gap-3">
                 <span className="whitespace-nowrap text-xs text-text-secondary dark:text-gray-400 sm:text-sm">
                   🌍 Language:
                 </span>
@@ -1736,30 +1919,6 @@ export default function ChatPage() {
                   ))}
                 </select>
               </div>
-
-              {/* Icebreakers for new chats */}
-              {isFreshChat && messages.length === 0 && (
-                <div className="mb-3 grid grid-cols-1 gap-2 xs:grid-cols-2 sm:mb-4 sm:gap-3 lg:mx-auto lg:max-w-2xl lg:gap-2">
-                  {icebreakers.map((icebreaker) => (
-                    <button
-                      key={icebreaker.text}
-                      onClick={() => sendMessage(icebreaker.text)}
-                      className="group touch-target flex items-center gap-2 rounded-2xl border border-violet-100 bg-white/95 p-2.5 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 sm:gap-3 sm:p-3 lg:p-2.5"
-                    >
-                      <div
-                        className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br ${icebreaker.color} flex items-center justify-center shrink-0`}
-                      >
-                        <span className="material-symbols-outlined text-white text-sm sm:text-lg">
-                          {icebreaker.icon}
-                        </span>
-                      </div>
-                      <span className="text-xs sm:text-sm text-text-primary dark:text-gray-300 leading-tight">
-                        {icebreaker.text}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
 
               {/* Input Box */}
               <form onSubmit={handleSubmit} className="relative">
