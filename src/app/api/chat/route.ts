@@ -14,16 +14,10 @@ import {
 import {
   translateText,
   detectLanguage,
-  textToSpeech,
+  textToSpeechCached,
   SUPPORTED_LANGUAGES,
   SupportedLanguageCode,
 } from "@/lib/sunbird";
-import {
-  getCachedAudio,
-  cacheAudio,
-  createAudioUrl,
-  getCacheStats,
-} from "@/lib/ttsCache";
 import {
   AgentActionStatus,
   CounsellorSpecialty,
@@ -981,18 +975,23 @@ export async function POST(request: NextRequest) {
       let audio:
         | { url: string; durationSeconds: number; mimeType: string }
         | undefined;
-      try {
-        const tts = await textToSpeech(localizedText, userLanguage, 0.7);
-        audio = {
-          url: tts.audioUrl,
-          durationSeconds: tts.durationSeconds,
-          mimeType: "audio/mpeg",
-        };
-      } catch (ttsError) {
-        console.warn(
-          "TTS generation failed, continuing without audio:",
-          ttsError,
-        );
+      // Voice output exists for users more comfortable hearing their own
+      // language — for English it adds seconds of latency and burns Sunbird
+      // quota on every message for little value, so skip it.
+      if (userLanguage !== "eng") {
+        try {
+          const tts = await textToSpeechCached(localizedText, userLanguage, 0.7);
+          audio = {
+            url: tts.audioUrl,
+            durationSeconds: tts.durationSeconds,
+            mimeType: "audio/mpeg",
+          };
+        } catch (ttsError) {
+          console.warn(
+            "TTS generation failed, continuing without audio:",
+            ttsError,
+          );
+        }
       }
 
       return { localizedText, audio };

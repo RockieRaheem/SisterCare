@@ -258,6 +258,44 @@ export async function textToSpeech(
   };
 }
 
+// Server-side memo for TTS results. Canned responses (crisis interventions,
+// confirmations, fallbacks) repeat verbatim, so re-synthesizing them wastes
+// seconds of latency and Sunbird quota. TTL stays short because the returned
+// audio URLs point at hosted blobs whose lifetime we don't control.
+type TtsResult = Awaited<ReturnType<typeof textToSpeech>>;
+const ttsMemo = new Map<string, { result: TtsResult; expiresAt: number }>();
+const TTS_MEMO_TTL_MS = 30 * 60000;
+const TTS_MEMO_MAX_ENTRIES = 200;
+
+export async function textToSpeechCached(
+  text: string,
+  languageCode: SupportedLanguageCode = "lug",
+  temperature = 0.7,
+): Promise<TtsResult> {
+  const key = `${languageCode}|${text}`;
+  const now = Date.now();
+
+  const cached = ttsMemo.get(key);
+  if (cached && now < cached.expiresAt && cached.result.audioUrl) {
+    return cached.result;
+  }
+
+  const result = await textToSpeech(text, languageCode, temperature);
+
+  if (result.audioUrl) {
+    if (ttsMemo.size >= TTS_MEMO_MAX_ENTRIES) {
+      // Evict oldest entries (Map preserves insertion order)
+      for (const oldKey of ttsMemo.keys()) {
+        ttsMemo.delete(oldKey);
+        if (ttsMemo.size < TTS_MEMO_MAX_ENTRIES) break;
+      }
+    }
+    ttsMemo.set(key, { result, expiresAt: now + TTS_MEMO_TTL_MS });
+  }
+
+  return result;
+}
+
 /**
  * Summarize text (English or Luganda)
  * @param text - Text to summarize
