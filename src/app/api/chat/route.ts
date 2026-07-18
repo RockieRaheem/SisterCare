@@ -65,6 +65,14 @@ const CRISIS_PATTERNS = {
     /(pour\s*acid|throw\s*acid|burn\s*(them|someone|her|him)|stab|shoot|murder|kill\s*(them|someone|her|him)|attack\s*(them|someone|her|him)|hurt\s*(them|someone|her|him))/i,
 };
 
+// Native-language self-harm phrases (Luganda, Swahili) checked on the ORIGINAL
+// message. The English patterns above only work after translation succeeds;
+// this catches a crisis even when translation is down. Every term here must be
+// unambiguous — a false positive shows a supportive message, but a term that
+// matches everyday speech would erode trust.
+const NATIVE_SELF_HARM_PATTERN =
+  /(okwetta|kwetta|njagala\s+kufa|kujiua|najiua|nataka\s+kufa|kujidhuru)/i;
+
 // Crisis responses with Uganda-specific resources
 const CRISIS_RESPONSES = {
   familyAbuse: `I'm so sorry you're going through this. What you're describing is serious, and I want you to know that it is NOT your fault. You deserve to be safe. 💜
@@ -174,6 +182,7 @@ function assessTriageSeverity(message: string): {
 
   if (
     CRISIS_PATTERNS.selfHarm.test(m) ||
+    NATIVE_SELF_HARM_PATTERN.test(m) ||
     CRISIS_PATTERNS.violence.test(m) ||
     CRISIS_PATTERNS.danger.test(m)
   ) {
@@ -479,7 +488,7 @@ function checkForCrisis(message: string): string | null {
   }
 
   // Self-harm/suicide detection - HIGHEST PRIORITY
-  if (CRISIS_PATTERNS.selfHarm.test(m)) {
+  if (CRISIS_PATTERNS.selfHarm.test(m) || NATIVE_SELF_HARM_PATTERN.test(m)) {
     return CRISIS_RESPONSES.selfHarm;
   }
 
@@ -675,7 +684,7 @@ export async function POST(request: NextRequest) {
     }
 
     const actionStatuses: AgentActionStatus[] = [];
-    const triage = assessTriageSeverity(trimmedMessage);
+    let triage = assessTriageSeverity(trimmedMessage);
     const apiKey = process.env.GEMINI_API_KEY || "";
 
     const storedLanguage = toSupportedLanguageCode(
@@ -781,6 +790,24 @@ export async function POST(request: NextRequest) {
             );
           }
         }
+      }
+    }
+
+    // Safety net: the crisis/triage regexes are English-only, so a message
+    // written in Luganda or Swahili would sail past them. Re-assess severity
+    // on the translated text and keep whichever result is more severe.
+    if (messageForAgent !== trimmedMessage) {
+      const severityRank: Record<TriageSeverity, number> = {
+        low: 0,
+        medium: 1,
+        high: 2,
+        critical: 3,
+      };
+      const translatedTriage = assessTriageSeverity(messageForAgent);
+      if (
+        severityRank[translatedTriage.severity] > severityRank[triage.severity]
+      ) {
+        triage = translatedTriage;
       }
     }
 
@@ -946,7 +973,13 @@ export async function POST(request: NextRequest) {
           ].join("\n")
         : messageForAgent;
 
-    const crisisResponse = checkForCrisis(trimmedMessage);
+    // Check BOTH the original message and its English translation — the
+    // crisis patterns are English-only, and a crisis expressed in Luganda
+    // must not bypass the safety layer just because it needed translating.
+    let crisisResponse = checkForCrisis(trimmedMessage);
+    if (!crisisResponse && messageForAgent !== trimmedMessage) {
+      crisisResponse = checkForCrisis(messageForAgent);
+    }
     if (crisisResponse) {
       const { localizedText, audio } = await localizeResponse(crisisResponse);
       return NextResponse.json({
