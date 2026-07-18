@@ -571,9 +571,9 @@ Read this section carefully — it will save you days.
 
 ### 17.1 Active gotchas (true today; fix-in-progress items)
 
-1. **Server-side Firestore writes still use the client SDK and silently fail under the published rules.** API routes import the Firebase **client** SDK, which has no authenticated user on the server, so rules like `request.auth.uid == userId` deny writes made *inside* `/api/chat` (agent tool persistence, `logAgentEvent`, `connectUserToCounsellor`) — all are try/catch-wrapped and only `console.warn`. Client-side writes (dashboard, chat page) work fine. The auth boundary now exists (`src/lib/firebaseAdmin.ts` verifies ID tokens); the remaining work is routing server-side *writes* through the Admin SDK's Firestore. Until then: don't add new server-side writes expecting them to persist, and don't "fix" this by loosening `firestore.rules`.
-2. **API auth enforcement requires `FIREBASE_SERVICE_ACCOUNT_KEY`.** `/api/chat`, `/api/stellar/proofs`, and `/api/counsellors/sync-availability` verify Firebase ID tokens and use the verified uid (never the body's `userId`) — but only when the Admin SDK is configured. Without the env var the routes run in **unenforced dev mode** (a warning is logged at startup). Production deployments must set it; do not deploy publicly with a funded mainnet issuer key without it.
-3. **`counsellors` writes are rule-blocked**, so `sync-availability`, `seedCounsellors`, and `autoUpdateCounsellorStatus` cannot persist. Seed counsellor data via Firebase Console for now.
+1. **Everything auth- and persistence-related requires `FIREBASE_SERVICE_ACCOUNT_KEY`.** With it configured: API routes verify ID tokens (verified uid overrides the body's `userId`), and server-side writes go through the **Admin SDK** data layer (`src/lib/server/serverData.ts`), so agent tool persistence, `logAgentEvent`, counsellor handoffs, and availability sync all actually persist. Without it: routes run in **unenforced dev mode** (warning logged at startup) and server code falls back to the client SDK, where security rules silently deny server-side writes — the old behavior. Production deployments MUST set it; do not deploy publicly with a funded mainnet issuer key without it.
+2. **Server code must import from `src/lib/server/serverData.ts`, never `src/lib/firestore.ts`.** The client-SDK module is for browser code. If you add a new server-side data operation, implement it in `serverData.ts` (admin impl + client fallback, following the existing pattern). Never import `serverData.ts` or `firebaseAdmin.ts` from a client component — they pull in `firebase-admin`.
+3. **Roles exist but nothing consumes them yet.** `POST /api/admin/roles` sets `role` custom claims (`user`/`counsellor`/`admin`; first admin via `ADMIN_BOOTSTRAP_SECRET`). Counsellor/admin surfaces and role-gated rules are the next consumers.
 4. **Rate limiting is per-user but per-instance** (`executor.ts`): counters live in server memory, so on serverless each lambda has its own window. Fine as a courtesy limit; hard quotas belong at the edge or in a shared store.
 5. **Docs drift** — README mentions Next 16.1 / "Flash-Lite"; older docs say Next 14. The code's model chain is `gemini-2.5-flash → 2.5-pro → 2.0-flash`. Trust the code, then this guide, then the README.
 6. **Static counsellors are demo data** with a shared placeholder phone number; email notifications and data export have UI but no backend.
@@ -590,7 +590,7 @@ Read this section carefully — it will save you days.
 
 ### 17.3 Missing infrastructure (accepted debt)
 
-- **Test coverage gaps:** counsellor scoring (§10) and Stellar hashing/Merkle (§12) are still untested — both are extractable pure functions like `cycle.ts`/`safety.ts` were.
+- **Test coverage gaps:** Stellar hashing/Merkle (§12) is still untested. (Counsellor matching is now covered: `src/lib/counsellorMatching.ts` + its test file.)
 - **Lint isn't in CI** (`next lint` is deprecated under Next 16; migrate to the ESLint CLI first).
 
 ### 17.4 Roadmap (agreed direction)
