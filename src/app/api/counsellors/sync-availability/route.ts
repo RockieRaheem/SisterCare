@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { batchUpdateCounsellorAvailability } from "@/lib/firestore";
+import { batchUpdateCounsellorAvailability } from "@/lib/server/serverData";
 import { authenticateRequest } from "@/lib/firebaseAdmin";
 
 export async function POST(request: NextRequest) {

@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { executeAgent } from "@/lib/agent";
+// Server data layer: admin-SDK reads/writes that persist under security
+// rules, with client-SDK fallback in unconfigured dev mode.
 import {
   connectUserToCounsellor,
-  getCycleInfo,
   logAgentEvent,
   routeCounsellor,
   saveCycleData,
-  calculateNextPeriod,
   setActiveCounsellorOnConversation,
   getActiveCounsellorForConversation,
   getCounsellors,
-} from "@/lib/firestore";
+} from "@/lib/server/serverData";
+import { getCycleInfo, calculateNextPeriod } from "@/lib/cycle";
 import {
   translateText,
   detectLanguage,

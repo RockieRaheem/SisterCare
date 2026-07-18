@@ -17,17 +17,18 @@ import {
   UGANDA_HEALTHCARE_RESOURCES,
   HEALTH_KNOWLEDGE_BASE,
 } from "./knowledge";
+// Server data layer: admin-SDK writes that actually persist under security
+// rules (the executor only ever runs server-side, inside /api/chat).
 import {
   logSymptoms,
   createReminder,
   getSymptoms,
   saveCycleData,
-  calculateNextPeriod,
   savePregnancyData,
   clearPregnancyData,
   updateCycleAfterBirth,
-} from "../firestore";
-import { getCycleInfo } from "../cycle";
+} from "../server/serverData";
+import { calculateNextPeriod, getCycleInfo } from "../cycle";
 import { MoodType, FlowIntensity } from "@/types";
 
 // Types for agent execution
