@@ -604,6 +604,7 @@ Read this section carefully — it will save you days.
 
 ## Appendix: Reading List
 
+- `docs/ARCHITECTURE_V2.md` — the target architecture blueprint (channel-agnostic gateway, event backbone, session engine, trust layer) and the migration map from today's code. Read it before proposing structural changes.
 - `docs/SYSTEM_OVERVIEW.md` — earlier plain-language feature inventory (some sections outdated; this guide supersedes it where they conflict).
 - `docs/stellar-trust-layer.md` — Stellar architecture deep-dive.
 - `docs/SUNBIRD_AI_RESEARCH.md` — Sunbird capability research.
