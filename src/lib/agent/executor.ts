@@ -1569,21 +1569,51 @@ async function fetchWithRetry(
   throw lastError || new Error("Network request failed");
 }
 
-// Request tracking for rate limit prevention
-const requestTracker = {
-  lastRequestTime: 0,
-  requestCount: 0,
-  windowStart: 0,
+// Per-user request tracking so one chatty user can't starve everyone else.
+// NOTE: in-memory state is per-server-instance — on serverless this resets per
+// lambda. Good enough as a courtesy limit; hard quota enforcement belongs at
+// the edge or in a shared store once auth lands.
+interface UserRequestState {
+  lastRequestTime: number;
+  requestCount: number;
+  windowStart: number;
+}
+
+const userRequestStates = new Map<string, UserRequestState>();
+const USER_STATE_TTL_MS = 5 * 60000;
+
+// Upstream circuit breaker — deliberately GLOBAL, not per-user: when every
+// model is failing (quota exhausted, provider outage) that affects all users,
+// and hammering the API on behalf of other users just prolongs it.
+const upstreamHealth = {
   consecutiveFailures: 0,
   cooldownUntil: 0,
 };
 
-// Minimum time between requests (ms) - prevents hammering
-const MIN_REQUEST_INTERVAL = 2000; // Increased to 2 seconds
-// Max requests per minute - reduced for free tier
+// Minimum time between requests per user (ms) - prevents hammering
+const MIN_REQUEST_INTERVAL = 2000;
+// Max requests per minute PER USER - conservative for free tier
 const MAX_REQUESTS_PER_MINUTE = 6;
 // Cooldown after consecutive failures
 const FAILURE_COOLDOWN_MS = 60000; // 1 minute cooldown after failures
+
+function getUserRequestState(userKey: string, now: number): UserRequestState {
+  // Prune stale entries so the map doesn't grow unbounded on long-lived servers
+  if (userRequestStates.size > 1000) {
+    for (const [key, state] of userRequestStates) {
+      if (now - state.lastRequestTime > USER_STATE_TTL_MS) {
+        userRequestStates.delete(key);
+      }
+    }
+  }
+
+  let state = userRequestStates.get(userKey);
+  if (!state) {
+    state = { lastRequestTime: 0, requestCount: 0, windowStart: now };
+    userRequestStates.set(userKey, state);
+  }
+  return state;
+}
 
 /**
  * Main agent execution function
@@ -1601,11 +1631,11 @@ export async function executeAgent(
   const toolsUsed: string[] = [];
   const actions: string[] = [];
 
-  // Client-side rate limiting
+  // Rate limiting
   const now = Date.now();
 
-  // Check if we're in cooldown from previous failures
-  if (now < requestTracker.cooldownUntil) {
+  // Upstream circuit breaker: all models were recently failing
+  if (now < upstreamHealth.cooldownUntil) {
     console.log("[Agent] In cooldown period, using local fallback");
     return {
       response: generateFallbackResponse(message, context),
@@ -1614,15 +1644,20 @@ export async function executeAgent(
     };
   }
 
-  if (now - requestTracker.windowStart > 60000) {
-    // Reset window
-    requestTracker.windowStart = now;
-    requestTracker.requestCount = 0;
+  const userKey = context.userId || "anonymous";
+  const userState = getUserRequestState(userKey, now);
+
+  if (now - userState.windowStart > 60000) {
+    // Reset this user's window
+    userState.windowStart = now;
+    userState.requestCount = 0;
   }
 
-  // Check if we're sending too many requests - but use fallback instead of error
-  if (requestTracker.requestCount >= MAX_REQUESTS_PER_MINUTE) {
-    console.log("[Agent] Client rate limit reached, using local fallback");
+  // Per-user limit - use fallback instead of error so the user still gets help
+  if (userState.requestCount >= MAX_REQUESTS_PER_MINUTE) {
+    console.log(
+      `[Agent] Rate limit reached for user ${userKey.slice(0, 8)}..., using local fallback`,
+    );
     return {
       response: generateFallbackResponse(message, context),
       toolsUsed: [],
@@ -1630,16 +1665,16 @@ export async function executeAgent(
     };
   }
 
-  // Enforce minimum interval between requests
-  const timeSinceLastRequest = now - requestTracker.lastRequestTime;
+  // Enforce minimum interval between THIS user's requests
+  const timeSinceLastRequest = now - userState.lastRequestTime;
   if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
     await new Promise((resolve) =>
       setTimeout(resolve, MIN_REQUEST_INTERVAL - timeSinceLastRequest),
     );
   }
 
-  requestTracker.lastRequestTime = Date.now();
-  requestTracker.requestCount++;
+  userState.lastRequestTime = Date.now();
+  userState.requestCount++;
 
   // Try models in order until one works
   let lastError: Error | null = null;
@@ -1655,7 +1690,7 @@ export async function executeAgent(
         actions,
       );
       // Success! Reset failure counter
-      requestTracker.consecutiveFailures = 0;
+      upstreamHealth.consecutiveFailures = 0;
       return result;
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
@@ -1676,11 +1711,11 @@ export async function executeAgent(
   }
 
   // All models failed - track failures and enter cooldown if needed
-  requestTracker.consecutiveFailures++;
-  if (requestTracker.consecutiveFailures >= 3) {
+  upstreamHealth.consecutiveFailures++;
+  if (upstreamHealth.consecutiveFailures >= 3) {
     console.log("[Agent] Multiple failures, entering cooldown");
-    requestTracker.cooldownUntil = Date.now() + FAILURE_COOLDOWN_MS;
-    requestTracker.consecutiveFailures = 0;
+    upstreamHealth.cooldownUntil = Date.now() + FAILURE_COOLDOWN_MS;
+    upstreamHealth.consecutiveFailures = 0;
   }
 
   // Use intelligent local fallback instead of throwing error
