@@ -27,6 +27,7 @@ import {
   clearPregnancyData,
   updateCycleAfterBirth,
 } from "../firestore";
+import { getCycleInfo } from "../cycle";
 import { MoodType, FlowIntensity } from "@/types";
 
 // Types for agent execution
@@ -661,52 +662,26 @@ async function executeTool(
 }
 
 /**
- * Calculate cycle information from cycle data
+ * Calculate cycle information from cycle data.
+ * Delegates to the canonical math in src/lib/cycle.ts — the agent and the
+ * data layer must never disagree about what phase the user is in.
  */
 function calculateCycleInfo(cycleData: CycleDataContext) {
-  const today = new Date();
-  const lastPeriod = new Date(cycleData.lastPeriodDate);
-
-  // Calculate days since last period
-  const daysSinceLast = Math.floor(
-    (today.getTime() - lastPeriod.getTime()) / (1000 * 60 * 60 * 24),
+  const info = getCycleInfo(
+    new Date(cycleData.lastPeriodDate),
+    cycleData.cycleLength,
+    cycleData.periodLength,
   );
-
-  // Calculate current cycle day
-  const cyclesPassed = Math.floor(daysSinceLast / cycleData.cycleLength);
-  const dayInCycle = (daysSinceLast % cycleData.cycleLength) + 1;
-
-  // Calculate next period
-  const nextPeriodDate = new Date(lastPeriod);
-  nextPeriodDate.setDate(
-    nextPeriodDate.getDate() + (cyclesPassed + 1) * cycleData.cycleLength,
-  );
-
-  const daysUntilNextPeriod = Math.floor(
-    (nextPeriodDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
-  );
-
-  // Determine phase
-  let phase: string;
-  if (dayInCycle <= cycleData.periodLength) {
-    phase = "menstrual";
-  } else if (dayInCycle <= Math.floor(cycleData.cycleLength * 0.45)) {
-    phase = "follicular";
-  } else if (dayInCycle <= Math.floor(cycleData.cycleLength * 0.55)) {
-    phase = "ovulation";
-  } else {
-    phase = "luteal";
-  }
 
   return {
-    currentPhase: phase,
-    dayInCycle,
-    daysUntilNextPeriod,
-    nextPeriodDate: nextPeriodDate.toISOString(),
-    isCurrentlyOnPeriod: dayInCycle <= cycleData.periodLength,
+    currentPhase: info.phase,
+    dayInCycle: info.dayInCycle,
+    daysUntilNextPeriod: info.daysUntilNextPeriod,
+    nextPeriodDate: info.nextPeriodDate.toISOString(),
+    isCurrentlyOnPeriod: info.isInPeriod,
     cycleLength: cycleData.cycleLength,
     periodLength: cycleData.periodLength,
-    phaseDescription: getPhaseDescription(phase),
+    phaseDescription: getPhaseDescription(info.phase),
   };
 }
 
