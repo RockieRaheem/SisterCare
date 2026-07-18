@@ -8,6 +8,7 @@ import {
   submitProofToStellar,
 } from "@/lib/stellar";
 import { StellarProofKind } from "@/lib/stellar";
+import { authenticateRequest } from "@/lib/firebaseAdmin";
 
 function badRequest(message: string) {
   return NextResponse.json({ success: false, error: message }, { status: 400 });
@@ -38,6 +39,16 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  // Anchoring a proof signs and submits a REAL Stellar transaction with the
+  // issuer account's key — anonymous callers must never be able to do that.
+  const auth = await authenticateRequest(request);
+  if (auth.status === "unauthenticated") {
+    return NextResponse.json(
+      { success: false, error: "Authentication required" },
+      { status: 401 },
+    );
+  }
+
   const body = await request.json().catch(() => null);
 
   if (!body || typeof body !== "object") {

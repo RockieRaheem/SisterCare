@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
+import { auth } from "@/lib/firebase";
 import Header from "@/components/layout/Header";
 import {
   addMessage,
@@ -842,9 +843,18 @@ export default function ChatPage() {
         const makeRequest = async (
           retryCount = 0,
         ): Promise<ChatApiResponse> => {
+          // Firebase caches the ID token and auto-refreshes near expiry, so
+          // fetching it per request is cheap. The server verifies it and uses
+          // the token's uid — never the raw userId below — as the identity.
+          const idToken = await auth.currentUser
+            ?.getIdToken()
+            .catch(() => null);
           const res = await fetch("/api/chat", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+            },
             body: JSON.stringify({
               message: text.trim(),
               conversationHistory,

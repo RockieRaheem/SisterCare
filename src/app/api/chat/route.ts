@@ -19,6 +19,7 @@ import {
   SupportedLanguageCode,
 } from "@/lib/sunbird";
 import { checkForCrisis, assessTriageSeverity } from "@/lib/safety";
+import { authenticateRequest } from "@/lib/firebaseAdmin";
 import {
   AgentActionStatus,
   CounsellorSpecialty,
@@ -496,16 +497,30 @@ function fallbackLocalizedResponse(
  */
 export async function POST(request: NextRequest) {
   try {
+    // Trust boundary: when Firebase Admin is configured, the caller MUST
+    // present a valid ID token and the verified uid overrides whatever
+    // userId the request body claims. Without Admin configured (dev mode)
+    // we fall back to the body's userId, with a warning logged at startup.
+    const auth = await authenticateRequest(request);
+    if (auth.status === "unauthenticated") {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 },
+      );
+    }
+
     const body = await request.json();
     const {
       message,
       conversationHistory = [],
-      userId,
+      userId: bodyUserId,
       cycleData,
       userProfile,
       conversationId,
       userLanguage: clientLanguage,
     } = body;
+
+    const userId = auth.status === "verified" ? auth.uid : bodyUserId;
 
     if (!message || typeof message !== "string") {
       return NextResponse.json(
