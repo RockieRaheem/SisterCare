@@ -4,6 +4,8 @@
 
 _Breaking stigmas. Empowering women. One conversation at a time._
 
+> **👩‍💻 Joining the team?** Start with the **[Developer Onboarding Guide](docs/DEVELOPER_GUIDE.md)** — full architecture, setup, data model, and conventions.
+
 ![Next.js](https://img.shields.io/badge/Next.js-16.1-black?logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38bdf8?logo=tailwindcss)
