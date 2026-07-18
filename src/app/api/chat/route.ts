@@ -422,22 +422,49 @@ function getLanguageSwitchConfirmation(
 function parsePeriodStartDate(message: string): Date | null {
   const m = message.toLowerCase();
   const now = new Date();
+  const daysAgo = (days: number): Date => {
+    const d = new Date(now);
+    d.setDate(d.getDate() - days);
+    return d;
+  };
 
   if (/today/.test(m)) return now;
-  if (/yesterday/.test(m)) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - 1);
-    return d;
+  if (/day before yesterday/.test(m)) return daysAgo(2);
+  if (/yesterday/.test(m)) return daysAgo(1);
+
+  // Relative phrases: "started 5 days ago", "began two weeks ago", "a week ago"
+  const relativeMatch = m.match(
+    /\b(\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten)\s*(day|week)s?\s*(ago|back)\b/,
+  );
+  if (relativeMatch) {
+    const numberWords: Record<string, number> = {
+      a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5,
+      six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+    };
+    const n = numberWords[relativeMatch[1]] ?? parseInt(relativeMatch[1], 10);
+    const days = relativeMatch[2] === "week" ? n * 7 : n;
+    // Beyond ~60 days it's history, not a current period — let the agent clarify.
+    if (Number.isFinite(days) && days >= 0 && days <= 60) return daysAgo(days);
+    return null;
   }
+  if (/\blast week\b/.test(m)) return daysAgo(7);
 
   const dateMatch = message.match(/\b(\d{4}-\d{2}-\d{2})\b/);
   if (dateMatch) {
     const parsed = new Date(dateMatch[1]);
-    if (!isNaN(parsed.getTime())) return parsed;
+    if (!isNaN(parsed.getTime()) && parsed.getTime() <= now.getTime()) {
+      return parsed;
+    }
   }
 
   const generic = new Date(message);
-  if (!isNaN(generic.getTime()) && generic.getFullYear() > 2000) return generic;
+  if (
+    !isNaN(generic.getTime()) &&
+    generic.getFullYear() > 2000 &&
+    generic.getTime() <= now.getTime()
+  ) {
+    return generic;
+  }
 
   return null;
 }
@@ -838,9 +865,21 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    if (userId && cycleData && PERIOD_START_PATTERN.test(trimmedMessage)) {
-      const parsedStartDate =
-        parsePeriodStartDate(trimmedMessage) || new Date();
+    // Only pre-write a period date when the message actually states one, or
+    // affirmatively says the period is starting NOW. Vague matches such as
+    // "update my period" or "backtrack" used to default to today's date and
+    // fight with the agent's own tool call — those are now left to the agent.
+    const impliesStartingNow =
+      /\b(i got my period|got my periods|my period is here|period (started|has started|came|began|arrived))\b/i.test(
+        trimmedMessage,
+      ) && !/\b(ago|back|last week|update|backtrack)\b/i.test(trimmedMessage);
+    const parsedStartDate =
+      userId && cycleData && PERIOD_START_PATTERN.test(trimmedMessage)
+        ? parsePeriodStartDate(trimmedMessage) ||
+          (impliesStartingNow ? new Date() : null)
+        : null;
+
+    if (userId && cycleData && parsedStartDate) {
       const nextPeriod = calculateNextPeriod(
         parsedStartDate,
         cycleData.cycleLength,
