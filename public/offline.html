@@ -213,5 +213,13 @@
         </a>
       </div>
     </div>
+
+    <script>
+      // Auto-recover the moment connectivity returns — users on intermittent
+      // mobile data shouldn't have to keep tapping "Try Again".
+      window.addEventListener("online", function () {
+        window.location.reload();
+      });
+    </script>
   </body>
 </html>
