@@ -81,6 +81,46 @@ export type AuthResult =
   | { status: "unauthenticated" }
   | { status: "unenforced" };
 
+// ============================================
+// ROLES (custom claims)
+// ============================================
+
+export type UserRole = "user" | "counsellor" | "admin";
+
+export const USER_ROLES: UserRole[] = ["user", "counsellor", "admin"];
+
+/**
+ * Set a user's role as a custom claim. Server-only, admin-gated at the API
+ * layer. Takes effect when the user's ID token next refreshes (≤1 hour, or
+ * immediately on re-login).
+ */
+export async function setUserRole(uid: string, role: UserRole): Promise<void> {
+  const app = getAdminApp();
+  if (!app) {
+    throw new Error("Firebase Admin is not configured — cannot set roles");
+  }
+  await getAuth(app).setCustomUserClaims(uid, { role });
+}
+
+/** Resolve a uid from an email address, or null if no such user. */
+export async function getUidByEmail(email: string): Promise<string | null> {
+  const app = getAdminApp();
+  if (!app) {
+    throw new Error("Firebase Admin is not configured — cannot look up users");
+  }
+  try {
+    const user = await getAuth(app).getUserByEmail(email);
+    return user.uid;
+  } catch {
+    return null;
+  }
+}
+
+/** True when the request is verified AND carries the given role claim. */
+export function hasRole(auth: AuthResult, role: UserRole): boolean {
+  return auth.status === "verified" && auth.token.role === role;
+}
+
 /**
  * Authenticate an incoming API request from its Authorization header.
  *
