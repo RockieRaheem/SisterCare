@@ -22,6 +22,7 @@ import {
   type App,
 } from "firebase-admin/app";
 import { getAuth, type DecodedIdToken } from "firebase-admin/auth";
+import { getFirestore, type Firestore } from "firebase-admin/firestore";
 
 let adminApp: App | null = null;
 let warnedUnconfigured = false;
@@ -63,6 +64,16 @@ function getAdminApp(): App | null {
 
 export function isAuthEnforced(): boolean {
   return getAdminApp() !== null;
+}
+
+/**
+ * Admin Firestore instance, or null when the Admin SDK isn't configured.
+ * Admin access bypasses security rules — server code using it MUST act only
+ * on identities proven by authenticateRequest().
+ */
+export function getAdminDb(): Firestore | null {
+  const app = getAdminApp();
+  return app ? getFirestore(app) : null;
 }
 
 export type AuthResult =
