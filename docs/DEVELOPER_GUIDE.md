@@ -571,25 +571,29 @@ Read this section carefully — it will save you days.
 
 ### 17.1 Active gotchas (true today; fix-in-progress items)
 
-1. **Server-side Firestore writes silently fail under the published rules.** API routes import the Firebase **client** SDK, which has no authenticated user on the server, so rules like `request.auth.uid == userId` deny writes made *inside* `/api/chat` (agent tool persistence, `logAgentEvent`, `connectUserToCounsellor`) — all are try/catch-wrapped and only `console.warn`. Client-side writes (dashboard, chat page) work fine. The planned fix is verifying the Firebase ID token in API routes and using the **Admin SDK** server-side. Until then: don't add new server-side writes expecting them to persist, and don't "fix" this by loosening `firestore.rules`.
-2. **`/api/chat`, Stellar, and sync endpoints have no authentication.** The chat route trusts client-supplied `userId`/`cycleData`; `/api/stellar/proofs` can trigger issuer-signed transactions for any caller. Do not deploy publicly with a funded mainnet issuer key until auth lands.
-3. **Crisis detection only sees the original-language text.** `checkForCrisis` runs on the raw message with English regexes; a crisis expressed in Luganda (outside the curated direct-response phrases) reaches the LLM. If you touch the pipeline, run the crisis check on the *translated* text too.
-4. **`counsellors` writes are rule-blocked**, so `sync-availability`, `seedCounsellors`, and `autoUpdateCounsellorStatus` cannot persist. Seed counsellor data via Firebase Console for now.
-5. **Global, per-instance rate limiter** in `executor.ts` — one user's traffic can push *all* users on that instance into fallback mode; on serverless each instance has its own counters.
-6. **"Started X days ago" pre-write bug** — Stage 3 (§6) writes *today* as the period start for relative-date phrasings; the agent tool later writes the corrected date. Known; fix belongs in `parsePeriodStartDate`.
-7. **Duplicate cycle math** — `executor.ts#calculateCycleInfo` vs `firestore.ts#getCycleInfo`. Change both or (better) consolidate to `firestore.ts`.
-8. **`ttsCache.ts` is dead code** — imported by the chat route but never called; every response regenerates TTS (including English), adding latency. Wiring the cache in is an open task.
-9. **Unpinned dependencies** — `next`, `react`, `firebase` are `"latest"` in `package.json`; a fresh install may pull breaking versions (`jspdf`/`core-js` are already pinned from one such incident). Pinning is planned.
-10. **Docs drift** — README mentions Next 16.1 / "Flash-Lite"; older docs say Next 14. The code's model chain is `gemini-2.5-flash → 2.5-pro → 2.0-flash`. Trust the code, then this guide, then the README.
-11. **Static counsellors are demo data** with a shared placeholder phone number; email notifications and data export have UI but no backend.
+1. **Server-side Firestore writes still use the client SDK and silently fail under the published rules.** API routes import the Firebase **client** SDK, which has no authenticated user on the server, so rules like `request.auth.uid == userId` deny writes made *inside* `/api/chat` (agent tool persistence, `logAgentEvent`, `connectUserToCounsellor`) — all are try/catch-wrapped and only `console.warn`. Client-side writes (dashboard, chat page) work fine. The auth boundary now exists (`src/lib/firebaseAdmin.ts` verifies ID tokens); the remaining work is routing server-side *writes* through the Admin SDK's Firestore. Until then: don't add new server-side writes expecting them to persist, and don't "fix" this by loosening `firestore.rules`.
+2. **API auth enforcement requires `FIREBASE_SERVICE_ACCOUNT_KEY`.** `/api/chat`, `/api/stellar/proofs`, and `/api/counsellors/sync-availability` verify Firebase ID tokens and use the verified uid (never the body's `userId`) — but only when the Admin SDK is configured. Without the env var the routes run in **unenforced dev mode** (a warning is logged at startup). Production deployments must set it; do not deploy publicly with a funded mainnet issuer key without it.
+3. **`counsellors` writes are rule-blocked**, so `sync-availability`, `seedCounsellors`, and `autoUpdateCounsellorStatus` cannot persist. Seed counsellor data via Firebase Console for now.
+4. **Rate limiting is per-user but per-instance** (`executor.ts`): counters live in server memory, so on serverless each lambda has its own window. Fine as a courtesy limit; hard quotas belong at the edge or in a shared store.
+5. **Docs drift** — README mentions Next 16.1 / "Flash-Lite"; older docs say Next 14. The code's model chain is `gemini-2.5-flash → 2.5-pro → 2.0-flash`. Trust the code, then this guide, then the README.
+6. **Static counsellors are demo data** with a shared placeholder phone number; email notifications and data export have UI but no backend.
+7. **`src/lib/ttsCache.ts` (browser-side IndexedDB cache) is still unused** — the server now skips English TTS and memoizes repeats in-process, but the client never caches received audio locally.
 
-### 17.2 Missing infrastructure (accepted debt)
+### 17.2 Recently fixed (don't re-report these)
 
-- **No automated tests.** Highest-value first targets: cycle math (§9), crisis/triage regexes (§6), counsellor scoring (§10), Stellar hashing/Merkle (§12) — all pure functions, trivially testable.
-- **No CI.** A GitHub Actions workflow running typecheck + lint (+ tests when they exist) is wanted.
-- `.env.example` is incomplete (§3 has the authoritative variable list).
+- **Crisis detection now runs on the translated text too**, with native Luganda/Swahili self-harm patterns as translation-down fallback. The logic lives in `src/lib/safety.ts` (unit-tested; safety-critical review area).
+- **Cycle math is consolidated** in `src/lib/cycle.ts` (pure, unit-tested); `firestore.ts` re-exports it and the executor delegates to it.
+- **"Started X days ago" parses correctly** and vague phrases ("update my period") no longer pre-write today's date.
+- **Dependencies are pinned** to tested versions; `vitest` runs 35 unit tests; GitHub Actions CI runs typecheck + tests on every push/PR.
+- **English responses skip TTS** (latency + quota win); repeated non-English synthesis is memoized server-side (`textToSpeechCached`).
+- `.env.example` now lists every variable the code reads, including `FIREBASE_SERVICE_ACCOUNT_KEY` and the `STELLAR_*` set.
 
-### 17.3 Roadmap (agreed direction)
+### 17.3 Missing infrastructure (accepted debt)
+
+- **Test coverage gaps:** counsellor scoring (§10) and Stellar hashing/Merkle (§12) are still untested — both are extractable pure functions like `cycle.ts`/`safety.ts` were.
+- **Lint isn't in CI** (`next lint` is deprecated under Next 16; migrate to the ESLint CLI first).
+
+### 17.4 Roadmap (agreed direction)
 
 1. **Foundation:** API auth (ID-token verification + Admin SDK), role-based accounts via custom claims (`user`/`counsellor`/`admin`).
 2. **Platform:** counsellor portal (presence-based availability, request queue), in-app sessions with an explicit lifecycle state machine, feedback capture, admin verification console (mints Stellar credentials).
