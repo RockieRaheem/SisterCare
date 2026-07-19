@@ -193,6 +193,70 @@ export interface Counsellor {
   createdAt: Date;
 }
 
+// ============================================
+// COUNSELLING SESSION TYPES (Phase 2 — ARCHITECTURE_V2 §4.4)
+// ============================================
+
+/**
+ * Session lifecycle states. Transitions are validated by
+ * src/lib/sessionStateMachine.ts — never set state directly.
+ */
+export type SessionState =
+  | "requested" // waiting for a match (this IS the queue)
+  | "matched" // assigned to a counsellor, awaiting accept
+  | "accepted" // counsellor accepted (momentary; engine auto-activates)
+  | "active" // room is open, both sides can message
+  | "completed" // ended by either party
+  | "feedback_received" // user rated the session (terminal)
+  | "expired" // no match within the request TTL (terminal)
+  | "escalated"; // counsellor flagged an emergency (terminal)
+
+export type SessionPriority = "normal" | "critical";
+
+export interface CounsellingSession {
+  id: string;
+  userId: string;
+  counsellorId: string | null;
+  counsellorName?: string;
+  state: SessionState;
+  priority: SessionPriority;
+  reason: "user_request" | "risk_detected";
+  specialty?: CounsellorSpecialty;
+  preferredLanguage?: string;
+  /** Short context shown to the counsellor before accepting (max 500 chars) */
+  summary: string;
+  /** Originating AI conversation, when the session came from a chat handoff */
+  conversationId?: string;
+  requestedAt: Date;
+  matchedAt?: Date;
+  acceptedAt?: Date;
+  activeAt?: Date;
+  completedAt?: Date;
+  endedBy?: "user" | "counsellor";
+  feedbackRating?: number; // 1..5
+  feedbackComment?: string;
+  /** SLA metric: seconds from requested to accepted (the crisis lane clock) */
+  timeToHumanSeconds?: number;
+  matchAttempts: number;
+  /** Counsellor uids who declined or timed out — excluded from rematching */
+  declinedBy: string[];
+}
+
+export interface SessionMessage {
+  id: string;
+  senderId: string;
+  senderRole: "user" | "counsellor";
+  text: string;
+  createdAt: Date;
+}
+
+/** Presence heartbeat doc for a counsellor (presence/{counsellorUid}) */
+export interface CounsellorPresence {
+  counsellorId: string;
+  status: "available" | "busy";
+  lastHeartbeat: Date;
+}
+
 // Subscription Types
 export interface Subscription {
   userId: string;
