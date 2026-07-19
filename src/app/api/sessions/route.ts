@@ -1,0 +1,107 @@
+import { NextRequest, NextResponse } from "next/server";
+import {
+  authenticateRequest,
+  isAuthEnforced,
+  hasRole,
+} from "@/lib/firebaseAdmin";
+import {
+  createSessionRequest,
+  listSessionsForUser,
+  listSessionsForCounsellor,
+} from "@/lib/server/sessions";
+import { CounsellorSpecialty } from "@/types";
+
+function sessionsUnavailable() {
+  return NextResponse.json(
+    {
+      success: false,
+      error:
+        "Counselling sessions require FIREBASE_SERVICE_ACCOUNT_KEY to be configured.",
+    },
+    { status: 503 },
+  );
+}
+
+/**
+ * POST /api/sessions — request a counselling session as the signed-in user.
+ * Body: { summary?, specialty?, preferredLanguage? }
+ *
+ * Client-created sessions are always priority "normal": the crisis lane is
+ * entered only via server-side triage in /api/chat, so queue preemption can't
+ * be self-assigned.
+ */
+export async function POST(request: NextRequest) {
+  if (!isAuthEnforced()) return sessionsUnavailable();
+
+  const auth = await authenticateRequest(request);
+  if (auth.status !== "verified") {
+    return NextResponse.json(
+      { success: false, error: "Authentication required" },
+      { status: 401 },
+    );
+  }
+
+  const body = (await request.json().catch(() => null)) || {};
+
+  try {
+    const session = await createSessionRequest({
+      userId: auth.uid,
+      reason: "user_request",
+      priority: "normal",
+      summary:
+        typeof body.summary === "string" && body.summary.trim()
+          ? body.summary.trim()
+          : "User requested a counselling session",
+      specialty:
+        typeof body.specialty === "string"
+          ? (body.specialty as CounsellorSpecialty)
+          : undefined,
+      preferredLanguage:
+        typeof body.preferredLanguage === "string"
+          ? body.preferredLanguage
+          : undefined,
+      conversationId:
+        typeof body.conversationId === "string"
+          ? body.conversationId
+          : undefined,
+    });
+    return NextResponse.json({ success: true, data: { session } });
+  } catch (error) {
+    console.error("Failed to create session request:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to create session request" },
+      { status: 500 },
+    );
+  }
+}
+
+/**
+ * GET /api/sessions — list sessions for the caller.
+ * Users get their own sessions; counsellors also get the open crisis queue.
+ */
+export async function GET(request: NextRequest) {
+  if (!isAuthEnforced()) return sessionsUnavailable();
+
+  const auth = await authenticateRequest(request);
+  if (auth.status !== "verified") {
+    return NextResponse.json(
+      { success: false, error: "Authentication required" },
+      { status: 401 },
+    );
+  }
+
+  try {
+    if (hasRole(auth, "counsellor") || hasRole(auth, "admin")) {
+      const data = await listSessionsForCounsellor(auth.uid);
+      return NextResponse.json({ success: true, data });
+    }
+    const sessions = await listSessionsForUser(auth.uid);
+    return NextResponse.json({ success: true, data: { sessions } });
+  } catch (error) {
+    console.error("Failed to list sessions:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to list sessions" },
+      { status: 500 },
+    );
+  }
+}
