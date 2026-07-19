@@ -4,37 +4,112 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import Link from "next/link";
 
+const LANGUAGES = [
+  "Luganda",
+  "Swahili",
+  "Runyankole",
+  "Acholi",
+  "Ateso",
+  "Lugbara",
+  "Luo",
+  "English",
+];
+
+const FEATURES = [
+  {
+    icon: "calendar_month",
+    title: "Smart Cycle Tracking",
+    text: "Know exactly when your period is coming — even offline. Sister learns your rhythm and reminds you before it matters.",
+    tint: "bg-primary/10 text-primary",
+    ring: "group-hover:ring-primary/30",
+  },
+  {
+    icon: "chat_bubble",
+    title: "Sister, Your AI Companion",
+    text: "Someone to talk to at 2am who never judges. Share anything — Sister listens, remembers, and truly helps.",
+    tint: "bg-pink-100 text-pink-500 dark:bg-pink-900/30",
+    ring: "group-hover:ring-pink-300/40",
+  },
+  {
+    icon: "psychology",
+    title: "Mental Wellness",
+    text: "Track your moods, understand your patterns, and get gentle support on the hardest days. You are not alone.",
+    tint: "bg-blue-100 text-blue-500 dark:bg-blue-900/30",
+    ring: "group-hover:ring-blue-300/40",
+  },
+  {
+    icon: "support_agent",
+    title: "Real Human Counsellors",
+    text: "When you need a person, Sister connects you to a verified counsellor — privately, in the app, in your language.",
+    tint: "bg-emerald-100 text-emerald-500 dark:bg-emerald-900/30",
+    ring: "group-hover:ring-emerald-300/40",
+  },
+];
+
+const STEPS = [
+  {
+    icon: "person_add",
+    title: "Create your free account",
+    text: "Under a minute, just an email. No credit card, no real name required.",
+  },
+  {
+    icon: "edit_calendar",
+    title: "Tell Sister about your cycle",
+    text: "Your last period and usual length — Sister handles everything else.",
+  },
+  {
+    icon: "favorite",
+    title: "Start your journey",
+    text: "Chat, track, learn. The more you share, the better Sister supports you.",
+  },
+];
+
 export default function Home() {
   return (
     <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-white dark:bg-background-dark">
       <Header variant="landing" />
 
       <main className="flex-1">
-        {/* Hero Section - Clean and focused */}
+        {/* ============ HERO ============ */}
         <section
           id="mission"
-          className="relative min-h-[80vh] flex items-center scroll-mt-20 pt-safe"
+          className="relative scroll-mt-20 overflow-hidden pt-safe"
         >
-          <div className="absolute inset-0 bg-gradient-to-b from-purple-50/50 to-white dark:from-purple-950/20 dark:to-background-dark" />
+          {/* Ambient background */}
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute inset-0 bg-gradient-to-b from-purple-50/70 via-white to-white dark:from-purple-950/30 dark:via-background-dark dark:to-background-dark" />
+            <div className="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
+            <div className="absolute top-64 -left-40 h-80 w-80 rounded-full bg-pink-200/30 blur-3xl dark:bg-pink-900/20" />
+          </div>
 
-          <div className="relative w-full px-4 sm:px-6 lg:px-20 py-16 sm:py-20 lg:py-24">
-            <div className="max-w-4xl mx-auto text-center">
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight text-text-primary dark:text-white mb-6">
-                Breaking the <span className="text-primary">Silence</span>
+          <div className="relative mx-auto grid max-w-container items-center gap-12 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-2 lg:gap-8 lg:px-20 lg:py-24">
+            {/* Narrative */}
+            <div className="text-center lg:text-left">
+              <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-xs font-semibold text-primary dark:bg-primary/10">
+                <span className="material-symbols-outlined text-sm">
+                  language
+                </span>
+                Built for Uganda · 8 languages · voice first
+              </span>
+
+              <h1 className="mb-6 text-4xl font-extrabold leading-[1.1] tracking-tight text-text-primary dark:text-white sm:text-5xl lg:text-6xl">
+                Breaking the{" "}
+                <span className="bg-gradient-to-r from-primary to-pink-500 bg-clip-text text-transparent">
+                  Silence
+                </span>
               </h1>
 
-              <p className="text-lg sm:text-xl text-text-secondary dark:text-gray-400 max-w-2xl mx-auto mb-8 leading-relaxed">
-                Millions of women struggle alone — with mental health, menstrual
-                confusion, and nowhere to turn. SisterCare gives you Sister, an
-                AI companion who listens without judgment, tracks your cycle so
-                you&apos;re never caught off guard, and connects you with real
-                counsellors when you need human support.
+              <p className="mx-auto mb-8 max-w-xl text-lg leading-relaxed text-text-secondary dark:text-gray-400 sm:text-xl lg:mx-0">
+                For every woman who had questions she couldn&apos;t ask and
+                feelings she couldn&apos;t share — Sister listens without
+                judgment, tracks your cycle, and connects you to real
+                counsellors the moment you need one.
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+              <div className="mb-10 flex flex-col justify-center gap-4 sm:flex-row lg:justify-start">
                 <Link
                   href="/auth/signup"
-                  className="inline-flex items-center justify-center gap-2 rounded-full h-14 px-8 bg-primary hover:bg-primary/90 text-white font-semibold transition-colors touch-target"
+                  className="touch-target inline-flex h-14 items-center justify-center gap-2 rounded-full bg-primary px-8 font-semibold text-white shadow-primary-lg transition-all hover:-translate-y-0.5 hover:bg-primary-dark"
                 >
                   Get Started Free
                   <span className="material-symbols-outlined text-xl">
@@ -43,234 +118,326 @@ export default function Home() {
                 </Link>
                 <Link
                   href="/auth/login"
-                  className="inline-flex items-center justify-center gap-2 rounded-full h-14 px-8 bg-gray-100 dark:bg-gray-800 text-text-primary dark:text-white font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors touch-target"
+                  className="touch-target inline-flex h-14 items-center justify-center gap-2 rounded-full border border-border-light bg-white px-8 font-semibold text-text-primary transition-colors hover:bg-gray-50 dark:border-border-dark dark:bg-card-dark dark:text-white dark:hover:bg-gray-800"
                 >
                   Sign In
                 </Link>
               </div>
 
-              <div className="flex items-center justify-center gap-6 text-sm text-text-secondary">
-                <span className="flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-green-500 text-lg">
-                    check_circle
-                  </span>
-                  100% Free
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-green-500 text-lg">
-                    check_circle
-                  </span>
-                  24/7 Available
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-green-500 text-lg">
-                    check_circle
-                  </span>
-                  Completely Private
-                </span>
+              <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-text-secondary dark:text-gray-400 lg:justify-start">
+                {["100% Free", "24/7 Available", "Completely Private"].map(
+                  (item) => (
+                    <span key={item} className="flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-lg text-success">
+                        check_circle
+                      </span>
+                      {item}
+                    </span>
+                  ),
+                )}
               </div>
+            </div>
+
+            {/* Product visualization — pure CSS chat mockup */}
+            <div className="relative mx-auto w-full max-w-md animate-fade-in-up lg:mx-0 lg:ml-auto">
+              <div className="relative rounded-4xl border border-border-light bg-white p-5 shadow-soft-lg dark:border-border-dark dark:bg-card-dark">
+                {/* Mock header */}
+                <div className="mb-4 flex items-center gap-3 border-b border-border-light pb-4 dark:border-border-dark">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-pink-500 text-lg text-white">
+                    💜
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-text-primary dark:text-white">
+                      Sister
+                    </p>
+                    <p className="flex items-center gap-1 text-xs text-success">
+                      <span className="h-1.5 w-1.5 rounded-full bg-success" />
+                      Always here for you
+                    </p>
+                  </div>
+                  <span className="material-symbols-outlined ml-auto text-text-secondary/60">
+                    mic
+                  </span>
+                </div>
+
+                {/* Mock conversation */}
+                <div className="space-y-3">
+                  <div className="ml-auto max-w-[85%] rounded-2xl rounded-br-md bg-user-bubble px-4 py-2.5 text-sm text-text-primary">
+                    Sister, nfunye obulumi mu lubuto...
+                  </div>
+                  <div className="max-w-[85%] rounded-2xl rounded-bl-md bg-primary/5 px-4 py-2.5 text-sm text-text-primary dark:bg-primary/15 dark:text-gray-200">
+                    Nkuwulira nnyo. 💜 You&apos;re on day 26 — cramps are
+                    common before your period. Would you like a gentle remedy,
+                    or shall I check in with you tomorrow?
+                  </div>
+                  {/* Cycle insight card */}
+                  <div className="flex items-center gap-3 rounded-2xl border border-primary/15 bg-gradient-to-r from-primary/5 to-pink-50 p-3 dark:from-primary/10 dark:to-pink-950/20">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                      <span className="material-symbols-outlined text-lg text-primary">
+                        calendar_month
+                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-text-primary dark:text-white">
+                        Period expected in 2 days
+                      </p>
+                      <p className="text-2xs text-text-secondary dark:text-gray-400">
+                        Reminder set · Luteal phase, day 26 of 28
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Floating language chips */}
+              <span className="absolute -left-3 top-10 hidden rotate-[-6deg] rounded-full border border-border-light bg-white px-3 py-1 text-xs font-semibold text-primary shadow-soft dark:border-border-dark dark:bg-card-dark sm:block">
+                Luganda
+              </span>
+              <span className="absolute -right-2 top-1/3 hidden rotate-[5deg] rounded-full border border-border-light bg-white px-3 py-1 text-xs font-semibold text-pink-500 shadow-soft dark:border-border-dark dark:bg-card-dark sm:block">
+                Swahili
+              </span>
+              <span className="absolute -bottom-3 left-10 hidden rotate-[-3deg] rounded-full border border-border-light bg-white px-3 py-1 text-xs font-semibold text-emerald-600 shadow-soft dark:border-border-dark dark:bg-card-dark sm:block">
+                Acholi 🎙️
+              </span>
             </div>
           </div>
         </section>
 
-        {/* Features Section - Simple grid */}
+        {/* ============ STAT BAND ============ */}
+        <section className="border-y border-border-light bg-gray-50/70 dark:border-border-dark dark:bg-gray-900/40">
+          <div className="mx-auto grid max-w-container grid-cols-2 gap-6 px-4 py-8 text-center sm:px-6 md:grid-cols-4 lg:px-20">
+            {[
+              ["8", "Ugandan languages"],
+              ["24/7", "Sister is awake"],
+              ["100%", "free to use"],
+              ["Verified", "counsellors only"],
+            ].map(([big, small]) => (
+              <div key={small}>
+                <p className="text-2xl font-extrabold text-text-primary dark:text-white sm:text-3xl">
+                  {big}
+                </p>
+                <p className="text-xs font-medium uppercase tracking-wide text-text-secondary dark:text-gray-400">
+                  {small}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ============ FEATURES ============ */}
         <section
           id="features"
-          className="py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-20 bg-gray-50 dark:bg-gray-900/50 scroll-mt-20"
+          className="scroll-mt-20 px-4 py-16 sm:px-6 sm:py-20 lg:px-20 lg:py-24"
         >
-          <div className="max-w-5xl mx-auto">
-            <div className="text-center mb-12 lg:mb-16">
-              <h2 className="text-3xl sm:text-4xl font-bold text-text-primary dark:text-white mb-4">
+          <div className="mx-auto max-w-container">
+            <div className="mb-12 text-center lg:mb-16">
+              <h2 className="mb-4 text-3xl font-bold text-text-primary dark:text-white sm:text-4xl">
                 Three Pillars of Care
               </h2>
-              <p className="text-lg text-text-secondary dark:text-gray-400 max-w-xl mx-auto">
-                Mental wellness, menstrual health, and human support — all in
-                one private space.
+              <p className="mx-auto max-w-xl text-lg text-text-secondary dark:text-gray-400">
+                Mental wellness, menstrual health, and human support — one
+                private space that&apos;s always on your side.
               </p>
             </div>
 
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Feature 1 */}
-              <div className="text-center p-6">
-                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                  <span className="material-symbols-outlined text-primary text-2xl">
-                    calendar_month
-                  </span>
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {FEATURES.map((f) => (
+                <div
+                  key={f.title}
+                  className={`group rounded-3xl border border-border-light bg-white p-6 shadow-soft ring-1 ring-transparent transition-all duration-200 hover:-translate-y-1 hover:shadow-soft-lg dark:border-border-dark dark:bg-card-dark ${f.ring}`}
+                >
+                  <div
+                    className={`mb-4 flex h-12 w-12 items-center justify-center rounded-2xl ${f.tint}`}
+                  >
+                    <span className="material-symbols-outlined text-2xl">
+                      {f.icon}
+                    </span>
+                  </div>
+                  <h3 className="mb-2 font-bold text-text-primary dark:text-white">
+                    {f.title}
+                  </h3>
+                  <p className="text-sm leading-relaxed text-text-secondary dark:text-gray-400">
+                    {f.text}
+                  </p>
                 </div>
-                <h3 className="font-semibold text-text-primary dark:text-white mb-2">
-                  Smart Cycle Tracking
-                </h3>
-                <p className="text-sm text-text-secondary dark:text-gray-400">
-                  Never be caught off guard again. Know exactly when your period
-                  is coming so you can plan your life.
-                </p>
-              </div>
+              ))}
+            </div>
+          </div>
+        </section>
 
-              {/* Feature 2 */}
-              <div className="text-center p-6">
-                <div className="w-14 h-14 rounded-2xl bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center mx-auto mb-4">
-                  <span className="material-symbols-outlined text-pink-500 text-2xl">
-                    chat_bubble
+        {/* ============ VOICE & LANGUAGES ============ */}
+        <section className="bg-gray-50/70 px-4 py-16 dark:bg-gray-900/40 sm:px-6 sm:py-20 lg:px-20">
+          <div className="mx-auto grid max-w-container items-center gap-10 lg:grid-cols-2">
+            <div>
+              <span className="mb-4 inline-flex items-center gap-2 rounded-full bg-pink-100 px-4 py-1.5 text-xs font-semibold text-pink-600 dark:bg-pink-900/30 dark:text-pink-300">
+                <span className="material-symbols-outlined text-sm">mic</span>
+                Voice first
+              </span>
+              <h2 className="mb-4 text-3xl font-bold text-text-primary dark:text-white sm:text-4xl">
+                Speak to Sister in{" "}
+                <span className="text-primary">your own language</span>
+              </h2>
+              <p className="mb-6 text-lg leading-relaxed text-text-secondary dark:text-gray-400">
+                Don&apos;t type — just talk. Send a voice note in Luganda and
+                hear Sister answer back. Health advice lands differently when
+                it speaks your mother tongue.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {LANGUAGES.map((lang) => (
+                  <span
+                    key={lang}
+                    className="rounded-full border border-border-light bg-white px-4 py-1.5 text-sm font-medium text-text-primary shadow-soft dark:border-border-dark dark:bg-card-dark dark:text-gray-200"
+                  >
+                    {lang}
                   </span>
-                </div>
-                <h3 className="font-semibold text-text-primary dark:text-white mb-2">
-                  Sister AI Agent
-                </h3>
-                <p className="text-sm text-text-secondary dark:text-gray-400">
-                  Finally, someone to talk to. Share your struggles, ask
-                  anything — Sister listens without judgment.
-                </p>
+                ))}
               </div>
+            </div>
 
-              {/* Feature 3 */}
-              <div className="text-center p-6">
-                <div className="w-14 h-14 rounded-2xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mx-auto mb-4">
-                  <span className="material-symbols-outlined text-blue-500 text-2xl">
-                    psychology
+            {/* Voice visual */}
+            <div className="mx-auto w-full max-w-sm">
+              <div className="rounded-4xl border border-border-light bg-white p-6 shadow-soft-lg dark:border-border-dark dark:bg-card-dark">
+                <div className="mb-5 flex items-center justify-center gap-1">
+                  {[10, 22, 14, 30, 18, 34, 12, 26, 16, 24, 10].map((h, i) => (
+                    <span
+                      key={i}
+                      className="w-1.5 rounded-full bg-gradient-to-t from-primary to-pink-400"
+                      style={{ height: `${h * 2}px` }}
+                    />
+                  ))}
+                </div>
+                <p className="text-center text-sm font-medium text-text-primary dark:text-white">
+                  &ldquo;Sister, mbulira ku nsonga z&apos;obulamu bwange&rdquo;
+                </p>
+                <p className="mt-1 text-center text-xs text-text-secondary dark:text-gray-400">
+                  Voice note · Luganda · understood ✓
+                </p>
+                <div className="mt-5 flex items-center justify-center">
+                  <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-primary-sm">
+                    <span className="material-symbols-outlined">mic</span>
                   </span>
                 </div>
-                <h3 className="font-semibold text-text-primary dark:text-white mb-2">
-                  Mental Wellness
-                </h3>
-                <p className="text-sm text-text-secondary dark:text-gray-400">
-                  Log symptoms, track moods, and get support during your
-                  toughest days. You don&apos;t have to suffer alone.
-                </p>
-              </div>
-
-              {/* Feature 4 */}
-              <div className="text-center p-6">
-                <div className="w-14 h-14 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mx-auto mb-4">
-                  <span className="material-symbols-outlined text-emerald-500 text-2xl">
-                    support_agent
-                  </span>
-                </div>
-                <h3 className="font-semibold text-text-primary dark:text-white mb-2">
-                  Human Counsellors
-                </h3>
-                <p className="text-sm text-text-secondary dark:text-gray-400">
-                  When AI isn&apos;t enough, connect with verified professionals
-                  who understand your struggles.
-                </p>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Privacy Section - Clean */}
+        {/* ============ PRIVACY ============ */}
         <section
           id="privacy"
-          className="py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-20 scroll-mt-20"
+          className="scroll-mt-20 px-4 py-16 sm:px-6 sm:py-20 lg:px-20 lg:py-24"
         >
-          <div className="max-w-5xl mx-auto">
-            <div className="bg-primary rounded-3xl p-8 sm:p-12 lg:p-16 text-white text-center">
-              <span className="material-symbols-outlined text-5xl mb-6 opacity-90">
-                lock
-              </span>
-              <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-                Your Privacy is Sacred
-              </h2>
-              <p className="text-lg text-white/80 max-w-xl mx-auto mb-8">
-                Your health data is deeply personal. We never sell your data,
-                show ads, or track you. Delete everything anytime.
-              </p>
-              <div className="flex flex-wrap justify-center gap-4 text-sm">
-                <span className="flex items-center gap-2 bg-white/10 rounded-full px-4 py-2">
-                  <span className="material-symbols-outlined text-lg">
-                    verified
-                  </span>
-                  Encrypted
+          <div className="mx-auto max-w-container">
+            <div className="relative overflow-hidden rounded-4xl bg-gradient-to-br from-primary via-purple-600 to-indigo-700 p-8 text-center text-white sm:p-12 lg:p-16">
+              <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
+              <div className="pointer-events-none absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-pink-400/20 blur-3xl" />
+
+              <div className="relative">
+                <span className="material-symbols-outlined mb-6 text-5xl opacity-90">
+                  lock
                 </span>
-                <span className="flex items-center gap-2 bg-white/10 rounded-full px-4 py-2">
-                  <span className="material-symbols-outlined text-lg">
-                    block
-                  </span>
-                  Never Sold
-                </span>
-                <span className="flex items-center gap-2 bg-white/10 rounded-full px-4 py-2">
-                  <span className="material-symbols-outlined text-lg">
-                    visibility_off
-                  </span>
-                  No Tracking
-                </span>
+                <h2 className="mb-4 text-3xl font-bold sm:text-4xl">
+                  Your Privacy is Sacred
+                </h2>
+                <p className="mx-auto mb-8 max-w-xl text-lg text-white/80">
+                  Some conversations are yours alone. We never sell your data,
+                  never show ads, never track you — and you can delete
+                  everything, any time, forever.
+                </p>
+                <div className="flex flex-wrap justify-center gap-3 text-sm">
+                  {[
+                    ["verified", "Private by design"],
+                    ["block", "Never sold"],
+                    ["visibility_off", "No tracking"],
+                    ["delete_forever", "Delete anytime"],
+                  ].map(([icon, label]) => (
+                    <span
+                      key={label}
+                      className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 backdrop-blur-sm"
+                    >
+                      <span className="material-symbols-outlined text-lg">
+                        {icon}
+                      </span>
+                      {label}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* How it works - Clean */}
-        <section className="py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-20 bg-gray-50 dark:bg-gray-900/50">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl sm:text-4xl font-bold text-text-primary dark:text-white mb-4">
+        {/* ============ HOW IT WORKS ============ */}
+        <section className="bg-gray-50/70 px-4 py-16 dark:bg-gray-900/40 sm:px-6 sm:py-20 lg:px-20 lg:py-24">
+          <div className="mx-auto max-w-content">
+            <div className="mb-12 text-center">
+              <h2 className="mb-3 text-3xl font-bold text-text-primary dark:text-white sm:text-4xl">
                 Get Started in 3 Steps
               </h2>
+              <p className="text-lg text-text-secondary dark:text-gray-400">
+                From alone to supported, in under two minutes.
+              </p>
             </div>
 
-            <div className="space-y-8">
-              <div className="flex items-start gap-6">
-                <div className="w-10 h-10 rounded-full bg-primary text-white font-bold flex items-center justify-center flex-shrink-0">
-                  1
-                </div>
-                <div>
-                  <h3 className="font-semibold text-text-primary dark:text-white mb-1">
-                    Create Your Free Account
-                  </h3>
-                  <p className="text-text-secondary dark:text-gray-400">
-                    Sign up with your email in under a minute. No credit card
-                    needed.
-                  </p>
-                </div>
-              </div>
+            <div className="relative space-y-8">
+              {/* Connector line */}
+              <div className="absolute bottom-8 left-6 top-8 hidden w-px bg-gradient-to-b from-primary/40 via-primary/20 to-transparent sm:block" />
 
-              <div className="flex items-start gap-6">
-                <div className="w-10 h-10 rounded-full bg-primary text-white font-bold flex items-center justify-center flex-shrink-0">
-                  2
+              {STEPS.map((step, i) => (
+                <div key={step.title} className="relative flex items-start gap-5">
+                  <div className="z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-primary shadow-soft ring-1 ring-primary/20 dark:bg-card-dark">
+                    <span className="material-symbols-outlined">
+                      {step.icon}
+                    </span>
+                  </div>
+                  <div className="rounded-2xl border border-border-light bg-white p-5 shadow-soft dark:border-border-dark dark:bg-card-dark">
+                    <p className="mb-1 text-2xs font-bold uppercase tracking-widest text-primary">
+                      Step {i + 1}
+                    </p>
+                    <h3 className="mb-1 font-bold text-text-primary dark:text-white">
+                      {step.title}
+                    </h3>
+                    <p className="text-sm text-text-secondary dark:text-gray-400">
+                      {step.text}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-semibold text-text-primary dark:text-white mb-1">
-                    Enter Your Cycle Info
-                  </h3>
-                  <p className="text-text-secondary dark:text-gray-400">
-                    Enter your last period date and cycle length. We&apos;ll
-                    handle the rest.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-6">
-                <div className="w-10 h-10 rounded-full bg-primary text-white font-bold flex items-center justify-center flex-shrink-0">
-                  3
-                </div>
-                <div>
-                  <h3 className="font-semibold text-text-primary dark:text-white mb-1">
-                    Start Your Journey
-                  </h3>
-                  <p className="text-text-secondary dark:text-gray-400">
-                    Log periods, track symptoms, chat with Sister. The more you
-                    use it, the smarter it gets.
-                  </p>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* CTA Section - Clean */}
-        <section className="py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-20 safe-bottom">
-          <div className="max-w-2xl mx-auto text-center">
-            <h2 className="text-3xl sm:text-4xl font-bold text-text-primary dark:text-white mb-4">
+        {/* ============ ALWAYS-THERE STRIP ============ */}
+        <section className="px-4 py-10 sm:px-6 lg:px-20">
+          <div className="mx-auto flex max-w-content flex-col items-center gap-3 rounded-3xl border border-emerald-200 bg-emerald-50 p-6 text-center dark:border-emerald-800 dark:bg-emerald-900/20 sm:flex-row sm:text-left">
+            <span className="material-symbols-outlined text-3xl text-emerald-600 dark:text-emerald-400">
+              health_and_safety
+            </span>
+            <p className="text-sm leading-relaxed text-emerald-900 dark:text-emerald-200">
+              <span className="font-semibold">
+                If you&apos;re ever in danger or crisis,
+              </span>{" "}
+              Sister immediately shares real help — Sauti 116 (toll-free,
+              24/7), police 999/112 — and can alert a counsellor for you. No
+              judgment, ever.
+            </p>
+          </div>
+        </section>
+
+        {/* ============ FINAL CTA ============ */}
+        <section className="safe-bottom px-4 py-16 sm:px-6 sm:py-20 lg:px-20 lg:py-24">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="mb-4 text-3xl font-bold text-text-primary dark:text-white sm:text-4xl">
               You Deserve Support
             </h2>
-            <p className="text-lg text-text-secondary dark:text-gray-400 mb-8">
-              No more silence. No more confusion. Join thousands of women who
-              found their safe space.
+            <p className="mb-8 text-lg text-text-secondary dark:text-gray-400">
+              No more silence. No more facing it alone. Your sister is waiting.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col justify-center gap-4 sm:flex-row">
               <Link
                 href="/auth/signup"
-                className="inline-flex items-center justify-center gap-2 rounded-full h-14 px-8 bg-primary hover:bg-primary/90 text-white font-semibold transition-colors touch-target"
+                className="touch-target inline-flex h-14 items-center justify-center gap-2 rounded-full bg-primary px-8 font-semibold text-white shadow-primary-lg transition-all hover:-translate-y-0.5 hover:bg-primary-dark"
               >
                 Start Free
                 <span className="material-symbols-outlined text-xl">
@@ -279,9 +446,9 @@ export default function Home() {
               </Link>
               <Link
                 href="/counsellors"
-                className="inline-flex items-center justify-center gap-2 rounded-full h-14 px-8 bg-gray-100 dark:bg-gray-800 text-text-primary dark:text-white font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors touch-target"
+                className="touch-target inline-flex h-14 items-center justify-center gap-2 rounded-full border border-border-light bg-white px-8 font-semibold text-text-primary transition-colors hover:bg-gray-50 dark:border-border-dark dark:bg-card-dark dark:text-white dark:hover:bg-gray-800"
               >
-                <span className="material-symbols-outlined text-emerald-500 text-xl">
+                <span className="material-symbols-outlined text-xl text-emerald-500">
                   support_agent
                 </span>
                 Talk to a Counsellor
