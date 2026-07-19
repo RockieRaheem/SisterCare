@@ -21,6 +21,8 @@ import {
 } from "@/lib/sunbird";
 import { checkForCrisis, assessTriageSeverity } from "@/lib/safety";
 import { authenticateRequest } from "@/lib/firebaseAdmin";
+import { createSessionRequest } from "@/lib/server/sessions";
+import { emitEvent } from "@/lib/server/events";
 import {
   AgentActionStatus,
   CounsellorSpecialty,
@@ -853,6 +855,42 @@ export async function POST(request: NextRequest) {
       crisisResponse = checkForCrisis(messageForAgent);
     }
     if (crisisResponse) {
+      // Crisis lane (ARCHITECTURE_V2 §4.4): beyond the canned resources, open
+      // a critical session so an online counsellor is paged and the
+      // time-to-human SLA clock starts. Failure here must never block the
+      // crisis resources from reaching the user.
+      let crisisSession: { id: string; state: string } | undefined;
+      if (userId) {
+        try {
+          await emitEvent("crisis.detected", {
+            userId,
+            severity: triage.severity,
+            conversationId: conversationId || null,
+          });
+          const session = await createSessionRequest({
+            userId,
+            reason: "risk_detected",
+            priority: "critical",
+            summary: `Crisis detected by safety layer: ${messageForAgent.substring(0, 300)}`,
+            specialty: "Mental Health",
+            preferredLanguage:
+              SUPPORTED_LANGUAGES[userLanguage]?.name || undefined,
+            conversationId: conversationId || undefined,
+          });
+          crisisSession = { id: session.id, state: session.state };
+          actionStatuses.push({
+            key: "crisis-lane",
+            label:
+              session.state === "matched" || session.state === "active"
+                ? "A counsellor has been alerted"
+                : "Waiting for the next available counsellor",
+            state: "done",
+          });
+        } catch (sessionError) {
+          console.warn("Crisis-lane session creation failed:", sessionError);
+        }
+      }
+
       const { localizedText, audio } = await localizeResponse(crisisResponse);
       return NextResponse.json({
         response: localizedText,
@@ -865,6 +903,7 @@ export async function POST(request: NextRequest) {
         toolsUsed: [],
         actions: ["Crisis intervention triggered"],
         triage,
+        session: crisisSession,
         actionStatuses: [
           ...actionStatuses,
           { key: "safety", label: "Safety protocol activated", state: "done" },
@@ -873,6 +912,9 @@ export async function POST(request: NextRequest) {
     }
 
     let handoffText = "";
+    let sessionInfo:
+      | { id: string; state: string; priority: string }
+      | undefined;
 
     if (shouldAutoConnect && userId) {
       actionStatuses.push({
@@ -880,6 +922,42 @@ export async function POST(request: NextRequest) {
         label: "Finding best available counsellor",
         state: "pending",
       });
+
+      // Phase 2 session lane: open a platform-observed session in parallel
+      // with the legacy phone/WhatsApp handoff. Critical triage enters the
+      // crisis lane (queue preemption + time-to-human SLA clock). Failure
+      // here never blocks the legacy handoff below.
+      try {
+        const session = await createSessionRequest({
+          userId,
+          reason:
+            triage.severity === "critical" ? "risk_detected" : "user_request",
+          priority: triage.severity === "critical" ? "critical" : "normal",
+          summary: messageForAgent.substring(0, 400),
+          specialty: inferCounsellorSpecialty(messageForAgent),
+          preferredLanguage:
+            SUPPORTED_LANGUAGES[userLanguage]?.name || undefined,
+          conversationId: conversationId || undefined,
+        });
+        sessionInfo = {
+          id: session.id,
+          state: session.state,
+          priority: session.priority,
+        };
+        if (triage.severity === "critical") {
+          await emitEvent("crisis.detected", {
+            userId,
+            severity: triage.severity,
+            sessionId: session.id,
+            conversationId: conversationId || null,
+          });
+        }
+      } catch (sessionErr) {
+        console.warn(
+          "Session request creation failed (continuing with legacy handoff):",
+          sessionErr,
+        );
+      }
 
       try {
         let counsellor;
@@ -1000,6 +1078,7 @@ export async function POST(request: NextRequest) {
               toolsUsed: ["counsellor_routing"],
               actions: [`Matched to ${counsellor.name}`],
               triage,
+              session: sessionInfo,
               actionStatuses,
               handoffThreadCreated: Boolean(handoffConversationId),
               counsellorProfile: {
@@ -1057,6 +1136,7 @@ export async function POST(request: NextRequest) {
                 "Counsellor routing — no available match, flagged for follow-up",
               ],
               triage,
+              session: sessionInfo,
               actionStatuses,
             });
           }
@@ -1180,6 +1260,7 @@ export async function POST(request: NextRequest) {
       toolsUsed: agentResult.toolsUsed,
       actions: agentResult.actions,
       triage,
+      session: sessionInfo,
       actionStatuses,
       reasoning:
         agentResult.toolsUsed.length > 0
