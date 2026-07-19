@@ -524,8 +524,18 @@ Phase order (each phase ships value alone):
 
 1. **Keystone**: Admin-SDK repositories for server writes + custom-claims
    roles. (Unblocks everything; ends the silent-write failure class.)
+   *Shipped 2026-07-19.*
 2. **Sessions**: state machine + in-app rooms + presence + feedback + the
    crisis lane and SLA clock. (The counsellor economy now exists.)
+   *Shipped 2026-07-19 with three recorded deviations from this document:
+   (a) the queue is simply the set of `requested` session docs, not a
+   separate `queue/` collection — one source of truth is worth more than a
+   read model at this scale; (b) `accepted` auto-activates the room rather
+   than waiting for the first message — fewer stuck states, both timestamps
+   kept; (c) presence heartbeats flow through `POST /api/presence` (admin
+   SDK) instead of Realtime Database presence — no second database until
+   scale demands it. Timeouts run via the `POST /api/sessions/sweep` cron
+   endpoint instead of Cloud Tasks.*
 3. **Pipeline extraction**: stages as modules, router with tiers 0/1/F,
    event log + cost ledger. (Unit economics + observability.)
 4. **Trust**: verification workflow → credential anchoring; reputation ledger
