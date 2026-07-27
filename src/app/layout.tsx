@@ -1,16 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Manrope } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 import BottomNav from "@/components/layout/BottomNav";
 import OfflineIndicator from "@/components/ui/OfflineIndicator";
-
-const manrope = Manrope({
-  subsets: ["latin"],
-  variable: "--font-manrope",
-});
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -106,7 +100,7 @@ export default function RootLayout({
       </head>
       <body
         suppressHydrationWarning
-        className={`${manrope.variable} font-display bg-background-light dark:bg-background-dark text-text-primary dark:text-white min-h-screen antialiased`}
+        className="font-display bg-background-light dark:bg-background-dark text-text-primary dark:text-white min-h-screen antialiased"
       >
         {/* Live region for screen reader announcements */}
         <div

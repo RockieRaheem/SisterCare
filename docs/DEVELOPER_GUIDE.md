@@ -231,7 +231,7 @@ Key architectural facts to internalize:
 
 ## 6. The Chat Pipeline (`/api/chat`)
 
-File: `src/app/api/chat/route.ts` (~1,370 lines). This is the most important file in the repository. `POST` handles a message through the following **ordered** stages — the order is intentional and safety-critical:
+Files: `src/app/api/chat/route.ts` and `src/lib/chatPipeline/`. The route owns external I/O while typed, unit-tested stages own canonical identity, validation, bounded context, conversation-aware safety, and handoff policy. `POST` handles a message through the following **ordered** stages — the order is intentional and safety-critical:
 
 ### Stage 0 — Validation
 Reject missing/non-string messages and messages > 2,000 chars.

@@ -28,8 +28,13 @@ import { createSessionRequest } from "@/lib/server/sessions";
 import { emitEvent } from "@/lib/server/events";
 import { withApiObservability } from "@/lib/observability";
 import {
+  ChatPipelineError,
+  evaluateHandoffPolicy,
+  inferCounsellorSpecialty,
+  runChatPreflightPipeline,
+} from "@/lib/chatPipeline";
+import {
   AgentActionStatus,
-  CounsellorSpecialty,
   TriageSeverity,
 } from "@/types";
 
@@ -46,15 +51,6 @@ import {
  * manage their menstrual health through intelligent actions.
  */
 
-const COUNSELLOR_REQUEST_PATTERN =
-  /(counsellor|counselor|therapist|professional help|human support|talk to someone|connect me|i need help|i want a human|real help|i need real|speak to someone|real person|human help|mental health support|see a doctor|see a specialist)/i;
-const CALL_REQUEST_PATTERN =
-  /(call (them|her|him|counsellor|counselor)|phone (them|her|him|counsellor|counselor)|phone call|via (a )?phone call|dial|make (the )?call|make a call|call now|automatically call|auto.?call|cant you call|can't you call|call her for me|call him for me)/i;
-const WHATSAPP_REQUEST_PATTERN =
-  /(whatsapp|what'?s app|message (them|her|him|counsellor|counselor)|text (them|her|him|counsellor|counselor)|chat on whatsapp|connect.*whatsapp|if you cant|if you can't)/i;
-// Detect pronoun references to active counsellor ("her", "him", "them")
-const PRONOUN_REFERENCE_PATTERN =
-  /(call her|call him|whatsapp her|whatsapp him|message (her|him|them)|text (her|him|them)|her number|his number|their number|contact (her|him|them)|reach (her|him|them))/i;
 const PERIOD_START_PATTERN =
   /(period (started|came|has started|began|arrived)|i got my period|my period is here|started my period|got my periods|(started|began).*\d+\s*(day|week)s?\s*ago|backtrack|go back|update.*period)/i;
 
@@ -65,21 +61,6 @@ function toPhoneHref(phoneNumber: string): string {
 function toWhatsAppHref(phoneNumber: string): string {
   const digits = phoneNumber.replace(/[^\d]/g, "");
   return `https://wa.me/${digits}`;
-}
-
-function inferCounsellorSpecialty(message: string): CounsellorSpecialty {
-  const m = message.toLowerCase();
-
-  if (/pregnan|postpartum|baby/i.test(m)) return "Pregnancy & Postpartum";
-  if (/diet|food|nutrition|weight/i.test(m)) return "Nutrition & Wellness";
-  if (/relationship|partner|marriage/i.test(m))
-    return "Relationship Counselling";
-  if (/sexual|sex|std|sti/i.test(m)) return "Sexual Health";
-  if (/teen|adolescent|school girl|young girl/i.test(m))
-    return "Adolescent Health";
-  if (/period|menstrual|cycle|cramps|pms/i.test(m)) return "Menstrual Health";
-
-  return "Mental Health";
 }
 
 function normalizeLanguageName(language?: string): string | undefined {
@@ -516,54 +497,45 @@ async function postChat(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    let preflight;
+    try {
+      preflight = runChatPreflightPipeline(
+        body || {},
+        auth.status === "verified"
+          ? { mode: "verified", uid: auth.uid }
+          : {
+              mode: "development",
+              bodyUid:
+                body && typeof body.userId === "string"
+                  ? body.userId
+                  : undefined,
+            },
+      );
+    } catch (error) {
+      if (error instanceof ChatPipelineError) {
+        return NextResponse.json(
+          { error: error.message, code: error.code },
+          { status: error.status },
+        );
+      }
+      throw error;
+    }
     const {
-      message,
-      conversationHistory = [],
-      userId: bodyUserId,
+      message: trimmedMessage,
+      conversationHistory,
+      userId,
       cycleData,
       userProfile,
       conversationId,
       userLanguage: clientLanguage,
-    } = body;
-
-    const userId = auth.status === "verified" ? auth.uid : bodyUserId;
-
-    if (!message || typeof message !== "string") {
-      return NextResponse.json(
-        { error: "Message is required" },
-        { status: 400 },
-      );
-    }
-
-    const trimmedMessage = message.trim();
-    if (trimmedMessage.length > 2000) {
-      return NextResponse.json(
-        { error: "Message is too long" },
-        { status: 400 },
-      );
-    }
-
-    const actionStatuses: AgentActionStatus[] = [];
-    const priorSafetyMessages = Array.isArray(conversationHistory)
-      ? conversationHistory
-          .map((entry: unknown) => {
-            if (typeof entry === "string") return entry;
-            if (!entry || typeof entry !== "object") return "";
-            const item = entry as Record<string, unknown>;
-            const value = item.content ?? item.text ?? item.message;
-            return typeof value === "string" ? value : "";
-          })
-          .filter(Boolean)
-      : [];
-    let safetyAssessment = assessConversationSafety([
-      ...priorSafetyMessages,
-      trimmedMessage,
-    ]);
-    let triage = {
-      severity: safetyAssessment.severity,
-      reason: safetyAssessment.reason,
-    };
+    } = preflight.request;
+    const actionStatuses: AgentActionStatus[] = preflight.actionStatuses;
+    const priorSafetyMessages = conversationHistory
+      .filter((entry) => entry.role === "user")
+      .map((entry) => entry.content);
+    let safetyAssessment = preflight.safety;
+    let triage = preflight.triage;
     const apiKey = process.env.GEMINI_API_KEY || "";
 
     const storedLanguage = toSupportedLanguageCode(
@@ -766,20 +738,18 @@ async function postChat(request: NextRequest) {
       }
     }
 
-    const requestedCounsellor =
-      COUNSELLOR_REQUEST_PATTERN.test(trimmedMessage) ||
-      (userLanguage === "lug" &&
-        /(njagala|nnyagala).*(kansala|counsellor|counselor|talk to someone|human help)/i.test(
-          trimmedMessage,
-        ));
-    const requestedCall = CALL_REQUEST_PATTERN.test(trimmedMessage);
-    const requestedWhatsApp = WHATSAPP_REQUEST_PATTERN.test(trimmedMessage);
-    const shouldOfferHandoff = triage.severity === "high";
-    const shouldAutoConnect =
-      requestedCounsellor ||
-      requestedCall ||
-      requestedWhatsApp ||
-      triage.severity === "critical";
+    const handoffPolicy = evaluateHandoffPolicy({
+      message: trimmedMessage,
+      severity: triage.severity,
+      languageCode: userLanguage,
+    });
+    const {
+      requestedCounsellor,
+      requestedCall,
+      requestedWhatsApp,
+      shouldOfferHandoff,
+      shouldAutoConnect,
+    } = handoffPolicy;
 
     const localizeResponse = async (text: string) => {
       let localizedText = text;
@@ -986,7 +956,7 @@ async function postChat(request: NextRequest) {
       try {
         let counsellor;
         const isPronounReference =
-          PRONOUN_REFERENCE_PATTERN.test(trimmedMessage);
+          handoffPolicy.referencesActiveCounsellor;
 
         if (isPronounReference && conversationId) {
           try {
