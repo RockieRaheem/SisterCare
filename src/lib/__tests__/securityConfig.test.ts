@@ -35,6 +35,7 @@ describe("fail-closed API security configuration", () => {
     ).toEqual([
       "Firebase Admin credentials are required in production",
       "CRON_SECRET must contain at least 32 characters",
+      "TELEMETRY_HASH_SALT must contain at least 32 characters",
     ]);
   });
 
@@ -44,9 +45,9 @@ describe("fail-closed API security configuration", () => {
         NODE_ENV: "production",
         FIREBASE_SERVICE_ACCOUNT_KEY: "{}",
         CRON_SECRET: "a".repeat(32),
+        TELEMETRY_HASH_SALT: "b".repeat(32),
         ALLOW_UNAUTHENTICATED_DEV: "false",
       }),
     ).toEqual([]);
   });
 });
-

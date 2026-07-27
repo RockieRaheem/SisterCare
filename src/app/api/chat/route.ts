@@ -26,6 +26,7 @@ import {
 import { authenticateRequest } from "@/lib/firebaseAdmin";
 import { createSessionRequest } from "@/lib/server/sessions";
 import { emitEvent } from "@/lib/server/events";
+import { withApiObservability } from "@/lib/observability";
 import {
   AgentActionStatus,
   CounsellorSpecialty,
@@ -501,7 +502,7 @@ function fallbackLocalizedResponse(
  * - Assess symptom severity
  * - Generate health reports
  */
-export async function POST(request: NextRequest) {
+async function postChat(request: NextRequest) {
   try {
     // Trust boundary: when Firebase Admin is configured, the caller MUST
     // present a valid ID token and the verified uid overrides whatever
@@ -1341,6 +1342,8 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const POST = withApiObservability("chat", postChat);
 
 /**
  * GET /api/chat

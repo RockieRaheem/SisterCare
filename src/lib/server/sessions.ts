@@ -32,6 +32,7 @@ import {
   evaluateCrisisEscalation,
 } from "../counsellorOperations";
 import { emitEvent } from "./events";
+import { openCrisisIncident } from "./incidents";
 import {
   Counsellor,
   CounsellingSession,
@@ -665,6 +666,9 @@ export async function sweepSessions(): Promise<{
         now,
       );
       if (escalation.action !== "none") {
+        const waitingSeconds = Math.round(
+          (now.getTime() - session.requestedAt.getTime()) / 1000,
+        );
         await doc.ref.update({
           crisisEscalationLevel: escalation.level,
           lastCrisisEscalationAt: FieldValue.serverTimestamp(),
@@ -679,10 +683,14 @@ export async function sweepSessions(): Promise<{
           sessionId: session.id,
           level: escalation.level,
           action: escalation.action,
-          waitingSeconds: Math.round(
-            (now.getTime() - session.requestedAt.getTime()) / 1000,
-          ),
+          waitingSeconds,
         });
+        if (escalation.action === "open_incident") {
+          await openCrisisIncident({
+            sessionId: session.id,
+            waitingSeconds,
+          });
+        }
         crisisEscalations += 1;
       }
     }

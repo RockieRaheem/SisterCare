@@ -97,5 +97,11 @@ service cloud.firestore {
     match /reputation_events/{eventId} {
       allow read, write: if false;
     }
+    match /metrics_daily/{metricId} {
+      allow read, write: if false;
+    }
+    match /incidents/{incidentId} {
+      allow read, write: if false;
+    }
   }
 }
