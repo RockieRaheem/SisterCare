@@ -58,7 +58,7 @@ src/
 
 - **Collaborators**: RockieRaheem (Kamwanga Raheem) and Kisakye5308 (Kisakye Kabazaile).
 - **Ownership split**:
-  - **Blockchain and backend logic**: assign to RockieRaheem.
+  - **Backend and platform logic**: assign to RockieRaheem.
   - **Frontend/UI work**: assign to Kisakye5308.
 - **Commit balancing**: when producing changes across multiple commits, alternate ownership so both collaborators receive commits over time.
 - **Enforcement**: always apply the ownership rule for any change you make.

@@ -35,7 +35,7 @@ ignores any of them is wrong regardless of how elegant it is.
 | C3 | Users speak 8+ languages; some prefer voice to text | Language is a pipeline stage, never an afterthought; voice is a first-class modality |
 | C4 | A crisis message is a life-safety event | Deterministic safety layer runs before and independent of any LLM; escalation has an SLA |
 | C5 | Users mostly cannot pay | Cost per conversation is a designed number, not an outcome; sponsors fund sessions |
-| C6 | Counsellor trust cannot be assumed (credential fraud exists) | Verification workflow + tamper-evident attestation (Stellar) |
+| C6 | Counsellor trust cannot be assumed (credential fraud exists) | Admin verification workflow + private audit trail |
 | C7 | Team is small (2 people) | Managed services only; one deployable per surface; no ops burden |
 | C8 | Uganda first, continent next | Everything country-specific is data (a "country pack"), never code |
 
@@ -60,7 +60,7 @@ flowchart LR
         SESS[Session Engine<br/>state machine + matching]
         ID[Identity & Roles]
         REP[Reputation Ledger]
-        TRUST[Stellar Trust Layer]
+        AUDIT[Audit & Reputation Service]
         PACK[Country Packs]
     end
 
@@ -78,7 +78,7 @@ flowchart LR
     PIPE --> EVENTS
     SESS --> EVENTS
     EVENTS --> REP
-    REP --> TRUST
+    REP --> AUDIT
     PACK -.configures.-> PIPE
     PACK -.configures.-> SESS
     ID -.authorizes.-> GW
@@ -91,7 +91,7 @@ Three ideas carry the whole design:
 1. **One conversation core, many channels.** The PWA is just the first client.
    WhatsApp, USSD, and future channels are thin adapters over the same gateway.
 2. **An explicit event log is the spine.** Every domain fact is an event.
-   Routing, reputation, Stellar anchoring, analytics, and impact metrics are
+   Routing, reputation, audit review, analytics, and impact metrics are
    all *consumers* of the same log — never separate sources of truth.
 3. **Sessions are the load-bearing aggregate.** The counsellor economy,
    reputation, payments, and the safety story all depend on sessions being
@@ -110,8 +110,8 @@ Three ideas carry the whole design:
   client-claimed uid. (Landed in v1.5 with `firebaseAdmin.ts`.)
 - **P4 — PII and health data never share a record.** The AI sees a pseudonym
   and the minimum context needed for the current turn (Section 7).
-- **P5 — User data never touches the chain.** Not hashed, not encrypted, not
-  at all. Only counsellor professional records and aggregate proofs anchor.
+- **P5 — Trust records stay private.** User health data, counsellor evidence,
+  and reputation history remain access-controlled inside the platform.
 - **P6 — Country logic is configuration.** If you are writing `if (uganda)`,
   you are writing a bug.
 - **P7 — Prompts are governed artifacts.** System prompts, crisis responses,
@@ -199,8 +199,8 @@ Core event catalog:
 | `session.requested / matched / accepted / active / completed / expired` | Session engine | matching, reputation, payments, notifications |
 | `feedback.received` | Client | reputation ledger |
 | `counsellor.presence_changed` | Presence service | matching (drain the queue) |
-| `counsellor.verified` | Admin console | Stellar credential anchoring |
-| `reputation.epoch_closed` | Reputation ledger | Stellar Merkle anchoring |
+| `counsellor.verified` | Admin console | audit log, matching eligibility |
+| `reputation.epoch_closed` | Reputation ledger | score snapshots, admin review |
 | `checkin.recorded` (WHO-5/PHQ-2) | Pipeline | impact metrics |
 
 Rule: **consumers are idempotent** (event id as dedupe key). Rule: events are
@@ -315,8 +315,8 @@ packs/ug/
   resources.json        # helplines, hospitals, legal aid (Sauti, FIDA, ...)
   matching-weights.json # Section 4.5 weights
   compliance.md         # DPPA notes, retention rules
-  payments.json         # mobile-money rails, currency, anchor config
-packs/ke/               # market #2: Swahili exists, M-Pesa anchor exists
+  payments.json         # mobile-money rails and currency
+packs/ke/               # market #2: Swahili and M-Pesa configuration
 ```
 
 The pipeline loads the pack at startup keyed by the user's country. Expansion
@@ -325,34 +325,31 @@ gets a **translation memory** (cache of confirmed translations, per pack) in
 front of Sunbird → Gemini fallback, cutting both cost and latency for the long
 tail of repeated phrases.
 
-### 4.9 The trust layer — one coherent Stellar story
+### 4.9 Trust, verification, and reputation
 
-Four functions, one narrative: *verified humans, observed work, portable
-reputation, auditable money.*
+Four functions, one narrative: *verified humans, observed work, accountable
+decisions, auditable money.*
 
-1. **Credential attestation** (exists in v1, gets its trigger): admin approves
-   counsellor → hash of verified credential bundle anchors on-chain via
-   `manageData`. Tamper-evident "SisterCare verified this license on date X."
-2. **Reputation ledger** (off-chain, append-only `reputation_events/`):
-   completed sessions, feedback, complaints, no-shows. Score is **Bayesian**
-   (a 5.0★ from 3 sessions ranks below 4.8★ from 300), time-decayed, computed
-   by a pure, unit-tested function. Anti-gaming: only platform-observed
-   sessions count; feedback weight scales with rater account age; admins can
-   freeze pending review.
-3. **Reputation anchoring**: monthly epoch close → Merkle root of the epoch's
-   reputation events anchors on-chain (reuses v1 `buildMerkleRoot`). A
-   counsellor can *prove* "412 sessions, 4.9 adjusted rating, attested by
-   SisterCare" to any third party — a portable professional asset, which is
-   the honest version of the "NFT rank" idea (soulbound attestation, not a
-   transferable token; transferable reputation is incoherent).
-4. **Sponsored-session payments** (the strongest Stellar use case, phased
-   last): sponsor funds session credits (USDC on Stellar) → escrow account →
-   `session.completed` event releases counsellor payout → anchor to
-   MTN MoMo / Airtel Money. Donor-auditable impact ("this grant paid for
-   10,000 sessions — verifiable") is a fundraising superpower for this
-   category. Platform fee is taken at release.
+1. **Credential verification:** an admin reviews identity, qualifications,
+   license status, and evidence. The decision is recorded as an immutable
+   `counsellor.verified` event; sensitive evidence stays in a restricted vault.
+2. **Reputation ledger** (append-only `reputation_events/`): completed
+   sessions, feedback, complaints, and no-shows. Score is **Bayesian** (a
+   5.0★ from 3 sessions ranks below 4.8★ from 300), time-decayed, and computed
+   by a pure, unit-tested function. Only platform-observed sessions count;
+   feedback weight scales with rater account age; admins can freeze scores
+   pending review.
+3. **Reviewable score snapshots:** monthly epoch close creates an immutable
+   score snapshot with its input-event range and scoring-policy version.
+   Counsellors can see and appeal their score, while administrators can
+   reproduce every result from the private ledger.
+4. **Sponsored-session payments:** sponsors fund internal session credits;
+   `session.completed` releases a payout through direct MTN MoMo or Airtel
+   Money integrations. Sponsor reports aggregate completed sessions and spend
+   without exposing users or health information.
 
-Invariant, restated as law: **nothing derived from user data ever anchors.**
+Invariant, restated as law: **health data and verification evidence remain
+private and access-controlled.**
 
 ### 4.10 Client architecture (PWA v2)
 
@@ -468,7 +465,7 @@ the DPPA delete story, and it is cheap *because* of the pseudonym boundary.
 | Sunbird down | Gemini translation fallback → hand-written localized strings → English with apology; native crisis lexicons still fire |
 | Firestore degraded | Client serves local store; writes queue in outbox; agent persistence retries via event log |
 | Matching finds nobody | `expired` state → country-pack resources + callback promise + queue position honesty |
-| Stellar/Horizon down | Anchoring queues (it was always batch); zero user-facing impact |
+| Audit consumer delayed | Events remain durable; score snapshots wait; zero user-facing impact |
 | Everything down | PWA shell + local cycle tracker + offline page with emergency numbers (works today) |
 
 Chaos drill twice a quarter: kill one dependency in staging, verify the ladder.
@@ -496,7 +493,7 @@ Tracked per conversation, budgeted per tier (§4.7). Targets at Uganda scale
 | Custom backend (Node/Go on Cloud Run) for the core | The gateway abstraction gives us the seam; move individual stages out only when a concrete limit (timeout, memory, fan-out) bites. |
 | Self-hosted / fine-tuned LLMs | Cost, ops, and safety review burden dwarf API spend at our scale. The router keeps us portable. |
 | Kafka / Pub/Sub now | Firestore-triggered Functions are at-least-once and ops-free; the event *catalog* is the asset, transport is swappable. |
-| Transferable reputation tokens | Reputation that can be sold is not reputation. Soulbound attestation only. |
+| Public or transferable reputation | Reputation needs context, appeal rights, and privacy; keep it platform-governed. |
 | E2E encryption of AI conversations | Would blind the safety layer — an explicit, documented anti-goal. Counsellor *notes* are E2E; AI chat is pseudonymous instead. |
 | Native iOS/Android apps | PWA + TWA covers Android (the market); revisit iOS with traction. |
 
@@ -514,7 +511,6 @@ foundation:
 | `src/lib/firebaseAdmin.ts` | identity service seed | add custom-claims helpers |
 | `src/lib/agent/executor.ts` | tier-3 engine inside the router | strip rate limiting (moves to gateway), receive `pid` context |
 | `src/lib/sunbird.ts` (+ TTS memo) | language stage | add translation memory |
-| `src/lib/stellar/*` | trust layer | unchanged mechanics; new triggers (verification, epochs) |
 | `src/lib/firestore.ts` (2k lines) | split: repositories (admin SDK server-side) + client repos | the keystone refactor |
 | `src/app/api/chat/route.ts` | thin gateway adapter for channel=pwa | pipeline stages extracted per §4.2 |
 | `src/app/chat/page.tsx` | `features/chat/*` slices | decompose behind stable props |
@@ -538,8 +534,8 @@ Phase order (each phase ships value alone):
    endpoint instead of Cloud Tasks.*
 3. **Pipeline extraction**: stages as modules, router with tiers 0/1/F,
    event log + cost ledger. (Unit economics + observability.)
-4. **Trust**: verification workflow → credential anchoring; reputation ledger
-   + Bayesian scoring feeding matching; first epoch anchor.
+4. **Trust**: verification workflow; private reputation ledger + Bayesian
+   scoring feeding matching; reproducible score snapshots and appeals.
 5. **Reach**: WhatsApp adapter on the gateway; country pack extraction
    (Uganda pack = refactor, Kenya pack = expansion); payments pilot.
 6. **Continuous**: chat page decomposition, disguise mode, impact check-ins.
@@ -548,8 +544,8 @@ Phase order (each phase ships value alone):
 
 ## 12. Open questions (decide before their phase)
 
-1. Counsellor payout compliance: which anchor/licence path for UGX payouts —
-   partner with an existing Stellar anchor or integrate MoMo APIs directly?
+1. Counsellor payout compliance: which licensed payment provider should handle
+   direct UGX mobile-money payouts?
 2. Session pricing: sponsor-credit denominations and whether users ever pay.
 3. Anonymous-user crisis escalation: what can a counsellor do with zero
    identity? (Design the "no-PII warm handoff" script with Sauti.)

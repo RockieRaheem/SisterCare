@@ -20,7 +20,7 @@
 9. [Cycle-Tracking Domain Logic](#9-cycle-tracking-domain-logic)
 10. [Counsellor System](#10-counsellor-system)
 11. [Language & Voice Support](#11-language--voice-support)
-12. [Stellar Trust Layer](#12-stellar-trust-layer)
+12. [Trust, Audit & Reputation](#12-trust-audit--reputation)
 13. [Frontend Application](#13-frontend-application)
 14. [PWA, Offline & Notifications](#14-pwa-offline--notifications)
 15. [API Reference](#15-api-reference)
@@ -47,7 +47,7 @@ SisterCare is a **mobile-first Progressive Web App (PWA)** serving young women i
 - **Degrade, don't fail.** Every external dependency (Gemini, Sunbird, Firestore) has a fallback path. The user should never see a dead end.
 - **Uganda-first.** Local languages (Luganda, Runyankole, Ateso, Acholi, Lugbara, Swahili, Luo), local emergency resources, low-data PWA design.
 
-**Product direction (not all built yet):** three account roles — **user**, **counsellor**, **admin** — with a counsellor portal (availability toggle, session queue) and an admin console (verification, oversight). Counsellor verification and session-based reputation are planned to anchor on **Stellar** (§12). See §17.3 for the roadmap.
+**Product direction (not all built yet):** three account roles — **user**, **counsellor**, **admin** — with a counsellor portal (availability toggle, session queue) and an admin console for verification and oversight. Counsellor verification and session-based reputation remain private, auditable platform records (§12). See §17.3 for the roadmap.
 
 ---
 
@@ -62,7 +62,7 @@ SisterCare is a **mobile-first Progressive Web App (PWA)** serving young women i
 | Database | **Cloud Firestore** | Client SDK (`firebase` npm package). See §8 and the gotcha in §17.1. |
 | LLM | **Google Gemini** | `gemini-2.5-flash` → `gemini-2.5-pro` → `gemini-2.0-flash` fallback chain, via raw REST (`v1beta generateContent`), with function calling. |
 | Local-language AI | **Sunbird AI** | Speech-to-text, language ID, NLLB translation, text-to-speech for Ugandan languages. |
-| Blockchain | **Stellar** (`@stellar/stellar-sdk`) | Testnet by default. Proof hashes only — never user data. |
+| Audit & reputation | **Firestore event ledgers** | Server-only, append-only verification and reputation records. |
 | PWA | Custom service worker | `public/sw.js` (v2), `public/manifest.json`, `public/offline.html`. |
 | Fonts / icons | Manrope (Google Fonts), Material Symbols Outlined | |
 
@@ -77,7 +77,7 @@ There is **no test framework and no CI pipeline yet** (§17.2). Verification tod
 - Node.js 18+
 - A Firebase project with **Authentication** (Email/Password + Google providers) and **Firestore** enabled
 - A **Gemini** API key ([Google AI Studio](https://aistudio.google.com/))
-- Optional: a **Sunbird AI** API key (local-language features), a funded **Stellar testnet** account (proof anchoring)
+- Optional: a **Sunbird AI** API key for local-language features
 
 ### Steps
 
@@ -106,11 +106,6 @@ Deploy Firestore security rules from `firestore.rules` (Firebase Console → Fir
 | `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID` | No | Analytics (client only) |
 | `GEMINI_API_KEY` | Yes (chat is dead without it) | `src/app/api/chat/route.ts`, agent executor |
 | `SUNBIRD_API_KEY` | Recommended | `src/lib/sunbird.ts` — translation, language ID, TTS, STT. **Use the server-side name; do NOT set `NEXT_PUBLIC_SUNBIRD_API_KEY`** (the code accepts it, but it would embed the secret in the client bundle). |
-| `STELLAR_NETWORK` | No (default `testnet`) | `src/lib/stellar/submission.ts` (`testnet` \| `mainnet` \| `futurenet`) |
-| `STELLAR_HORIZON_URL` | No | Override Horizon endpoint |
-| `STELLAR_NETWORK_PASSPHRASE` | No | Override network passphrase |
-| `STELLAR_ISSUER_PUBLIC_KEY` | No | Issuer account |
-| `STELLAR_ISSUER_SECRET_KEY` | No | If unset, proof endpoints run in **dry-run** mode (hash computed, nothing submitted) — this is the safe default for development. |
 
 ### Scripts
 
@@ -152,8 +147,7 @@ SisterCare/
 │   │   └── api/
 │   │       ├── chat/route.ts       # ★ THE core endpoint — agent pipeline (§6)
 │   │       ├── health/route.ts     # Service health check
-│   │       ├── counsellors/sync-availability/route.ts
-│   │       └── stellar/proofs|verify/route.ts
+│   │       └── counsellors/sync-availability/route.ts
 │   ├── components/
 │   │   ├── ui/                     # Button, Card, Input, Toggle, Skeleton,
 │   │   │                           # SymptomLoggerModal, NotificationBell,
@@ -177,7 +171,6 @@ SisterCare/
 │   │   │   └── index.ts            # Public re-exports
 │   │   ├── sunbird.ts              # Sunbird AI client (STT/translate/TTS/langID)
 │   │   ├── ttsCache.ts             # TTS audio cache (currently unused — §17.1)
-│   │   ├── stellar/                # types.ts, proofs.ts, submission.ts, index.ts
 │   │   ├── i18n/                   # UI translations (en.ts, lg.ts)
 │   │   ├── localChatStore.ts       # localStorage chat fallback + tombstones
 │   │   ├── counsellors.ts          # Counsellor helpers
@@ -190,8 +183,7 @@ SisterCare/
 │   ├── manifest.json               # PWA manifest (start_url: /dashboard)
 │   ├── offline.html                # Offline fallback page
 │   └── icons/                      # PWA icons (72–512px)
-├── docs/                           # This guide + literature reviews +
-│   │                               # stellar-trust-layer.md + SUNBIRD_AI_RESEARCH.md
+├── docs/                           # Architecture, onboarding, and research docs
 ├── firestore.rules                 # Firestore security rules
 ├── firebase.json
 ├── home_dashboard/ … support_chat_interface/   # ⚠ Design mockups ONLY
@@ -224,7 +216,8 @@ flowchart TD
     CR --> LOC
     LOC --> U
 
-    ADMIN[Verification workflow<br>planned] --> ST[Stellar: proof hashes only<br>via /api/stellar/*]
+    ADMIN[Verification workflow<br>planned] --> AUDIT[Private audit and reputation ledgers]
+    AUDIT --> FS
 ```
 
 Key architectural facts to internalize:
@@ -437,7 +430,7 @@ Counsellors live in the `counsellors` collection; if the collection is empty or 
 `connectUserToCounsellor` creates (or reuses) a `type: "counsellor"` conversation; `setActiveCounsellorOnConversation` pins a denormalized counsellor snapshot on it so later pronoun references ("call her") resolve without re-matching.
 
 ### 10.5 Where this is heading
-Planned (not yet built): role-based accounts via Firebase custom claims (`user` / `counsellor` / `admin`), a counsellor portal with a real presence-based availability toggle and session queue, an admin verification console, an explicit session state machine (`requested → matched → accepted → active → completed → feedback`), and reputation scoring feeding both routing priority and the Stellar layer. Keep new counsellor code compatible with that direction — e.g., don't add more logic that assumes counsellors are contacted only by external phone/WhatsApp.
+Planned (not yet built): role-based accounts via Firebase custom claims (`user` / `counsellor` / `admin`), a counsellor portal with a real presence-based availability toggle and session queue, an admin verification console, an explicit session state machine (`requested → matched → accepted → active → completed → feedback`), and reputation scoring feeding routing priority. Keep new counsellor code compatible with that direction — e.g., don't add more logic that assumes counsellors are contacted only by external phone/WhatsApp.
 
 ---
 
@@ -457,22 +450,15 @@ The chat UI currently exposes `eng` and `lug` in its language picker (`CHAT_LANG
 
 ---
 
-## 12. Stellar Trust Layer
+## 12. Trust, Audit & Reputation
 
-Files: `src/lib/stellar/{types,proofs,submission,index}.ts`; deep-dive doc: `docs/stellar-trust-layer.md`.
+SisterCare keeps its trust model deliberately private and operationally simple. Firebase Authentication custom claims establish the caller's role; the admin console records counsellor verification decisions; and server-only Firestore collections retain immutable domain and reputation events.
 
-**Purpose:** tamper-evident verification for the counsellor network. **Invariant: no user data ever goes on-chain — only SHA-256 hashes and non-sensitive metadata.** Sensitive inputs (national ID, license number) are hashed *before* they enter a proof.
+**Verification:** an admin reviews a counsellor's identity, qualifications, license status, and supporting evidence. Only the resulting verification state and operational metadata are exposed to product surfaces. Sensitive evidence remains access-controlled and must never enter public logs.
 
-**Proof kinds** (`StellarProofKind`):
-1. `counsellor_credential` — attests SisterCare verified a counsellor's identity/qualifications/license.
-2. `health_passport` — a Merkle root over a user's record hashes (portable, verifiable "my records existed and are intact" attestation).
-3. `wellness_record` — hash of an individual record, chainable via `previousRecordHash`.
+**Reputation:** `reputation_events/` is an append-only server ledger populated from platform-observed sessions, feedback, complaints, and no-shows. Future scoring should be Bayesian, time-decayed, unit-tested, and resistant to manipulation. Scores inform matching but never replace human review.
 
-**Mechanics:** `stableStringify` (recursive key sort) → `sha256Hex` → `createProofRecord` (deterministic `payloadHash`, unique `proofId`). `buildMerkleRoot` implements a standard pairwise-hash tree (odd node duplicated). `verifyProof` recomputes and compares — used by `POST /api/stellar/verify`.
-
-**Anchoring** (`submission.ts`): a `manageData` operation on the **issuer account** with key `sc:{cc|hp|wr}:{proofId-prefix}` (≤64 bytes), value = payload hash, memo `SC:{proofId-prefix}`, 5-minute timebounds. Without `STELLAR_ISSUER_SECRET_KEY` it returns a structured **dry-run** result — develop freely without a funded account. Network selection via `STELLAR_NETWORK` (default testnet).
-
-**Planned evolution:** admin-triggered credential minting at verification time, periodic Merkle-anchored counsellor reputation (sessions + feedback, sybil-resistant weighting), and Stellar-based counsellor payouts via mobile-money anchors. The proof primitives above are the foundation for all three.
+**Audit rules:** API routes verify Firebase ID tokens, use the verified UID instead of client-supplied identity, and emit immutable events for consequential state changes. Corrections are new events rather than edits to history. Firestore security rules deny all client access to `events/` and `reputation_events/`.
 
 ---
 
@@ -535,9 +521,6 @@ All routes are Next.js route handlers under `src/app/api/`. ⚠ **None of them c
 | `/api/chat` | GET | Agent health check: capabilities, models, `apiKeyConfigured`. |
 | `/api/health` | GET | Service health/status. |
 | `/api/counsellors/sync-availability` | POST | Recompute all counsellor statuses from `availableHours`. |
-| `/api/stellar/proofs` | GET | Anchor plan, network, `submissionEnabled`, supported kinds. |
-| `/api/stellar/proofs` | POST | Build (and submit unless `submit:false`) a proof. Body: `{ kind, ...kind-specific fields }` for `counsellor_credential` \| `health_passport` \| `wellness_record`. |
-| `/api/stellar/verify` | POST | Recompute a payload hash and compare: `{ kind, fields, payloadHash }` → `{ valid, expectedHash }`. |
 
 ---
 
@@ -561,7 +544,7 @@ All routes are Next.js route handlers under `src/app/api/`. ⚠ **None of them c
 | Cycle math (firestore.ts §9) | Core correctness; users plan their lives around it. |
 | `knowledge.ts` content | Clinical accuracy — needs health-expert review. |
 | `firestore.rules` | Data privacy boundary. |
-| Anything touching Stellar submission | Signs transactions with the issuer key. |
+| Anything touching role assignment or verification | Changes trusted access or professional status. |
 
 ---
 
@@ -586,18 +569,18 @@ Read this section carefully — it will save you days.
 - **"Started X days ago" parses correctly** and vague phrases ("update my period") no longer pre-write today's date.
 - **Dependencies are pinned** to tested versions; `vitest` runs 35 unit tests; GitHub Actions CI runs typecheck + tests on every push/PR.
 - **English responses skip TTS** (latency + quota win); repeated non-English synthesis is memoized server-side (`textToSpeechCached`).
-- `.env.example` now lists every variable the code reads, including `FIREBASE_SERVICE_ACCOUNT_KEY` and the `STELLAR_*` set.
+- `.env.example` now lists every variable the code reads, including `FIREBASE_SERVICE_ACCOUNT_KEY`.
 
 ### 17.3 Missing infrastructure (accepted debt)
 
-- **Test coverage gaps:** Stellar hashing/Merkle (§12) is still untested. (Counsellor matching is now covered: `src/lib/counsellorMatching.ts` + its test file.)
+- **Test coverage gaps:** API authorization and audit-event persistence need integration coverage. Counsellor matching is covered by `src/lib/counsellorMatching.ts` and its test file.
 - **Lint isn't in CI** (`next lint` is deprecated under Next 16; migrate to the ESLint CLI first).
 
 ### 17.4 Roadmap (agreed direction)
 
 1. **Foundation:** API auth (ID-token verification + Admin SDK), role-based accounts via custom claims (`user`/`counsellor`/`admin`).
-2. **Platform:** counsellor portal (presence-based availability, request queue), in-app sessions with an explicit lifecycle state machine, feedback capture, admin verification console (mints Stellar credentials).
-3. **Reputation & payments:** anti-gaming reputation scoring feeding routing priority; Merkle-anchored reputation on Stellar; counsellor payouts via Stellar → mobile money.
+2. **Platform:** counsellor portal (presence-based availability, request queue), in-app sessions with an explicit lifecycle state machine, feedback capture, and an admin verification console.
+3. **Reputation & payments:** anti-gaming reputation scoring feeding routing priority; sponsor accounting and counsellor payouts through direct mobile-money integrations.
 4. **Reach:** Sister on WhatsApp (the pipeline is channel-agnostic by design), voice-first UX, offline-first hardening, country packs for expansion beyond Uganda.
 
 ---
@@ -606,7 +589,6 @@ Read this section carefully — it will save you days.
 
 - `docs/ARCHITECTURE_V2.md` — the target architecture blueprint (channel-agnostic gateway, event backbone, session engine, trust layer) and the migration map from today's code. Read it before proposing structural changes.
 - `docs/SYSTEM_OVERVIEW.md` — earlier plain-language feature inventory (some sections outdated; this guide supersedes it where they conflict).
-- `docs/stellar-trust-layer.md` — Stellar architecture deep-dive.
 - `docs/SUNBIRD_AI_RESEARCH.md` — Sunbird capability research.
 - `docs/Flo_Health_Literature_Review.md`, `docs/Flow.io_Literature_Review.md` — competitive/domain research.
 - `.github/copilot-instructions.md` — collaboration and commit conventions.
