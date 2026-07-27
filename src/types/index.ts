@@ -190,6 +190,12 @@ export interface Counsellor {
   };
   sessionCount: number;
   verified: boolean;
+  verificationStatus?: "pending" | "verified" | "suspended" | "expired";
+  credentialExpiresAt?: Date;
+  maxConcurrentSessions?: number;
+  acceptingNewSessions?: boolean;
+  crisisTrained?: boolean;
+  supervisorId?: string;
   createdAt: Date;
 }
 
@@ -240,6 +246,9 @@ export interface CounsellingSession {
   matchAttempts: number;
   /** Counsellor uids who declined or timed out — excluded from rematching */
   declinedBy: string[];
+  crisisEscalationLevel?: number;
+  emergencyFallbackRequired?: boolean;
+  incidentRequired?: boolean;
 }
 
 export interface SessionMessage {

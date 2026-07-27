@@ -58,10 +58,20 @@ export async function POST(request: NextRequest) {
     const { drained } = await recordHeartbeat(auth.uid, status);
     return NextResponse.json({ success: true, data: { drained } });
   } catch (error) {
-    console.error("Presence update failed:", error);
+    const message =
+      error instanceof Error ? error.message : "Presence update failed";
+    const ineligible = message.startsWith(
+      "Counsellor is not operationally eligible",
+    ) || message.includes("profile required");
+    if (!ineligible) console.error("Presence update failed:", error);
     return NextResponse.json(
-      { success: false, error: "Presence update failed" },
-      { status: 500 },
+      {
+        success: false,
+        error: ineligible
+          ? "Your account is not currently eligible to receive sessions"
+          : "Presence update failed",
+      },
+      { status: ineligible ? 403 : 500 },
     );
   }
 }

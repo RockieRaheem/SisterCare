@@ -27,6 +27,10 @@ import {
   compareQueuePriority,
 } from "../sessionStateMachine";
 import { rankCounsellors } from "../counsellorMatching";
+import {
+  evaluateCounsellorEligibility,
+  evaluateCrisisEscalation,
+} from "../counsellorOperations";
 import { emitEvent } from "./events";
 import {
   Counsellor,
@@ -86,6 +90,9 @@ function docToSession(
     timeToHumanSeconds: data.timeToHumanSeconds,
     matchAttempts: data.matchAttempts || 0,
     declinedBy: data.declinedBy || [],
+    crisisEscalationLevel: data.crisisEscalationLevel || 0,
+    emergencyFallbackRequired: data.emergencyFallbackRequired === true,
+    incidentRequired: data.incidentRequired === true,
   };
 }
 
@@ -102,6 +109,7 @@ export async function recordHeartbeat(
   status: "available" | "busy",
 ): Promise<{ drained: number }> {
   const db = requireDb();
+  await assertCounsellorOperationallyEligible(counsellorUid, "normal");
   const ref = db.collection(PRESENCE).doc(counsellorUid);
   const prev = await ref.get();
   const prevStatus = prev.exists ? prev.data()?.status : "offline";
@@ -165,6 +173,44 @@ async function getOnlineAvailableCounsellorIds(): Promise<Set<string>> {
   return online;
 }
 
+async function assertCounsellorOperationallyEligible(
+  counsellorUid: string,
+  priority: SessionPriority,
+  excludeSessionId?: string,
+): Promise<void> {
+  const db = requireDb();
+  const [profileSnapshot, loadSnapshot] = await Promise.all([
+    db.collection("counsellors").doc(counsellorUid).get(),
+    db
+      .collection(SESSIONS)
+      .where("counsellorId", "==", counsellorUid)
+      .where("state", "in", ["matched", "accepted", "active"])
+      .get(),
+  ]);
+  if (!profileSnapshot.exists) {
+    throw new Error("Verified counsellor profile required");
+  }
+  const raw = profileSnapshot.data()!;
+  const profile = {
+    id: profileSnapshot.id,
+    ...raw,
+    createdAt: toDate(raw.createdAt) || new Date(),
+    credentialExpiresAt: toDate(raw.credentialExpiresAt),
+  } as Counsellor;
+  const activeLoad = loadSnapshot.docs.filter(
+    (document) => document.id !== excludeSessionId,
+  ).length;
+  const eligibility = evaluateCounsellorEligibility(profile, {
+    activeLoad,
+    priority,
+  });
+  if (!eligibility.eligible) {
+    throw new Error(
+      `Counsellor is not operationally eligible: ${eligibility.reasons.join(", ")}`,
+    );
+  }
+}
+
 // ============================================
 // MATCHING
 // ============================================
@@ -198,40 +244,6 @@ export async function attemptMatch(sessionId: string): Promise<boolean> {
         ...doc.data(),
         createdAt: toDate(doc.data()?.createdAt) || new Date(),
       } as Counsellor);
-    } else {
-      // Online counsellor without a directory profile yet — minimal stand-in
-      // so a verified human still beats an empty queue.
-      profiles.push({
-        id,
-        name: "Counsellor",
-        title: "Counsellor",
-        bio: "",
-        specializations: ["Mental Health"],
-        photoURL: "",
-        status: "available",
-        rating: 4,
-        reviewCount: 0,
-        yearsExperience: 1,
-        languages: ["English"],
-        phoneNumber: "",
-        whatsappNumber: "",
-        availableHours: {
-          start: "00:00",
-          end: "23:59",
-          days: [
-            "Sunday",
-            "Monday",
-            "Tuesday",
-            "Wednesday",
-            "Thursday",
-            "Friday",
-            "Saturday",
-          ],
-        },
-        sessionCount: 0,
-        verified: true,
-        createdAt: new Date(),
-      });
     }
   }
 
@@ -246,8 +258,21 @@ export async function attemptMatch(sessionId: string): Promise<boolean> {
     if (cid) loads.set(cid, (loads.get(cid) || 0) + 1);
   }
 
+  const operationallyEligible = profiles
+    .map((profile) => ({
+      ...profile,
+      credentialExpiresAt: toDate(profile.credentialExpiresAt),
+    }))
+    .filter(
+      (profile) =>
+        evaluateCounsellorEligibility(profile, {
+          activeLoad: loads.get(profile.id) || 0,
+          priority: session.priority,
+        }).eligible,
+    );
+
   const best = rankCounsellors(
-    profiles,
+    operationallyEligible,
     {
       specialty: session.specialty as CounsellorSpecialty | undefined,
       preferredLanguage: session.preferredLanguage,
@@ -340,6 +365,7 @@ export async function createSessionRequest(params: {
     requestedAt: FieldValue.serverTimestamp(),
     matchAttempts: 0,
     declinedBy: [],
+    crisisEscalationLevel: 0,
   };
   if (params.specialty) payload.specialty = params.specialty;
   if (params.preferredLanguage)
@@ -373,6 +399,14 @@ export async function acceptSession(
 ): Promise<CounsellingSession> {
   const db = requireDb();
   const ref = db.collection(SESSIONS).doc(sessionId);
+  const preflight = await ref.get();
+  if (!preflight.exists) throw new Error("Session not found");
+  const preflightSession = docToSession(preflight.id, preflight.data()!);
+  await assertCounsellorOperationallyEligible(
+    counsellorUid,
+    preflightSession.priority,
+    sessionId,
+  );
 
   const result = await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
@@ -609,11 +643,13 @@ export async function sweepSessions(): Promise<{
   rematched: number;
   expired: number;
   drained: number;
+  crisisEscalations: number;
 }> {
   const db = requireDb();
   const now = new Date();
   let rematched = 0;
   let expired = 0;
+  let crisisEscalations = 0;
 
   const openSnap = await db
     .collection(SESSIONS)
@@ -622,6 +658,34 @@ export async function sweepSessions(): Promise<{
 
   for (const doc of openSnap.docs) {
     const session = docToSession(doc.id, doc.data());
+    if (session.priority === "critical" && session.state === "requested") {
+      const escalation = evaluateCrisisEscalation(
+        session.requestedAt,
+        session.crisisEscalationLevel || 0,
+        now,
+      );
+      if (escalation.action !== "none") {
+        await doc.ref.update({
+          crisisEscalationLevel: escalation.level,
+          lastCrisisEscalationAt: FieldValue.serverTimestamp(),
+          ...(escalation.action === "show_emergency_fallback"
+            ? { emergencyFallbackRequired: true }
+            : {}),
+          ...(escalation.action === "open_incident"
+            ? { incidentRequired: true }
+            : {}),
+        });
+        await emitEvent("crisis.escalation_triggered", {
+          sessionId: session.id,
+          level: escalation.level,
+          action: escalation.action,
+          waitingSeconds: Math.round(
+            (now.getTime() - session.requestedAt.getTime()) / 1000,
+          ),
+        });
+        crisisEscalations += 1;
+      }
+    }
     const action = evaluateTimeout(session, now);
 
     if (action === "rematch" && session.counsellorId) {
@@ -651,5 +715,5 @@ export async function sweepSessions(): Promise<{
   }
 
   const { matched } = await drainQueue();
-  return { rematched, expired, drained: matched };
+  return { rematched, expired, drained: matched, crisisEscalations };
 }

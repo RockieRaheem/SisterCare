@@ -24,6 +24,7 @@ export type DomainEventType =
   | "session.rematch_timeout"
   | "feedback.received"
   | "crisis.detected"
+  | "crisis.escalation_triggered"
   | "counsellor.presence_changed";
 
 export async function emitEvent(

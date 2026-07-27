@@ -110,6 +110,24 @@ export default function SessionsPage() {
           </div>
         )}
 
+        {live.some((session) => session.emergencyFallbackRequired) && (
+          <div className="mb-4 rounded-2xl border-2 border-red-300 bg-red-50 p-4 text-sm text-red-900 dark:border-red-800 dark:bg-red-900/30 dark:text-red-100">
+            <p className="font-semibold">Please do not wait if you are unsafe.</p>
+            <p className="mt-1">
+              Call Uganda Police on 999 or 112, call Sauti 116, or go to the
+              nearest hospital while we continue trying to reach a counsellor.
+            </p>
+            <div className="mt-3 flex gap-2">
+              <a className="rounded-lg bg-red-600 px-3 py-2 font-semibold text-white" href="tel:116">
+                Call 116
+              </a>
+              <a className="rounded-lg border border-red-400 px-3 py-2 font-semibold" href="tel:112">
+                Call 112
+              </a>
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div className="py-16 text-center text-gray-400">
             Loading your sessions…
