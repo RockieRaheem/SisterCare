@@ -206,9 +206,9 @@ function Stat({
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-background-dark">
+    <div className="app-page">
       <Header variant="app" />
-      <main className="mx-auto max-w-3xl px-4 pb-24 pt-6">{children}</main>
+      <main className="main-content mx-auto w-full max-w-4xl px-4 pt-8 sm:px-6">{children}</main>
     </div>
   );
 }

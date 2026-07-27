@@ -37,10 +37,11 @@ export default function OperationsDashboardPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-background-dark">
+    <div className="app-page">
       <Header variant="app" />
-      <main className="mx-auto max-w-5xl px-4 pb-24 pt-8">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+      <main className="main-content page-container pt-8">
+        <span className="eyebrow">Service health</span>
+        <h1 className="mt-1 text-3xl font-extrabold text-text-primary dark:text-white">
           Operations
         </h1>
         <p className="mb-6 text-sm text-gray-500">
@@ -72,4 +73,3 @@ export default function OperationsDashboardPage() {
     </div>
   );
 }
-
