@@ -141,11 +141,11 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background-light dark:bg-background-dark flex flex-col">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_50%_-20%,rgba(109,53,212,0.12),transparent_30rem)] bg-background-light dark:bg-background-dark flex flex-col">
       {/* Header */}
-      <div className="flex justify-center py-4 sm:py-5 safe-top">
+      <div className="safe-top flex justify-center border-b border-border-light/70 bg-white/70 py-2 backdrop-blur-xl dark:border-border-dark dark:bg-card-dark/70 sm:py-3">
         <div className="flex flex-col max-w-[1200px] flex-1 px-4 sm:px-6">
-          <header className="flex items-center justify-between whitespace-nowrap border-b border-primary/10 py-2 sm:py-3">
+          <header className="flex items-center justify-between whitespace-nowrap py-2 sm:py-3">
             <div className="flex items-center gap-2 sm:gap-4 text-primary">
               <span
                 className="material-symbols-outlined text-2xl sm:text-3xl"
@@ -160,7 +160,7 @@ export default function OnboardingPage() {
             {currentStep !== "complete" && (
               <button
                 onClick={handleSkip}
-                className="text-text-secondary text-xs sm:text-sm hover:text-primary transition-colors touch-target"
+                className="touch-target rounded-xl px-3 text-xs font-semibold text-text-secondary transition-colors hover:bg-primary/5 hover:text-primary sm:text-sm"
               >
                 Skip for now
               </button>
@@ -171,10 +171,10 @@ export default function OnboardingPage() {
 
       {/* Progress Bar */}
       {currentStep !== "complete" && (
-        <div className="max-w-[600px] mx-auto px-4 sm:px-6 py-3 sm:py-4">
-          <div className="h-1.5 sm:h-2 bg-border-light dark:bg-border-dark rounded-full overflow-hidden">
+        <div className="mx-auto w-full max-w-[560px] px-4 py-4 sm:px-6 sm:py-5">
+          <div className="h-1.5 overflow-hidden rounded-full bg-border-light dark:bg-border-dark">
             <div
-              className="h-full bg-primary transition-all duration-500 ease-out"
+              className="h-full rounded-full bg-gradient-to-r from-primary to-primary-light transition-all duration-500 ease-out"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -185,7 +185,7 @@ export default function OnboardingPage() {
       )}
 
       {/* Main Content */}
-      <main className="flex flex-1 justify-center items-start py-4 sm:py-8 px-4">
+      <main className="flex flex-1 justify-center items-start px-4 py-5 sm:py-8">
         <div className="flex flex-col max-w-[520px] w-full">
           {error && (
             <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-red-100 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400 text-xs sm:text-sm">
@@ -196,7 +196,7 @@ export default function OnboardingPage() {
           {/* Welcome Step */}
           {currentStep === "welcome" && (
             <div className="text-center animate-fadeIn">
-              <div className="mb-6 sm:mb-8 p-4 sm:p-6 bg-primary/10 rounded-full w-24 h-24 sm:w-32 sm:h-32 mx-auto flex items-center justify-center">
+              <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-[28px] border border-primary/15 bg-white text-primary shadow-soft-lg dark:bg-card-dark sm:mb-8 sm:h-28 sm:w-28">
                 <span className="material-symbols-outlined text-primary text-5xl sm:text-6xl">
                   waving_hand
                 </span>
@@ -236,7 +236,7 @@ export default function OnboardingPage() {
                 </p>
               </div>
 
-              <div className="bg-white dark:bg-card-dark rounded-2xl p-4 sm:p-6 shadow-lg border border-primary/5 mb-6 sm:mb-8">
+              <div className="surface mb-6 p-5 sm:mb-8 sm:p-6">
                 <Input
                   label="Your Name"
                   type="text"
@@ -274,7 +274,7 @@ export default function OnboardingPage() {
                 </p>
               </div>
 
-              <div className="bg-white dark:bg-card-dark rounded-2xl p-4 sm:p-6 shadow-lg border border-primary/5 mb-6 sm:mb-8 space-y-4 sm:space-y-6">
+              <div className="surface mb-6 space-y-5 p-5 sm:mb-8 sm:space-y-6 sm:p-6">
                 <Input
                   label="When did your last period start?"
                   type="date"
@@ -382,7 +382,7 @@ export default function OnboardingPage() {
                 </p>
               </div>
 
-              <div className="bg-white dark:bg-card-dark rounded-2xl p-4 sm:p-6 shadow-lg border border-primary/5 mb-6 sm:mb-8">
+              <div className="surface mb-6 p-5 sm:mb-8 sm:p-6">
                 <div className="flex flex-col gap-3 sm:gap-4">
                   <label className="text-text-primary dark:text-white text-xs sm:text-sm font-semibold">
                     Remind me before my period starts
@@ -424,8 +424,8 @@ export default function OnboardingPage() {
                         Your data is private
                       </p>
                       <p className="text-green-600 dark:text-green-500 text-[10px] sm:text-xs">
-                        All your cycle information is encrypted and only visible
-                        to you.
+                        Your cycle information is protected by your account and
+                        SisterCare&apos;s access controls.
                       </p>
                     </div>
                   </div>
@@ -464,7 +464,7 @@ export default function OnboardingPage() {
                 supported throughout your cycle journey.
               </p>
 
-              <div className="bg-white dark:bg-card-dark rounded-2xl p-4 sm:p-6 shadow-lg border border-primary/5 mb-6 sm:mb-8 text-left">
+              <div className="surface mb-6 p-5 text-left sm:mb-8 sm:p-6">
                 <h3 className="text-text-primary dark:text-white font-bold mb-3 sm:mb-4 text-sm sm:text-base">
                   What&apos;s next?
                 </h3>

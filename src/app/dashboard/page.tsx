@@ -332,10 +332,10 @@ export default function DashboardPage() {
   const dateLocale = language === "lg" ? "en-US" : "en-US"; // Luganda uses English date names for now
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="app-page flex min-h-screen flex-col">
       <Header variant="app" />
 
-      <main className="flex-1 max-w-[1200px] mx-auto w-full px-4 sm:px-6 py-5 sm:py-8 main-content">
+      <main className="main-content page-container flex-1 py-5 sm:py-8">
         {/* Period Reminder Banner */}
         {cycleInfo && (
           <div className="mb-6">
@@ -392,14 +392,12 @@ export default function DashboardPage() {
         )}
 
         {/* Page Heading */}
-        <div className="flex flex-col sm:flex-row sm:flex-wrap justify-between gap-4 mb-6 sm:mb-8">
+        <div className="mb-6 flex flex-col justify-between gap-4 sm:mb-8 sm:flex-row sm:flex-wrap sm:items-end">
           <div className="flex flex-col gap-1">
-            <h1 className="text-text-primary dark:text-white text-2xl sm:text-3xl md:text-4xl font-black leading-tight tracking-tight">
+            <span className="eyebrow mb-1">{t.dashboard.healthAtGlance}</span>
+            <h1 className="text-3xl font-extrabold leading-tight text-text-primary dark:text-white sm:text-4xl">
               {t.dashboard.welcomeBack}, {displayName}
             </h1>
-            <p className="text-text-secondary text-sm sm:text-base md:text-lg font-normal leading-normal">
-              {t.dashboard.healthAtGlance}
-            </p>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 mt-2 sm:mt-0">
             <Link href="/profile" className="flex-1 sm:flex-none">
@@ -423,7 +421,7 @@ export default function DashboardPage() {
           {/* Main Tracking Column */}
           <div className="lg:col-span-2 space-y-5 sm:space-y-6 lg:space-y-8">
             {/* Timer & Status Section */}
-            <Card padding="lg">
+            <Card padding="lg" className="relative overflow-hidden border-primary/10 bg-gradient-to-br from-white via-white to-primary/[0.055] dark:from-card-dark dark:via-card-dark dark:to-primary/10">
               <div className="flex flex-col items-center text-center">
                 <span
                   className={`bg-primary/10 ${currentPhaseInfo.color} px-4 py-1 rounded-full text-sm font-bold mb-4 uppercase tracking-wider`}
@@ -463,7 +461,7 @@ export default function DashboardPage() {
                 )}
                 <div className="flex gap-2 sm:gap-4 w-full max-w-sm sm:max-w-md mx-auto">
                   <div className="flex grow basis-0 flex-col items-stretch gap-1 sm:gap-2">
-                    <div className="flex h-14 sm:h-16 items-center justify-center rounded-xl bg-border-light dark:bg-border-dark">
+                    <div className="flex h-16 items-center justify-center rounded-[16px] border border-primary/10 bg-white shadow-soft dark:bg-background-dark sm:h-20">
                       <p className="text-primary text-xl sm:text-2xl font-black">
                         {String(countdown.days).padStart(2, "0")}
                       </p>
@@ -473,7 +471,7 @@ export default function DashboardPage() {
                     </p>
                   </div>
                   <div className="flex grow basis-0 flex-col items-stretch gap-1 sm:gap-2">
-                    <div className="flex h-14 sm:h-16 items-center justify-center rounded-xl bg-border-light dark:bg-border-dark">
+                    <div className="flex h-16 items-center justify-center rounded-[16px] border border-border-light bg-white shadow-soft dark:border-border-dark dark:bg-background-dark sm:h-20">
                       <p className="text-text-primary dark:text-white text-xl sm:text-2xl font-black">
                         {String(countdown.hours).padStart(2, "0")}
                       </p>
@@ -483,7 +481,7 @@ export default function DashboardPage() {
                     </p>
                   </div>
                   <div className="flex grow basis-0 flex-col items-stretch gap-1 sm:gap-2">
-                    <div className="flex h-14 sm:h-16 items-center justify-center rounded-xl bg-border-light dark:bg-border-dark">
+                    <div className="flex h-16 items-center justify-center rounded-[16px] border border-border-light bg-white shadow-soft dark:border-border-dark dark:bg-background-dark sm:h-20">
                       <p className="text-text-primary dark:text-white text-xl sm:text-2xl font-black">
                         {String(countdown.minutes).padStart(2, "0")}
                       </p>
@@ -678,7 +676,7 @@ export default function DashboardPage() {
           {/* Side Column */}
           <div className="space-y-5 sm:space-y-6 lg:space-y-8">
             {/* Daily Tip Card */}
-            <div className="bg-border-light dark:bg-border-dark p-6 rounded-2xl relative overflow-hidden group">
+            <div className="surface group relative overflow-hidden bg-gradient-to-br from-primary/[0.07] to-pink-50 p-6 dark:to-pink-950/10">
               <div className="relative z-10">
                 <div className="flex items-center gap-2 mb-3">
                   <span className="material-symbols-outlined text-primary">
