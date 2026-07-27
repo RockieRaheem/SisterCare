@@ -9,9 +9,8 @@
  *   FIREBASE_SERVICE_ACCOUNT_KEY  — the service account JSON, as a string
  *   GOOGLE_APPLICATION_CREDENTIALS — path to the JSON file (standard ADC)
  *
- * If neither is set, auth runs in "unenforced" mode: requests are allowed
- * through with a loud warning so a dev checkout still works. Production
- * deployments MUST configure one of the above.
+ * Authentication fails closed unless a developer explicitly sets
+ * ALLOW_UNAUTHENTICATED_DEV=true outside production.
  */
 
 import {
@@ -26,6 +25,39 @@ import { getFirestore, type Firestore } from "firebase-admin/firestore";
 
 let adminApp: App | null = null;
 let warnedUnconfigured = false;
+
+export function allowsUnauthenticatedDevelopment(
+  env: {
+    NODE_ENV?: string;
+    ALLOW_UNAUTHENTICATED_DEV?: string;
+  } = process.env,
+): boolean {
+  return (
+    env.NODE_ENV !== "production" &&
+    env.ALLOW_UNAUTHENTICATED_DEV === "true"
+  );
+}
+
+export function validateProductionSecurityConfig(
+  env: NodeJS.ProcessEnv = process.env,
+): string[] {
+  if (env.NODE_ENV !== "production") return [];
+
+  const errors: string[] = [];
+  if (
+    !env.FIREBASE_SERVICE_ACCOUNT_KEY &&
+    !env.GOOGLE_APPLICATION_CREDENTIALS
+  ) {
+    errors.push("Firebase Admin credentials are required in production");
+  }
+  if (!env.CRON_SECRET || env.CRON_SECRET.length < 32) {
+    errors.push("CRON_SECRET must contain at least 32 characters");
+  }
+  if (env.ALLOW_UNAUTHENTICATED_DEV === "true") {
+    errors.push("ALLOW_UNAUTHENTICATED_DEV cannot be enabled in production");
+  }
+  return errors;
+}
 
 function getAdminApp(): App | null {
   if (adminApp) return adminApp;
@@ -47,9 +79,8 @@ function getAdminApp(): App | null {
     } else {
       if (!warnedUnconfigured) {
         console.warn(
-          "[auth] Firebase Admin is NOT configured — API authentication is " +
-            "not enforced. Set FIREBASE_SERVICE_ACCOUNT_KEY before deploying " +
-            "to production.",
+          "[auth] Firebase Admin is not configured. Protected APIs fail " +
+            "closed unless ALLOW_UNAUTHENTICATED_DEV=true is explicitly set.",
         );
         warnedUnconfigured = true;
       }
@@ -116,6 +147,14 @@ export async function getUidByEmail(email: string): Promise<string | null> {
   }
 }
 
+export async function deleteAuthUser(uid: string): Promise<void> {
+  const app = getAdminApp();
+  if (!app) {
+    throw new Error("Firebase Admin is not configured — cannot delete user");
+  }
+  await getAuth(app).deleteUser(uid);
+}
+
 /** True when the request is verified AND carries the given role claim. */
 export function hasRole(auth: AuthResult, role: UserRole): boolean {
   return auth.status === "verified" && auth.token.role === role;
@@ -128,14 +167,18 @@ export function hasRole(auth: AuthResult, role: UserRole): boolean {
  *                       and ignore any client-supplied userId.
  * - "unauthenticated" → enforcement is on and the token is missing/invalid;
  *                       the route must return 401.
- * - "unenforced"      → Admin SDK not configured (dev mode); the route may
- *                       fall back to the client-supplied identity.
+ * - "unenforced"      → explicit non-production escape hatch only; the route
+ *                       may fall back to the client-supplied identity.
  */
 export async function authenticateRequest(
   request: Request,
 ): Promise<AuthResult> {
   const app = getAdminApp();
-  if (!app) return { status: "unenforced" };
+  if (!app) {
+    return allowsUnauthenticatedDevelopment()
+      ? { status: "unenforced" }
+      : { status: "unauthenticated" };
+  }
 
   const header = request.headers.get("authorization") || "";
   const match = header.match(/^Bearer\s+(.+)$/i);

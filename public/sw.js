@@ -11,13 +11,6 @@ const OFFLINE_URL = "/offline.html";
 // Core assets to cache immediately on install
 const STATIC_ASSETS = [
   "/",
-  "/dashboard",
-  "/chat",
-  "/library",
-  "/settings",
-  "/profile",
-  "/counsellors",
-  "/analytics",
   "/offline.html",
   "/manifest.json",
   "/favicon.ico",
@@ -25,6 +18,16 @@ const STATIC_ASSETS = [
   "/icons/icon-512x512.png",
   "/icons/icon.svg",
 ];
+
+const PUBLIC_NAVIGATION_PATHS = new Set([
+  "/",
+  "/about",
+  "/help",
+  "/privacy",
+  "/terms",
+  "/auth/login",
+  "/auth/signup",
+]);
 
 // Fonts and external resources to cache
 const FONT_URLS = [
@@ -210,7 +213,8 @@ async function handleStaticRequest(request) {
 async function handleNavigationRequest(request) {
   try {
     const response = await fetch(request);
-    if (response.ok) {
+    const pathname = new URL(request.url).pathname;
+    if (response.ok && PUBLIC_NAVIGATION_PATHS.has(pathname)) {
       const cache = await caches.open(DYNAMIC_CACHE);
       cache.put(request, response.clone());
     }
@@ -227,6 +231,11 @@ async function handleNavigationRequest(request) {
     return new Response("Offline", { status: 503 });
   }
 }
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type !== "PURGE_PRIVATE_DATA") return;
+  event.waitUntil(caches.delete(DYNAMIC_CACHE));
+});
 
 // Handle dynamic requests - Stale-while-revalidate
 async function handleDynamicRequest(request) {

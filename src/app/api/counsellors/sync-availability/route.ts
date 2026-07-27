@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { batchUpdateCounsellorAvailability } from "@/lib/server/serverData";
-import { authenticateRequest } from "@/lib/firebaseAdmin";
+import { authenticateRequest, hasRole } from "@/lib/firebaseAdmin";
 
 export async function POST(request: NextRequest) {
   // Operational endpoint. Schedulers authenticate with the shared
@@ -11,10 +11,16 @@ export async function POST(request: NextRequest) {
 
   if (!isScheduler) {
     const auth = await authenticateRequest(request);
-    if (auth.status === "unauthenticated") {
+    if (auth.status !== "verified") {
       return NextResponse.json(
         { success: false, error: "Authentication required" },
         { status: 401 },
+      );
+    }
+    if (!hasRole(auth, "admin")) {
+      return NextResponse.json(
+        { success: false, error: "Admin privileges required" },
+        { status: 403 },
       );
     }
   }

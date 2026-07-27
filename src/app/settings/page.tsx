@@ -27,7 +27,7 @@ import {
 import { UserPreferences } from "@/types";
 
 export default function SettingsPage() {
-  const { user, loading: authLoading, signOut } = useAuth();
+  const { user, loading: authLoading, signOut, deleteAccount } = useAuth();
   const { language, setLanguage, languages, t } = useLanguage();
   const { theme, setTheme } = useTheme();
   const router = useRouter();
@@ -140,10 +140,22 @@ export default function SettingsPage() {
 
     if (!doubleConfirmed) return;
 
-    // TODO: Implement account deletion
-    alert(
-      "Account deletion will be implemented. For now, please contact support.",
-    );
+    try {
+      setSaving(true);
+      setMessage(null);
+      await deleteAccount();
+      router.replace("/");
+    } catch (error) {
+      setMessage({
+        type: "error",
+        text:
+          error instanceof Error
+            ? error.message
+            : "Account deletion failed. Please try again.",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSignOut = async () => {

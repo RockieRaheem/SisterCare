@@ -18,6 +18,7 @@ import {
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { createUserProfile, getUserProfile } from "@/lib/firestore";
+import { clearPrivateClientData } from "@/lib/privacy";
 import { UserProfile as FullUserProfile } from "@/types";
 
 interface UserProfile {
@@ -35,6 +36,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -190,7 +192,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    await clearPrivateClientData();
     await firebaseSignOut(auth);
+    setUserProfile(null);
+  };
+
+  const deleteAccount = async () => {
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser) throw new Error("Authentication required");
+    const token = await firebaseUser.getIdToken(true);
+    const response = await fetch("/api/account", {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const result = await response.json().catch(() => null);
+    if (!response.ok) {
+      throw new Error(result?.error || "Account deletion failed");
+    }
+    await clearPrivateClientData();
+    setUser(null);
     setUserProfile(null);
   };
 
@@ -228,6 +248,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signIn,
         signUp,
         signOut,
+        deleteAccount,
         signInWithGoogle,
         refreshProfile,
       }}

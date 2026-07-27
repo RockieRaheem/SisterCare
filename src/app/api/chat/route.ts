@@ -1348,32 +1348,9 @@ export async function POST(request: NextRequest) {
  * Health check endpoint for the agent
  */
 export async function GET() {
-  const apiKey = process.env.GEMINI_API_KEY;
-
   return NextResponse.json({
     status: "online",
     type: "ai_agent",
-    capabilities: [
-      "triage_scoring",
-      "proactive_handoff_offers",
-      "auto_counsellor_routing",
-      "cycle_confirmation_loop",
-      "agent_action_statuses",
-      "evaluation_events",
-      "cycle_tracking",
-      "symptom_logging",
-      "symptom_analysis",
-      "fertility_calculation",
-      "reminder_setting",
-      "health_search",
-      "resource_finding",
-      "risk_assessment",
-      "health_reports",
-      "personalized_tips",
-    ],
-    models: ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"],
-    functionsAvailable: 12,
-    apiKeyConfigured: !!apiKey,
-    description: "SisterCare AI - Your supportive health companion",
+    description: "SisterCare chat service",
   });
 }
