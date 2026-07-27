@@ -30,6 +30,10 @@ import { emitEvent } from "@/lib/server/events";
 import { withApiObservability } from "@/lib/observability";
 import { hasConfiguredAgentProvider } from "@/lib/agent/modelRouter";
 import {
+  assertCompleteResponse,
+  isClearlyIncompleteResponse,
+} from "@/lib/agent/responseIntegrity";
+import {
   ChatPipelineError,
   evaluateHandoffPolicy,
   inferCounsellorSpecialty,
@@ -117,6 +121,22 @@ function inferRequestedLanguage(message: string): string | undefined {
     }
   }
 
+  return undefined;
+}
+
+// This small offline detector covers high-confidence Luganda health phrases
+// when the optional language service is unavailable. It prevents a default UI
+// setting of English from overriding what the person has actually written.
+function inferLanguageFromHealthMessage(
+  message: string,
+): SupportedLanguageCode | undefined {
+  if (
+    /\b(olubuto|lubuto|omutwe|nsonyiwa|nkutegeredde|nkole ntya|nnyamba|webale|gyebale|oyagala|olaba bubi)\b/i.test(
+      message,
+    )
+  ) {
+    return "lug";
+  }
   return undefined;
 }
 
@@ -212,6 +232,17 @@ function getDirectLugandaResponse(message: string): string | null {
     /(njagala|nnyagala).*(kansala|counsellor|counselor|human help)/i.test(m)
   ) {
     return "Kale, nsobola okukuyunga ku kansala. 💜 Bw'oyagala nnyinza okukuyamba okufuna omuntu ow'okuyamba kati. Era bw'oba olina akaseera, tusobola okusooka okwogera ku mbeera yo okwanguyiza obuyambi obutuufu.";
+  }
+
+  if (
+    /(omutwe|headache).*(olubuto|lubuto|belly|abdomen)|(olubuto|lubuto|belly|abdomen).*(omutwe|headache)/i.test(
+      m,
+    ) &&
+    /(ndi lubuto|ndi olubuto|nfa olubuto|oyinza okuba olubuto|pregnan)/i.test(
+      m,
+    )
+  ) {
+    return "Nsonyiwa nnyo kubanga oli mu bulumi. Obulumi bw'omutwe n'obw'olubuto nga oyinza okuba olubuto bwetaaga okukeberebwa leero ku ddwaliro oba health centre; si kirungi kugagezaako kugawonya ggwe wekka. Genda mangu ddala singa obulumi bwa maanyi, otandika okuvaamu omusaayi, ozirika oba ogwa eddalu, olaba bubi, oba olina omusujja. Nga tonnalabibwa, wummula, nywa amazzi mpola, era wewale eddagala lyonna okuggyako nga omukozi w'eby'obulamu akakakasizza nti terikukosa lubuto.";
   }
 
   if (
@@ -367,8 +398,9 @@ async function translateWithGemini(
           parts: [
             {
               text: [
-                `Translate the text to ${targetLanguage}.`,
-                "Return only the translated text with no commentary.",
+                `Translate every sentence of the text to ${targetLanguage}.`,
+                "Return only the complete translation with no commentary.",
+                "Never stop mid-sentence; preserve all safety guidance and questions.",
                 "",
                 text,
               ].join("\n"),
@@ -378,7 +410,7 @@ async function translateWithGemini(
       ],
       generationConfig: {
         temperature: 0.2,
-        maxOutputTokens: 1024,
+        maxOutputTokens: 1536,
       },
     }),
   });
@@ -388,39 +420,25 @@ async function translateWithGemini(
   }
 
   const data = await response.json();
-  const translated = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  const candidate = data?.candidates?.[0];
+  const translated = candidate?.content?.parts?.[0]?.text;
   if (!translated || typeof translated !== "string") {
     throw new Error("Gemini translation returned empty output");
   }
 
-  return translated.trim();
+  const completeTranslation = translated.trim();
+  assertCompleteResponse(completeTranslation, candidate?.finishReason);
+  return completeTranslation;
 }
 
 function isProbablyEnglishText(text: string): boolean {
   const normalized = text.trim().toLowerCase();
   if (!normalized) return false;
 
-  // Lightweight heuristic for common English-heavy outputs.
-  const englishMarkers = [
-    " i ",
-    " you ",
-    " your ",
-    " the ",
-    " and ",
-    " can ",
-    " please ",
-    "hello",
-    "feel",
-    "today",
-    "help",
-  ];
-
-  let score = 0;
-  for (const marker of englishMarkers) {
-    if (normalized.includes(marker)) score += 1;
-  }
-
-  return score >= 2;
+  const englishWords = normalized.match(
+    /\b(i|you|your|the|and|can|please|hello|feel|today|help|this|that|with|for|are|is)\b/g,
+  );
+  return (englishWords?.length || 0) >= 2;
 }
 
 function fallbackLocalizedResponse(
@@ -560,14 +578,19 @@ async function postChat(request: NextRequest) {
     let triage = preflight.triage;
     const apiKey = process.env.GEMINI_API_KEY || "";
 
-    const storedLanguage = toSupportedLanguageCode(
-      userProfile?.preferences?.language,
-    );
+    const storedLanguageValue = userProfile?.preferences?.language;
+    const storedLanguage = storedLanguageValue
+      ? toSupportedLanguageCode(storedLanguageValue)
+      : undefined;
+    const clientLanguageCode = clientLanguage
+      ? toSupportedLanguageCode(clientLanguage)
+      : undefined;
     const inMessageLanguage = toSupportedLanguageCode(
       inferRequestedLanguage(trimmedMessage),
     );
+    const inferredHealthLanguage = inferLanguageFromHealthMessage(trimmedMessage);
     let userLanguage: SupportedLanguageCode =
-      toSupportedLanguageCode(clientLanguage) || storedLanguage || "eng";
+      inferredHealthLanguage || clientLanguageCode || storedLanguage || "eng";
     if (inMessageLanguage !== "eng") {
       userLanguage = inMessageLanguage;
     }
@@ -623,7 +646,7 @@ async function postChat(request: NextRequest) {
       });
     }
 
-    if (!clientLanguage && !storedLanguage) {
+    if (!clientLanguageCode && !storedLanguage) {
       try {
         const detected = await detectLanguage(trimmedMessage);
         userLanguage = detected.language;
@@ -776,47 +799,51 @@ async function postChat(request: NextRequest) {
     const localizeResponse = async (text: string) => {
       let localizedText = text;
       if (userLanguage !== "eng") {
-        try {
-          const translated = await translateText(text, "eng", userLanguage);
-          localizedText = translated.translatedText;
+        // The agent was already given a mandatory target-language instruction.
+        // Translating that output again as though it were English corrupted
+        // Luganda responses and could return a partial answer. Only translate
+        // when the model clearly ignored the requested language.
+        if (isProbablyEnglishText(text)) {
+          try {
+            const translated = await translateText(text, "eng", userLanguage);
+            localizedText = translated.translatedText;
 
-          // Some providers return unchanged English text on soft failures.
-          // If that happens, force fallback translation with Gemini.
-          if (
-            apiKey &&
-            (localizedText.trim() === text.trim() ||
-              isProbablyEnglishText(localizedText))
-          ) {
-            localizedText = await translateWithGemini(
-              apiKey,
-              text,
-              SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
-            );
-          }
-        } catch (translationError) {
-          console.warn(
-            "Failed to translate response, using English:",
-            translationError,
-          );
-          if (apiKey) {
-            try {
+            if (
+              apiKey &&
+              (localizedText.trim() === text.trim() ||
+                isProbablyEnglishText(localizedText))
+            ) {
               localizedText = await translateWithGemini(
                 apiKey,
                 text,
                 SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
               );
-            } catch (geminiTranslationError) {
-              console.warn(
-                "Gemini fallback translation failed, using original text:",
-                geminiTranslationError,
-              );
+            }
+          } catch (translationError) {
+            console.warn(
+              "Failed to translate English agent response:",
+              translationError,
+            );
+            if (apiKey) {
+              try {
+                localizedText = await translateWithGemini(
+                  apiKey,
+                  text,
+                  SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
+                );
+              } catch (geminiTranslationError) {
+                console.warn(
+                  "Gemini fallback translation failed:",
+                  geminiTranslationError,
+                );
+              }
             }
           }
         }
 
         if (
-          localizedText.trim() === text.trim() ||
-          isProbablyEnglishText(localizedText)
+          isClearlyIncompleteResponse(localizedText) ||
+          (isProbablyEnglishText(localizedText) && localizedText.trim() === text.trim())
         ) {
           localizedText = fallbackLocalizedResponse(text, userLanguage);
         }

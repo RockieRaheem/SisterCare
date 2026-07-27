@@ -37,6 +37,7 @@ import { buildAgentModelPlan } from "./modelRouter";
 import { SISTERCARE_AGENT_CAPABILITY_MAP } from "./systemCapabilities";
 import { bindToolArgumentsToVerifiedUser } from "./toolAuthorization";
 import { emitEvent } from "../server/events";
+import { assertCompleteResponse } from "./responseIntegrity";
 
 // Types for agent execution
 interface ToolCall {
@@ -1917,7 +1918,7 @@ ${JSON.stringify(contextSummary)}`;
           tool_choice: "auto",
           parallel_tool_calls: false,
           temperature: 0.4,
-          max_tokens: 1024,
+          max_tokens: 1536,
         }),
       },
       2,
@@ -1929,14 +1930,17 @@ ${JSON.stringify(contextSummary)}`;
     }
 
     const data = await response.json();
-    const assistant = data.choices?.[0]?.message as XaiMessage | undefined;
+    const choice = data.choices?.[0] as
+      | { finish_reason?: string; message?: XaiMessage }
+      | undefined;
+    const assistant = choice?.message;
     if (!assistant) throw new Error("Groq returned no assistant message");
     const toolCalls = assistant.tool_calls || [];
     if (toolCalls.length === 0) {
+      const text = assistant.content || generateFallbackResponse(message, context);
+      assertCompleteResponse(text, choice?.finish_reason);
       return {
-        response: cleanResponse(
-          assistant.content || generateFallbackResponse(message, context),
-        ),
+        response: cleanResponse(text),
         toolsUsed,
         actions,
       };
@@ -2070,7 +2074,7 @@ Offer postpartum care advice when appropriate.
       temperature: 0.7,
       topK: 40,
       topP: 0.95,
-      maxOutputTokens: 1024,
+      maxOutputTokens: 1536,
     },
     safetySettings: [
       { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
@@ -2199,11 +2203,14 @@ Offer postpartum care advice when appropriate.
   }
 
   // Extract final text response
+  const finalCandidate = data.candidates?.[0];
   const finalText =
-    data.candidates?.[0]?.content?.parts
+    finalCandidate?.content?.parts
       ?.filter((part: { text?: string }) => part.text)
       ?.map((part: { text?: string }) => part.text)
       ?.join("\n") || generateFallbackResponse(message, context);
+
+  assertCompleteResponse(finalText, finalCandidate?.finishReason);
 
   return {
     response: cleanResponse(finalText),
