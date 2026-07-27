@@ -12,7 +12,7 @@ export default function Footer({ variant = "landing" }: FooterProps) {
           <div className="flex items-center gap-2 text-primary/60">
             <span className="material-symbols-outlined">health_and_safety</span>
             <span className="text-sm font-medium">
-              SisterCare © 2026. Your health data is encrypted.
+              SisterCare © 2026. Your health information is access-controlled.
             </span>
           </div>
           <div className="flex gap-6 text-sm font-medium text-text-secondary">

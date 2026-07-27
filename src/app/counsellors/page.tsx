@@ -535,8 +535,9 @@ export default function CounsellorsPage() {
                 Are consultations confidential?
               </h3>
               <p className="text-text-secondary text-xs sm:text-sm">
-                Yes, all conversations with our counsellors are 100%
-                confidential. Your privacy is our top priority.
+                Session access is restricted to the people involved and
+                authorized operations staff. Counsellors follow SisterCare
+                privacy and professional conduct requirements.
               </p>
             </div>
 

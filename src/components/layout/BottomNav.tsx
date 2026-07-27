@@ -28,7 +28,11 @@ export default function BottomNav() {
     "/privacy",
     "/terms",
   ];
-  if (hiddenPaths.includes(pathname)) {
+  if (
+    hiddenPaths.includes(pathname) ||
+    pathname.startsWith("/admin") ||
+    pathname === "/counsellor"
+  ) {
     return null;
   }
 

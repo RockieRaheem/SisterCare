@@ -102,6 +102,12 @@ export default function RootLayout({
         suppressHydrationWarning
         className="font-display bg-background-light dark:bg-background-dark text-text-primary dark:text-white min-h-screen antialiased"
       >
+        <a
+          href="#main-content"
+          className="fixed left-4 top-3 z-[200] -translate-y-20 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white shadow-primary-lg transition-transform focus:translate-y-0"
+        >
+          Skip to main content
+        </a>
         {/* Live region for screen reader announcements */}
         <div
           id="aria-live-region"

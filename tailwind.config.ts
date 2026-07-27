@@ -15,6 +15,8 @@ const config: Config = {
         "primary-dark": "rgb(var(--color-primary-dark) / <alpha-value>)",
         "background-light": "rgb(var(--color-canvas) / <alpha-value>)",
         "background-dark": "rgb(var(--color-canvas-dark) / <alpha-value>)",
+        "bg-light": "rgb(var(--color-canvas) / <alpha-value>)",
+        "bg-dark": "rgb(var(--color-canvas-dark) / <alpha-value>)",
         "user-bubble": "rgb(var(--color-user-bubble) / <alpha-value>)",
         "card-light": "rgb(var(--color-surface) / <alpha-value>)",
         "card-dark": "rgb(var(--color-surface-dark) / <alpha-value>)",
