@@ -47,7 +47,7 @@ describe("fail-closed API security configuration", () => {
         FIREBASE_SERVICE_ACCOUNT_KEY: "{}",
         CRON_SECRET: "a".repeat(32),
         TELEMETRY_HASH_SALT: "b".repeat(32),
-        XAI_API_KEY: "xai-test-key",
+        GROQ_API_KEY: "groq-test-key",
         ALLOW_UNAUTHENTICATED_DEV: "false",
       }),
     ).toEqual([]);

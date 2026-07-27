@@ -1776,8 +1776,8 @@ export async function executeAgent(
   for (const attempt of modelPlan) {
     try {
       const result =
-        attempt.provider === "xai"
-          ? await executeWithXai(
+        attempt.provider === "groq"
+          ? await executeWithGroq(
               attempt.apiKey,
               attempt.model,
               message,
@@ -1835,11 +1835,11 @@ export async function executeAgent(
 }
 
 /**
- * Execute through xAI's OpenAI-compatible Chat Completions function-calling
- * interface. Custom tools always execute locally through executeTool, so Grok
+ * Execute through Groq's OpenAI-compatible Chat Completions function-calling
+ * interface. Custom tools always execute locally through executeTool, so Groq
  * never receives database credentials or direct write access.
  */
-async function executeWithXai(
+async function executeWithGroq(
   apiKey: string,
   model: string,
   message: string,
@@ -1851,7 +1851,7 @@ async function executeWithXai(
   toolsUsed: string[];
   actions: string[];
 }> {
-  const url = `${process.env.XAI_BASE_URL || "https://api.x.ai/v1"}/chat/completions`;
+  const url = `${process.env.GROQ_BASE_URL || "https://api.groq.com/openai/v1"}/chat/completions`;
   const contextSummary = {
     displayName: context.userProfile?.displayName || null,
     onboardingCompleted: context.userProfile?.onboardingCompleted ?? false,
@@ -1925,12 +1925,12 @@ ${JSON.stringify(contextSummary)}`;
     );
     if (!response.ok) {
       const errorText = await response.text().catch(() => "Unknown error");
-      throw new Error(`xAI API error: ${response.status} - ${errorText}`);
+      throw new Error(`Groq API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
     const assistant = data.choices?.[0]?.message as XaiMessage | undefined;
-    if (!assistant) throw new Error("xAI returned no assistant message");
+    if (!assistant) throw new Error("Groq returned no assistant message");
     const toolCalls = assistant.tool_calls || [];
     if (toolCalls.length === 0) {
       return {
@@ -1968,7 +1968,7 @@ ${JSON.stringify(contextSummary)}`;
     }
   }
 
-  throw new Error("xAI tool loop exceeded maximum iterations");
+  throw new Error("Groq tool loop exceeded maximum iterations");
 }
 
 /**

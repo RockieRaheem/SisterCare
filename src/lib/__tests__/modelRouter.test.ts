@@ -19,27 +19,27 @@ describe("agent model router", () => {
     ]);
   });
 
-  it("supports a configurable Grok model through the xAI API", () => {
+  it("supports a configurable model through the Groq API", () => {
     expect(
       buildAgentModelPlan({
-        XAI_API_KEY: "xai-key",
-        XAI_MODEL: "grok-custom",
+        GROQ_API_KEY: "groq-key",
+        GROQ_MODEL: "llama-custom",
       }),
     ).toEqual([
-      { provider: "xai", model: "grok-custom", apiKey: "xai-key" },
+      { provider: "groq", model: "llama-custom", apiKey: "groq-key" },
     ]);
   });
 
   it("respects explicit provider order and removes duplicates", () => {
     const plan = buildAgentModelPlan({
       GEMINI_API_KEY: "gemini-key",
-      XAI_API_KEY: "xai-key",
-      AGENT_PROVIDER_ORDER: "xai,gemini,xai",
+      GROQ_API_KEY: "groq-key",
+      AGENT_PROVIDER_ORDER: "groq,gemini,groq",
     });
-    expect(plan[0].provider).toBe("xai");
+    expect(plan[0].provider).toBe("groq");
     expect(plan.slice(1).every(({ provider }) => provider === "gemini")).toBe(
       true,
     );
-    expect(hasConfiguredAgentProvider({ XAI_API_KEY: "xai-key" })).toBe(true);
+    expect(hasConfiguredAgentProvider({ GROQ_API_KEY: "groq-key" })).toBe(true);
   });
 });

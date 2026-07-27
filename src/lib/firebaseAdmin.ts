@@ -56,7 +56,7 @@ export function validateProductionSecurityConfig(
   if (!env.TELEMETRY_HASH_SALT || env.TELEMETRY_HASH_SALT.length < 32) {
     errors.push("TELEMETRY_HASH_SALT must contain at least 32 characters");
   }
-  if (!env.GEMINI_API_KEY && !env.XAI_API_KEY) {
+  if (!env.GEMINI_API_KEY && !env.GROQ_API_KEY) {
     errors.push("At least one AI provider API key is required in production");
   }
   if (env.ALLOW_UNAUTHENTICATED_DEV === "true") {

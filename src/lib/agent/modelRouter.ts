@@ -1,4 +1,4 @@
-export type AgentProviderName = "gemini" | "xai";
+export type AgentProviderName = "gemini" | "groq";
 
 export interface AgentModelAttempt {
   provider: AgentProviderName;
@@ -15,12 +15,12 @@ const GEMINI_MODELS = [
 ] as const;
 
 function providerOrder(value?: string): AgentProviderName[] {
-  const requested = (value || "gemini,xai")
+  const requested = (value || "groq,gemini")
     .split(",")
     .map((provider) => provider.trim().toLowerCase())
     .filter(
       (provider): provider is AgentProviderName =>
-        provider === "gemini" || provider === "xai",
+        provider === "gemini" || provider === "groq",
     );
   return [...new Set(requested)];
 }
@@ -39,11 +39,11 @@ export function buildAgentModelPlan(
         });
       }
     }
-    if (provider === "xai" && env.XAI_API_KEY) {
+    if (provider === "groq" && env.GROQ_API_KEY) {
       attempts.push({
         provider,
-        model: env.XAI_MODEL || "grok-4.3",
-        apiKey: env.XAI_API_KEY,
+        model: env.GROQ_MODEL || "openai/gpt-oss-120b",
+        apiKey: env.GROQ_API_KEY,
       });
     }
   }

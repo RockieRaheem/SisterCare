@@ -269,9 +269,9 @@ NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 
 # Configure one or both AI providers
 GEMINI_API_KEY=your_gemini_api_key
-XAI_API_KEY=your_xai_api_key
-XAI_MODEL=grok-4.3
-AGENT_PROVIDER_ORDER=gemini,xai
+GROQ_API_KEY=your_groq_api_key
+GROQ_MODEL=openai/gpt-oss-120b
+AGENT_PROVIDER_ORDER=groq,gemini
 ```
 
 4. **Run the development server**
@@ -295,10 +295,9 @@ npm run dev
 
 ## 🤖 Gemini AI Setup
 
-Configure Gemini, xAI, or both. When both are present, SisterCare follows
-`AGENT_PROVIDER_ORDER` and fails over automatically. xAI API usage is billed
-unless the account has promotional credits; the consumer Grok free plan is not
-an API entitlement.
+Configure Groq, Gemini, or both. When both are present, SisterCare follows
+`AGENT_PROVIDER_ORDER` and fails over automatically. GroqCloud provides a
+rate-limited free API plan suitable for development and controlled pilots.
 
 The provider-neutral agent uses local, server-authorized tools for cycle,
 pregnancy, symptom, reminder, profile, and counsellor actions. Database
@@ -420,8 +419,8 @@ npm run lint     # Run ESLint
 | `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Firebase messaging sender ID | Yes      |
 | `NEXT_PUBLIC_FIREBASE_APP_ID`              | Firebase app ID              | Yes      |
 | `GEMINI_API_KEY`                           | Google Gemini API key        | One provider |
-| `XAI_API_KEY`                              | xAI/Grok API key             | One provider |
-| `XAI_MODEL`                                | xAI model (default `grok-4.3`) | No |
+| `GROQ_API_KEY`                             | GroqCloud API key            | One provider |
+| `GROQ_MODEL`                               | Groq model (default `openai/gpt-oss-120b`) | No |
 | `AGENT_PROVIDER_ORDER`                     | AI provider failover order   | No |
 
 ## 🌍 Uganda-Specific Features
