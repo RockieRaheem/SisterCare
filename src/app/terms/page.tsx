@@ -1,107 +1,75 @@
-"use client";
+import PublicPageShell from "@/components/layout/PublicPageShell";
 
-import Link from "next/link";
-import { useTheme } from "@/context/ThemeContext";
+const TERMS = [
+  {
+    title: "Using SisterCare",
+    body: "By creating an account or using the service, you agree to use SisterCare lawfully, provide information you believe is accurate, and protect your account credentials.",
+  },
+  {
+    title: "Health information, not diagnosis",
+    body: "SisterCare provides educational guidance and tracking support. It does not diagnose conditions or replace a qualified healthcare professional. Seek urgent local help when you may be in immediate danger.",
+  },
+  {
+    title: "Responsible use",
+    body: "Do not misuse the service, attempt to access another person's information, interfere with availability, impersonate a counsellor or use the platform to cause harm.",
+  },
+  {
+    title: "Availability and changes",
+    body: "We work to keep SisterCare reliable, but internet access and external services can fail. Features may change as we improve safety, performance and user experience.",
+  },
+  {
+    title: "Account controls",
+    body: "You may stop using SisterCare and request deletion of your account. Some limited records may be retained where required for security, legal obligations or incident investigation.",
+  },
+];
 
 export default function TermsPage() {
-  const { theme } = useTheme();
-
   return (
-    <div className={`min-h-screen ${theme === "dark" ? "dark" : ""}`}>
-      <div className="bg-background-light dark:bg-background-dark min-h-screen">
-        {/* Header */}
-        <header className="bg-white dark:bg-card-dark border-b border-border-light dark:border-border-dark safe-top">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2 text-primary">
-              <span className="material-symbols-outlined text-xl sm:text-2xl">
-                favorite
-              </span>
-              <span className="font-bold text-base sm:text-lg">SisterCare</span>
-            </Link>
-            <Link
-              href="/"
-              className="text-xs sm:text-sm text-primary hover:underline active:opacity-70"
-            >
-              ← Back to Home
-            </Link>
-          </div>
-        </header>
-
-        {/* Content */}
-        <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 md:py-12 safe-bottom">
-          <h1 className="text-2xl sm:text-3xl font-bold text-text-primary dark:text-white mb-1.5 sm:mb-2">
-            Terms of Service
-          </h1>
-          <p className="text-text-secondary text-sm sm:text-base mb-6 sm:mb-8">
-            Last updated: February 5, 2026
+    <PublicPageShell
+      eyebrow="Terms of service"
+      title="Clear expectations, written for people."
+      description="These terms describe how SisterCare should be used and where its responsibilities begin and end."
+    >
+      <div className="mx-auto max-w-3xl">
+        <div className="mb-10 flex flex-col gap-4 rounded-[20px] border border-amber-200 bg-amber-50 p-5 dark:border-amber-800 dark:bg-amber-950/30 sm:flex-row">
+          <span className="material-symbols-outlined text-amber-700 dark:text-amber-300">
+            medical_information
+          </span>
+          <p className="text-sm leading-6 text-amber-900 dark:text-amber-200">
+            <strong>Important:</strong> SisterCare is not an emergency response
+            service or substitute for professional medical care.
           </p>
-
-          <div className="prose dark:prose-invert max-w-none space-y-6 sm:space-y-8">
-            <section>
-              <h2 className="text-lg sm:text-xl font-semibold text-text-primary dark:text-white mb-2 sm:mb-3">
-                1. Acceptance of Terms
-              </h2>
-              <p className="text-text-secondary leading-relaxed text-sm sm:text-base text-sm sm:text-base">
-                By using SisterCare, you agree to these Terms of Service. If you
-                do not agree, please do not use our services.
-              </p>
+        </div>
+        <div className="space-y-9">
+          {TERMS.map((term, index) => (
+            <section key={term.title} className="grid gap-3 sm:grid-cols-[48px_1fr]">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-sm font-bold text-primary">
+                {index + 1}
+              </span>
+              <div>
+                <h2 className="text-xl font-bold text-text-primary dark:text-white">
+                  {term.title}
+                </h2>
+                <p className="mt-2 text-sm leading-7 text-text-secondary dark:text-gray-300 sm:text-base">
+                  {term.body}
+                </p>
+              </div>
             </section>
-
-            <section>
-              <h2 className="text-lg sm:text-xl font-semibold text-text-primary dark:text-white mb-2 sm:mb-3">
-                2. Medical Disclaimer
-              </h2>
-              <p className="text-text-secondary leading-relaxed text-sm sm:text-base">
-                <strong>
-                  SisterCare is not a substitute for professional medical
-                  advice.
-                </strong>
-                Our AI assistant provides educational information only. Always
-                consult a qualified healthcare provider for medical concerns. In
-                emergencies, contact local emergency services immediately.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-lg sm:text-xl font-semibold text-text-primary dark:text-white mb-2 sm:mb-3">
-                3. User Responsibilities
-              </h2>
-              <ul className="list-disc pl-5 sm:pl-6 text-text-secondary space-y-1.5 sm:space-y-2 text-sm sm:text-base">
-                <li>Provide accurate information for better predictions</li>
-                <li>Keep your account credentials secure</li>
-                <li>Use the service respectfully and lawfully</li>
-                <li>Report any security concerns immediately</li>
-              </ul>
-            </section>
-
-            <section>
-              <h2 className="text-lg sm:text-xl font-semibold text-text-primary dark:text-white mb-2 sm:mb-3">
-                4. Service Availability
-              </h2>
-              <p className="text-text-secondary leading-relaxed text-sm sm:text-base">
-                We strive for 99.9% uptime but cannot guarantee uninterrupted
-                service. We may update or modify features to improve user
-                experience.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-lg sm:text-xl font-semibold text-text-primary dark:text-white mb-2 sm:mb-3">
-                5. Contact
-              </h2>
-              <p className="text-text-secondary leading-relaxed text-sm sm:text-base">
-                Questions? Contact us at{" "}
-                <a
-                  href="mailto:support@sistercare.app"
-                  className="text-primary hover:underline active:opacity-70"
-                >
-                  support@sistercare.app
-                </a>
-              </p>
-            </section>
-          </div>
-        </main>
+          ))}
+        </div>
+        <div className="surface mt-12 p-6">
+          <p className="font-bold text-text-primary dark:text-white">
+            Need clarification?
+          </p>
+          <p className="mt-2 text-sm text-text-secondary dark:text-gray-300">
+            Email{" "}
+            <a className="font-semibold text-primary hover:underline" href="mailto:support@sistercare.app">
+              support@sistercare.app
+            </a>
+            . Updated 27 July 2026.
+          </p>
+        </div>
       </div>
-    </div>
+    </PublicPageShell>
   );
 }

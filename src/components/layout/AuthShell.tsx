@@ -17,7 +17,7 @@ export default function AuthShell({
   return (
     <div className="flex min-h-screen bg-background-light dark:bg-background-dark">
       {/* ===== Brand panel (desktop only) ===== */}
-      <aside className="relative hidden w-[45%] overflow-hidden bg-gradient-to-br from-primary via-purple-600 to-indigo-700 lg:flex lg:flex-col lg:justify-between lg:p-12">
+      <aside className="relative hidden w-[44%] overflow-hidden bg-[linear-gradient(145deg,#5220ad_0%,#6d35d4_48%,#9c477c_120%)] lg:flex lg:flex-col lg:justify-between lg:p-12 xl:p-16">
         <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-white/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-32 -left-20 h-96 w-96 rounded-full bg-pink-400/20 blur-3xl" />
 
@@ -32,8 +32,11 @@ export default function AuthShell({
         </Link>
 
         <div className="relative max-w-md">
-          <h2 className="mb-4 text-4xl font-extrabold leading-tight text-white">
-            A safe space that&apos;s always yours.
+          <span className="mb-5 inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold text-white/90 backdrop-blur">
+            Private, practical, human
+          </span>
+          <h2 className="mb-4 text-4xl font-extrabold leading-[1.08] text-white xl:text-5xl">
+            Health support that listens first.
           </h2>
           <p className="mb-8 text-lg leading-relaxed text-white/80">
             Track your cycle, talk to Sister in your own language, and reach a
@@ -43,7 +46,7 @@ export default function AuthShell({
           <div className="space-y-4">
             {[
               ["lock", "Private by design — delete everything anytime"],
-              ["language", "Speaks 8 Ugandan languages, voice included"],
+              ["language", "Multilingual support, including voice"],
               ["support_agent", "Verified counsellors, one tap away"],
             ].map(([icon, text]) => (
               <div key={text} className="flex items-center gap-3 text-white/90">
@@ -58,8 +61,8 @@ export default function AuthShell({
           </div>
         </div>
 
-        <p className="relative text-xs text-white/50">
-          Made with 💜 for women everywhere · Uganda first
+        <p className="relative text-xs text-white/60">
+          Designed for women everywhere · Uganda first
         </p>
       </aside>
 
@@ -80,10 +83,10 @@ export default function AuthShell({
           </Link>
         </div>
 
-        <div className="flex flex-1 items-start justify-center px-4 py-4 sm:items-center sm:py-10">
+        <div className="flex flex-1 items-start justify-center px-4 py-5 sm:items-center sm:px-8 sm:py-10">
           <div className="w-full max-w-[440px]">
             {/* Login / signup toggle */}
-            <div className="mb-6 flex rounded-2xl border border-border-light bg-white p-1.5 shadow-soft dark:border-border-dark dark:bg-card-dark">
+            <div className="mb-6 flex rounded-[16px] border border-border-light bg-white p-1 shadow-soft dark:border-border-dark dark:bg-card-dark">
               {(
                 [
                   ["login", "Sign In", "/auth/login"],
@@ -93,7 +96,7 @@ export default function AuthShell({
                 activeTab === key ? (
                   <span
                     key={key}
-                    className="flex h-10 flex-1 items-center justify-center rounded-xl bg-primary text-sm font-semibold text-white shadow-primary-sm"
+                    className="flex h-11 flex-1 items-center justify-center rounded-[12px] bg-primary text-sm font-semibold text-white shadow-primary-sm"
                   >
                     {label}
                   </span>
@@ -101,7 +104,7 @@ export default function AuthShell({
                   <Link
                     key={key}
                     href={href}
-                    className="flex h-10 flex-1 items-center justify-center rounded-xl text-sm font-semibold text-text-secondary transition-colors hover:text-primary"
+                    className="flex h-11 flex-1 items-center justify-center rounded-[12px] text-sm font-semibold text-text-secondary transition-colors hover:bg-primary/5 hover:text-primary"
                   >
                     {label}
                   </Link>
@@ -115,7 +118,7 @@ export default function AuthShell({
               <span className="material-symbols-outlined mr-1 align-middle text-sm text-primary">
                 verified_user
               </span>
-              Your data is encrypted and private — never shared, never sold.
+              Private by design — your health information is never sold.
             </p>
           </div>
         </div>

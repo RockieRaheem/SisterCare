@@ -1,110 +1,80 @@
-"use client";
+import PublicPageShell from "@/components/layout/PublicPageShell";
 
-import Link from "next/link";
-import { useTheme } from "@/context/ThemeContext";
+const FEATURES = [
+  {
+    icon: "calendar_month",
+    title: "Know your cycle",
+    text: "Track periods and symptoms, understand patterns, and receive timely reminders.",
+  },
+  {
+    icon: "forum",
+    title: "Ask without judgement",
+    text: "Talk privately with Sister for educational guidance grounded in your context.",
+  },
+  {
+    icon: "menu_book",
+    title: "Learn with confidence",
+    text: "Explore practical health information designed to be clear and culturally useful.",
+  },
+  {
+    icon: "support_agent",
+    title: "Reach a real person",
+    text: "Connect with verified counsellors when a conversation needs human care.",
+  },
+];
 
 export default function AboutPage() {
-  const { theme } = useTheme();
-
   return (
-    <div className={`min-h-screen ${theme === "dark" ? "dark" : ""}`}>
-      <div className="bg-background-light dark:bg-background-dark min-h-screen">
-        {/* Header */}
-        <header className="bg-white dark:bg-card-dark border-b border-border-light dark:border-border-dark safe-top">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2 text-primary">
-              <span className="material-symbols-outlined text-xl sm:text-2xl">
-                favorite
+    <PublicPageShell
+      eyebrow="Why we exist"
+      title="Care should feel safe, clear and close to home."
+      description="SisterCare helps women and girls understand their bodies, find trustworthy guidance, and reach human support in one private space."
+    >
+      <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:gap-14">
+        <section>
+          <h2 className="text-2xl font-bold text-text-primary dark:text-white">
+            Built around dignity
+          </h2>
+          <div className="mt-4 space-y-4 text-sm leading-7 text-text-secondary dark:text-gray-300 sm:text-base">
+            <p>
+              Menstrual and emotional health questions are still difficult to
+              ask in many communities. Confusion should never become shame, and
+              distance should never make support unreachable.
+            </p>
+            <p>
+              We combine private health tracking, responsible AI guidance and
+              verified counsellor access so each person can choose the kind of
+              support that feels right for them.
+            </p>
+          </div>
+          <div className="mt-7 rounded-[20px] border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-800 dark:bg-emerald-950/30">
+            <p className="flex items-center gap-2 font-semibold text-emerald-900 dark:text-emerald-200">
+              <span className="material-symbols-outlined">verified_user</span>
+              Your information remains yours
+            </p>
+            <p className="mt-2 text-sm leading-6 text-emerald-800 dark:text-emerald-300">
+              Review, export or delete your data from your account controls.
+              SisterCare does not sell personal health information.
+            </p>
+          </div>
+        </section>
+
+        <section className="grid gap-4 sm:grid-cols-2">
+          {FEATURES.map((feature) => (
+            <article key={feature.title} className="surface p-6">
+              <span className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-primary/10 text-primary">
+                <span className="material-symbols-outlined">{feature.icon}</span>
               </span>
-              <span className="font-bold text-base sm:text-lg">SisterCare</span>
-            </Link>
-            <Link
-              href="/"
-              className="text-xs sm:text-sm text-primary hover:underline active:opacity-70"
-            >
-              ← Back to Home
-            </Link>
-          </div>
-        </header>
-
-        {/* Content */}
-        <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 md:py-12 safe-bottom">
-          <h1 className="text-2xl sm:text-3xl font-bold text-text-primary dark:text-white mb-4 sm:mb-6">
-            About SisterCare
-          </h1>
-
-          <div className="space-y-4 sm:space-y-6 text-text-secondary leading-relaxed text-sm sm:text-base">
-            <p>
-              SisterCare was created with a simple mission:{" "}
-              <strong className="text-primary">
-                every woman and girl deserves access to reliable health
-                information and support
-              </strong>
-              .
-            </p>
-
-            <p>
-              In many communities, menstrual health remains a taboo topic. Girls
-              often lack access to accurate information, leading to confusion,
-              shame, and preventable health issues. SisterCare bridges this gap
-              by providing a safe, private space for education and support.
-            </p>
-
-            <div className="bg-primary/5 dark:bg-primary/10 rounded-lg sm:rounded-xl p-4 sm:p-6 my-6 sm:my-8">
-              <h2 className="text-lg sm:text-xl font-bold text-text-primary dark:text-white mb-3 sm:mb-4">
-                Our Features
-              </h2>
-              <ul className="space-y-2.5 sm:space-y-3">
-                <li className="flex items-start gap-2 sm:gap-3">
-                  <span className="material-symbols-outlined text-primary text-lg sm:text-xl shrink-0">
-                    calendar_month
-                  </span>
-                  <span className="text-xs sm:text-sm">
-                    <strong>Cycle Tracking:</strong> Predict periods, track
-                    symptoms, understand your body
-                  </span>
-                </li>
-                <li className="flex items-start gap-2 sm:gap-3">
-                  <span className="material-symbols-outlined text-primary text-lg sm:text-xl shrink-0">
-                    chat
-                  </span>
-                  <span className="text-xs sm:text-sm">
-                    <strong>AI Assistant:</strong> Ask questions privately, get
-                    reliable answers
-                  </span>
-                </li>
-                <li className="flex items-start gap-2 sm:gap-3">
-                  <span className="material-symbols-outlined text-primary text-lg sm:text-xl shrink-0">
-                    library_books
-                  </span>
-                  <span className="text-xs sm:text-sm">
-                    <strong>Health Library:</strong> Articles on puberty,
-                    hygiene, and wellness
-                  </span>
-                </li>
-                <li className="flex items-start gap-2 sm:gap-3">
-                  <span className="material-symbols-outlined text-primary text-lg sm:text-xl shrink-0">
-                    emergency
-                  </span>
-                  <span className="text-xs sm:text-sm">
-                    <strong>Emergency Support:</strong> Quick access to Uganda
-                    helplines
-                  </span>
-                </li>
-              </ul>
-            </div>
-
-            <p>
-              Your privacy is paramount. All data is encrypted and never shared.
-              You control your information completely.
-            </p>
-
-            <p className="text-center text-base sm:text-lg font-medium text-primary mt-6 sm:mt-8">
-              You are never alone. 💜
-            </p>
-          </div>
-        </main>
+              <h3 className="mt-5 text-lg font-bold text-text-primary dark:text-white">
+                {feature.title}
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-text-secondary dark:text-gray-300">
+                {feature.text}
+              </p>
+            </article>
+          ))}
+        </section>
       </div>
-    </div>
+    </PublicPageShell>
   );
 }

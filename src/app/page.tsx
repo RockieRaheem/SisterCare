@@ -89,7 +89,7 @@ export default function Home() {
                 <span className="material-symbols-outlined text-sm">
                   language
                 </span>
-                Built for Uganda · 8 languages · voice first
+                Built for Uganda · multilingual · private by design
               </span>
 
               <h1 className="mb-6 text-4xl font-extrabold leading-[1.1] tracking-tight text-text-primary dark:text-white sm:text-5xl lg:text-6xl">
@@ -111,7 +111,7 @@ export default function Home() {
                   href="/auth/signup"
                   className="touch-target inline-flex h-14 items-center justify-center gap-2 rounded-full bg-primary px-8 font-semibold text-white shadow-primary-lg transition-all hover:-translate-y-0.5 hover:bg-primary-dark"
                 >
-                  Get Started Free
+                  Create your account
                   <span className="material-symbols-outlined text-xl">
                     arrow_forward
                   </span>
@@ -125,7 +125,7 @@ export default function Home() {
               </div>
 
               <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-text-secondary dark:text-gray-400 lg:justify-start">
-                {["100% Free", "24/7 Available", "Completely Private"].map(
+                {["Easy to begin", "Available any time", "Privacy controls"].map(
                   (item) => (
                     <span key={item} className="flex items-center gap-1.5">
                       <span className="material-symbols-outlined text-lg text-success">
@@ -209,7 +209,7 @@ export default function Home() {
             {[
               ["8", "Ugandan languages"],
               ["24/7", "Sister is awake"],
-              ["100%", "free to use"],
+              ["Private", "by design"],
               ["Verified", "counsellors only"],
             ].map(([big, small]) => (
               <div key={small}>

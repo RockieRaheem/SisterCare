@@ -18,7 +18,16 @@ export default function BottomNav() {
   ];
 
   // Don't show on landing, login, signup, or onboarding pages
-  const hiddenPaths = ["/", "/auth/login", "/auth/signup", "/onboarding"];
+  const hiddenPaths = [
+    "/",
+    "/about",
+    "/auth/login",
+    "/auth/signup",
+    "/help",
+    "/onboarding",
+    "/privacy",
+    "/terms",
+  ];
   if (hiddenPaths.includes(pathname)) {
     return null;
   }
