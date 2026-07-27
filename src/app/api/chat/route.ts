@@ -19,7 +19,10 @@ import {
   SUPPORTED_LANGUAGES,
   SupportedLanguageCode,
 } from "@/lib/sunbird";
-import { checkForCrisis, assessTriageSeverity } from "@/lib/safety";
+import {
+  assessConversationSafety,
+  assessTriageSeverity,
+} from "@/lib/safety";
 import { authenticateRequest } from "@/lib/firebaseAdmin";
 import { createSessionRequest } from "@/lib/server/sessions";
 import { emitEvent } from "@/lib/server/events";
@@ -541,7 +544,25 @@ export async function POST(request: NextRequest) {
     }
 
     const actionStatuses: AgentActionStatus[] = [];
-    let triage = assessTriageSeverity(trimmedMessage);
+    const priorSafetyMessages = Array.isArray(conversationHistory)
+      ? conversationHistory
+          .map((entry: unknown) => {
+            if (typeof entry === "string") return entry;
+            if (!entry || typeof entry !== "object") return "";
+            const item = entry as Record<string, unknown>;
+            const value = item.content ?? item.text ?? item.message;
+            return typeof value === "string" ? value : "";
+          })
+          .filter(Boolean)
+      : [];
+    let safetyAssessment = assessConversationSafety([
+      ...priorSafetyMessages,
+      trimmedMessage,
+    ]);
+    let triage = {
+      severity: safetyAssessment.severity,
+      reason: safetyAssessment.reason,
+    };
     const apiKey = process.env.GEMINI_API_KEY || "";
 
     const storedLanguage = toSupportedLanguageCode(
@@ -847,13 +868,15 @@ export async function POST(request: NextRequest) {
           ].join("\n")
         : messageForAgent;
 
-    // Check BOTH the original message and its English translation — the
-    // crisis patterns are English-only, and a crisis expressed in Luganda
-    // must not bypass the safety layer just because it needed translating.
-    let crisisResponse = checkForCrisis(trimmedMessage);
-    if (!crisisResponse && messageForAgent !== trimmedMessage) {
-      crisisResponse = checkForCrisis(messageForAgent);
+    // Check both the original conversation and the English translation. The
+    // contextual assessment catches cumulative signals across recent turns.
+    if (!safetyAssessment.response && messageForAgent !== trimmedMessage) {
+      safetyAssessment = assessConversationSafety([
+        ...priorSafetyMessages,
+        messageForAgent,
+      ]);
     }
+    const crisisResponse = safetyAssessment.response;
     if (crisisResponse) {
       // Crisis lane (ARCHITECTURE_V2 §4.4): beyond the canned resources, open
       // a critical session so an online counsellor is paged and the

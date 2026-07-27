@@ -25,3 +25,6 @@ jobs:
 
       - name: Unit tests
         run: npm test
+
+      - name: Clinical safety gate
+        run: npm run test:safety

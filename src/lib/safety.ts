@@ -26,7 +26,7 @@ export const CRISIS_PATTERNS = {
   selfHarm:
     /(kill\s*(my|ma|me)\s*self|wanna\s*die|want\s*to\s*die|suicide|suicidal|end\s*(my|ma)\s*life|self.?harm|cutting\s*(my|ma)\s*self|hurt\s*(my|ma)\s*self|don'?t\s*want\s*to\s*live|no\s*reason\s*to\s*live|hang\s*(my|ma)\s*self|hung\s*(my|ma)\s*self|take\s*(my|ma)\s*(own\s*)?life|jump\s*off|overdose|poison\s*(my|ma)\s*self|kms|end\s*it\s*all|don'?t\s*wanna\s*live|cant\s*go\s*on|can'?t\s*take\s*it\s*anymore)/i,
   harassment:
-    /(sexual.?harass|harassing me|stalking|stalker|sending me nudes|asking for nudes|creepy messages|inappropriate messages|touched without consent)/,
+    /(sexual.?harass|harassing me|stalking|stalker|sending me nudes|ask(?:s|ed|ing)? me for nudes|asking for nudes|creepy messages|inappropriate messages|touched without consent)/,
   danger:
     /(in danger|not safe|scared for my life|someone is going to hurt me|threatened me|threatening)/,
   generalAbuse:
@@ -43,6 +43,28 @@ export const CRISIS_PATTERNS = {
 // matches everyday speech would erode trust.
 export const NATIVE_SELF_HARM_PATTERN =
   /(okwetta|kwetta|njagala\s+kufa|kujiua|najiua|nataka\s+kufa|kujidhuru)/i;
+
+export type CrisisType = keyof typeof CRISIS_RESPONSES;
+
+export interface ConversationSafetyAssessment {
+  crisisType: CrisisType | null;
+  response: string | null;
+  severity: TriageSeverity;
+  reason: string;
+  matchedOn: "latest_message" | "conversation_context" | null;
+}
+
+const THIRD_PERSON_SELF_HARM_CONTEXT =
+  /(movie|book|story|character|article|news|research|homework|assignment|essay|project|friend|someone else|another person).{0,60}(suicid|self.?harm)|(?:suicid|self.?harm).{0,60}(friend|someone else|another person|character)/i;
+
+const CONTEXTUAL_SELF_HARM_SIGNALS = [
+  /nothing matters/i,
+  /gave (away )?(all )?my (things|belongings|possessions)/i,
+  /won'?t be here tomorrow/i,
+  /saying goodbye/i,
+  /everyone (will be|would be) better without me/i,
+  /no future for me/i,
+];
 
 // Crisis responses with Uganda-specific resources
 export const CRISIS_RESPONSES = {
@@ -124,48 +146,91 @@ Please reach out to talk to someone right now:
 Can you tell me more about what's making you feel this way? Sometimes talking about what's hurting us can help us find better solutions. You're not alone in this. 💜`,
 };
 
+export function detectCrisisType(message: string): CrisisType | null {
+  const m = message.toLowerCase();
+
+  if (
+    CRISIS_PATTERNS.abuse.pattern.test(m) &&
+    CRISIS_PATTERNS.abuse.familyPattern.test(m)
+  ) {
+    return "familyAbuse";
+  }
+
+  const selfHarmMatch =
+    CRISIS_PATTERNS.selfHarm.test(m) || NATIVE_SELF_HARM_PATTERN.test(m);
+  if (selfHarmMatch && !THIRD_PERSON_SELF_HARM_CONTEXT.test(m)) {
+    return "selfHarm";
+  }
+  if (CRISIS_PATTERNS.violence.test(m)) return "violence";
+  if (CRISIS_PATTERNS.harassment.test(m)) return "harassment";
+  if (CRISIS_PATTERNS.danger.test(m)) return "danger";
+  if (CRISIS_PATTERNS.generalAbuse.test(m)) return "generalAbuse";
+
+  return null;
+}
+
 /**
  * Check for crisis situations - these need immediate human-written responses.
  * The agent is bypassed for safety-critical situations.
  * Returns the crisis response text, or null if no crisis was detected.
  */
 export function checkForCrisis(message: string): string | null {
-  const m = message.toLowerCase();
+  const crisisType = detectCrisisType(message);
+  return crisisType ? CRISIS_RESPONSES[crisisType] : null;
+}
 
-  // Family abuse detection
-  if (
-    CRISIS_PATTERNS.abuse.pattern.test(m) &&
-    CRISIS_PATTERNS.abuse.familyPattern.test(m)
-  ) {
-    return CRISIS_RESPONSES.familyAbuse;
+/**
+ * Conversation-aware safety evaluation. Direct crisis language in the latest
+ * message wins. Otherwise multiple cumulative warning signals across recent
+ * messages trigger the authored self-harm response.
+ */
+export function assessConversationSafety(
+  messages: string[],
+): ConversationSafetyAssessment {
+  const recent = messages
+    .filter((message): message is string => typeof message === "string")
+    .map((message) => message.trim())
+    .filter(Boolean)
+    .slice(-8);
+  const latest = recent.at(-1) ?? "";
+  const directType = detectCrisisType(latest);
+
+  if (directType) {
+    return {
+      crisisType: directType,
+      response: CRISIS_RESPONSES[directType],
+      severity: directType === "harassment" || directType === "generalAbuse"
+        ? "high"
+        : "critical",
+      reason: `crisis_${directType}`,
+      matchedOn: "latest_message",
+    };
   }
 
-  // Self-harm/suicide detection - HIGHEST PRIORITY
-  if (CRISIS_PATTERNS.selfHarm.test(m) || NATIVE_SELF_HARM_PATTERN.test(m)) {
-    return CRISIS_RESPONSES.selfHarm;
+  const conversation = recent.join(" ");
+  const contextualSignalCount = CONTEXTUAL_SELF_HARM_SIGNALS.reduce(
+    (count, pattern) => count + (pattern.test(conversation) ? 1 : 0),
+    0,
+  );
+
+  if (contextualSignalCount >= 2) {
+    return {
+      crisisType: "selfHarm",
+      response: CRISIS_RESPONSES.selfHarm,
+      severity: "critical",
+      reason: "cumulative_self_harm_signals",
+      matchedOn: "conversation_context",
+    };
   }
 
-  // Violence towards others - needs intervention
-  if (CRISIS_PATTERNS.violence.test(m)) {
-    return CRISIS_RESPONSES.violence;
-  }
-
-  // Sexual harassment/assault
-  if (CRISIS_PATTERNS.harassment.test(m)) {
-    return CRISIS_RESPONSES.harassment;
-  }
-
-  // General danger
-  if (CRISIS_PATTERNS.danger.test(m)) {
-    return CRISIS_RESPONSES.danger;
-  }
-
-  // General abuse mention without specifying who
-  if (CRISIS_PATTERNS.generalAbuse.test(m)) {
-    return CRISIS_RESPONSES.generalAbuse;
-  }
-
-  return null;
+  const triage = assessTriageSeverity(latest);
+  return {
+    crisisType: null,
+    response: null,
+    severity: triage.severity,
+    reason: triage.reason,
+    matchedOn: null,
+  };
 }
 
 /**
@@ -179,8 +244,7 @@ export function assessTriageSeverity(message: string): {
   const m = message.toLowerCase();
 
   if (
-    CRISIS_PATTERNS.selfHarm.test(m) ||
-    NATIVE_SELF_HARM_PATTERN.test(m) ||
+    detectCrisisType(m) === "selfHarm" ||
     CRISIS_PATTERNS.violence.test(m) ||
     CRISIS_PATTERNS.danger.test(m)
   ) {

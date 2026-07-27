@@ -10,6 +10,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:safety": "vitest run src/lib/__tests__/safety.test.ts src/lib/__tests__/safetyEvaluation.test.ts src/lib/__tests__/clinicalGovernance.test.ts",
     "test:watch": "vitest"
   },
   "dependencies": {
