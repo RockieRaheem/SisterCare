@@ -180,10 +180,10 @@ export default function LibraryPage() {
   }, [activeCategory, activeTag, searchQuery]);
 
   return (
-    <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-background-light dark:bg-background-dark">
+    <div className="app-page relative flex min-h-screen w-full flex-col overflow-x-hidden">
       <Header variant="app" />
 
-      <main className="main-content flex-1 flex flex-col lg:flex-row max-w-[1440px] mx-auto w-full px-3 xs:px-4 sm:px-6 md:px-10 lg:px-20 py-4 sm:py-6 md:py-8 pb-24 md:pb-8 gap-4 sm:gap-6 lg:gap-8 overflow-x-hidden">
+      <main className="main-content page-container flex flex-1 flex-col gap-6 overflow-x-hidden py-6 lg:flex-row lg:gap-10">
         {/* Sidebar Navigation */}
         <aside className="hidden lg:flex flex-col w-64 gap-8 shrink-0">
           <div className="flex flex-col gap-2">
@@ -215,10 +215,10 @@ export default function LibraryPage() {
           </div>
 
           {/* Support Card */}
-          <div className="mt-auto p-4 bg-primary/10 dark:bg-primary/20 rounded-xl">
+          <div className="surface mt-auto p-5">
             <p className="text-primary font-bold text-sm mb-1">Need to talk?</p>
             <p className="text-xs text-text-secondary mb-3">
-              Our AI support is available 24/7 to help you.
+              Ask Sister to explain an article or help you find a topic.
             </p>
             <Link href="/chat">
               <button className="w-full bg-primary text-white py-2 rounded-lg text-xs font-bold hover:bg-primary/90 transition-opacity">
@@ -232,12 +232,13 @@ export default function LibraryPage() {
         <div className="flex-1 flex flex-col gap-4 sm:gap-5 md:gap-6 min-w-0 overflow-x-hidden">
           {/* Page Heading */}
           <div className="flex flex-col gap-1.5 sm:gap-2">
-            <h1 className="text-text-primary dark:text-white text-xl xs:text-2xl sm:text-3xl md:text-4xl font-black leading-tight tracking-tight">
+            <span className="eyebrow">Learn at your pace</span>
+            <h1 className="text-3xl font-extrabold leading-tight text-text-primary dark:text-white sm:text-4xl">
               Health & Wellness Library
             </h1>
             <p className="text-text-secondary text-xs xs:text-sm sm:text-base md:text-lg font-normal leading-normal max-w-2xl">
-              Expert-backed articles to support your menstrual health and
-              emotional well-being.
+              Clear, practical articles for menstrual health and emotional
+              well-being.
             </p>
           </div>
 
@@ -251,7 +252,7 @@ export default function LibraryPage() {
               placeholder="Search articles..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 sm:pl-12 pr-4 py-3 sm:py-3.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-background-dark text-text-primary dark:text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              className="w-full rounded-[16px] border border-border-light bg-white py-3.5 pl-11 pr-4 text-sm text-text-primary shadow-soft transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-border-dark dark:bg-card-dark dark:text-white sm:text-base"
             />
           </div>
 

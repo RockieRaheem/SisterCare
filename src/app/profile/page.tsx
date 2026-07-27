@@ -245,13 +245,14 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-background-light dark:bg-background-dark">
+    <div className="app-page relative flex min-h-screen w-full flex-col overflow-x-hidden">
       <Header variant="app" />
 
-      <main className="main-content flex-1 max-w-[800px] mx-auto w-full px-4 sm:px-5 md:px-8 py-4 sm:py-6 md:py-8 pb-24 md:pb-8">
+      <main className="main-content mx-auto w-full max-w-[840px] flex-1 px-4 py-6 sm:px-6 sm:py-8">
         {/* Page Header */}
         <div className="flex flex-col gap-1.5 sm:gap-2 mb-5 sm:mb-6 md:mb-8">
-          <h1 className="text-text-primary dark:text-white text-2xl sm:text-3xl md:text-4xl font-black leading-tight tracking-tight">
+          <span className="eyebrow">Your health context</span>
+          <h1 className="text-3xl font-extrabold leading-tight text-text-primary dark:text-white sm:text-4xl">
             Your Profile
           </h1>
           <p className="text-text-secondary text-sm sm:text-base">

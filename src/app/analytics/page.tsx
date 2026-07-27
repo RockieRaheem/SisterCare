@@ -285,17 +285,15 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="app-page flex min-h-screen flex-col">
       <Header variant="app" />
 
-      <main className="flex-1 max-w-[1200px] mx-auto w-full px-4 sm:px-6 py-5 sm:py-8 main-content">
+      <main className="main-content page-container flex-1 py-6 sm:py-8">
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
-            <h1 className="text-text-primary dark:text-white text-2xl sm:text-3xl font-black tracking-tight flex items-center gap-3">
-              <span className="material-symbols-outlined text-primary text-3xl">
-                analytics
-              </span>
+            <span className="eyebrow">Patterns over time</span>
+            <h1 className="mt-1 flex items-center gap-3 text-3xl font-extrabold text-text-primary dark:text-white">
               Analytics & Insights
             </h1>
             <p className="text-text-secondary mt-1">
