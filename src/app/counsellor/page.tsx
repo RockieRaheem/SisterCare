@@ -395,9 +395,9 @@ function EmptyRow({ text }: { text: string }) {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-background-dark">
+    <div className="app-page">
       <Header variant="app" />
-      <main className="mx-auto max-w-2xl px-4 pb-24 pt-6">{children}</main>
+      <main className="main-content mx-auto w-full max-w-3xl px-4 pt-7 sm:px-6">{children}</main>
     </div>
   );
 }

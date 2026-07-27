@@ -213,13 +213,13 @@ export default function CounsellorsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg-light dark:bg-bg-dark">
+    <div className="app-page">
       <Header variant="app" />
 
-      <main className="main-content max-w-7xl mx-auto px-4 sm:px-5 md:px-6 py-4 sm:py-5 md:py-6 pb-24">
+      <main className="main-content page-container py-5 sm:py-7">
         {/* Hero Section */}
-        <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-primary via-purple-600 to-pink-500 p-5 sm:p-6 md:p-8 mb-5 sm:mb-6 md:mb-8 text-white">
-          <div className="absolute inset-0 bg-black/10"></div>
+        <div className="relative mb-6 overflow-hidden rounded-[28px] bg-[linear-gradient(135deg,#5120aa_0%,#6d35d4_58%,#9c477c_130%)] p-6 text-white shadow-primary-lg sm:p-8">
+          <div className="absolute inset-0 bg-black/5"></div>
           <div className="absolute -top-20 -right-20 w-40 sm:w-64 h-40 sm:h-64 bg-white/10 rounded-full blur-3xl"></div>
           <div className="absolute -bottom-20 -left-20 w-40 sm:w-64 h-40 sm:h-64 bg-pink-500/20 rounded-full blur-3xl"></div>
 
@@ -229,13 +229,12 @@ export default function CounsellorsPage() {
                 support_agent
               </span>
               <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">
-                Talk to a Counsellor
+                Human support, when you need it
               </h1>
             </div>
             <p className="text-white/90 max-w-2xl mb-4 sm:mb-6 text-sm sm:text-base">
-              Connect with our verified health professionals for personalized
-              guidance and support. All conversations are confidential and
-              judgment-free.
+              Find a verified professional by specialty, language and current
+              availability. Your session request stays inside SisterCare.
             </p>
 
             {/* Stats */}
@@ -259,14 +258,14 @@ export default function CounsellorsPage() {
                 <span className="material-symbols-outlined text-lg sm:text-xl">
                   lock
                 </span>
-                <span>100% Confidential</span>
+                <span>Private session requests</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Search and Filter Bar */}
-        <div className="bg-white dark:bg-gray-900 rounded-xl sm:rounded-2xl shadow-sm border border-border-light dark:border-border-dark p-3 sm:p-4 mb-4 sm:mb-5 md:mb-6">
+        <div className="surface mb-6 p-3 sm:p-4">
           <div className="flex flex-col lg:flex-row gap-3 sm:gap-4">
             {/* Search */}
             <div className="flex-1 relative">

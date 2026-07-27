@@ -72,10 +72,10 @@ export default function CounsellorProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg-light dark:bg-bg-dark">
+    <div className="app-page">
       <Header variant="app" />
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-5 md:px-6 py-4 sm:py-6 pb-24">
+      <main className="main-content page-container py-5 sm:py-7">
         <div className="mb-4 sm:mb-6">
           <Link
             href="/counsellors"

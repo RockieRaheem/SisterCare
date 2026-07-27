@@ -43,9 +43,9 @@ export default function CounsellorCard({
   const isAvailable = counsellor.status === "available";
 
   return (
-    <div className="bg-white dark:bg-bg-dark rounded-xl sm:rounded-2xl shadow-lg border border-border-light dark:border-border-dark overflow-hidden transition-all hover:shadow-xl active:scale-[0.99] sm:hover:-translate-y-1">
+    <article className="overflow-hidden rounded-[22px] border border-border-light bg-white shadow-soft transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-soft-lg active:scale-[0.99] dark:border-border-dark dark:bg-card-dark">
       {/* Header with gradient */}
-      <div className="relative h-20 sm:h-24 bg-gradient-to-r from-primary via-purple-500 to-pink-500">
+      <div className="relative h-20 bg-gradient-to-r from-primary/15 via-primary/10 to-pink-100 dark:to-pink-950/20 sm:h-24">
         {/* Verified badge */}
         {counsellor.verified && (
           <div className="absolute top-2 sm:top-3 right-2 sm:right-3 bg-white/90 dark:bg-gray-800/90 rounded-full px-1.5 sm:px-2 py-0.5 sm:py-1 flex items-center gap-0.5 sm:gap-1">
@@ -222,6 +222,6 @@ export default function CounsellorCard({
           </p>
         )}
       </div>
-    </div>
+    </article>
   );
 }

@@ -1221,7 +1221,7 @@ export default function ChatPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#faf8f6] safe-top safe-bottom dark:bg-[#140e1a]">
+      <div className="safe-top safe-bottom flex min-h-screen items-center justify-center bg-background-light dark:bg-background-dark">
         <div className="flex flex-col items-center gap-4">
           <div className="h-9 w-9 animate-spin rounded-full border-[3px] border-primary/30 border-t-primary" />
           <p className="text-sm font-medium text-text-secondary/70 dark:text-gray-400">
@@ -1233,7 +1233,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-[#faf8f6] dark:bg-[#140e1a]">
+    <div className="flex h-screen flex-col overflow-hidden bg-background-light dark:bg-background-dark">
       {/* Delete Confirmation Modal */}
       {deleteModalId && (
         <div
@@ -1279,7 +1279,7 @@ export default function ChatPage() {
       )}
 
       {/* Top Navigation Bar */}
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-black/[0.05] bg-white/90 px-4 backdrop-blur-md dark:border-white/[0.06] dark:bg-[#140e1a]/90">
+      <header className="safe-top flex h-16 shrink-0 items-center justify-between border-b border-border-light/80 bg-white/88 px-4 backdrop-blur-xl dark:border-border-dark dark:bg-card-dark/88">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setSidebarOpen(true)}
@@ -1288,8 +1288,8 @@ export default function ChatPage() {
             <span className="material-symbols-outlined text-xl">menu</span>
           </button>
           <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-purple-600">
-              <span className="material-symbols-outlined text-[18px] text-white">spa</span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-light shadow-primary-sm">
+              <span className="material-symbols-outlined text-[18px] text-white">favorite</span>
             </div>
             <span className="hidden text-sm font-semibold text-text-primary dark:text-white sm:inline">
               SisterCare
@@ -1297,7 +1297,7 @@ export default function ChatPage() {
           </Link>
           <div className="ml-2 h-4 w-px bg-black/[0.08] dark:bg-white/[0.1]" />
           <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+            <span className="status-dot" />
             <span className="text-sm font-medium text-text-primary dark:text-white">
               {activeConversationTitle}
             </span>
@@ -1338,11 +1338,11 @@ export default function ChatPage() {
         {/* Sidebar — reduced width */}
         <aside
           className={`
-            fixed z-40 flex h-[calc(100vh-3.5rem)] flex-col
+            fixed z-40 flex h-[calc(100vh-4rem)] flex-col
             border-r border-black/[0.05] bg-white
             shadow-xl shadow-black/5
             transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]
-            dark:border-white/[0.06] dark:bg-[#191123]
+            dark:border-border-dark dark:bg-card-dark
             lg:relative lg:shadow-none
             ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
             ${sidebarCollapsed ? "lg:w-[4.5rem]" : "lg:w-64"}

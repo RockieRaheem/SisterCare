@@ -83,12 +83,13 @@ export default function SessionsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-background-dark">
+    <div className="app-page">
       <Header variant="app" />
-      <main className="mx-auto max-w-2xl px-4 pb-24 pt-6">
+      <main className="main-content mx-auto w-full max-w-3xl px-4 pt-7 sm:px-6">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <span className="eyebrow">Human care</span>
+            <h1 className="mt-1 text-3xl font-extrabold text-text-primary dark:text-white">
               My Sessions
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
