@@ -101,7 +101,7 @@ export default function Header({ variant = "landing" }: HeaderProps) {
       <>
         {/* Mobile Header */}
         <header className="md:hidden sticky top-0 z-40 safe-top">
-          <div className="flex items-center justify-between h-14 px-4 bg-white/95 dark:bg-card-dark/95 backdrop-blur-lg border-b border-border-light dark:border-border-dark">
+          <div className="flex h-16 items-center justify-between border-b border-border-light/80 bg-white/88 px-4 shadow-[0_1px_0_rgba(35,27,45,0.02)] backdrop-blur-xl dark:border-border-dark dark:bg-card-dark/88">
             {/* Logo */}
             <Link
               href="/dashboard"
@@ -163,7 +163,7 @@ export default function Header({ variant = "landing" }: HeaderProps) {
         </header>
 
         {/* Desktop Header */}
-        <header className="hidden md:flex items-center justify-between whitespace-nowrap border-b border-border-light dark:border-border-dark px-6 lg:px-10 py-3 bg-white dark:bg-card-dark sticky top-0 z-40">
+        <header className="sticky top-0 z-40 hidden min-h-[72px] items-center justify-between whitespace-nowrap border-b border-border-light/80 bg-white/88 px-6 backdrop-blur-xl dark:border-border-dark dark:bg-card-dark/88 md:flex lg:px-10">
           <div className="flex items-center gap-8">
             <Link
               href="/dashboard"
@@ -175,7 +175,7 @@ export default function Header({ variant = "landing" }: HeaderProps) {
               >
                 favorite
               </span>
-              <h2 className="text-text-primary dark:text-white text-lg font-bold leading-tight tracking-tight">
+              <h2 className="text-text-primary dark:text-white text-lg font-extrabold leading-tight tracking-[-0.03em]">
                 SisterCare
               </h2>
             </Link>
@@ -185,10 +185,10 @@ export default function Header({ variant = "landing" }: HeaderProps) {
                   key={link.href}
                   href={link.href}
                   className={`
-                    flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all
+                    flex items-center gap-2 px-3.5 py-2.5 rounded-[14px] text-sm font-semibold transition-all
                     ${
                       isActive(link.href)
-                        ? "bg-primary/10 text-primary"
+                        ? "bg-primary/[0.09] text-primary shadow-[inset_0_0_0_1px_rgba(109,53,212,0.08)]"
                         : "text-text-primary dark:text-white hover:bg-primary/5 hover:text-primary"
                     }
                   `}
@@ -284,7 +284,7 @@ export default function Header({ variant = "landing" }: HeaderProps) {
   // Landing page header
   return (
     <>
-      <header className="flex items-center justify-between px-4 sm:px-6 lg:px-20 py-3 sm:py-4 sticky top-0 bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-lg z-50 border-b border-border-light/50 dark:border-border-dark/50 safe-top">
+      <header className="safe-top sticky top-0 z-50 flex min-h-[68px] items-center justify-between border-b border-border-light/70 bg-white/82 px-4 backdrop-blur-xl dark:border-border-dark/70 dark:bg-background-dark/82 sm:px-6 lg:px-12 xl:px-20">
         <Link href="/" className="flex items-center gap-2 sm:gap-3">
           <div className="text-primary flex items-center justify-center">
             <span
@@ -334,13 +334,13 @@ export default function Header({ variant = "landing" }: HeaderProps) {
           <div className="hidden sm:flex gap-2">
             <Link
               href="/auth/login"
-              className="flex items-center justify-center rounded-xl h-10 px-4 bg-white dark:bg-card-dark text-text-primary dark:text-white text-sm font-semibold transition-all hover:shadow-soft shadow-sm border border-border-light dark:border-border-dark"
+              className="flex h-11 items-center justify-center rounded-[14px] border border-border-light bg-white px-5 text-sm font-semibold text-text-primary shadow-soft transition-all hover:border-primary/30 hover:text-primary dark:border-border-dark dark:bg-card-dark dark:text-white"
             >
               Login
             </Link>
             <Link
               href="/auth/signup"
-              className="flex items-center justify-center rounded-xl h-10 px-4 sm:px-5 bg-primary text-white text-sm font-semibold transition-all hover:bg-primary-dark shadow-primary-sm"
+              className="flex h-11 items-center justify-center rounded-[14px] bg-primary px-5 text-sm font-semibold text-white shadow-primary-sm transition-all hover:-translate-y-0.5 hover:bg-primary-dark hover:shadow-primary-lg"
             >
               Get Started
             </Link>

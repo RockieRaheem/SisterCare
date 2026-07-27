@@ -54,14 +54,14 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
                 .join(" ") || undefined
             }
             className={`
-              form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl 
+              form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-[14px]
               text-text-primary dark:text-white 
               focus:outline-0 focus:ring-2 focus:ring-primary/20 
               focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2
-              border border-primary/10 
-              bg-background-light dark:bg-background-dark 
+              border border-border-light dark:border-border-dark
+              bg-white dark:bg-background-dark
               focus:border-primary 
-              h-14 
+              h-12
               placeholder:text-text-secondary/50 
               ${icon ? "pl-12" : "p-4"} 
               text-base font-normal leading-normal 

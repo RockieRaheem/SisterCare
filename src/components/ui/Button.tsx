@@ -30,22 +30,22 @@ export default function Button({
   ...props
 }: ButtonProps) {
   const baseStyles =
-    "flex items-center justify-center font-bold rounded-xl transition-all duration-200 ease-out btn-press disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-[0.97]";
+    "group inline-flex items-center justify-center whitespace-nowrap font-semibold rounded-[14px] transition-all duration-200 ease-out btn-press disabled:opacity-45 disabled:cursor-not-allowed disabled:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-[0.98]";
 
   const variantStyles = {
     primary:
-      "bg-primary text-white hover:bg-primary/90 hover:shadow-lg shadow-primary-sm",
+      "bg-primary text-white shadow-primary-sm hover:-translate-y-0.5 hover:bg-primary-dark hover:shadow-primary-lg",
     secondary:
-      "bg-border-light dark:bg-border-dark text-text-primary dark:text-white hover:bg-opacity-80 hover:scale-[1.02]",
+      "bg-white dark:bg-card-dark border border-border-light dark:border-border-dark text-text-primary dark:text-white shadow-soft hover:border-primary/30 hover:bg-primary/5",
     outline:
-      "border-2 border-primary text-primary hover:bg-primary hover:text-white hover:shadow-md",
+      "border border-primary/35 bg-transparent text-primary hover:border-primary hover:bg-primary/5",
     ghost: "text-primary hover:bg-primary/10",
-    danger: "bg-red-500 text-white hover:bg-red-600 hover:shadow-lg",
+    danger: "bg-red-600 text-white shadow-sm hover:bg-red-700 hover:shadow-md",
   };
 
   const sizeStyles = {
-    sm: "h-8 px-3 text-xs gap-1",
-    md: "h-10 px-4 text-sm gap-2",
+    sm: "h-9 px-3.5 text-xs gap-1.5",
+    md: "h-11 px-5 text-sm gap-2",
     lg: "h-14 px-6 text-base gap-2",
   };
 

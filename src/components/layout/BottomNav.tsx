@@ -25,14 +25,14 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white dark:bg-card-dark"
+      className="fixed bottom-0 left-0 right-0 z-50 md:hidden px-2 pb-2"
       aria-label={t.nav.home}
       role="navigation"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
-      <div className="border-t border-border-light dark:border-border-dark shadow-[0_-4px_20px_rgba(0,0,0,0.08)] backdrop-blur-lg bg-white/95 dark:bg-card-dark/95">
+      <div className="mx-auto max-w-md overflow-hidden rounded-[22px] border border-border-light/80 bg-white/92 shadow-[0_-8px_30px_rgba(35,27,45,0.12)] backdrop-blur-xl dark:border-border-dark dark:bg-card-dark/92">
         <div
-          className="flex items-center justify-around px-3 h-[60px] max-w-md mx-auto"
+          className="flex h-[64px] items-center justify-around px-2"
           role="menubar"
         >
           {navItems.map((item) => {
@@ -61,23 +61,20 @@ export default function BottomNav() {
                 aria-label={`${label}${isActive ? " (current page)" : ""}`}
                 className={`
                   relative flex flex-col items-center justify-center 
-                  flex-1 h-full py-2 px-1
+                  flex-1 h-[56px] py-1.5 px-1
                   transition-all duration-200 ease-out
                   touch-target focus-ring rounded-xl
                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2
                   ${
                     isActive
-                      ? "text-primary"
+                      ? "text-primary bg-primary/[0.07]"
                       : "text-text-secondary dark:text-gray-400 active:text-primary"
                   }
                 `}
               >
                 {/* Active indicator */}
                 {isActive && (
-                  <span
-                    className="absolute top-1 w-8 h-1 bg-primary rounded-full"
-                    aria-hidden="true"
-                  />
+                  <span className="absolute top-0 h-0.5 w-7 rounded-full bg-primary" aria-hidden="true" />
                 )}
 
                 <span

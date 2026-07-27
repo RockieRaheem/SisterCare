@@ -9,10 +9,10 @@ import OfflineIndicator from "@/components/ui/OfflineIndicator";
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  maximumScale: 5,
+  userScalable: true,
   viewportFit: "cover",
-  themeColor: "#f7f6f8",
+  themeColor: "#faf8fc",
 };
 
 export const metadata: Metadata = {

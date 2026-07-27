@@ -28,10 +28,10 @@ export default function Card({
     <div
       className={`
         bg-white dark:bg-card-dark 
-        rounded-2xl 
+        rounded-[20px]
         border border-border-light dark:border-border-dark 
-        shadow-sm
-        transition-all duration-300 ease-out
+        shadow-soft
+        transition-all duration-200 ease-out
         ${hover ? "card-hover cursor-pointer" : ""}
         ${animate ? "card-animate" : ""}
         ${glow ? "glow-primary" : ""}
