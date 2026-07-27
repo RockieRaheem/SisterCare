@@ -36,6 +36,7 @@ describe("fail-closed API security configuration", () => {
       "Firebase Admin credentials are required in production",
       "CRON_SECRET must contain at least 32 characters",
       "TELEMETRY_HASH_SALT must contain at least 32 characters",
+      "At least one AI provider API key is required in production",
     ]);
   });
 
@@ -46,6 +47,7 @@ describe("fail-closed API security configuration", () => {
         FIREBASE_SERVICE_ACCOUNT_KEY: "{}",
         CRON_SECRET: "a".repeat(32),
         TELEMETRY_HASH_SALT: "b".repeat(32),
+        XAI_API_KEY: "xai-test-key",
         ALLOW_UNAUTHENTICATED_DEV: "false",
       }),
     ).toEqual([]);

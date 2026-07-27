@@ -10,6 +10,7 @@ import {
   setActiveCounsellorOnConversation,
   getActiveCounsellorForConversation,
   getCounsellors,
+  getAgentSystemOverview,
 } from "@/lib/server/serverData";
 import { getCycleInfo, calculateNextPeriod } from "@/lib/cycle";
 import {
@@ -27,6 +28,7 @@ import { authenticateRequest } from "@/lib/firebaseAdmin";
 import { createSessionRequest } from "@/lib/server/sessions";
 import { emitEvent } from "@/lib/server/events";
 import { withApiObservability } from "@/lib/observability";
+import { hasConfiguredAgentProvider } from "@/lib/agent/modelRouter";
 import {
   ChatPipelineError,
   evaluateHandoffPolicy,
@@ -525,11 +527,27 @@ async function postChat(request: NextRequest) {
       message: trimmedMessage,
       conversationHistory,
       userId,
-      cycleData,
-      userProfile,
+      cycleData: clientCycleData,
+      userProfile: clientUserProfile,
       conversationId,
       userLanguage: clientLanguage,
     } = preflight.request;
+    let cycleData = clientCycleData;
+    let userProfile = clientUserProfile;
+    if (auth.status === "verified" && userId) {
+      try {
+        const canonicalContext = await getAgentSystemOverview(userId);
+        userProfile = canonicalContext.profile || undefined;
+        cycleData = canonicalContext.profile?.cycleData || undefined;
+      } catch (error) {
+        console.warn("[chat] Canonical agent context unavailable", {
+          userId: userId.slice(0, 8),
+          error: error instanceof Error ? error.message : "unknown",
+        });
+        userProfile = undefined;
+        cycleData = undefined;
+      }
+    }
     const actionStatuses: AgentActionStatus[] = preflight.actionStatuses;
     const priorSafetyMessages = conversationHistory
       .filter((entry) => entry.role === "user")
@@ -1188,8 +1206,8 @@ async function postChat(request: NextRequest) {
         "\n\nI am concerned by what you shared. I can connect you to a professional counsellor right now. Reply: 'Connect me to a counsellor'.";
     }
 
-    if (!apiKey || apiKey.trim() === "") {
-      console.warn("GEMINI_API_KEY not configured - agent cannot function");
+    if (!hasConfiguredAgentProvider()) {
+      console.warn("No agent model provider is configured");
       return NextResponse.json(
         {
           response:

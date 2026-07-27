@@ -104,7 +104,10 @@ Deploy Firestore security rules from `firestore.rules` (Firebase Console → Fir
 | `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Yes | " |
 | `NEXT_PUBLIC_FIREBASE_APP_ID` | Yes | " |
 | `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID` | No | Analytics (client only) |
-| `GEMINI_API_KEY` | Yes (chat is dead without it) | `src/app/api/chat/route.ts`, agent executor |
+| `GEMINI_API_KEY` | One AI provider is required | Gemini agent provider |
+| `XAI_API_KEY` | One AI provider is required | xAI/Grok agent provider |
+| `XAI_MODEL` | No (`grok-4.3`) | Selects a model available to the xAI account |
+| `AGENT_PROVIDER_ORDER` | No (`gemini,xai`) | Provider priority and failover order |
 | `SUNBIRD_API_KEY` | Recommended | `src/lib/sunbird.ts` — translation, language ID, TTS, STT. **Use the server-side name; do NOT set `NEXT_PUBLIC_SUNBIRD_API_KEY`** (the code accepts it, but it would embed the secret in the client bundle). |
 
 ### Scripts

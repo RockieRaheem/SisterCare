@@ -384,6 +384,63 @@ export const AGENT_TOOLS = [
       required: ["userId"],
     },
   },
+  {
+    name: "get_system_overview",
+    description:
+      "Read the canonical SisterCare profile, preferences, cycle/pregnancy state, active session count, and recent symptom count for the signed-in user. Use when the user asks what the system knows or before coordinating multiple updates.",
+    parameters: {
+      type: "object",
+      properties: {},
+      required: [],
+    },
+  },
+  {
+    name: "update_user_profile",
+    description:
+      "Update safe user-controlled SisterCare profile fields and preferences from a direct user request. Never infer or change a setting without the user's clear instruction.",
+    parameters: {
+      type: "object",
+      properties: {
+        displayName: { type: "string", description: "Preferred display name" },
+        language: { type: "string", enum: ["en", "lg"] },
+        reminderDaysBefore: { type: "integer", minimum: 0, maximum: 14 },
+        emailNotifications: { type: "boolean" },
+        pushNotifications: { type: "boolean" },
+        theme: { type: "string", enum: ["light", "dark", "system"] },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "request_counsellor_session",
+    description:
+      "Request an in-app session with a verified counsellor when the user explicitly asks for human support. Safety-critical sessions are created by the deterministic safety layer, not this tool.",
+    parameters: {
+      type: "object",
+      properties: {
+        summary: {
+          type: "string",
+          description:
+            "Privacy-minimized reason for support, maximum 500 characters",
+        },
+        specialty: {
+          type: "string",
+          enum: [
+            "Mental Health",
+            "Menstrual Health",
+            "Reproductive Health",
+            "Nutrition & Wellness",
+            "Pregnancy & Postpartum",
+            "Sexual Health",
+            "Adolescent Health",
+            "Relationship Counselling",
+          ],
+        },
+        preferredLanguage: { type: "string" },
+      },
+      required: ["summary"],
+    },
+  },
 ];
 
 // Convert to Gemini function declarations format

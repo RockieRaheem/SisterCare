@@ -35,6 +35,7 @@ import {
   Reminder,
   SymptomLog,
   TriageSeverity,
+  UserProfile,
 } from "@/types";
 
 // ============================================
@@ -484,4 +485,85 @@ export async function batchUpdateCounsellorAvailability(): Promise<{
   }
 
   return { updated, errors };
+}
+
+export async function updateAgentManagedProfile(
+  uid: string,
+  input: {
+    displayName?: string;
+    language?: "en" | "lg";
+    reminderDaysBefore?: number;
+    emailNotifications?: boolean;
+    pushNotifications?: boolean;
+    theme?: "light" | "dark" | "system";
+  },
+): Promise<void> {
+  const db = getAdminDb();
+  if (!db) throw new Error("Profile updates require the Admin SDK");
+  const updates: Record<string, unknown> = {
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+  if (input.displayName !== undefined) {
+    const name = input.displayName.trim().slice(0, 80);
+    if (!name) throw new Error("Display name cannot be empty");
+    updates.displayName = name;
+  }
+  if (input.language !== undefined)
+    updates["preferences.language"] = input.language;
+  if (input.reminderDaysBefore !== undefined) {
+    const days = Math.round(input.reminderDaysBefore);
+    if (days < 0 || days > 14) {
+      throw new Error("Reminder days must be between 0 and 14");
+    }
+    updates["preferences.reminderDaysBefore"] = days;
+  }
+  if (input.emailNotifications !== undefined)
+    updates["preferences.emailNotifications"] = input.emailNotifications;
+  if (input.pushNotifications !== undefined)
+    updates["preferences.pushNotifications"] = input.pushNotifications;
+  if (input.theme !== undefined)
+    updates["preferences.theme"] = input.theme;
+  await db.collection("users").doc(uid).update(updates);
+}
+
+export async function getAgentSystemOverview(uid: string): Promise<{
+  profile: UserProfile | null;
+  activeSessions: number;
+  recentSymptoms: number;
+}> {
+  const db = getAdminDb();
+  if (!db) throw new Error("System overview requires the Admin SDK");
+  const [profileSnapshot, sessionSnapshot, symptomSnapshot] = await Promise.all([
+    db.collection("users").doc(uid).get(),
+    db
+      .collection("sessions")
+      .where("userId", "==", uid)
+      .where("state", "in", ["requested", "matched", "accepted", "active"])
+      .get(),
+    db.collection("users").doc(uid).collection("symptoms").limit(30).get(),
+  ]);
+  const normalizeValue = (value: unknown): unknown => {
+    if (value instanceof Timestamp) return value.toDate();
+    if (Array.isArray(value)) return value.map(normalizeValue);
+    if (value && typeof value === "object") {
+      return Object.fromEntries(
+        Object.entries(value as Record<string, unknown>).map(([key, child]) => [
+          key,
+          normalizeValue(child),
+        ]),
+      );
+    }
+    return value;
+  };
+  const profileData = profileSnapshot.data();
+  return {
+    profile: profileData
+      ? (normalizeValue({
+          uid,
+          ...profileData,
+        }) as UserProfile)
+      : null,
+    activeSessions: sessionSnapshot.size,
+    recentSymptoms: symptomSnapshot.size,
+  };
 }

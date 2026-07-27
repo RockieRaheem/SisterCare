@@ -25,7 +25,8 @@ export type DomainEventType =
   | "feedback.received"
   | "crisis.detected"
   | "crisis.escalation_triggered"
-  | "counsellor.presence_changed";
+  | "counsellor.presence_changed"
+  | "agent.tool_executed";
 
 export async function emitEvent(
   type: DomainEventType,

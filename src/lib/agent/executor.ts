@@ -10,7 +10,7 @@
  * This goes beyond simple chatbots - the agent THINKS, ACTS, and SOLVES problems.
  */
 
-import { getGeminiFunctionDeclarations } from "./tools";
+import { AGENT_TOOLS, getGeminiFunctionDeclarations } from "./tools";
 import {
   searchHealthKnowledge,
   assessSymptomRisk,
@@ -27,9 +27,16 @@ import {
   savePregnancyData,
   clearPregnancyData,
   updateCycleAfterBirth,
+  getAgentSystemOverview,
+  updateAgentManagedProfile,
 } from "../server/serverData";
+import { createSessionRequest } from "../server/sessions";
 import { calculateNextPeriod, getCycleInfo } from "../cycle";
 import { MoodType, FlowIntensity } from "@/types";
+import { buildAgentModelPlan } from "./modelRouter";
+import { SISTERCARE_AGENT_CAPABILITY_MAP } from "./systemCapabilities";
+import { bindToolArgumentsToVerifiedUser } from "./toolAuthorization";
+import { emitEvent } from "../server/events";
 
 // Types for agent execution
 interface ToolCall {
@@ -74,16 +81,10 @@ interface CycleDataContext {
   currentPhase: string;
 }
 
-// Available models in order of preference (stability + rate limits)
-// Using correct model names for Google AI API v1beta
-const GEMINI_MODELS = [
-  "gemini-2.5-flash", // Primary - newest, most stable
-  "gemini-2.5-pro", // More capable fallback
-  "gemini-2.0-flash", // Classic fallback
-] as const;
-
 // Agent system prompt - ChatGPT-style clear, helpful, conversational responses
 const AGENT_SYSTEM_PROMPT = `You are "Sister", a warm and caring AI companion on SisterCare - a women's health and wellness app for women in Uganda. Think of yourself as a trusted older sister who always remembers important details about her younger sibling.
+
+${SISTERCARE_AGENT_CAPABILITY_MAP}
 
 ## CRITICAL RULES - READ THESE CAREFULLY
 
@@ -178,7 +179,10 @@ async function executeTool(
   toolCall: ToolCall,
   context: AgentContext,
 ): Promise<ToolResult> {
-  const { name, args } = toolCall;
+  const { name } = toolCall;
+  // Identity is a server-owned invariant. Models may select tools and provide
+  // domain arguments, but can never choose which user's records are touched.
+  const args = bindToolArgumentsToVerifiedUser(toolCall.args, context.userId);
 
   try {
     switch (name) {
@@ -644,6 +648,89 @@ async function executeTool(
         };
       }
 
+      case "get_system_overview": {
+        if (!context.userId) throw new Error("Verified user required");
+        const overview = await getAgentSystemOverview(context.userId);
+        return {
+          toolName: name,
+          result: overview,
+          success: true,
+        };
+      }
+
+      case "update_user_profile": {
+        if (!context.userId) throw new Error("Verified user required");
+        const update: Parameters<typeof updateAgentManagedProfile>[1] = {
+          displayName:
+            typeof args.displayName === "string"
+              ? args.displayName
+              : undefined,
+          language:
+            args.language === "en" || args.language === "lg"
+              ? args.language
+              : undefined,
+          reminderDaysBefore:
+            typeof args.reminderDaysBefore === "number"
+              ? args.reminderDaysBefore
+              : undefined,
+          emailNotifications:
+            typeof args.emailNotifications === "boolean"
+              ? args.emailNotifications
+              : undefined,
+          pushNotifications:
+            typeof args.pushNotifications === "boolean"
+              ? args.pushNotifications
+              : undefined,
+          theme:
+            args.theme === "light" ||
+            args.theme === "dark" ||
+            args.theme === "system"
+              ? args.theme
+              : undefined,
+        };
+        if (Object.values(update).every((value) => value === undefined)) {
+          throw new Error("No supported profile changes were provided");
+        }
+        await updateAgentManagedProfile(context.userId, update);
+        return {
+          toolName: name,
+          result: { success: true, updatedFields: Object.keys(update).filter((key) => update[key as keyof typeof update] !== undefined) },
+          success: true,
+        };
+      }
+
+      case "request_counsellor_session": {
+        if (!context.userId) throw new Error("Verified user required");
+        const summary =
+          typeof args.summary === "string"
+            ? args.summary.trim().slice(0, 500)
+            : "";
+        if (!summary) throw new Error("A session summary is required");
+        const session = await createSessionRequest({
+          userId: context.userId,
+          reason: "user_request",
+          priority: "normal",
+          summary,
+          specialty: args.specialty as
+            | import("@/types").CounsellorSpecialty
+            | undefined,
+          preferredLanguage:
+            typeof args.preferredLanguage === "string"
+              ? args.preferredLanguage.slice(0, 40)
+              : undefined,
+        });
+        return {
+          toolName: name,
+          result: {
+            success: true,
+            sessionId: session.id,
+            state: session.state,
+            counsellorName: session.counsellorName || null,
+          },
+          success: true,
+        };
+      }
+
       default:
         return {
           toolName: name,
@@ -660,6 +747,33 @@ async function executeTool(
       error: String(error),
     };
   }
+}
+
+async function executeAuthorizedTool(
+  toolCall: ToolCall,
+  context: AgentContext,
+): Promise<ToolResult> {
+  const result = await executeTool(toolCall, context);
+  await emitEvent("agent.tool_executed", {
+    userId: context.userId || "anonymous",
+    toolName: toolCall.name,
+    success: result.success,
+  });
+  return result;
+}
+
+function describeAction(toolName: string, args: Record<string, unknown>): string {
+  void args;
+  const labels: Record<string, string> = {
+    update_period_start: "Updated period start date",
+    update_pregnancy_status: "Updated pregnancy status",
+    record_birth: "Recorded birth and postpartum cycle state",
+    log_symptoms: "Logged symptoms",
+    set_reminder: "Created reminder",
+    update_user_profile: "Updated profile preferences",
+    request_counsellor_session: "Requested a counsellor session",
+  };
+  return labels[toolName] || `Used ${toolName}`;
 }
 
 /**
@@ -1652,25 +1766,42 @@ export async function executeAgent(
   userState.lastRequestTime = Date.now();
   userState.requestCount++;
 
-  // Try models in order until one works
+  // Try configured providers and models in order until one works.
   let lastError: Error | null = null;
+  const modelPlan = buildAgentModelPlan({
+    ...process.env,
+    GEMINI_API_KEY: apiKey || process.env.GEMINI_API_KEY,
+  });
 
-  for (const model of GEMINI_MODELS) {
+  for (const attempt of modelPlan) {
     try {
-      const result = await executeWithModel(
-        apiKey,
-        model,
-        message,
-        context,
-        toolsUsed,
-        actions,
-      );
+      const result =
+        attempt.provider === "xai"
+          ? await executeWithXai(
+              attempt.apiKey,
+              attempt.model,
+              message,
+              context,
+              toolsUsed,
+              actions,
+            )
+          : await executeWithModel(
+              attempt.apiKey,
+              attempt.model,
+              message,
+              context,
+              toolsUsed,
+              actions,
+            );
       // Success! Reset failure counter
       upstreamHealth.consecutiveFailures = 0;
       return result;
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
-      console.warn(`[Agent] Model ${model} failed:`, lastError.message);
+      console.warn(
+        `[Agent] ${attempt.provider}/${attempt.model} failed:`,
+        lastError.message,
+      );
 
       // If it's a rate limit error, try the next model immediately
       if (
@@ -1704,7 +1835,144 @@ export async function executeAgent(
 }
 
 /**
- * Execute with a specific model
+ * Execute through xAI's OpenAI-compatible Chat Completions function-calling
+ * interface. Custom tools always execute locally through executeTool, so Grok
+ * never receives database credentials or direct write access.
+ */
+async function executeWithXai(
+  apiKey: string,
+  model: string,
+  message: string,
+  context: AgentContext,
+  toolsUsed: string[],
+  actions: string[],
+): Promise<{
+  response: string;
+  toolsUsed: string[];
+  actions: string[];
+}> {
+  const url = `${process.env.XAI_BASE_URL || "https://api.x.ai/v1"}/chat/completions`;
+  const contextSummary = {
+    displayName: context.userProfile?.displayName || null,
+    onboardingCompleted: context.userProfile?.onboardingCompleted ?? false,
+    cycle: context.cycleData
+      ? calculateCycleInfo(context.cycleData)
+      : null,
+    pregnancy: context.pregnancyData || null,
+  };
+  const systemPrompt = `${AGENT_SYSTEM_PROMPT}
+
+## SISTERCARE SYSTEM CONTEXT
+You operate inside SisterCare. You may reason about the supplied user context
+and call only the provided tools. Tool results are canonical. Never claim a
+write succeeded until its tool result says success. Never invent unavailable
+profile, cycle, pregnancy, reminder, symptom, counsellor, or session data.
+
+CURRENT USER CONTEXT:
+${JSON.stringify(contextSummary)}`;
+
+  type XaiMessage = {
+    role: "system" | "user" | "assistant" | "tool";
+    content: string | null;
+    tool_calls?: Array<{
+      id: string;
+      type: "function";
+      function: { name: string; arguments: string };
+    }>;
+    tool_call_id?: string;
+  };
+
+  const messages: XaiMessage[] = [
+    { role: "system", content: systemPrompt },
+    ...context.conversationHistory.slice(-15).map(
+      (entry): XaiMessage => ({
+        role: entry.role === "user" ? "user" : "assistant",
+        content: entry.content,
+      }),
+    ),
+    { role: "user", content: message },
+  ];
+  const tools = AGENT_TOOLS.map((tool) => ({
+    type: "function",
+    function: {
+      name: tool.name,
+      description: tool.description,
+      parameters: tool.parameters,
+    },
+  }));
+
+  for (let iteration = 0; iteration < 5; iteration += 1) {
+    const response = await fetchWithRetry(
+      url,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          tools,
+          tool_choice: "auto",
+          parallel_tool_calls: false,
+          temperature: 0.4,
+          max_tokens: 1024,
+        }),
+      },
+      2,
+      30_000,
+    );
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "Unknown error");
+      throw new Error(`xAI API error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    const assistant = data.choices?.[0]?.message as XaiMessage | undefined;
+    if (!assistant) throw new Error("xAI returned no assistant message");
+    const toolCalls = assistant.tool_calls || [];
+    if (toolCalls.length === 0) {
+      return {
+        response: cleanResponse(
+          assistant.content || generateFallbackResponse(message, context),
+        ),
+        toolsUsed,
+        actions,
+      };
+    }
+
+    messages.push({
+      role: "assistant",
+      content: assistant.content || null,
+      tool_calls: toolCalls,
+    });
+    for (const call of toolCalls) {
+      let args: Record<string, unknown> = {};
+      try {
+        args = JSON.parse(call.function.arguments || "{}");
+      } catch {
+        args = {};
+      }
+      const result = await executeAuthorizedTool(
+        { name: call.function.name, args },
+        context,
+      );
+      toolsUsed.push(call.function.name);
+      if (result.success) actions.push(describeAction(call.function.name, args));
+      messages.push({
+        role: "tool",
+        tool_call_id: call.id,
+        content: JSON.stringify(result.result),
+      });
+    }
+  }
+
+  throw new Error("xAI tool loop exceeded maximum iterations");
+}
+
+/**
+ * Execute with a specific Gemini model.
  */
 async function executeWithModel(
   apiKey: string,
@@ -1870,7 +2138,7 @@ Offer postpartum care advice when appropriate.
       };
       console.log(`Agent calling tool: ${call.name}`);
 
-      const result = await executeTool(
+      const result = await executeAuthorizedTool(
         { name: call.name, args: call.args || {} },
         context,
       );
