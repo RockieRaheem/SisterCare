@@ -40,6 +40,10 @@ import {
   TriageSeverity,
 } from "@/types";
 
+// Firebase Admin requires the full Node.js runtime. Keep this explicit so a
+// deployment configuration change cannot move authenticated chat to Edge.
+export const runtime = "nodejs";
+
 /**
  * SisterCare AI Agent API Route
  *
