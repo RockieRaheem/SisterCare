@@ -2,6 +2,21 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton-shimmer {
+  background-image: linear-gradient(90deg, rgba(226,232,240,.72) 20%, rgba(255,255,255,.88) 45%, rgba(226,232,240,.72) 70%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.45s ease-in-out infinite;
+}
+
+.dark .skeleton-shimmer {
+  background-image: linear-gradient(90deg, rgba(51,65,85,.7) 20%, rgba(71,85,105,.86) 45%, rgba(51,65,85,.7) 70%);
+}
 /* stylelint-enable at-rule-no-unknown */
 
 :root {

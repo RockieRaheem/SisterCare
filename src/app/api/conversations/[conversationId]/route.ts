@@ -82,6 +82,9 @@ export async function POST(
     return NextResponse.json({ error: "Invalid message" }, { status: 400 });
   }
   const now = new Date();
+  const storedTitle = String(result.conversation.data()?.title || "New Chat");
+  const hasPlaceholderTitle = ["New Chat", "New Conversation", "Untitled"].includes(storedTitle);
+  const generatedTitle = `${content.split(/\s+/).slice(0, 5).join(" ")}${content.split(/\s+/).length > 5 ? "..." : ""}`.slice(0, 30);
   const message = await result.ref.collection("messages").add({
     conversationId: result.conversationId,
     sender,
@@ -93,6 +96,7 @@ export async function POST(
     lastMessage: content.slice(0, 100),
     messageCount: FieldValue.increment(1),
     updatedAt: now,
+    ...(sender === "user" && hasPlaceholderTitle ? { title: generatedTitle } : {}),
   });
   return NextResponse.json({ message: serializeMessage(message.id, (await message.get()).data() || {}) }, { status: 201 });
 }

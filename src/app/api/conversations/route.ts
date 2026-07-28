@@ -20,13 +20,22 @@ function serializeConversation(id: string, data: Record<string, unknown>) {
     return new Date().toISOString();
   };
 
+  const lastMessage = String(data.lastMessage || "");
+  const storedTitle = String(data.title || "New Chat");
+  const needsGeneratedTitle =
+    (storedTitle === "New Chat" || storedTitle === "New Conversation" || storedTitle === "Untitled") &&
+    Boolean(lastMessage);
+  const title = needsGeneratedTitle
+    ? `${lastMessage.split(/\s+/).slice(0, 5).join(" ")}${lastMessage.split(/\s+/).length > 5 ? "..." : ""}`.slice(0, 30)
+    : storedTitle;
+
   return {
     id,
     userId: String(data.userId || ""),
-    title: String(data.title || "New Chat"),
+    title,
     type: data.type === "counsellor" ? "counsellor" : "ai_support",
     status: String(data.status || "active"),
-    lastMessage: String(data.lastMessage || ""),
+    lastMessage,
     messageCount: Number(data.messageCount || 0),
     createdAt: asIso(data.createdAt),
     updatedAt: asIso(data.updatedAt),

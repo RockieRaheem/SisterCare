@@ -32,6 +32,7 @@ import {
   SUPPORTED_LANGUAGES,
   SupportedLanguageCode,
 } from "@/lib/sunbird";
+import { AppShellSkeleton } from "@/components/ui/Skeleton";
 
 interface Message {
   id: string;
@@ -914,9 +915,10 @@ export default function ChatPage() {
         ),
       );
 
-      // Persist title update locally + server if it was the default
+      // Persist title update locally + server if it was the default. The
+      // server also applies this rule, avoiding a React-state timing race.
       const currentConv = conversationsRef.current.find((c) => c.id === currentConversationId);
-      if (currentConv && ["New Chat", "New Conversation", "Untitled"].includes(currentConv.title)) {
+      if (!currentConv || ["New Chat", "New Conversation", "Untitled"].includes(currentConv.title)) {
         updateLocalConversationTitle(currentConversationId, generatedTitle);
         try {
           await conversationRequest(
@@ -1356,16 +1358,7 @@ export default function ChatPage() {
   });
 
   if (authLoading || loading) {
-    return (
-      <div className="safe-top safe-bottom flex min-h-screen items-center justify-center bg-background-light dark:bg-background-dark">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-9 w-9 animate-spin rounded-full border-[3px] border-primary/30 border-t-primary" />
-          <p className="text-sm font-medium text-text-secondary/70 dark:text-gray-400">
-            Loading chat...
-          </p>
-        </div>
-      </div>
-    );
+    return <AppShellSkeleton variant="chat" />;
   }
 
   return (

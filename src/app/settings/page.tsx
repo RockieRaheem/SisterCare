@@ -25,6 +25,7 @@ import {
   showBrowserNotification,
 } from "@/lib/notifications";
 import { UserPreferences } from "@/types";
+import { AppShellSkeleton } from "@/components/ui/Skeleton";
 
 export default function SettingsPage() {
   const { user, loading: authLoading, signOut, deleteAccount } = useAuth();
@@ -474,16 +475,7 @@ export default function SettingsPage() {
   };
 
   if (authLoading || loading) {
-    return (
-      <div className="min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center safe-top safe-bottom">
-        <div className="flex flex-col items-center gap-3 sm:gap-4">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-text-secondary text-sm sm:text-base">
-            Loading settings...
-          </p>
-        </div>
-      </div>
-    );
+    return <AppShellSkeleton variant="list" />;
   }
 
   return (

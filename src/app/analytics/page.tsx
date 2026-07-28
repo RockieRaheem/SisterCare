@@ -9,6 +9,7 @@ import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { getUserProfile, getSymptoms, getAgentEvents } from "@/lib/firestore";
 import { UserProfile, SymptomLog, MoodType, AgentEvent } from "@/types";
+import { AppShellSkeleton } from "@/components/ui/Skeleton";
 
 // Color mapping for moods
 const moodColors: Record<MoodType, string> = {
@@ -274,14 +275,7 @@ export default function AnalyticsPage() {
   }, [agentEvents]);
 
   if (authLoading || loading) {
-    return (
-      <div className="min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-text-secondary">{t.common.loading}</p>
-        </div>
-      </div>
-    );
+    return <AppShellSkeleton />;
   }
 
   return (

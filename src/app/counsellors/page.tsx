@@ -13,6 +13,7 @@ import {
   COUNSELLOR_STATUS_FILTERS,
 } from "@/lib/counsellors";
 import { getCounsellors, getCounsellor } from "@/lib/firestore";
+import { AppShellSkeleton } from "@/components/ui/Skeleton";
 
 const DAYS_OF_WEEK = [
   "Sunday", "Monday", "Tuesday", "Wednesday",
@@ -205,11 +206,7 @@ export default function CounsellorsPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-bg-light dark:bg-bg-dark flex items-center justify-center safe-top safe-bottom">
-        <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <AppShellSkeleton variant="list" />;
   }
 
   return (

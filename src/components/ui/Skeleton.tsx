@@ -14,12 +14,48 @@ interface SkeletonProps {
 export function Skeleton({ className = "", animate = true }: SkeletonProps) {
   return (
     <div
-      className={`
-        bg-gray-200 dark:bg-gray-700 rounded
-        ${animate ? "animate-pulse" : ""}
-        ${className}
-      `}
+      aria-hidden="true"
+      className={`rounded bg-slate-200/80 dark:bg-slate-700/70 ${
+        animate ? "skeleton-shimmer" : ""
+      } ${className}`}
     />
+  );
+}
+
+/** A route-level shell that prevents layout jumps during page transitions. */
+export function AppShellSkeleton({
+  variant = "default",
+}: {
+  variant?: "default" | "chat" | "list";
+}) {
+  if (variant === "chat") {
+    return (
+      <div className="min-h-screen bg-background-light px-4 pb-28 pt-5 dark:bg-background-dark sm:px-6">
+        <div className="mx-auto flex max-w-6xl gap-5">
+          <aside className="hidden w-64 shrink-0 space-y-4 rounded-2xl border border-border-light/70 bg-white p-4 dark:border-border-dark dark:bg-card-dark lg:block">
+            <Skeleton className="h-9 w-full rounded-xl" />
+            <Skeleton className="h-8 w-3/5" />
+            <ListSkeleton count={5} />
+          </aside>
+          <section className="min-h-[72vh] flex-1 rounded-2xl border border-border-light/70 bg-white p-4 dark:border-border-dark dark:bg-card-dark sm:p-6">
+            <div className="mb-8 flex items-center justify-between"><Skeleton className="h-7 w-36" /><Skeleton className="h-9 w-9 rounded-full" /></div>
+            <ChatSkeleton />
+          </section>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background-light px-4 pb-28 pt-6 dark:bg-background-dark sm:px-6 sm:pt-8">
+      <div className="mx-auto max-w-6xl space-y-6">
+        <div className="flex items-end justify-between gap-4">
+          <div className="space-y-3"><Skeleton className="h-3 w-24 rounded-full" /><Skeleton className="h-9 w-56" /><Skeleton className="h-4 w-72 max-w-full" /></div>
+          <Skeleton className="hidden h-10 w-28 rounded-xl sm:block" />
+        </div>
+        {variant === "list" ? <ListSkeleton count={6} /> : <DashboardSkeleton />}
+      </div>
+    </div>
   );
 }
 
@@ -120,7 +156,7 @@ export function DashboardSkeleton() {
 // Chat skeleton
 export function ChatSkeleton() {
   return (
-    <div className="space-y-4 p-4 animate-pulse">
+    <div className="space-y-4 p-1">
       {/* Chat messages skeleton */}
       {[1, 2, 3, 4].map((i) => (
         <div
@@ -143,7 +179,7 @@ export function ChatSkeleton() {
       ))}
 
       {/* Input skeleton */}
-      <div className="fixed bottom-20 left-0 right-0 p-4 bg-white dark:bg-card-dark border-t border-border-light dark:border-border-dark">
+      <div className="mt-8 border-t border-border-light pt-4 dark:border-border-dark">
         <Skeleton className="h-12 w-full rounded-full" />
       </div>
     </div>

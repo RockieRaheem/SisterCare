@@ -9,6 +9,7 @@ import Footer from "@/components/layout/Footer";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import PeriodReminderBanner from "@/components/ui/PeriodReminderBanner";
+import { AppShellSkeleton } from "@/components/ui/Skeleton";
 import Link from "next/link";
 import {
   getUserProfile,
@@ -290,18 +291,7 @@ export default function DashboardPage() {
 
   // Show loading while checking auth OR onboarding status OR loading data
   if (authLoading || !onboardingChecked || loading) {
-    return (
-      <div className="min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-text-secondary">
-            {!onboardingChecked
-              ? t.dashboard.checkingProfile
-              : t.dashboard.loadingDashboard}
-          </p>
-        </div>
-      </div>
-    );
+    return <AppShellSkeleton />;
   }
 
   if (error) {
