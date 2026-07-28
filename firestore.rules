@@ -76,9 +76,17 @@ service cloud.firestore {
               || get(/databases/$(database)/documents/sessions/$(sessionId)).data.counsellorId == request.auth.uid);
         allow create: if request.auth != null
           && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.keys().hasOnly(['senderId', 'senderRole', 'text', 'createdAt'])
+          && request.resource.data.senderRole in ['user', 'counsellor']
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 4000
+          && request.resource.data.createdAt == request.time
           && get(/databases/$(database)/documents/sessions/$(sessionId)).data.state == "active"
           && (get(/databases/$(database)/documents/sessions/$(sessionId)).data.userId == request.auth.uid
-              || get(/databases/$(database)/documents/sessions/$(sessionId)).data.counsellorId == request.auth.uid);
+              || get(/databases/$(database)/documents/sessions/$(sessionId)).data.counsellorId == request.auth.uid)
+          && ((request.resource.data.senderRole == 'user' && get(/databases/$(database)/documents/sessions/$(sessionId)).data.userId == request.auth.uid)
+              || (request.resource.data.senderRole == 'counsellor' && get(/databases/$(database)/documents/sessions/$(sessionId)).data.counsellorId == request.auth.uid));
         allow update, delete: if false;
       }
     }
