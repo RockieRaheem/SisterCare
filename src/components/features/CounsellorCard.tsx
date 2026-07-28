@@ -20,7 +20,7 @@ const statusConfig: Record<
     bgColor: "bg-green-100 dark:bg-green-900/30",
     dotColor: "bg-green-500",
   },
-  busy: {
+  in_session: {
     label: "In Session",
     color: "text-amber-700 dark:text-amber-400",
     bgColor: "bg-amber-100 dark:bg-amber-900/30",
@@ -62,7 +62,7 @@ export default function CounsellorCard({
           <div className="relative">
             <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-3 sm:border-4 border-white dark:border-bg-dark overflow-hidden bg-gray-200">
               <Image
-                src={counsellor.photoURL}
+                src={counsellor.photoURL || "/icons/icon.svg"}
                 alt={counsellor.name}
                 width={96}
                 height={96}
@@ -216,7 +216,7 @@ export default function CounsellorCard({
         {/* Busy/Offline message */}
         {!isAvailable && (
           <p className="text-center text-[10px] sm:text-xs text-text-secondary mt-2 sm:mt-3">
-            {counsellor.status === "busy"
+            {counsellor.status === "in_session"
               ? "Currently in a session. Please try again later."
               : "Counsellor is offline. Check availability hours."}
           </p>

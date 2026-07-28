@@ -18,7 +18,7 @@ import {
 const HEARTBEAT_MS = 60_000;
 const REFRESH_MS = 8_000;
 
-type PresenceStatus = "available" | "busy" | "offline";
+type PresenceStatus = "available" | "in_session" | "offline";
 
 function timeAgo(date: Date): string {
   const minutes = Math.floor((Date.now() - date.getTime()) / 60000);
@@ -64,6 +64,12 @@ export default function CounsellorPortalPage() {
       const data = await listCounsellorSessions();
       setAssigned(data.assigned);
       setOpenCritical(data.openCritical);
+      const hasLiveAssignment = data.assigned.some((session) =>
+        ["matched", "accepted", "active"].includes(session.state),
+      );
+      setPresence((current) =>
+        hasLiveAssignment ? "in_session" : current === "in_session" ? "available" : current,
+      );
       setError(null);
     } catch (err) {
       const status = (err as SessionApiError).status;
@@ -86,14 +92,14 @@ export default function CounsellorPortalPage() {
     return () => clearInterval(interval);
   }, [isCounsellor, refresh]);
 
-  // Presence heartbeat while available/busy; offline notice on leave.
+  // Availability is user-controlled; in-session state is calculated by the server.
   useEffect(() => {
     if (!isCounsellor) return;
 
-    if (presence !== "offline") {
-      sendPresence(presence).catch(() => setError("Presence update failed."));
+    if (presence === "available") {
+      sendPresence("available").catch(() => setError("Presence update failed."));
       heartbeatRef.current = setInterval(() => {
-        sendPresence(presenceRef.current).catch(() => {});
+        if (presenceRef.current === "available") sendPresence("available").catch(() => {});
       }, HEARTBEAT_MS);
     }
 
@@ -122,6 +128,7 @@ export default function CounsellorPortalPage() {
   }, [presence, isCounsellor]);
 
   const setStatus = async (status: PresenceStatus) => {
+    if (status === "in_session") return;
     setPresence(status);
     try {
       await sendPresence(status);
@@ -168,8 +175,11 @@ export default function CounsellorPortalPage() {
           </h1>
           <p className="mx-auto max-w-sm text-sm text-gray-500 dark:text-gray-400">
             This portal is for verified SisterCare counsellors. If you are a
-            counsellor, ask the admin team to activate your account.
+            counsellor, submit your KYC application for review first.
           </p>
+          <Link href="/counsellor/apply" className="mt-5 inline-flex rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white">
+            Apply to join the care network
+          </Link>
         </div>
       </Shell>
     );
@@ -196,11 +206,11 @@ export default function CounsellorPortalPage() {
               ? "You're offline — go available to receive sessions"
               : presence === "available"
                 ? "You're available — new sessions can be routed to you"
-                : "You're busy — visible but not first in line"}
+                : "You're in session — availability resumes when the session ends"}
           </p>
         </div>
         <div className="flex gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-800">
-          {(["available", "busy", "offline"] as PresenceStatus[]).map((s) => (
+          {(["available", "offline"] as const).map((s) => (
             <button
               key={s}
               onClick={() => setStatus(s)}
@@ -208,15 +218,16 @@ export default function CounsellorPortalPage() {
                 presence === s
                   ? s === "available"
                     ? "bg-green-600 text-white"
-                    : s === "busy"
-                      ? "bg-amber-500 text-white"
-                      : "bg-gray-500 text-white"
+                    : "bg-gray-500 text-white"
                   : "text-gray-600 dark:text-gray-300"
               }`}
             >
               {s}
             </button>
           ))}
+          {presence === "in_session" && (
+            <span className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white">In session</span>
+          )}
         </div>
       </div>
 

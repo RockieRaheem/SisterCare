@@ -8,67 +8,11 @@ import { Counsellor, CounsellorSpecialty, CounsellorStatus } from "@/types";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  COUNSELLOR_DIRECTORY,
   COUNSELLOR_SPECIALTIES,
   COUNSELLOR_STATUS_FILTERS,
 } from "@/lib/counsellors";
-import { getCounsellors, getCounsellor } from "@/lib/firestore";
+import { auth } from "@/lib/firebase";
 import { AppShellSkeleton } from "@/components/ui/Skeleton";
-
-const DAYS_OF_WEEK = [
-  "Sunday", "Monday", "Tuesday", "Wednesday",
-  "Thursday", "Friday", "Saturday",
-];
-
-function checkTimeAvailability(counsellor: Counsellor): {
-  isAvailableNow: boolean;
-  nextAvailableTime: string | null;
-  statusOverride: CounsellorStatus | null;
-} {
-  const now = new Date();
-  const currentDay = DAYS_OF_WEEK[now.getDay()];
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  const { availableHours } = counsellor;
-
-  const todayInSchedule = availableHours.days.some(
-    (d) => d.toLowerCase() === currentDay.toLowerCase(),
-  );
-
-  if (!todayInSchedule) {
-    for (let i = 1; i <= 7; i++) {
-      const nextDay = DAYS_OF_WEEK[(now.getDay() + i) % 7];
-      if (availableHours.days.some((d) => d.toLowerCase() === nextDay.toLowerCase())) {
-        return {
-          isAvailableNow: false,
-          nextAvailableTime: `${nextDay} at ${availableHours.start}`,
-          statusOverride: "offline",
-        };
-      }
-    }
-    return { isAvailableNow: false, nextAvailableTime: null, statusOverride: "offline" };
-  }
-
-  const [startH, startM] = availableHours.start.split(":").map(Number);
-  const [endH, endM] = availableHours.end.split(":").map(Number);
-  const startMinutes = startH * 60 + startM;
-  const endMinutes = endH * 60 + endM;
-  const isAvailableNow = currentMinutes >= startMinutes && currentMinutes < endMinutes;
-  const statusOverride: CounsellorStatus = isAvailableNow ? "available" : "offline";
-
-  if (!isAvailableNow) {
-    if (currentMinutes < startMinutes) {
-      return { isAvailableNow: false, nextAvailableTime: `Today at ${availableHours.start}`, statusOverride };
-    }
-    for (let i = 1; i <= 7; i++) {
-      const nextDay = DAYS_OF_WEEK[(now.getDay() + i) % 7];
-      if (availableHours.days.some((d) => d.toLowerCase() === nextDay.toLowerCase())) {
-        return { isAvailableNow: false, nextAvailableTime: `${nextDay} at ${availableHours.start}`, statusOverride };
-      }
-    }
-  }
-
-  return { isAvailableNow, nextAvailableTime: null, statusOverride };
-}
 
 export default function CounsellorsPage() {
   const { user, loading } = useAuth();
@@ -86,8 +30,7 @@ export default function CounsellorsPage() {
   const [sortBy, setSortBy] = useState<"rating" | "experience" | "sessions">(
     "rating",
   );
-  const [counsellors, setCounsellors] =
-    useState<Counsellor[]>(COUNSELLOR_DIRECTORY);
+  const [counsellors, setCounsellors] = useState<Counsellor[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [loadingCounsellors, setLoadingCounsellors] = useState(true);
   const selectedCounsellorId = searchParams.get("counsellorId");
@@ -99,23 +42,25 @@ export default function CounsellorsPage() {
     }
   }, [user, loading, router]);
 
-  // Load counsellors from Firestore with real-time availability
+  // Server-derived availability: no directory fallback and no client-side
+  // schedule inference can make a counsellor appear available.
   useEffect(() => {
     if (!user) return;
     const loadCounsellors = async () => {
       try {
-        const firestoreCounsellors = await getCounsellors();
-        if (firestoreCounsellors.length > 0) {
-          const withAvailability = firestoreCounsellors.map((c) => {
-            const { statusOverride } = checkTimeAvailability(c);
-            const effectiveStatus =
-              statusOverride === "available" ? "available" : c.status;
-            return { ...c, status: effectiveStatus as CounsellorStatus };
-          });
-          setCounsellors(withAvailability);
-        }
+        const token = await auth.currentUser?.getIdToken();
+        const response = await fetch("/api/counsellors", {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        const result = await response.json();
+        if (!response.ok || result.success === false) throw new Error(result.error);
+        setCounsellors((result.data.counsellors || []).map((counsellor: Counsellor) => ({
+          ...counsellor,
+          createdAt: new Date(counsellor.createdAt),
+          credentialExpiresAt: counsellor.credentialExpiresAt ? new Date(counsellor.credentialExpiresAt) : undefined,
+        })));
       } catch {
-        // Keep static directory as fallback
+        setCounsellors([]);
       } finally {
         setLoadingCounsellors(false);
       }

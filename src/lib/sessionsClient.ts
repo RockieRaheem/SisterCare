@@ -104,7 +104,7 @@ export async function transitionSession(
 }
 
 export async function sendPresence(
-  status: "available" | "busy" | "offline",
+  status: "available" | "offline",
 ): Promise<void> {
   await sessionsFetch("/api/presence", {
     method: "POST",

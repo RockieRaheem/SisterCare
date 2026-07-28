@@ -107,30 +107,43 @@ function docToSession(
  */
 export async function recordHeartbeat(
   counsellorUid: string,
-  status: "available" | "busy",
+  status: "available",
 ): Promise<{ drained: number }> {
   const db = requireDb();
   await assertCounsellorOperationallyEligible(counsellorUid, "normal");
+  const liveSessions = await db
+    .collection(SESSIONS)
+    .where("counsellorId", "==", counsellorUid)
+    .where("state", "in", ["matched", "accepted", "active"])
+    .limit(1)
+    .get();
+  // A session assignment is the source of truth: a browser cannot toggle a
+  // counsellor back to available while a member is waiting for them.
+  const effectiveStatus = liveSessions.empty ? status : "in_session";
   const ref = db.collection(PRESENCE).doc(counsellorUid);
   const prev = await ref.get();
   const prevStatus = prev.exists ? prev.data()?.status : "offline";
 
   await ref.set({
     counsellorId: counsellorUid,
-    status,
+    status: effectiveStatus,
     lastHeartbeat: FieldValue.serverTimestamp(),
+  }, { merge: true });
+  await db.collection("counsellors").doc(counsellorUid).update({
+    status: effectiveStatus,
+    statusUpdatedAt: FieldValue.serverTimestamp(),
   });
 
-  if (prevStatus !== status) {
+  if (prevStatus !== effectiveStatus) {
     await emitEvent("counsellor.presence_changed", {
       counsellorId: counsellorUid,
       from: prevStatus,
-      to: status,
+      to: effectiveStatus,
     });
   }
 
   // Newly available (or freshly back) → try to drain the queue toward them.
-  if (status === "available") {
+  if (effectiveStatus === "available") {
     const result = await drainQueue();
     return { drained: result.matched };
   }
@@ -147,10 +160,54 @@ export async function setOffline(counsellorUid: string): Promise<void> {
     },
     { merge: true },
   );
+  await db.collection("counsellors").doc(counsellorUid).update({
+    status: "offline",
+    statusUpdatedAt: FieldValue.serverTimestamp(),
+  });
   await emitEvent("counsellor.presence_changed", {
     counsellorId: counsellorUid,
     to: "offline",
   });
+}
+
+async function setCounsellorInSession(counsellorUid: string): Promise<void> {
+  const db = requireDb();
+  await Promise.all([
+    db.collection(PRESENCE).doc(counsellorUid).set(
+      {
+        counsellorId: counsellorUid,
+        status: "in_session",
+        lastHeartbeat: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    ),
+    db.collection("counsellors").doc(counsellorUid).update({
+      status: "in_session",
+      statusUpdatedAt: FieldValue.serverTimestamp(),
+    }),
+  ]);
+}
+
+/** Restore availability only if the counsellor is still signed in and has no
+ * other live assignment. A stale heartbeat remains effectively offline. */
+async function refreshCounsellorAvailability(counsellorUid: string): Promise<void> {
+  const db = requireDb();
+  const [presence, liveSessions] = await Promise.all([
+    db.collection(PRESENCE).doc(counsellorUid).get(),
+    db.collection(SESSIONS)
+      .where("counsellorId", "==", counsellorUid)
+      .where("state", "in", ["matched", "accepted", "active"])
+      .limit(1)
+      .get(),
+  ]);
+  if (!presence.exists || presence.data()?.status === "offline") return;
+  const heartbeat = presence.data()?.lastHeartbeat;
+  const fresh = heartbeat instanceof Timestamp && heartbeat.toMillis() >= Date.now() - PRESENCE_TTL_SECONDS * 1000;
+  const status = fresh && liveSessions.empty ? "available" : liveSessions.empty ? "offline" : "in_session";
+  await Promise.all([
+    presence.ref.set({ status, lastStatusCalculatedAt: FieldValue.serverTimestamp() }, { merge: true }),
+    db.collection("counsellors").doc(counsellorUid).update({ status, statusUpdatedAt: FieldValue.serverTimestamp() }),
+  ]);
 }
 
 /** Counsellor uids with a fresh "available" heartbeat. */
@@ -282,14 +339,38 @@ export async function attemptMatch(sessionId: string): Promise<boolean> {
   );
   if (!best) return false;
 
-  assertTransition(session.state, "matched");
-  await ref.update({
-    state: "matched",
-    counsellorId: best.id,
-    counsellorName: best.name,
-    matchedAt: FieldValue.serverTimestamp(),
-    matchAttempts: FieldValue.increment(1),
+  // Claim the presence record in the same transaction as the session. Two
+  // queue drainers can rank the same counsellor, but only one can change their
+  // available presence to in_session; the other transaction retries and exits.
+  const matched = await db.runTransaction(async (tx) => {
+    const [currentSession, presence] = await Promise.all([
+      tx.get(ref),
+      tx.get(db.collection(PRESENCE).doc(best.id)),
+    ]);
+    if (!currentSession.exists || currentSession.data()?.state !== "requested") return false;
+    const heartbeat = presence.data()?.lastHeartbeat;
+    const fresh = heartbeat instanceof Timestamp && heartbeat.toMillis() >= Date.now() - PRESENCE_TTL_SECONDS * 1000;
+    if (!fresh || presence.data()?.status !== "available") return false;
+    assertTransition("requested", "matched");
+    tx.update(ref, {
+      state: "matched",
+      counsellorId: best.id,
+      counsellorName: best.name,
+      matchedAt: FieldValue.serverTimestamp(),
+      matchAttempts: FieldValue.increment(1),
+    });
+    tx.set(db.collection(PRESENCE).doc(best.id), {
+      counsellorId: best.id,
+      status: "in_session",
+      lastHeartbeat: FieldValue.serverTimestamp(),
+    }, { merge: true });
+    tx.update(db.collection("counsellors").doc(best.id), {
+      status: "in_session",
+      statusUpdatedAt: FieldValue.serverTimestamp(),
+    });
+    return true;
   });
+  if (!matched) return false;
 
   await emitEvent("session.matched", {
     sessionId,
@@ -408,6 +489,12 @@ export async function acceptSession(
     preflightSession.priority,
     sessionId,
   );
+  const presence = await db.collection(PRESENCE).doc(counsellorUid).get();
+  const heartbeat = presence.data()?.lastHeartbeat;
+  const fresh = heartbeat instanceof Timestamp && heartbeat.toMillis() >= Date.now() - PRESENCE_TTL_SECONDS * 1000;
+  if (!fresh || !["available", "in_session"].includes(presence.data()?.status)) {
+    throw new Error("Counsellor must be signed in to accept a session");
+  }
 
   const result = await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
@@ -451,6 +538,7 @@ export async function acceptSession(
     timeToHumanSeconds: result.timeToHumanSeconds,
   });
   await emitEvent("session.activated", { sessionId });
+  await setCounsellorInSession(counsellorUid);
 
   const updated = await ref.get();
   return docToSession(updated.id, updated.data()!);
@@ -480,6 +568,7 @@ export async function declineSession(
     declinedBy: FieldValue.arrayUnion(counsellorUid),
   });
   await emitEvent("session.declined", { sessionId, counsellorId: counsellorUid });
+  await refreshCounsellorAvailability(counsellorUid);
 
   await attemptMatch(sessionId);
 }
@@ -511,6 +600,7 @@ export async function endSession(
     userId: session.userId,
     endedBy: byUid === session.userId ? "user" : "counsellor",
   });
+  if (session.counsellorId) await refreshCounsellorAvailability(session.counsellorId);
 }
 
 /** Counsellor flags an emergency during an active session. */
@@ -538,6 +628,7 @@ export async function escalateSession(
     counsellorId: counsellorUid,
     userId: session.userId,
   });
+  await refreshCounsellorAvailability(counsellorUid);
 }
 
 /** User rates a completed session. Appends to the reputation ledger. */
@@ -704,6 +795,7 @@ export async function sweepSessions(): Promise<{
         matchedAt: FieldValue.delete(),
         declinedBy: FieldValue.arrayUnion(session.counsellorId),
       });
+      await refreshCounsellorAvailability(session.counsellorId);
       await emitEvent("session.rematch_timeout", {
         sessionId: session.id,
         timedOutCounsellorId: session.counsellorId,

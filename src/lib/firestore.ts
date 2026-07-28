@@ -841,7 +841,7 @@ export async function seedCounsellors(): Promise<void> {
       ],
       photoURL:
         "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop&crop=face",
-      status: "busy",
+      status: "in_session",
       rating: 4.8,
       reviewCount: 203,
       yearsExperience: 12,
@@ -952,7 +952,7 @@ export async function seedCounsellors(): Promise<void> {
       ],
       photoURL:
         "https://images.unsplash.com/photo-1607990281513-2c110a25bd8c?w=400&h=400&fit=crop&crop=face",
-      status: "busy",
+      status: "in_session",
       rating: 4.6,
       reviewCount: 95,
       yearsExperience: 7,

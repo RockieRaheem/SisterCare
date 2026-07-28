@@ -22,7 +22,11 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const snapshot = await getAdminDb()!.collection("counsellors").get();
+  const db = getAdminDb()!;
+  const [snapshot, applicationsSnapshot] = await Promise.all([
+    db.collection("counsellors").get(),
+    db.collection("counsellorApplications").where("status", "==", "pending").get(),
+  ]);
   const counsellors = snapshot.docs.map((document) => {
     const data = document.data();
     const expiry = data.credentialExpiresAt;
@@ -45,6 +49,19 @@ export async function GET(request: NextRequest) {
     };
   });
 
-  return NextResponse.json({ success: true, data: { counsellors } });
+  const applications = applicationsSnapshot.docs.map((document) => {
+    const data = document.data();
+    const expiry = data.credentialExpiresAt;
+    return {
+      id: document.id,
+      name: data.profile?.name || "Unnamed applicant",
+      title: data.profile?.title || "Counsellor",
+      legalName: data.legalName || "",
+      registrationNumber: data.registrationNumber || "",
+      credentialType: data.credentialType || "",
+      credentialExpiresAt: expiry instanceof Timestamp ? expiry.toDate().toISOString() : null,
+      documentReferences: Array.isArray(data.documentReferences) ? data.documentReferences : [],
+    };
+  });
+  return NextResponse.json({ success: true, data: { counsellors, applications } });
 }
-

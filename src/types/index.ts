@@ -157,7 +157,9 @@ export interface Reminder {
 }
 
 // Counsellor Types
-export type CounsellorStatus = "available" | "busy" | "offline";
+/** Public, server-derived availability. A counsellor is never marked available
+ * merely because their scheduled working hours have started. */
+export type CounsellorStatus = "available" | "in_session" | "offline";
 
 export type CounsellorSpecialty =
   | "Mental Health"
@@ -262,8 +264,27 @@ export interface SessionMessage {
 /** Presence heartbeat doc for a counsellor (presence/{counsellorUid}) */
 export interface CounsellorPresence {
   counsellorId: string;
-  status: "available" | "busy";
+  status: CounsellorStatus;
   lastHeartbeat: Date;
+}
+
+/** A private application submitted before a counsellor account is activated. */
+export interface CounsellorApplication {
+  id: string;
+  status: "pending" | "verified" | "rejected";
+  profile: Pick<
+    Counsellor,
+    "name" | "title" | "bio" | "specializations" | "languages" | "phoneNumber"
+  >;
+  legalName: string;
+  registrationNumber: string;
+  credentialType: string;
+  credentialExpiresAt: Date;
+  documentReferences: string[];
+  submittedAt: Date;
+  reviewedAt?: Date;
+  reviewedBy?: string;
+  reviewNote?: string;
 }
 
 // Subscription Types

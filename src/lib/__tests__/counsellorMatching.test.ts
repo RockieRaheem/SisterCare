@@ -4,7 +4,6 @@ import {
   calculateCounsellorScore,
   rankCounsellors,
   selectCandidates,
-  STATIC_COUNSELLORS,
 } from "../counsellorMatching";
 import { Counsellor } from "@/types";
 
@@ -150,29 +149,22 @@ describe("rankCounsellors", () => {
 });
 
 describe("selectCandidates", () => {
-  it("falls back to the static directory when the live list is empty", () => {
+  it("never invents a counsellor when the live list is empty", () => {
     const candidates = selectCandidates([], {});
-    expect(candidates).toEqual(STATIC_COUNSELLORS);
+    expect(candidates).toEqual([]);
   });
 
-  it("filters static fallback by specialty when given", () => {
+  it("returns no candidates when an empty live list is filtered by specialty", () => {
     const candidates = selectCandidates([], { specialty: "Mental Health" });
-    expect(candidates.length).toBeGreaterThan(0);
-    for (const c of candidates) {
-      expect(c.specializations).toContain("Mental Health");
-    }
+    expect(candidates).toEqual([]);
   });
 
-  it("swaps to static counsellors when nobody speaks the preferred language", () => {
+  it("keeps live counsellors when no exact language match exists", () => {
     const fetched = [makeCounsellor({ languages: ["English"] })];
     const candidates = selectCandidates(fetched, {
       preferredLanguage: "Ateso",
     });
-    expect(
-      candidates.some((c) =>
-        c.languages.some((l) => l.toLowerCase() === "ateso"),
-      ),
-    ).toBe(true);
+    expect(candidates).toEqual(fetched);
   });
 
   it("keeps the fetched list when it already covers the language", () => {

@@ -20,11 +20,10 @@ import { Timestamp, FieldValue } from "firebase-admin/firestore";
 import { getAdminDb } from "../firebaseAdmin";
 import { calculateNextPeriod, getCurrentPhase } from "../cycle";
 import {
-  evaluateTimeAvailability,
-  selectCandidates,
   rankCounsellors,
 } from "../counsellorMatching";
 import * as clientData from "../firestore";
+import { evaluateCounsellorEligibility } from "../counsellorOperations";
 import {
   AgentEvent,
   Counsellor,
@@ -447,6 +446,45 @@ export async function getCounsellors(): Promise<Counsellor[]> {
   })) as Counsellor[];
 }
 
+/**
+ * Public directory state is calculated on the server from a verified profile,
+ * a fresh sign-in heartbeat, and live assignments. Stored `status` is only a
+ * cache for administration; it is never trusted for matching or display.
+ */
+export async function getLiveCounsellors(): Promise<Counsellor[]> {
+  const db = getAdminDb();
+  if (!db) return [];
+  const cutoff = Date.now() - 120_000;
+  const [profiles, presence, liveSessions] = await Promise.all([
+    getCounsellors(),
+    db.collection("presence").get(),
+    db.collection("sessions").where("state", "in", ["matched", "accepted", "active"]).get(),
+  ]);
+  const presenceById = new Map(presence.docs.map((doc) => [doc.id, doc.data()]));
+  const assigned = new Set(
+    liveSessions.docs
+      .map((doc) => doc.data().counsellorId)
+      .filter((id): id is string => typeof id === "string" && Boolean(id)),
+  );
+
+  return profiles.map((profile) => {
+    const heartbeat = presenceById.get(profile.id)?.lastHeartbeat;
+    const isFresh = heartbeat instanceof Timestamp && heartbeat.toMillis() >= cutoff;
+    const normalizedProfile = {
+      ...profile,
+      createdAt: profile.createdAt instanceof Timestamp ? profile.createdAt.toDate() : profile.createdAt,
+      credentialExpiresAt: profile.credentialExpiresAt instanceof Timestamp ? profile.credentialExpiresAt.toDate() : profile.credentialExpiresAt,
+    } as Counsellor;
+    const operational = evaluateCounsellorEligibility(normalizedProfile, {
+      activeLoad: assigned.has(profile.id) ? 1 : 0,
+      priority: "normal",
+    }).eligible;
+    const status: CounsellorStatus =
+      assigned.has(profile.id) ? "in_session" : operational && isFresh && presenceById.get(profile.id)?.status === "available" ? "available" : "offline";
+    return { ...normalizedProfile, status };
+  });
+}
+
 async function getCounsellorsBySpecialty(
   specialty: CounsellorSpecialty,
 ): Promise<Counsellor[]> {
@@ -508,16 +546,21 @@ export async function routeCounsellor(params: {
 
   const { specialty, preferredLanguage } = params;
 
-  let candidates: Counsellor[] = [];
-  try {
-    candidates = specialty
-      ? await getCounsellorsBySpecialty(specialty)
-      : await getCounsellors();
-  } catch (error) {
-    console.warn("Admin counsellor fetch failed, using static:", error);
+  // Human handoff must never fall back to sample staff. Only a verified,
+  // freshly signed-in counsellor who has no assignment can be selected.
+  let candidates = (await getLiveCounsellors()).filter(
+    (counsellor) =>
+      counsellor.status === "available" &&
+      (!specialty || counsellor.specializations.includes(specialty)),
+  );
+  if (preferredLanguage) {
+    const languageMatches = candidates.filter((counsellor) =>
+      counsellor.languages.some(
+        (language) => language.toLowerCase() === preferredLanguage.toLowerCase(),
+      ),
+    );
+    if (languageMatches.length > 0) candidates = languageMatches;
   }
-
-  candidates = selectCandidates(candidates, { specialty, preferredLanguage });
   const loadMap = await getCounsellorLoads();
   return rankCounsellors(candidates, { specialty, preferredLanguage }, loadMap);
 }
@@ -533,13 +576,10 @@ export async function batchUpdateCounsellorAvailability(): Promise<{
   let errors = 0;
 
   try {
-    const counsellors = await getCounsellors();
+    const counsellors = await getLiveCounsellors();
     for (const counsellor of counsellors) {
       try {
-        const { isAvailableNow } = evaluateTimeAvailability(counsellor);
-        const correctStatus: CounsellorStatus = isAvailableNow
-          ? "available"
-          : "offline";
+        const correctStatus = counsellor.status;
         if (counsellor.status !== correctStatus) {
           await updateCounsellorStatus(counsellor.id, correctStatus);
           updated++;

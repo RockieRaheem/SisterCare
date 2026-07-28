@@ -215,41 +215,22 @@ export function rankCounsellors(
 }
 
 /**
- * Select candidates with static-directory fallback when the live list is
- * empty or lacks the preferred language. Pure; shared by both data layers.
+ * Select candidates only from the supplied live directory. Sample profiles
+ * must never be offered as real human support.
  */
 export function selectCandidates(
   fetched: Counsellor[],
   params: { specialty?: CounsellorSpecialty; preferredLanguage?: string },
 ): Counsellor[] {
-  let candidates = fetched;
-
-  if (candidates.length === 0) {
-    candidates = params.specialty
-      ? STATIC_COUNSELLORS.filter((c) =>
-          c.specializations.includes(params.specialty as CounsellorSpecialty),
-        )
-      : STATIC_COUNSELLORS;
-    if (candidates.length === 0) candidates = STATIC_COUNSELLORS;
-  }
-
-  if (params.preferredLanguage) {
-    const hasAnyLang = candidates.some((c) =>
-      c.languages.some(
-        (l) => l.toLowerCase() === params.preferredLanguage!.toLowerCase(),
-      ),
-    );
-    if (!hasAnyLang) {
-      const staticLangs = STATIC_COUNSELLORS.filter((c) =>
-        c.languages.some(
-          (l) => l.toLowerCase() === params.preferredLanguage!.toLowerCase(),
-        ),
-      );
-      if (staticLangs.length > 0) candidates = staticLangs;
-    }
-  }
-
-  return candidates;
+  const specialtyMatches = params.specialty
+    ? fetched.filter((candidate) => candidate.specializations.includes(params.specialty as CounsellorSpecialty))
+    : fetched;
+  if (!params.preferredLanguage) return specialtyMatches;
+  const languageMatches = specialtyMatches.filter((candidate) =>
+    candidate.languages.some((language) => language.toLowerCase() === params.preferredLanguage!.toLowerCase()),
+  );
+  // A language preference is a preference, not a reason to invent a provider.
+  return languageMatches.length > 0 ? languageMatches : specialtyMatches;
 }
 
 // Static counsellor fallback used when Firestore collection is empty.
@@ -295,7 +276,7 @@ export const STATIC_COUNSELLORS: Counsellor[] = [
     ],
     photoURL:
       "https://media.istockphoto.com/id/1323303738/photo/medical-doctor-indoors-portraits.webp?a=1&b=1&s=612x612&w=0&k=20&c=yZa7CUM8vn95un_1M-8rf86elGYB6oBrBP4GVIZZ2C0=",
-    status: "busy",
+    status: "in_session",
     rating: 4.8,
     reviewCount: 98,
     yearsExperience: 8,

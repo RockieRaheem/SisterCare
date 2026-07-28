@@ -41,7 +41,7 @@ export const COUNSELLOR_DIRECTORY: Counsellor[] = [
     ],
     photoURL:
       "https://media.istockphoto.com/id/1323303738/photo/medical-doctor-indoors-portraits.webp?a=1&b=1&s=612x612&w=0&k=20&c=yZa7CUM8vn95un_1M-8rf86elGYB6oBrBP4GVIZZ2C0=",
-    status: "busy",
+    status: "in_session",
     rating: 4.8,
     reviewCount: 98,
     yearsExperience: 8,
@@ -164,7 +164,7 @@ export const COUNSELLOR_DIRECTORY: Counsellor[] = [
     ],
     photoURL:
       "https://images.unsplash.com/photo-1655720357761-f18ea9e5e7e6?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTZ8fGFmcmljYW4lMjBmZW1hbGUlMjBkb2N0b3J8ZW58MHx8MHx8fDA%3D",
-    status: "busy",
+    status: "in_session",
     rating: 4.6,
     reviewCount: 62,
     yearsExperience: 5,
@@ -199,7 +199,7 @@ export const COUNSELLOR_STATUS_FILTERS: {
 }[] = [
   { value: "all", label: "All" },
   { value: "available", label: "Available Now" },
-  { value: "busy", label: "In Session" },
+  { value: "in_session", label: "In Session" },
   { value: "offline", label: "Offline" },
 ];
 

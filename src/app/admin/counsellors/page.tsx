@@ -17,6 +17,17 @@ interface OperationsRecord {
   availableHours: { start: string; end: string; days: string[] };
 }
 
+interface ApplicationRecord {
+  id: string;
+  name: string;
+  title: string;
+  legalName: string;
+  registrationNumber: string;
+  credentialType: string;
+  credentialExpiresAt: string | null;
+  documentReferences: string[];
+}
+
 async function authorizedFetch(url: string, init?: RequestInit) {
   const token = await auth.currentUser?.getIdToken();
   if (!token) throw new Error("Authentication required");
@@ -32,6 +43,7 @@ async function authorizedFetch(url: string, init?: RequestInit) {
 
 export default function CounsellorOperationsPage() {
   const [records, setRecords] = useState<OperationsRecord[]>([]);
+  const [applications, setApplications] = useState<ApplicationRecord[]>([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState<string | null>(null);
 
@@ -41,6 +53,7 @@ export default function CounsellorOperationsPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error);
       setRecords(result.data.counsellors);
+      setApplications(result.data.applications || []);
     } catch (loadError) {
       setError(
         loadError instanceof Error ? loadError.message : "Unable to load",
@@ -58,6 +71,23 @@ export default function CounsellorOperationsPage() {
         record.id === id ? { ...record, ...changes } : record,
       ),
     );
+  };
+
+  const review = async (application: ApplicationRecord, decision: "approve" | "reject") => {
+    setSaving(application.id);
+    setError("");
+    try {
+      const response = await authorizedFetch(`/api/admin/counsellors/${application.id}/review`, {
+        method: "POST", body: JSON.stringify({ decision }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+      await load();
+    } catch (reviewError) {
+      setError(reviewError instanceof Error ? reviewError.message : "Unable to review application");
+    } finally {
+      setSaving(null);
+    }
   };
 
   const save = async (record: OperationsRecord) => {
@@ -95,6 +125,23 @@ export default function CounsellorOperationsPage() {
           <div className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">
             {error}
           </div>
+        )}
+        {applications.length > 0 && (
+          <section className="mb-8">
+            <h2 className="mb-3 text-lg font-semibold text-gray-900 dark:text-white">KYC applications awaiting review</h2>
+            <div className="space-y-3">
+              {applications.map((application) => (
+                <article key={application.id} className="rounded-2xl border border-amber-200 bg-amber-50/50 p-5 dark:border-amber-900/60 dark:bg-amber-950/20">
+                  <h3 className="font-semibold text-gray-900 dark:text-white">{application.name}</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">{application.title} · {application.credentialType}</p>
+                  <p className="mt-2 text-xs text-gray-600 dark:text-gray-300">Legal name: {application.legalName} · Registration: {application.registrationNumber}</p>
+                  <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">Credential expiry: {application.credentialExpiresAt?.slice(0, 10) || "Not supplied"}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">{application.documentReferences.map((reference) => <a key={reference} href={reference} target="_blank" rel="noreferrer" className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-primary">Review document</a>)}</div>
+                  <div className="mt-4 flex gap-2"><button onClick={() => review(application, "approve")} disabled={saving === application.id} className="rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Approve KYC</button><button onClick={() => review(application, "reject")} disabled={saving === application.id} className="rounded-xl border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 disabled:opacity-50">Decline</button></div>
+                </article>
+              ))}
+            </div>
+          </section>
         )}
         <div className="space-y-4">
           {records.map((record) => (

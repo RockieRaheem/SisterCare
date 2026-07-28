@@ -8,7 +8,7 @@ import { recordHeartbeat, setOffline } from "@/lib/server/sessions";
 
 /**
  * POST /api/presence — counsellor presence heartbeat.
- * Body: { status: "available" | "busy" | "offline" }
+ * Body: { status: "available" | "offline" }
  *
  * The counsellor portal sends this every ~60s while the availability toggle
  * is on. A heartbeat going "available" drains the session queue toward this
@@ -42,10 +42,10 @@ export async function POST(request: NextRequest) {
   }
 
   const body = (await request.json().catch(() => null)) || {};
-  const status = body.status as "available" | "busy" | "offline";
-  if (!["available", "busy", "offline"].includes(status)) {
+  const status = body.status as "available" | "offline";
+  if (!["available", "offline"].includes(status)) {
     return NextResponse.json(
-      { success: false, error: "status must be available, busy, or offline" },
+      { success: false, error: "status must be available or offline" },
       { status: 400 },
     );
   }

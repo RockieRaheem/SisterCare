@@ -7,30 +7,31 @@ import { useParams, useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
 import BottomNav from "@/components/layout/BottomNav";
 import { useAuth } from "@/context/AuthContext";
-import { getCounsellorById } from "@/lib/counsellors";
-import { getCounsellor as getCounsellorFromFirestore } from "@/lib/firestore";
+import { auth } from "@/lib/firebase";
 import { Counsellor, CounsellorStatus } from "@/types";
 
 export default function CounsellorProfilePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const params = useParams<{ counsellorId: string }>();
-  const [counsellor, setCounsellor] = useState<Counsellor | null>(() =>
-    getCounsellorById(params.counsellorId),
-  );
-  const canContact = Boolean(counsellor);
+  const [counsellor, setCounsellor] = useState<Counsellor | null>(null);
+  const canContact = counsellor?.status === "available";
 
   useEffect(() => {
-    const loadFromFirestore = async () => {
+    const loadDirectoryProfile = async () => {
       try {
-        const fsCounsellor = await getCounsellorFromFirestore(params.counsellorId);
-        if (fsCounsellor) setCounsellor(fsCounsellor);
+        const token = await auth.currentUser?.getIdToken();
+        const response = await fetch("/api/counsellors", { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+        const result = await response.json();
+        if (!response.ok || result.success === false) return;
+        const found = result.data.counsellors?.find((item: Counsellor) => item.id === params.counsellorId);
+        if (found) setCounsellor({ ...found, createdAt: new Date(found.createdAt), credentialExpiresAt: found.credentialExpiresAt ? new Date(found.credentialExpiresAt) : undefined });
       } catch {
-        // Keep static fallback
+        setCounsellor(null);
       }
     };
-    if (params.counsellorId) loadFromFirestore();
-  }, [params.counsellorId]);
+    if (user && params.counsellorId) loadDirectoryProfile();
+  }, [params.counsellorId, user]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -100,7 +101,7 @@ export default function CounsellorProfilePage() {
               <div className="relative shrink-0">
                 <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-3xl overflow-hidden border-4 border-white dark:border-gray-900 shadow-xl bg-gray-200">
                   <Image
-                    src={counsellor.photoURL}
+                    src={counsellor.photoURL || "/icons/icon.svg"}
                     alt={counsellor.name}
                     width={160}
                     height={160}
@@ -108,7 +109,7 @@ export default function CounsellorProfilePage() {
                   />
                 </div>
                 <div
-                  className={`absolute bottom-2 right-2 w-4 h-4 rounded-full border-2 border-white dark:border-gray-900 ${counsellor.status === "available" ? "bg-green-500" : counsellor.status === "busy" ? "bg-amber-500" : "bg-gray-400"}`}
+                  className={`absolute bottom-2 right-2 w-4 h-4 rounded-full border-2 border-white dark:border-gray-900 ${counsellor.status === "available" ? "bg-green-500" : counsellor.status === "in_session" ? "bg-amber-500" : "bg-gray-400"}`}
                 />
               </div>
 
@@ -125,7 +126,7 @@ export default function CounsellorProfilePage() {
                   <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-text-secondary">
                     {counsellor.status === "available"
                       ? "Available now"
-                      : counsellor.status === "busy"
+                      : counsellor.status === "in_session"
                         ? "In session"
                         : "Offline"}
                   </span>
@@ -233,6 +234,8 @@ export default function CounsellorProfilePage() {
             <div className="mt-5 space-y-3">
               <a
                 href={`tel:${counsellor.phoneNumber.replace(/[^+\d]/g, "")}`}
+                aria-disabled={!canContact}
+                onClick={(event) => { if (!canContact) event.preventDefault(); }}
                 className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white text-primary font-semibold shadow-sm"
               >
                 <span className="material-symbols-outlined text-lg">call</span>
@@ -240,6 +243,8 @@ export default function CounsellorProfilePage() {
               </a>
               <a
                 href={`https://wa.me/${counsellor.whatsappNumber.replace(/[^\d]/g, "")}`}
+                aria-disabled={!canContact}
+                onClick={(event) => { if (!canContact) event.preventDefault(); }}
                 target="_blank"
                 rel="noreferrer"
                 className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/10 border border-white/30 text-white font-semibold"
@@ -255,12 +260,12 @@ export default function CounsellorProfilePage() {
               <p>WhatsApp: {counsellor.whatsappNumber}</p>
             </div>
 
-            {canContact && (
+            {canContact ? (
               <p className="mt-4 text-xs text-white/80">
                 Sister matched you to this counsellor based on your request and
                 language preference.
               </p>
-            )}
+            ) : <p className="mt-4 text-xs text-white/80">This counsellor is not currently available for a new assignment.</p>}
           </aside>
         </section>
       </main>
