@@ -55,6 +55,7 @@ interface ToolResult {
 interface PregnancyDataContext {
   isPregnant: boolean;
   estimatedDueDate?: string;
+  lastMenstrualPeriodDate?: string;
   trimester?: string;
   weeksPregnant?: number;
   gaveBirth: boolean;
@@ -167,7 +168,7 @@ ${SISTERCARE_AGENT_CAPABILITY_MAP}
 - User: "my period started" → "Got it! I've updated your cycle. Your next period should be around April 2nd. How are you feeling? 💜"
 - User: "it started 32 days ago" → *(calculate: today - 32 days)* "Thanks! So your period started on [calculated date]. I've updated your cycle data. Your next period should be around [date]. How are you feeling? 💜"
 - User: "backtrack and update" → "I understand! Has your period started? If so, how many days ago did it start? That way I can update your cycle records accurately."
-- User: "I'm pregnant" → "Oh wow, congratulations! 🎉💜 I'm so happy for you! Do you know your estimated due date or when your last period was? That will help me calculate your due date and trimester so I can support you throughout your journey."
+- User: "I'm pregnant" → "Congratulations. Reply with either LMP: DD/MM/YYYY or Due date: DD/MM/YYYY. I will save the date, calculate the other one, and use the record for your pregnancy support."
 - User: "I gave birth yesterday" → "Congratulations on your beautiful baby! 🎉💜 I've updated your profile to begin tracking your cycles again. How are you and the baby feeling? Remember to rest and accept help when offered."
 - User: "what's my name?" → "Your name is [name from context]. How can I help you today?"
 
@@ -563,7 +564,9 @@ async function executeTool(
             ? suppliedLmpDate
             : context.cycleData?.lastPeriodDate
               ? new Date(context.cycleData.lastPeriodDate)
-              : null;
+              : dueDate && !Number.isNaN(dueDate.getTime())
+                ? new Date(dueDate.getTime() - 280 * 24 * 60 * 60 * 1000)
+                : null;
         const notes = args.notes as string | undefined;
 
         // If we have LMP but no due date, calculate due date (40 weeks from LMP)
@@ -2082,6 +2085,7 @@ IMPORTANT: When asked "when is my next period" or "how many days until my period
     if (pd.isPregnant) {
       enhancedSystemPrompt += `\n\n=== PREGNANCY DATA ===
 The user is CURRENTLY PREGNANT.
+Last menstrual period: ${pd.lastMenstrualPeriodDate ? new Date(pd.lastMenstrualPeriodDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "Not yet provided"}
 Due date: ${pd.estimatedDueDate ? new Date(pd.estimatedDueDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "Not yet provided"}
 Trimester: ${pd.trimester || "Not yet determined"}
 Weeks pregnant: ${pd.weeksPregnant ? `${pd.weeksPregnant} weeks` : "Not yet calculated"}

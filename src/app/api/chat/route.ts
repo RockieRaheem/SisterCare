@@ -187,6 +187,28 @@ function getPregnancyLmpFromMessages(
   return null;
 }
 
+function getPregnancyDueDateFromMessages(messages: string[]): Date | null {
+  for (const message of [...messages].reverse()) {
+    const dateMatch = message.match(
+      /(?:(?:estimated\s+)?due\s+date|\bedd\b)[\s\S]{0,30}?(\d{1,2})[\/-](\d{1,2})[\/-]((?:19|20)\d{2})/i,
+    );
+    const day = Number(dateMatch?.[1]);
+    const month = Number(dateMatch?.[2]);
+    const year = Number(dateMatch?.[3]);
+    if (day && month && year) {
+      const candidate = new Date(year, month - 1, day);
+      if (
+        candidate.getFullYear() === year &&
+        candidate.getMonth() === month - 1 &&
+        candidate.getDate() === day
+      ) {
+        return candidate;
+      }
+    }
+  }
+  return null;
+}
+
 function getPregnancyDetailsFromLmp(lastPeriodDate: Date): {
   daysPregnant: number;
   weeksPregnant: number;
@@ -202,6 +224,12 @@ function getPregnancyDetailsFromLmp(lastPeriodDate: Date): {
   const trimester =
     weeksPregnant <= 13 ? "first" : weeksPregnant <= 27 ? "second" : "third";
   return { daysPregnant, weeksPregnant, estimatedDueDate, trimester };
+}
+
+function isPregnancyRecordQuestion(message: string): boolean {
+  return /\b(due\s*date|estimated\s*due|last\s*(?:menstrual\s*)?period|lmp|how\s+(?:many\s+)?weeks|pregnancy\s+(?:details|record|information))\b/i.test(
+    message,
+  );
 }
 
 /**
@@ -794,12 +822,20 @@ async function postChat(request: NextRequest) {
       trimmedMessage,
       effectiveConversationHistory,
     );
-    const pregnancyLmpFromConversation = getPregnancyLmpFromMessages([
+    const pregnancyMessages = [
       ...effectiveConversationHistory
         .filter((entry) => entry.role === "user")
         .map((entry) => entry.content),
       trimmedMessage,
-    ]);
+    ];
+    const pregnancyDueDateFromConversation =
+      getPregnancyDueDateFromMessages(pregnancyMessages);
+    const pregnancyLmpFromConversation = pregnancyDueDateFromConversation
+      ? new Date(
+          pregnancyDueDateFromConversation.getTime() -
+            280 * 24 * 60 * 60 * 1000,
+        )
+      : getPregnancyLmpFromMessages(pregnancyMessages);
     const shouldActivatePregnancy =
       confirmedPregnancy &&
       (isConfirmedPregnancyIntent(trimmedMessage) ||
@@ -1082,6 +1118,31 @@ async function postChat(request: NextRequest) {
           });
         }
       }
+    }
+
+    // These facts are stored on the authenticated profile, not inferred from
+    // the language model. Answering them here makes the record reliably
+    // available in every future chat and proves exactly what SisterCare has.
+    if (userProfile?.pregnancyData?.isPregnant && isPregnancyRecordQuestion(trimmedMessage)) {
+      const recordedLmp = userProfile.pregnancyData.lastMenstrualPeriodDate;
+      const recordedDueDate = userProfile.pregnancyData.estimatedDueDate;
+      const lmpText = recordedLmp
+        ? new Date(recordedLmp).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+        : "not recorded yet";
+      const dueText = recordedDueDate
+        ? new Date(recordedDueDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+        : "not recorded yet";
+      return NextResponse.json({
+        response: `Your pregnancy record in SisterCare has your last menstrual period as ${lmpText} and your estimated due date as ${dueText}. You are currently recorded as ${userProfile.pregnancyData.weeksPregnant ?? "an unconfirmed number of"} weeks pregnant in the ${userProfile.pregnancyData.trimester || "unconfirmed"} trimester.`,
+        language: "eng",
+        languageName: "English",
+        source: "system_record",
+        type: "agent",
+        toolsUsed: ["get_system_overview"],
+        actions: ["Read recorded pregnancy information"],
+        triage,
+        actionStatuses: [...actionStatuses, { key: "pregnancy-record", label: "Read recorded pregnancy information", state: "done" }],
+      });
     }
 
     const handoffPolicy = evaluateHandoffPolicy({
@@ -1554,6 +1615,8 @@ async function postChat(request: NextRequest) {
             isPregnant: userProfile.pregnancyData.isPregnant ?? false,
             estimatedDueDate:
               userProfile.pregnancyData.estimatedDueDate?.toISOString(),
+            lastMenstrualPeriodDate:
+              userProfile.pregnancyData.lastMenstrualPeriodDate?.toISOString(),
             trimester: userProfile.pregnancyData.trimester,
             weeksPregnant: userProfile.pregnancyData.weeksPregnant,
             gaveBirth: userProfile.pregnancyData.gaveBirth ?? false,
