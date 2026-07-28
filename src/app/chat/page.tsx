@@ -5,13 +5,11 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { auth } from "@/lib/firebase";
-import Header from "@/components/layout/Header";
 import {
   addMessage,
   getMessages,
   getUserConversations,
   createNewChat,
-  deleteConversation,
   updateConversationTitle,
   updateConversationPreview,
   getUserProfile,
@@ -152,25 +150,25 @@ const icebreakers = [
     icon: "healing",
     label: "Cramp relief",
     text: "How can I manage cramps naturally?",
-    color: "from-rose-400 to-pink-500",
+    tone: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200",
   },
   {
     icon: "mood",
     label: "Feeling anxious",
     text: "I'm feeling a bit anxious today",
-    color: "from-violet-400 to-purple-500",
+    tone: "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary-light",
   },
   {
     icon: "bedtime",
     label: "Sleep tips",
     text: "Tips for better sleep during my period",
-    color: "from-sky-400 to-blue-500",
+    tone: "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-200",
   },
   {
     icon: "cycle",
     label: "My cycle",
     text: "What phase of my cycle am I in?",
-    color: "from-emerald-400 to-teal-500",
+    tone: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200",
   },
 ];
 
@@ -381,6 +379,18 @@ export default function ChatPage() {
   useEffect(() => {
     conversationsRef.current = conversations;
   }, [conversations]);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    const previousOverscroll = document.body.style.overscrollBehavior;
+    document.body.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "none";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.overscrollBehavior = previousOverscroll;
+    };
+  }, []);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -692,13 +702,27 @@ export default function ChatPage() {
     async (conversationId: string) => {
       setActionLoading(`delete-${conversationId}`);
       try {
-        // Always delete locally first (instant, permanent)
+        // Remove the local copy immediately, then make the server perform the
+        // authorized cascade. Client rules intentionally keep messages
+        // immutable, so a direct client delete leaves history behind.
         deleteLocalConversation(conversationId);
 
-        // Try Firestore sync
-        try {
-          await deleteConversation(conversationId);
-        } catch {}
+        let cloudDeletionFailed = false;
+        if (!conversationId.startsWith("local-")) {
+          try {
+            const idToken = await auth.currentUser?.getIdToken().catch(() => null);
+            const response = await fetch(
+              `/api/conversations/${encodeURIComponent(conversationId)}`,
+              {
+                method: "DELETE",
+                headers: idToken ? { Authorization: `Bearer ${idToken}` } : {},
+              },
+            );
+            cloudDeletionFailed = !response.ok;
+          } catch {
+            cloudDeletionFailed = true;
+          }
+        }
 
         setConversations((prev) => prev.filter((c) => c.id !== conversationId));
         setDeleteModalId(null);
@@ -712,9 +736,15 @@ export default function ChatPage() {
           setFreshChatId(null);
         }
 
-        setError(null);
+        setError(
+          cloudDeletionFailed
+            ? "This chat was removed from this device, but cloud deletion could not finish. Please try again when you are online."
+            : null,
+        );
       } catch {
-        setError("Failed to delete chat. Please try again.");
+        setError(
+          "This chat was removed from this device, but cloud deletion could not finish. Please try again when you are online.",
+        );
       } finally {
         setActionLoading(null);
       }
@@ -1233,7 +1263,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex h-[calc(100dvh-var(--bottom-nav-height)-env(safe-area-inset-bottom))] flex-col overflow-hidden bg-background-light dark:bg-background-dark md:h-screen">
+    <div className="fixed inset-x-0 top-0 z-40 flex h-[calc(100dvh-var(--bottom-nav-height)-env(safe-area-inset-bottom))] flex-col overflow-hidden overscroll-none bg-background-light dark:bg-background-dark md:static md:h-screen">
       {/* Delete Confirmation Modal */}
       {deleteModalId && (
         <div
@@ -1279,7 +1309,7 @@ export default function ChatPage() {
       )}
 
       {/* Top Navigation Bar */}
-      <header className="safe-top flex h-16 shrink-0 items-center justify-between border-b border-border-light/80 bg-white/92 px-3 backdrop-blur-xl dark:border-border-dark dark:bg-card-dark/92 sm:px-4">
+      <header className="safe-top flex h-16 shrink-0 items-center justify-between border-b border-border-light bg-white/95 px-3 backdrop-blur dark:border-border-dark dark:bg-card-dark/95 sm:px-4">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setSidebarOpen(true)}
@@ -1288,7 +1318,7 @@ export default function ChatPage() {
             <span className="material-symbols-outlined text-xl">menu</span>
           </button>
           <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-light shadow-primary-sm">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-primary-sm">
               <span className="material-symbols-outlined text-[18px] text-white">favorite</span>
             </div>
             <span className="hidden text-sm font-semibold text-text-primary dark:text-white sm:inline">
@@ -1319,14 +1349,14 @@ export default function ChatPage() {
             <span className="material-symbols-outlined text-xl">dashboard</span>
           </Link>
           <div className="ml-1 flex items-center">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary to-purple-600 text-xs font-semibold text-white">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-white">
               {user?.displayName?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || "U"}
             </div>
           </div>
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1 overflow-hidden">
+      <div className="flex min-h-0 flex-1 overflow-hidden overscroll-none">
         {/* Sidebar Overlay */}
         <div
           className={`fixed inset-0 z-30 bg-black/30 backdrop-blur-sm transition-opacity duration-200 lg:hidden ${
@@ -1338,12 +1368,12 @@ export default function ChatPage() {
         {/* Sidebar — reduced width */}
         <aside
           className={`
-            fixed z-40 flex h-[calc(100dvh-4rem-var(--bottom-nav-height)-env(safe-area-inset-bottom))] flex-col
+            fixed bottom-[calc(var(--bottom-nav-height)+env(safe-area-inset-bottom))] left-0 top-16 z-40 flex min-h-0 flex-col
             border-r border-black/[0.05] bg-white
             shadow-xl shadow-black/5
             transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]
             dark:border-border-dark dark:bg-card-dark
-            lg:relative lg:shadow-none
+            lg:relative lg:inset-auto lg:shadow-none
             ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
             ${sidebarCollapsed ? "lg:w-[4.5rem]" : "lg:w-64"}
             w-72
@@ -1353,7 +1383,7 @@ export default function ChatPage() {
             {/* Sidebar Header */}
             <div className={`flex items-center border-b border-black/[0.04] dark:border-white/[0.06] ${sidebarCollapsed ? "lg:justify-center lg:px-0" : "justify-between px-3"} py-2.5`}>
               <div className={`flex items-center gap-2 ${sidebarCollapsed ? "lg:hidden" : "px-1"}`}>
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-purple-600">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary">
                   <span className="material-symbols-outlined text-sm text-white">spa</span>
                 </div>
                 <span className="text-xs font-semibold text-text-primary dark:text-white">
@@ -1530,7 +1560,7 @@ export default function ChatPage() {
                     sidebarCollapsed ? "lg:justify-center lg:w-9 lg:h-9 lg:px-0" : ""
                   }`}
                 >
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-purple-600 text-[10px] font-semibold text-white">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-white">
                     {user?.displayName?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || "U"}
                   </div>
                   <div className={`min-w-0 flex-1 ${sidebarCollapsed ? "lg:hidden" : ""}`}>
@@ -1555,7 +1585,7 @@ export default function ChatPage() {
         {/* Main Chat Area */}
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {/* Subtle chat header bar */}
-          <div className="flex items-center justify-between border-b border-black/[0.04] bg-white/50 px-3 py-1.5 backdrop-blur-sm dark:border-white/[0.05] dark:bg-[#140e1a]/50">
+          <div className="flex shrink-0 items-center justify-between border-b border-black/[0.04] bg-white px-3 py-2 dark:border-white/[0.05] dark:bg-card-dark">
             <div className="flex min-w-0 items-center gap-1">
               {sidebarCollapsed && (
                 <button
@@ -1586,7 +1616,7 @@ export default function ChatPage() {
             <div
               ref={messagesContainerRef}
               onScroll={handleMessagesScroll}
-              className="h-full overflow-y-auto"
+              className="h-full overflow-y-auto overscroll-contain"
             >
               <div className="mx-auto max-w-3xl px-4 pb-6 pt-5 sm:px-6 sm:pt-8">
                 {error && (
@@ -1663,7 +1693,7 @@ export default function ChatPage() {
                   </div>
                 )}
                 {counsellorProfile && (
-                  <div className="mb-4 animate-fade-in rounded-2xl bg-gradient-to-br from-primary via-purple-600 to-indigo-700 p-5 text-white shadow-lg">
+                  <div className="mb-4 animate-fade-in rounded-2xl bg-primary p-5 text-white shadow-primary-sm">
                     <p className="text-[10px] font-semibold uppercase tracking-widest text-white/70">
                       Counsellor matched
                     </p>
@@ -1691,9 +1721,9 @@ export default function ChatPage() {
 
                 {/* Empty States */}
                 {messages.length === 0 && !isTyping && (
-                  <div className="flex min-h-[45vh] flex-col items-center justify-center px-4 text-center animate-fade-in">
-                    <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-purple-600/20 dark:from-primary/30 dark:to-purple-600/30">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-purple-600 shadow-lg shadow-primary/30">
+                  <div className="flex min-h-[42vh] flex-col items-center justify-center px-4 text-center animate-fade-in">
+                    <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/15 bg-primary/5 dark:bg-primary/10">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary shadow-primary-sm">
                         <span className="material-symbols-outlined text-2xl text-white">spa</span>
                       </div>
                     </div>
@@ -1712,8 +1742,8 @@ export default function ChatPage() {
                             onClick={() => sendMessage(icebreaker.text)}
                             className="group flex items-center gap-3 rounded-2xl border border-black/[0.06] bg-white p-3.5 text-left shadow-sm transition-all hover:border-primary/30 hover:shadow-md hover:shadow-primary/5 dark:border-white/10 dark:bg-white/[0.04] dark:hover:bg-white/[0.07]"
                           >
-                            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${icebreaker.color} shadow-sm`}>
-                              <span className="material-symbols-outlined text-lg text-white">{icebreaker.icon}</span>
+                            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${icebreaker.tone}`}>
+                              <span className="material-symbols-outlined text-lg">{icebreaker.icon}</span>
                             </div>
                             <span className="text-sm font-medium leading-snug text-text-primary dark:text-gray-200">
                               {icebreaker.text}
@@ -1755,7 +1785,7 @@ export default function ChatPage() {
                       if (isSister) {
                         return (
                           <div key={message.id} className="group flex items-start gap-3 animate-fade-in">
-                            <div className="sticky top-0 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-purple-600 shadow-sm">
+                            <div className="sticky top-0 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary shadow-sm">
                               <span className="material-symbols-outlined text-sm text-white">spa</span>
                             </div>
                             <div className="min-w-0 flex-1">
@@ -1848,7 +1878,7 @@ export default function ChatPage() {
                 {/* Typing Indicator */}
                 {isTyping && (
                   <div className="mt-6 animate-fade-in flex items-start gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-purple-600 shadow-sm">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary shadow-sm">
                       <span className="material-symbols-outlined text-sm text-white">spa</span>
                     </div>
                     <div className="flex items-center gap-3 rounded-2xl bg-white/80 px-4 py-3 shadow-sm ring-1 ring-black/[0.03] backdrop-blur-sm dark:bg-white/[0.06] dark:ring-white/[0.06]">
@@ -1877,7 +1907,7 @@ export default function ChatPage() {
           </div>
 
           {/* Composer */}
-          <div className="sticky bottom-0 z-20 border-t border-black/[0.04] bg-white/95 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-md dark:border-white/[0.05] dark:bg-[#140e1a]/95">
+          <div className="z-20 shrink-0 border-t border-black/[0.06] bg-white pb-[max(0.5rem,env(safe-area-inset-bottom))] dark:border-white/[0.08] dark:bg-card-dark">
             <div className="mx-auto max-w-3xl px-3 pt-2.5 sm:px-4 sm:py-3">
               <form onSubmit={handleSubmit} className="relative">
                 <div className="flex items-end gap-1.5 rounded-2xl border border-black/[0.08] bg-white p-1.5 shadow-sm transition-all focus-within:border-primary/40 focus-within:shadow-md dark:border-white/10 dark:bg-white/[0.05] sm:gap-2 sm:p-2">
