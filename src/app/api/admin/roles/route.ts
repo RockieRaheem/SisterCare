@@ -4,6 +4,7 @@ import {
   isAuthEnforced,
   setUserRole,
   getUidByEmail,
+  getAdminDb,
   hasRole,
   USER_ROLES,
   type UserRole,
@@ -42,13 +43,6 @@ export async function POST(request: NextRequest) {
     bootstrapSecret && providedSecret === bootstrapSecret,
   );
 
-  if (!hasRole(auth, "admin") && !isBootstrap) {
-    return NextResponse.json(
-      { success: false, error: "Admin privileges required" },
-      { status: 403 },
-    );
-  }
-
   const body = await request.json().catch(() => null);
   if (!body || typeof body !== "object") {
     return NextResponse.json(
@@ -86,15 +80,36 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const isExistingAdmin = hasRole(auth, "admin");
+  if (!isExistingAdmin) {
+    // The secret is only a second factor for the signed-in person claiming
+    // their own first-admin account. It can never bootstrap another uid.
+    if (!isBootstrap || auth.status !== "verified" || role !== "admin" || uid !== auth.uid) {
+      return NextResponse.json({ success: false, error: "Admin privileges required" }, { status: 403 });
+    }
+    const claim = getAdminDb()!.collection("system").doc("admin-bootstrap");
+    try {
+      await getAdminDb()!.runTransaction(async (transaction) => {
+        const current = await transaction.get(claim);
+        if (current.exists && current.data()?.uid !== auth.uid) throw new Error("BOOTSTRAP_ALREADY_USED");
+        transaction.set(claim, { uid: auth.uid, claimedAt: new Date(), state: "claiming" }, { merge: true });
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === "BOOTSTRAP_ALREADY_USED") return NextResponse.json({ success: false, error: "The administrator bootstrap has already been claimed" }, { status: 409 });
+      throw error;
+    }
+  }
+
   try {
     await setUserRole(uid, role);
+    if (!isExistingAdmin) await getAdminDb()!.collection("system").doc("admin-bootstrap").set({ state: "complete", completedAt: new Date() }, { merge: true });
     return NextResponse.json({
       success: true,
       data: {
         uid,
         role,
         note: "Role takes effect when the user's ID token refreshes (≤1h) or on next login.",
-        grantedVia: isBootstrap && !hasRole(auth, "admin") ? "bootstrap" : "admin",
+        grantedVia: !isExistingAdmin ? "bootstrap" : "admin",
       },
     });
   } catch (error) {
