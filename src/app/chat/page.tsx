@@ -510,7 +510,10 @@ export default function ChatPage() {
     if (inputRef.current) {
       inputRef.current.style.height = "auto";
       inputRef.current.style.height =
-        Math.min(inputRef.current.scrollHeight, 200) + "px";
+        Math.min(
+          inputRef.current.scrollHeight,
+          window.innerWidth < 640 ? 112 : 160,
+        ) + "px";
     }
   };
 
@@ -518,7 +521,18 @@ export default function ChatPage() {
     if (!user) return;
     setActionLoading("new");
     try {
-      await createFreshConversation();
+      // Follow the familiar new-chat pattern: start with a clean composer and
+      // create the durable conversation only once the user sends a message.
+      setActiveConversationId(null);
+      setMessages([]);
+      setFreshChatId(null);
+      setInputValue("");
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem("sistercare-chat-draft-global");
+      }
+      setAgentActionStatuses([]);
+      setCounsellorProfile(null);
+      setActiveSessionCard(null);
       setError(null);
       setSidebarOpen(false);
       setConversationMenuOpen(null);
@@ -527,7 +541,7 @@ export default function ChatPage() {
     } finally {
       setActionLoading(null);
     }
-  }, [createFreshConversation, user]);
+  }, [user]);
 
   const loadConversation = useCallback(async (conversationId: string) => {
     if (!conversationId) return;
@@ -629,9 +643,6 @@ export default function ChatPage() {
       } catch {}
     } catch {}
 
-    // Load from local storage first (instant, always works)
-    const localConversations = loadLocalConversations(user.uid);
-
     // Try Firestore
     let firestoreConvs: ChatConversation[] = [];
     try {
@@ -648,25 +659,16 @@ export default function ChatPage() {
     // Merge: prefer local data (which has delete tombstones), supplemented by Firestore
     const merged = loadLocalConversations(user.uid);
 
-    if (merged.length > 0) {
-      setConversations(merged);
-
-      // If there was a previously active conversation (from local state), load it
-      const lastActiveId = window.localStorage.getItem("sistercare-last-active");
-      const targetConv = lastActiveId && merged.find((c) => c.id === lastActiveId)
-        ? merged.find((c) => c.id === lastActiveId)!
-        : merged[0];
-      await loadConversation(targetConv.id);
-    } else {
-      setConversations([]);
-      setActiveConversationId(null);
-      setMessages([]);
-      setFreshChatId(null);
-    }
+    // History is available in the drawer, but every visit begins with a new
+    // blank thread. Opening a past conversation is an intentional choice.
+    setConversations(merged);
+    setActiveConversationId(null);
+    setMessages([]);
+    setFreshChatId(null);
 
     setError(null);
     setLoading(false);
-  }, [user, loadConversation]);
+  }, [user]);
 
   // Save last active conversation ID for persistence across refreshes
   useEffect(() => {
@@ -703,15 +705,11 @@ export default function ChatPage() {
         setContextMenuId(null);
 
         if (conversationId === activeConversationId) {
-          // Navigate to another conversation or clear
-          const remaining = conversations.filter((c) => c.id !== conversationId);
-          if (remaining.length > 0) {
-            loadConversation(remaining[0].id);
-          } else {
-            setActiveConversationId(null);
-            setMessages([]);
-            setFreshChatId(null);
-          }
+          // Deleting an active thread returns to a clean new-chat state;
+          // history is never opened without the user choosing it.
+          setActiveConversationId(null);
+          setMessages([]);
+          setFreshChatId(null);
         }
 
         setError(null);
@@ -721,7 +719,7 @@ export default function ChatPage() {
         setActionLoading(null);
       }
     },
-    [activeConversationId, conversations, loadConversation],
+    [activeConversationId],
   );
 
   const handleRenameChat = useCallback(
@@ -1051,8 +1049,6 @@ export default function ChatPage() {
   const activeConversationTitle =
     activeConversation?.title || "Start a conversation";
 
-  const continueRecentChats = sortedConversations.slice(0, 4);
-
   const emptyStateContent = isFreshChat
     ? {
         key: "fresh",
@@ -1063,9 +1059,9 @@ export default function ChatPage() {
     : !activeConversationId
       ? {
           key: "none",
-          title: "Select a conversation",
-          subtitle: "Pick a chat from the sidebar or start something new.",
-          showIcebreakers: false,
+          title: "How can I support you today?",
+          subtitle: "Ask about your health, cycle, symptoms, or how you are feeling.",
+          showIcebreakers: true,
         }
       : {
           key: "empty",
@@ -1734,22 +1730,6 @@ export default function ChatPage() {
                       </div>
                     )}
 
-                    {!emptyStateContent.showIcebreakers && !activeConversationId && continueRecentChats.length > 0 && (
-                      <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-                        <span className="text-[10px] font-semibold uppercase tracking-widest text-text-secondary/50 dark:text-gray-500">
-                          Jump back in
-                        </span>
-                        {continueRecentChats.map((c) => (
-                          <button
-                            key={c.id}
-                            onClick={() => openConversationFromSidebar(c.id)}
-                            className="rounded-full border border-black/[0.08] bg-white px-3.5 py-1.5 text-xs font-medium text-text-primary transition-all hover:border-primary/40 hover:bg-primary/5 dark:border-white/10 dark:bg-white/[0.04] dark:text-white"
-                          >
-                            {c.title || "Untitled"}
-                          </button>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 )}
 
@@ -1897,7 +1877,7 @@ export default function ChatPage() {
           </div>
 
           {/* Composer */}
-          <div className="border-t border-black/[0.04] bg-white/95 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-md dark:border-white/[0.05] dark:bg-[#140e1a]/95">
+          <div className="sticky bottom-0 z-20 border-t border-black/[0.04] bg-white/95 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-md dark:border-white/[0.05] dark:bg-[#140e1a]/95">
             <div className="mx-auto max-w-3xl px-3 pt-2.5 sm:px-4 sm:py-3">
               <form onSubmit={handleSubmit} className="relative">
                 <div className="flex items-end gap-1.5 rounded-2xl border border-black/[0.08] bg-white p-1.5 shadow-sm transition-all focus-within:border-primary/40 focus-within:shadow-md dark:border-white/10 dark:bg-white/[0.05] sm:gap-2 sm:p-2">
@@ -1922,7 +1902,7 @@ export default function ChatPage() {
                     placeholder={isListening ? "Listening..." : "Message Sister..."}
                     disabled={isTyping || isListening}
                     rows={1}
-                    className="max-h-[120px] flex-1 resize-none border-none bg-transparent px-1 py-2.5 text-sm text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-0 dark:text-white sm:max-h-[150px] sm:px-2"
+                    className="max-h-[112px] flex-1 resize-none border-none bg-transparent px-1 py-2.5 text-base leading-6 text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-0 dark:text-white sm:max-h-[160px] sm:px-2 sm:text-sm"
                   />
                   {speechSupported && (
                     <button
