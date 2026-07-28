@@ -7,6 +7,8 @@ import { useAuth } from "@/context/AuthContext";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import AuthShell from "@/components/layout/AuthShell";
+import { auth } from "@/lib/firebase";
+import { getUserProfile } from "@/lib/firestore";
 
 // Email validation regex
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -45,6 +47,16 @@ export default function LoginPage() {
   const { signIn, signInWithGoogle } = useAuth();
   const router = useRouter();
 
+  const routeToWorkspace = async () => {
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser) throw new Error("Authentication required");
+    const role = (await firebaseUser.getIdTokenResult()).claims.role;
+    if (role === "admin") { router.replace("/admin"); return; }
+    if (role === "counsellor") { router.replace("/counsellor"); return; }
+    const profile = await getUserProfile(firebaseUser.uid).catch(() => null);
+    router.replace(profile?.registrationIntent === "counsellor" ? "/counsellor/apply" : "/dashboard");
+  };
+
   const validateForm = useCallback((): boolean => {
     const errors: { email?: string; password?: string } = {};
 
@@ -77,7 +89,7 @@ export default function LoginPage() {
 
     try {
       await signIn(email.trim().toLowerCase(), password);
-      router.push("/dashboard");
+      await routeToWorkspace();
     } catch (err: unknown) {
       // Extract Firebase error code
       const errorCode = (err as { code?: string })?.code || "";
@@ -94,7 +106,7 @@ export default function LoginPage() {
 
     try {
       await signInWithGoogle();
-      router.push("/dashboard");
+      await routeToWorkspace();
     } catch (err: unknown) {
       const errorCode = (err as { code?: string })?.code || "";
       if (errorCode === "auth/popup-closed-by-user") {

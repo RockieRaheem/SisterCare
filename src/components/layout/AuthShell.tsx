@@ -88,7 +88,7 @@ export default function AuthShell({
               {(
                 [
                   ["login", "Sign In", "/auth/login"],
-                  ["signup", "Create Account", "/auth/signup"],
+                  ["signup", "Create Account", "/auth/register"],
                 ] as const
               ).map(([key, label, href]) =>
                 activeTab === key ? (
