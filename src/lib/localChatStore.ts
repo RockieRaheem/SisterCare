@@ -63,6 +63,49 @@ export function saveLocalConversation(conv: ChatConversation): void {
   saveConversationsMap(map);
 }
 
+/**
+ * A new chat starts locally so it feels instant, then receives its Firestore
+ * ID when sync succeeds. Move both the conversation and its cached messages
+ * to that canonical ID; leaving the temporary record behind created empty
+ * chats that looked selectable but had no history.
+ */
+export function migrateLocalConversationId(
+  temporaryId: string,
+  canonicalConversation: ChatConversation,
+): void {
+  const map = loadConversations();
+  const temporary = map[temporaryId];
+  const canonical = map[canonicalConversation.id];
+  map[canonicalConversation.id] = {
+    ...(temporary || {}),
+    ...(canonical || {}),
+    ...canonicalConversation,
+    id: canonicalConversation.id,
+  } as ChatConversation;
+  delete map[temporaryId];
+  saveConversationsMap(map);
+
+  if (typeof window === "undefined" || temporaryId === canonicalConversation.id) {
+    return;
+  }
+
+  try {
+    const temporaryMessages = loadLocalMessages(temporaryId);
+    const canonicalMessages = loadLocalMessages(canonicalConversation.id);
+    const merged = [...canonicalMessages, ...temporaryMessages].filter(
+      (message, index, all) =>
+        all.findIndex((candidate) => candidate.id === message.id) === index,
+    );
+    if (merged.length > 0) {
+      saveJSON(MESSAGES_PREFIX + canonicalConversation.id, merged);
+    }
+    window.localStorage.removeItem(MESSAGES_PREFIX + temporaryId);
+  } catch {
+    // The conversation metadata still points to the durable ID even if local
+    // storage is unavailable; Firestore remains the source of truth.
+  }
+}
+
 export function deleteLocalConversation(conversationId: string): void {
   // Remove from conversations map
   const map = loadConversations();

@@ -26,6 +26,7 @@ import {
   loadLocalMessages,
   saveLocalMessage,
   cleanDeletedTombstones,
+  migrateLocalConversationId,
 } from "@/lib/localChatStore";
 import { AgentActionStatus, ChatConversation, UserProfile, ChatMessage } from "@/types";
 import {
@@ -278,7 +279,7 @@ export default function ChatPage() {
       const firestoreId = await createNewChat(user.uid, "New Chat");
       // Link local ID to Firestore ID
       const updated = { ...localConv, id: firestoreId, title: "New Chat" };
-      saveLocalConversation(updated);
+      migrateLocalConversationId(localConv.id, updated);
       setConversations((prev) =>
         prev.map((c) => (c.id === localConv.id ? updated : c)),
       );
@@ -1233,7 +1234,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background-light dark:bg-background-dark">
+    <div className="flex h-[calc(100dvh-var(--bottom-nav-height)-env(safe-area-inset-bottom))] flex-col overflow-hidden bg-background-light dark:bg-background-dark md:h-screen">
       {/* Delete Confirmation Modal */}
       {deleteModalId && (
         <div
@@ -1279,7 +1280,7 @@ export default function ChatPage() {
       )}
 
       {/* Top Navigation Bar */}
-      <header className="safe-top flex h-16 shrink-0 items-center justify-between border-b border-border-light/80 bg-white/88 px-4 backdrop-blur-xl dark:border-border-dark dark:bg-card-dark/88">
+      <header className="safe-top flex h-16 shrink-0 items-center justify-between border-b border-border-light/80 bg-white/92 px-3 backdrop-blur-xl dark:border-border-dark dark:bg-card-dark/92 sm:px-4">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setSidebarOpen(true)}
@@ -1295,10 +1296,10 @@ export default function ChatPage() {
               SisterCare
             </span>
           </Link>
-          <div className="ml-2 h-4 w-px bg-black/[0.08] dark:bg-white/[0.1]" />
-          <div className="flex items-center gap-2">
+          <div className="ml-1 hidden h-4 w-px bg-black/[0.08] dark:bg-white/[0.1] sm:block" />
+          <div className="min-w-0 items-center gap-2 sm:flex">
             <span className="status-dot" />
-            <span className="text-sm font-medium text-text-primary dark:text-white">
+            <span className="block max-w-[10rem] truncate text-sm font-semibold text-text-primary dark:text-white sm:max-w-none">
               {activeConversationTitle}
             </span>
           </div>
@@ -1306,14 +1307,14 @@ export default function ChatPage() {
         <div className="flex items-center gap-1">
           <Link
             href="/library"
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-text-secondary transition-colors hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06]"
+            className="hidden h-9 w-9 items-center justify-center rounded-xl text-text-secondary transition-colors hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06] sm:flex"
             title="Health Library"
           >
             <span className="material-symbols-outlined text-xl">menu_book</span>
           </Link>
           <Link
             href="/dashboard"
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-text-secondary transition-colors hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06]"
+            className="hidden h-9 w-9 items-center justify-center rounded-xl text-text-secondary transition-colors hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06] sm:flex"
             title="Dashboard"
           >
             <span className="material-symbols-outlined text-xl">dashboard</span>
@@ -1326,7 +1327,7 @@ export default function ChatPage() {
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         {/* Sidebar Overlay */}
         <div
           className={`fixed inset-0 z-30 bg-black/30 backdrop-blur-sm transition-opacity duration-200 lg:hidden ${
@@ -1338,7 +1339,7 @@ export default function ChatPage() {
         {/* Sidebar — reduced width */}
         <aside
           className={`
-            fixed z-40 flex h-[calc(100vh-4rem)] flex-col
+            fixed z-40 flex h-[calc(100dvh-4rem-var(--bottom-nav-height)-env(safe-area-inset-bottom))] flex-col
             border-r border-black/[0.05] bg-white
             shadow-xl shadow-black/5
             transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]
@@ -1553,7 +1554,7 @@ export default function ChatPage() {
         </aside>
 
         {/* Main Chat Area */}
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {/* Subtle chat header bar */}
           <div className="flex items-center justify-between border-b border-black/[0.04] bg-white/50 px-3 py-1.5 backdrop-blur-sm dark:border-white/[0.05] dark:bg-[#140e1a]/50">
             <div className="flex min-w-0 items-center gap-1">
@@ -1582,13 +1583,13 @@ export default function ChatPage() {
             </button>
           </div>
 
-          <div className="relative flex-1 overflow-hidden">
+          <div className="relative min-h-0 flex-1 overflow-hidden">
             <div
               ref={messagesContainerRef}
               onScroll={handleMessagesScroll}
               className="h-full overflow-y-auto"
             >
-              <div className="mx-auto max-w-3xl px-4 pb-4 pt-6 sm:px-6 sm:pt-8">
+              <div className="mx-auto max-w-3xl px-4 pb-6 pt-5 sm:px-6 sm:pt-8">
                 {error && (
                   <div className="mb-4 flex items-start gap-3 rounded-2xl border border-red-100 bg-red-50/80 px-4 py-3 text-sm text-red-700 backdrop-blur-sm dark:border-red-900/30 dark:bg-red-950/30 dark:text-red-300">
                     <span className="material-symbols-outlined mt-0.5 text-base">error</span>
@@ -1605,7 +1606,7 @@ export default function ChatPage() {
                 {agentActionStatuses.length > 0 && (
                   <div className="mb-4 animate-fade-in rounded-2xl border border-black/[0.05] bg-white/80 p-3 shadow-sm backdrop-blur-sm dark:border-white/10 dark:bg-white/[0.03] sm:p-4">
                     <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-text-secondary/60">
-                      Agent actions
+                      Care updates
                     </p>
                     <div className="space-y-1.5">
                       {agentActionStatuses.map((status) => {
@@ -1893,8 +1894,8 @@ export default function ChatPage() {
           </div>
 
           {/* Composer */}
-          <div className="border-t border-black/[0.04] bg-white/80 backdrop-blur-md dark:border-white/[0.05] dark:bg-[#140e1a]/80">
-            <div className="mx-auto max-w-3xl px-3 py-2.5 sm:px-4 sm:py-3">
+          <div className="border-t border-black/[0.04] bg-white/95 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-md dark:border-white/[0.05] dark:bg-[#140e1a]/95">
+            <div className="mx-auto max-w-3xl px-3 pt-2.5 sm:px-4 sm:py-3">
               <form onSubmit={handleSubmit} className="relative">
                 <div className="flex items-end gap-1.5 rounded-2xl border border-black/[0.08] bg-white p-1.5 shadow-sm transition-all focus-within:border-primary/40 focus-within:shadow-md dark:border-white/10 dark:bg-white/[0.05] sm:gap-2 sm:p-2">
                   <div className="relative shrink-0">
