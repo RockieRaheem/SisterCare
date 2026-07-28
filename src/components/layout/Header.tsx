@@ -7,6 +7,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import NotificationBell from "@/components/ui/NotificationBell";
+import { auth } from "@/lib/firebase";
 
 // Helper function to get initials from name or email
 function getInitials(displayName: string | null, email: string | null): string {
@@ -51,6 +52,12 @@ export default function Header({ variant = "landing" }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    if (!user) { setIsAdmin(false); return; }
+    auth.currentUser?.getIdTokenResult().then((result) => setIsAdmin(result.claims.role === "admin")).catch(() => setIsAdmin(false));
+  }, [user]);
 
   // Get translated label for nav item
   const getNavLabel = (key: NavLink["labelKey"]) => t.nav[key];
@@ -92,6 +99,7 @@ export default function Header({ variant = "landing" }: HeaderProps) {
 
   // Get current page title
   const getCurrentPageTitle = () => {
+    if (pathname.startsWith("/admin")) return "Admin";
     const currentLink = navLinks.find((link) => isActive(link.href));
     return currentLink ? getNavLabel(currentLink.labelKey) : "SisterCare";
   };
@@ -206,6 +214,15 @@ export default function Header({ variant = "landing" }: HeaderProps) {
                   {getNavLabel(link.labelKey)}
                 </Link>
               ))}
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  className={`flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-sm font-semibold transition-colors ${pathname.startsWith("/admin") ? "bg-primary/[0.09] text-primary" : "text-text-primary dark:text-white hover:bg-primary/5 hover:text-primary"}`}
+                >
+                  <span className="material-symbols-outlined text-lg">admin_panel_settings</span>
+                  Admin
+                </Link>
+              )}
             </nav>
           </div>
 
