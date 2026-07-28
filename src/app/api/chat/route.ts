@@ -12,6 +12,7 @@ import {
   getCounsellors,
   getAgentSystemOverview,
   getConversationMemory,
+  savePregnancyData,
 } from "@/lib/server/serverData";
 import { getCycleInfo, calculateNextPeriod } from "@/lib/cycle";
 import {
@@ -54,6 +55,67 @@ import {
 // Firebase Admin requires the full Node.js runtime. Keep this explicit so a
 // deployment configuration change cannot move authenticated chat to Edge.
 export const runtime = "nodejs";
+
+type AppRoute =
+  | "/dashboard"
+  | "/library"
+  | "/counsellors"
+  | "/sessions"
+  | "/profile"
+  | "/settings";
+
+type ClientAction =
+  | { type: "navigate"; href: AppRoute }
+  | { type: "sign_out" };
+
+function inferClientAction(message: string): ClientAction | null {
+  const normalized = message.toLowerCase();
+  if (/\b(log\s+me\s+out|sign\s+me\s+out|logout\s+me|sign\s+out\s+now|log\s+out\s+now)\b/.test(normalized)) {
+    return { type: "sign_out" };
+  }
+
+  if (!/\b(open|go to|take me|navigate|redirect|show me)\b/.test(normalized)) {
+    return null;
+  }
+
+  const destinations: Array<[RegExp, AppRoute]> = [
+    [/\b(library|health library|resources)\b/, "/library"],
+    [/\b(counsellors?|human support|therapists?)\b/, "/counsellors"],
+    [/\b(sessions?|appointments?)\b/, "/sessions"],
+    [/\b(profile|my details)\b/, "/profile"],
+    [/\b(settings?|preferences)\b/, "/settings"],
+    [/\b(dashboard|home)\b/, "/dashboard"],
+  ];
+
+  for (const [pattern, href] of destinations) {
+    if (pattern.test(normalized)) return { type: "navigate", href };
+  }
+  return null;
+}
+
+function isConfirmedPregnancyIntent(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return /\b(switch(?:\s+me)?\s+to\s+pregnan(?:t|cy)|i(?:\s+am|'m)\s+pregnant|i\s+have\s+a\s+positive\s+pregnancy\s+test|pregnancy\s+test\s+is\s+positive|ndi\s+(?:o)?lubuto|nfunye\s+(?:o)?lubuto)\b/.test(
+    normalized,
+  );
+}
+
+function getPregnancyDetailsFromLmp(lastPeriodDate: Date): {
+  daysPregnant: number;
+  weeksPregnant: number;
+  estimatedDueDate: Date;
+  trimester: "first" | "second" | "third";
+} {
+  const daysPregnant = Math.floor(
+    (Date.now() - lastPeriodDate.getTime()) / (1000 * 60 * 60 * 24),
+  );
+  const weeksPregnant = Math.floor(daysPregnant / 7);
+  const estimatedDueDate = new Date(lastPeriodDate);
+  estimatedDueDate.setDate(estimatedDueDate.getDate() + 280);
+  const trimester =
+    weeksPregnant <= 13 ? "first" : weeksPregnant <= 27 ? "second" : "third";
+  return { daysPregnant, weeksPregnant, estimatedDueDate, trimester };
+}
 
 /**
  * SisterCare AI Agent API Route
@@ -642,7 +704,9 @@ async function postChat(request: NextRequest) {
     }
 
     const directLugandaResponse =
-      userLanguage === "lug" ? getDirectLugandaResponse(trimmedMessage) : null;
+      userLanguage === "lug" && !isConfirmedPregnancyIntent(trimmedMessage)
+        ? getDirectLugandaResponse(trimmedMessage)
+        : null;
     if (directLugandaResponse) {
       return NextResponse.json({
         response: directLugandaResponse,
@@ -744,6 +808,31 @@ async function postChat(request: NextRequest) {
       state: "done",
     });
 
+    const requestedClientAction = inferClientAction(trimmedMessage);
+    if (requestedClientAction) {
+      const isSignOut = requestedClientAction.type === "sign_out";
+      const destinationLabel = isSignOut
+        ? "Signing you out"
+        : `Opening ${requestedClientAction.href.slice(1).replace(/-/g, " ")}`;
+      return NextResponse.json({
+        response: isSignOut
+          ? "Signing you out securely now."
+          : `${destinationLabel}.`,
+        language: "eng",
+        languageName: "English",
+        source: "agent_action",
+        type: "agent",
+        toolsUsed: [],
+        actions: [destinationLabel],
+        triage,
+        clientAction: requestedClientAction,
+        actionStatuses: [
+          ...actionStatuses,
+          { key: "client-action", label: destinationLabel, state: "done" },
+        ],
+      });
+    }
+
     if (translationApplied) {
       actionStatuses.push({
         key: "language",
@@ -807,6 +896,72 @@ async function postChat(request: NextRequest) {
           label: "Cycle auto-update failed",
           state: "failed",
         });
+      }
+    }
+
+    if (userId && cycleData && isConfirmedPregnancyIntent(trimmedMessage)) {
+      const lastPeriodDate = new Date(cycleData.lastPeriodDate);
+      const pregnancy = getPregnancyDetailsFromLmp(lastPeriodDate);
+      const hasPlausibleRecordedLmp =
+        !Number.isNaN(lastPeriodDate.getTime()) &&
+        pregnancy.daysPregnant >= 14 &&
+        pregnancy.daysPregnant <= 294;
+
+      if (hasPlausibleRecordedLmp) {
+        try {
+          await savePregnancyData(userId, {
+            isPregnant: true,
+            gaveBirth: false,
+            lastMenstrualPeriodDate: lastPeriodDate,
+            estimatedDueDate: pregnancy.estimatedDueDate,
+            weeksPregnant: pregnancy.weeksPregnant,
+            trimester: pregnancy.trimester,
+          });
+          await logAgentEvent({
+            userId,
+            type: "pregnancy_updated",
+            severity: triage.severity,
+            success: true,
+          });
+          const formattedLmp = lastPeriodDate.toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+          });
+          const formattedDueDate = pregnancy.estimatedDueDate.toLocaleDateString(
+            "en-US",
+            { month: "long", day: "numeric", year: "numeric" },
+          );
+          const pregnancyResponse =
+            userLanguage === "lug"
+              ? `Nkukyusizza mu pregnancy support nga nkozesa olunaku lw'olukale olwasembayo oluli mu SisterCare: ${formattedLmp}. Olunaku lw'oyinza okuzaala kwe ${formattedDueDate}; kati oli mu wiiki ${pregnancy.weeksPregnant} era mu trimester ${pregnancy.trimester}. Nsaba otandike oba weeyongere ku nteekateeka y'okulabirirwa mu lubuto ku ddwaliro, era ombuulire singa olunaku oluli mu system si lwe lwasooka nga tonnafuna lubuto luno.`
+              : `I've switched your profile to pregnancy support using the last period date already recorded in SisterCare: ${formattedLmp}. Your estimated due date is ${formattedDueDate}; this is about ${pregnancy.weeksPregnant} weeks pregnant and in the ${pregnancy.trimester} trimester. Please arrange antenatal care, and tell me if that recorded date is not the first day of the period before this pregnancy.`;
+          return NextResponse.json({
+            response: pregnancyResponse,
+            language: userLanguage,
+            languageName: SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
+            source: "agent_action",
+            type: "agent",
+            toolsUsed: ["get_system_overview", "update_pregnancy_status"],
+            actions: ["Updated pregnancy status from recorded cycle data"],
+            triage,
+            actionStatuses: [
+              ...actionStatuses,
+              {
+                key: "pregnancy-update",
+                label: "Pregnancy support enabled from recorded cycle data",
+                state: "done",
+              },
+            ],
+          });
+        } catch (pregnancyError) {
+          console.warn("Failed to enable pregnancy support from cycle data:", pregnancyError);
+          actionStatuses.push({
+            key: "pregnancy-update",
+            label: "Pregnancy update could not be saved",
+            state: "failed",
+          });
+        }
       }
     }
 

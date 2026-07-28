@@ -95,6 +95,8 @@ ${SISTERCARE_AGENT_CAPABILITY_MAP}
 - If the user gives you a name to call yourself, USE THAT NAME from then on
 - When asked "what is my name" - check the USER'S NAME field in your context
 - If asked about their cycle and you have CYCLE DATA, use it to calculate the answer
+- If a user confirms pregnancy and CYCLE DATA includes a plausible recorded
+  last-period date, use that date before asking the user to repeat it.
 - If the user says something like "my period started 32 days ago" or "it started X days ago":
   - Calculate the actual date: today minus X days
   - Call update_period_start with that calculated date
@@ -110,7 +112,8 @@ ${SISTERCARE_AGENT_CAPABILITY_MAP}
 ### 3. PREGNANCY TRACKING
 - If the user says they are pregnant (e.g., "I'm pregnant", "I think I'm pregnant", "I am expecting"):
   1. Congratulate them warmly 💜
-  2. Politely ask for their estimated due date OR the first day of their last period to calculate the due date and trimester
+  2. First use the recorded last-period date from CYCLE DATA when it exists;
+     ask for a due date or last-period date only when no plausible record exists
   3. Call the update_pregnancy_status tool with isPregnant=true and the date info
   4. Set a reminder for prenatal check-ups if appropriate
 - Once pregnancy is recorded, YOU MUST:
@@ -552,9 +555,15 @@ async function executeTool(
           : null;
         const trimester = args.trimester as string | undefined;
         const weeksPregnant = args.weeksPregnant as number | undefined;
-        const lmpDate = args.lastMenstrualPeriodDate
+        const suppliedLmpDate = args.lastMenstrualPeriodDate
           ? new Date(args.lastMenstrualPeriodDate as string)
           : null;
+        const lmpDate =
+          suppliedLmpDate && !Number.isNaN(suppliedLmpDate.getTime())
+            ? suppliedLmpDate
+            : context.cycleData?.lastPeriodDate
+              ? new Date(context.cycleData.lastPeriodDate)
+              : null;
         const notes = args.notes as string | undefined;
 
         // If we have LMP but no due date, calculate due date (40 weeks from LMP)
@@ -564,6 +573,29 @@ async function executeTool(
           calculatedDueDate.setDate(calculatedDueDate.getDate() + 280); // 40 weeks
         }
 
+        const daysPregnant = lmpDate
+          ? Math.max(
+              0,
+              Math.floor(
+                (Date.now() - lmpDate.getTime()) / (1000 * 60 * 60 * 24),
+              ),
+            )
+          : null;
+        const derivedWeeksPregnant =
+          typeof weeksPregnant === "number"
+            ? weeksPregnant
+            : daysPregnant === null
+              ? undefined
+              : Math.floor(daysPregnant / 7);
+        const derivedTrimester =
+          (trimester as "first" | "second" | "third" | undefined) ||
+          (calculatedDueDate
+            ? (calculateTrimester(calculatedDueDate) as
+                | "first"
+                | "second"
+                | "third")
+            : undefined);
+
         let persisted = false;
         if (context.userId) {
           try {
@@ -571,8 +603,8 @@ async function executeTool(
               isPregnant,
               estimatedDueDate: calculatedDueDate || undefined,
               lastMenstrualPeriodDate: lmpDate || undefined,
-              trimester: (trimester as "first" | "second" | "third") || undefined,
-              weeksPregnant,
+              trimester: derivedTrimester,
+              weeksPregnant: derivedWeeksPregnant,
               notes,
               gaveBirth: false,
             });
@@ -585,16 +617,17 @@ async function executeTool(
         return {
           toolName: name,
           result: {
-            success: true,
+            success: persisted,
             isPregnant,
             estimatedDueDate: calculatedDueDate?.toISOString() || null,
-            trimester: trimester || (calculatedDueDate ? calculateTrimester(calculatedDueDate) : null),
+            trimester: derivedTrimester || null,
+            weeksPregnant: derivedWeeksPregnant ?? null,
             message: isPregnant
               ? `Pregnancy recorded. Due date: ${calculatedDueDate?.toLocaleDateString() || "to be confirmed"}.`
               : "Pregnancy status updated.",
             persisted,
           },
-          success: true,
+          success: persisted,
         };
       }
 
@@ -791,6 +824,7 @@ function calculateCycleInfo(cycleData: CycleDataContext) {
 
   return {
     currentPhase: info.phase,
+    lastPeriodDate: new Date(cycleData.lastPeriodDate).toISOString(),
     dayInCycle: info.dayInCycle,
     daysUntilNextPeriod: info.daysUntilNextPeriod,
     nextPeriodDate: info.nextPeriodDate.toISOString(),

@@ -48,6 +48,18 @@ interface Message {
 
 interface ChatApiResponse {
   response: string;
+  clientAction?:
+    | {
+        type: "navigate";
+        href:
+          | "/dashboard"
+          | "/library"
+          | "/counsellors"
+          | "/sessions"
+          | "/profile"
+          | "/settings";
+      }
+    | { type: "sign_out" };
   actionStatuses?: AgentActionStatus[];
   session?: { id: string; state: string; priority: string };
   language?: string;
@@ -998,6 +1010,17 @@ export default function ChatPage() {
             ),
           );
         }
+
+        if (data.clientAction?.type === "navigate") {
+          router.push(data.clientAction.href);
+          return;
+        }
+
+        if (data.clientAction?.type === "sign_out") {
+          await signOut();
+          router.replace("/auth/login");
+          return;
+        }
       } catch {
         setAgentActionStatuses([{
           key: "agent-error",
@@ -1017,7 +1040,7 @@ export default function ChatPage() {
         setIsTyping(false);
       }
     },
-    [user, activeConversationId, messages, createFreshConversation, generateTitleFromMessage, userProfile, userLanguage],
+    [user, activeConversationId, messages, createFreshConversation, generateTitleFromMessage, userProfile, userLanguage, router, signOut],
   );
 
   const isOverLimit = inputValue.length > MAX_MESSAGE_LENGTH;
