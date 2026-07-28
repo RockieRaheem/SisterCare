@@ -18,6 +18,17 @@ interface Article {
   content: string;
 }
 
+interface PublishedArticle {
+  id: string;
+  title: string;
+  description: string;
+  content: string;
+  category: string;
+  tags: string[];
+  authorName: string;
+  authorTitle: string;
+}
+
 const categories = [
   { id: "all", label: "All Advice", icon: "library_books" },
   { id: "comfort", label: "Comfort & Hygiene", icon: "spa" },
@@ -135,6 +146,14 @@ export default function LibraryPage() {
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedArticle, setExpandedArticle] = useState<number | null>(null);
+  const [publishedArticles, setPublishedArticles] = useState<PublishedArticle[]>([]);
+
+  useEffect(() => {
+    fetch("/api/library/articles")
+      .then((response) => response.json())
+      .then((result) => { if (result.success) setPublishedArticles(result.data.articles || []); })
+      .catch(() => {});
+  }, []);
 
   // Handle search params from header search
   useEffect(() => {
@@ -245,6 +264,20 @@ export default function LibraryPage() {
               well-being.
             </p>
           </div>
+
+          {publishedArticles.length > 0 && (
+            <section className="rounded-2xl border border-primary/15 bg-primary/5 p-4 sm:p-5">
+              <div className="mb-4 flex items-center gap-2"><span className="material-symbols-outlined text-primary">verified</span><div><h2 className="font-bold text-text-primary dark:text-white">From SisterCare counsellors</h2><p className="text-xs text-text-secondary">Reviewed professional guidance, recently published to the library.</p></div></div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {publishedArticles.map((article) => (
+                  <details key={article.id} className="rounded-xl bg-white p-4 dark:bg-card-dark">
+                    <summary className="cursor-pointer list-none"><span className="text-xs font-semibold text-primary">{article.category}</span><h3 className="mt-1 font-bold text-text-primary dark:text-white">{article.title}</h3><p className="mt-1 text-sm text-text-secondary">{article.description}</p><p className="mt-2 text-xs text-text-secondary">By {article.authorName}, {article.authorTitle}</p></summary>
+                    <div className="mt-4 whitespace-pre-line border-t border-border-light pt-4 text-sm leading-6 text-text-primary dark:border-border-dark dark:text-white">{article.content}</div>
+                  </details>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* Search Bar */}
           <div className="relative">

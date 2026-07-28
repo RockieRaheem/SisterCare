@@ -97,6 +97,13 @@ service cloud.firestore {
     match /reputation_events/{eventId} {
       allow read, write: if false;
     }
+
+    // Public library content is server-published only. Drafts and KYC review
+    // metadata remain inaccessible to clients.
+    match /libraryArticles/{articleId} {
+      allow read: if resource.data.status == "published";
+      allow write: if false;
+    }
     match /metrics_daily/{metricId} {
       allow read, write: if false;
     }

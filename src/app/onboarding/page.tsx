@@ -37,6 +37,11 @@ export default function OnboardingPage() {
       return;
     }
 
+    if (userProfile?.registrationIntent === "counsellor") {
+      router.replace("/counsellor/apply");
+      return;
+    }
+
     // If already completed onboarding, redirect to dashboard
     if (userProfile?.onboardingCompleted) {
       router.push("/dashboard");

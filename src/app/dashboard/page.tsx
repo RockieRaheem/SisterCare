@@ -18,6 +18,7 @@ import {
   getCycleInfo,
 } from "@/lib/firestore";
 import { UserProfile, MoodType } from "@/types";
+import { auth } from "@/lib/firebase";
 
 const phaseColors: Record<string, string> = {
   menstrual: "text-red-500",
@@ -54,6 +55,7 @@ export default function DashboardPage() {
     daysLate: number;
   } | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [workspaceChecked, setWorkspaceChecked] = useState(false);
 
   // Update time every minute for countdown
   useEffect(() => {
@@ -70,14 +72,35 @@ export default function DashboardPage() {
     }
   }, [user, authLoading, router]);
 
+  // Counsellors and applicants have their own workspace; they must never be
+  // routed into member cycle onboarding or the member dashboard.
+  useEffect(() => {
+    if (authLoading || !user) return;
+    const resolveWorkspace = async () => {
+      try {
+        const role = (await auth.currentUser?.getIdTokenResult())?.claims.role;
+        if (role === "admin") { router.replace("/admin"); return; }
+        if (role === "counsellor") { router.replace("/counsellor"); return; }
+        if (authProfile?.registrationIntent === "counsellor") { router.replace("/counsellor/apply"); return; }
+      } finally {
+        setWorkspaceChecked(true);
+      }
+    };
+    resolveWorkspace();
+  }, [authLoading, authProfile?.registrationIntent, router, user]);
+
   // Check onboarding status FIRST before loading dashboard
   useEffect(() => {
     const checkOnboarding = async () => {
-      if (authLoading || !user) return;
+      if (authLoading || !user || !workspaceChecked) return;
 
       try {
         const userProfile = await getUserProfile(user.uid);
 
+        if (userProfile?.registrationIntent === "counsellor") {
+          router.replace("/counsellor/apply");
+          return;
+        }
         // Redirect to onboarding if not completed - do this BEFORE showing dashboard
         if (!userProfile || !userProfile.onboardingCompleted) {
           router.replace("/onboarding");
@@ -111,7 +134,7 @@ export default function DashboardPage() {
     };
 
     checkOnboarding();
-  }, [user, authLoading, router, authProfile]);
+  }, [user, authLoading, router, authProfile, workspaceChecked]);
 
   // Restore dismissed period banner state from localStorage
   useEffect(() => {
@@ -290,7 +313,7 @@ export default function DashboardPage() {
   );
 
   // Show loading while checking auth OR onboarding status OR loading data
-  if (authLoading || !onboardingChecked || loading) {
+  if (authLoading || !workspaceChecked || !onboardingChecked || loading) {
     return <AppShellSkeleton />;
   }
 

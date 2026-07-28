@@ -23,6 +23,7 @@ const sections = [
   { href: "/admin/crisis", icon: "emergency", title: "Crisis monitor", description: "Watch urgent care requests and time-to-human targets." },
   { href: "/admin/incidents", icon: "assignment_late", title: "Incident response", description: "Acknowledge and resolve operational safety incidents." },
   { href: "/admin/operations", icon: "monitoring", title: "Service health", description: "Review privacy-safe usage and reliability metrics." },
+  { href: "/admin/articles", icon: "edit_note", title: "Library review", description: "Review and publish counsellor health articles." },
 ];
 
 export default function AdminDashboardPage() {

@@ -231,6 +231,14 @@ export default function CounsellorPortalPage() {
         </div>
       </div>
 
+      <Link href="/counsellor/articles" className="mb-6 flex items-center justify-between rounded-2xl border border-primary/20 bg-primary/5 p-4 transition hover:bg-primary/10">
+        <span>
+          <span className="block text-sm font-bold text-text-primary dark:text-white">Professional library contributions</span>
+          <span className="mt-1 block text-xs text-text-secondary">Write an article and submit it for clinical editorial review.</span>
+        </span>
+        <span className="material-symbols-outlined text-primary">edit_note</span>
+      </Link>
+
       {error && (
         <div className="mb-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
           {error}
