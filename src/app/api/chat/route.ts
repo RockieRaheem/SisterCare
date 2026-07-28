@@ -65,13 +65,35 @@ type AppRoute =
   | "/settings";
 
 type ClientAction =
-  | { type: "navigate"; href: AppRoute }
+  | {
+      type: "navigate";
+      href: AppRoute;
+      search?: string;
+      articleId?: number;
+    }
   | { type: "sign_out" };
 
 function inferClientAction(message: string): ClientAction | null {
   const normalized = message.toLowerCase();
   if (/\b(log\s+me\s+out|sign\s+me\s+out|logout\s+me|sign\s+out\s+now|log\s+out\s+now)\b/.test(normalized)) {
     return { type: "sign_out" };
+  }
+
+  // A request to find reading material is actionable even when the user does
+  // not literally say "open the library". Open the relevant article rather
+  // than merely claiming that it was found.
+  if (
+    /\b(food|foods|nutrition|diet|meal|meals|what\s+to\s+eat)\b/.test(
+      normalized,
+    ) &&
+    /\b(article|articles|book|library|read|find|show)\b/.test(normalized)
+  ) {
+    return {
+      type: "navigate",
+      href: "/library",
+      search: "foods",
+      articleId: 6,
+    };
   }
 
   if (!/\b(open|go to|take me|navigate|redirect|show me)\b/.test(normalized)) {
@@ -95,8 +117,26 @@ function inferClientAction(message: string): ClientAction | null {
 
 function isConfirmedPregnancyIntent(message: string): boolean {
   const normalized = message.toLowerCase();
-  return /\b(switch(?:\s+me)?\s+to\s+pregnan(?:t|cy)|i(?:\s+am|'m)\s+pregnant|i\s+have\s+a\s+positive\s+pregnancy\s+test|pregnancy\s+test\s+is\s+positive|ndi\s+(?:o)?lubuto|nfunye\s+(?:o)?lubuto)\b/.test(
+  return /\b(i(?:\s+am|'m)\s+(?:about\s+)?(?:\d+\s*(?:day|week|month)s?\s+)?pregnant|i\s+have\s+a\s+positive\s+pregnancy\s+test|pregnancy\s+test\s+is\s+positive|i\s+(?:checked|tested|confirmed)(?:\s+today)?\s+(?:and\s+)?(?:that\s+)?i(?:\s+am|'m)\s+pregnant|ndi\s+(?:o)?lubuto|nfunye\s+(?:o)?lubuto)\b/.test(
     normalized,
+  );
+}
+
+function isPregnancyActivationRequest(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return /\b(switch|set|update|change|move)\b[\s\S]{0,70}\b(pregnan(?:t|cy)|pregnancy\s+mode)\b|\bnot\s+(?:in|on)\s+(?:my\s+)?(?:period|menstruation)\b/.test(
+    normalized,
+  );
+}
+
+function hasPregnancyConfirmation(
+  message: string,
+  history: Array<{ role: string; content: string }>,
+): boolean {
+  if (isConfirmedPregnancyIntent(message)) return true;
+  return history.some(
+    (entry) =>
+      entry.role === "user" && isConfirmedPregnancyIntent(entry.content),
   );
 }
 
@@ -703,8 +743,17 @@ async function postChat(request: NextRequest) {
       }
     }
 
+    const confirmedPregnancy = hasPregnancyConfirmation(
+      trimmedMessage,
+      effectiveConversationHistory,
+    );
+    const shouldActivatePregnancy =
+      confirmedPregnancy &&
+      (isConfirmedPregnancyIntent(trimmedMessage) ||
+        isPregnancyActivationRequest(trimmedMessage));
+
     const directLugandaResponse =
-      userLanguage === "lug" && !isConfirmedPregnancyIntent(trimmedMessage)
+      userLanguage === "lug" && !shouldActivatePregnancy
         ? getDirectLugandaResponse(trimmedMessage)
         : null;
     if (directLugandaResponse) {
@@ -813,7 +862,9 @@ async function postChat(request: NextRequest) {
       const isSignOut = requestedClientAction.type === "sign_out";
       const destinationLabel = isSignOut
         ? "Signing you out"
-        : `Opening ${requestedClientAction.href.slice(1).replace(/-/g, " ")}`;
+        : requestedClientAction.articleId === 6
+          ? "Opening Foods That Help During Your Period in the library"
+          : `Opening ${requestedClientAction.href.slice(1).replace(/-/g, " ")}`;
       return NextResponse.json({
         response: isSignOut
           ? "Signing you out securely now."
@@ -899,7 +950,7 @@ async function postChat(request: NextRequest) {
       }
     }
 
-    if (userId && cycleData && isConfirmedPregnancyIntent(trimmedMessage)) {
+    if (userId && cycleData && shouldActivatePregnancy) {
       const lastPeriodDate = new Date(cycleData.lastPeriodDate);
       const pregnancy = getPregnancyDetailsFromLmp(lastPeriodDate);
       const hasPlausibleRecordedLmp =

@@ -142,6 +142,10 @@ export default function LibraryPage() {
     if (searchFromUrl) {
       setSearchQuery(searchFromUrl);
     }
+    const articleFromUrl = Number(searchParams.get("article"));
+    if (articles.some((article) => article.id === articleFromUrl)) {
+      setExpandedArticle(articleFromUrl);
+    }
   }, [searchParams]);
 
   // Get unique tags from articles

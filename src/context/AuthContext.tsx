@@ -192,8 +192,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    await clearPrivateClientData();
+    // Local cache cleanup is important, but it must never prevent a user from
+    // ending their authenticated Firebase session.
+    try {
+      await clearPrivateClientData();
+    } catch (error) {
+      console.warn("Could not clear all private client data during sign-out:", error);
+    }
     await firebaseSignOut(auth);
+    setUser(null);
     setUserProfile(null);
   };
 

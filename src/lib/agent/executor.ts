@@ -1437,6 +1437,13 @@ I'm here for you. What's going on? 💜`;
     return "I don't have your name saved yet. You can set it in Settings, or just tell me what you'd like me to call you! 💜";
   }
 
+  // Provider outages must not turn a clear food request into a generic
+  // greeting. The chat API opens the matching library article when requested;
+  // this response still gives useful, safe guidance if navigation is not used.
+  if (/\b(food|foods|nutrition|diet|meal|meals|what\s+to\s+eat)\b/.test(m)) {
+    return "Foods that can support you include leafy greens, beans, eggs or fish for iron and protein; fruit and water for hydration; and whole grains or sweet potatoes for steady energy. If you are pregnant, avoid alcohol and ask your antenatal clinician about any food restrictions specific to you.";
+  }
+
   // Questions about cycle/period
   if (m.includes("period") || m.includes("cycle") || m.includes("menstruat")) {
     if (context.cycleData) {
@@ -1552,11 +1559,14 @@ If you'd like, I can match you with a counsellor now, or we can talk about what'
 If the pain is severe, unusual, or getting worse, please see a health professional.`;
   }
 
-  if (
-    m.includes("a girl is pregnant") ||
-    m.includes("pregnant girl") ||
-    m.includes("pregnant")
-  ) {
+  if (m.includes("pregnant") || m.includes("pregnancy")) {
+    if (context.pregnancyData?.isPregnant) {
+      return "I have your pregnancy support context. If you want to update your due date, symptoms, or antenatal reminders, tell me what has changed and I will use your recorded information.";
+    }
+    return "Thank you for telling me. I can help you set up pregnancy support using the last period date already recorded in SisterCare, or your estimated due date if you have one. Please arrange antenatal care as early as you can.";
+  }
+
+  if (m.includes("a girl is pregnant") || m.includes("pregnant girl")) {
     return `If a girl is pregnant, the next best step is to get support from a trusted adult or health worker. 💜
 
 Please try to confirm the pregnancy with a clinic or health professional, and encourage antenatal care as early as possible. If there is fear, pressure, or safety concern, I can also help you think through who to talk to safely.`;
@@ -1626,7 +1636,7 @@ If you want, you can tell me:
     "Hey, I'm listening! 💜 Feel free to ask me anything about your health or just share how you're feeling today.",
     "I'm your Sister, always here for you. 💜 What would you like to talk about?",
   ];
-  return defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
+  return "I want to answer this properly. Please tell me a little more about what you need—your cycle, symptoms, pregnancy support, a library topic, or another task in SisterCare—and I will use the information already saved for you where it applies.";
 }
 
 /**

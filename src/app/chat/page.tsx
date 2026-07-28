@@ -58,6 +58,8 @@ interface ChatApiResponse {
           | "/sessions"
           | "/profile"
           | "/settings";
+        search?: string;
+        articleId?: number;
       }
     | { type: "sign_out" };
   actionStatuses?: AgentActionStatus[];
@@ -965,6 +967,28 @@ export default function ChatPage() {
           router.push(data.counsellorProfile.profileUrl);
         }
 
+        // Client actions are server-authorized intent responses. Complete them
+        // before any best-effort chat persistence so a slow Firestore write can
+        // never leave the user on this screen after we say an action happened.
+        if (data.clientAction?.type === "navigate") {
+          const query = new URLSearchParams();
+          if (data.clientAction.search) {
+            query.set("search", data.clientAction.search);
+          }
+          if (data.clientAction.articleId) {
+            query.set("article", String(data.clientAction.articleId));
+          }
+          const destination = `${data.clientAction.href}${query.size ? `?${query.toString()}` : ""}`;
+          window.location.assign(destination);
+          return;
+        }
+
+        if (data.clientAction?.type === "sign_out") {
+          await signOut();
+          window.location.replace("/auth/login");
+          return;
+        }
+
         if (data.response) {
           const sisterMessage: Message = {
             id: `sister-${Date.now()}`,
@@ -1011,16 +1035,6 @@ export default function ChatPage() {
           );
         }
 
-        if (data.clientAction?.type === "navigate") {
-          router.push(data.clientAction.href);
-          return;
-        }
-
-        if (data.clientAction?.type === "sign_out") {
-          await signOut();
-          router.replace("/auth/login");
-          return;
-        }
       } catch {
         setAgentActionStatuses([{
           key: "agent-error",
