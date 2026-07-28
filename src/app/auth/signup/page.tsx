@@ -55,6 +55,7 @@ const getFirebaseErrorMessage = (errorCode: string): string => {
 };
 
 export default function SignupPage() {
+  const [registrationIntent, setRegistrationIntent] = useState<"member" | "counsellor">("member");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -119,8 +120,8 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      await signUp(email.trim().toLowerCase(), password);
-      router.push("/dashboard");
+      await signUp(email.trim().toLowerCase(), password, registrationIntent);
+      router.push(registrationIntent === "counsellor" ? "/counsellor/apply" : "/onboarding");
     } catch (err: unknown) {
       const errorCode = (err as { code?: string })?.code || "";
       setError(getFirebaseErrorMessage(errorCode));
@@ -135,8 +136,8 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      await signInWithGoogle();
-      router.push("/dashboard");
+      await signInWithGoogle(registrationIntent);
+      router.push(registrationIntent === "counsellor" ? "/counsellor/apply" : "/onboarding");
     } catch (err: unknown) {
       const errorCode = (err as { code?: string })?.code || "";
       if (errorCode === "auth/popup-closed-by-user") {
@@ -198,6 +199,26 @@ export default function SignupPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <fieldset>
+            <legend className="mb-2 px-1 text-sm font-semibold text-text-primary dark:text-white">
+              I&apos;m joining SisterCare as
+            </legend>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className={`cursor-pointer rounded-2xl border-2 p-4 transition ${registrationIntent === "member" ? "border-primary bg-primary/5" : "border-border-light dark:border-border-dark"}`}>
+                <input type="radio" name="registrationIntent" value="member" checked={registrationIntent === "member"} onChange={() => setRegistrationIntent("member")} className="sr-only" />
+                <span className="material-symbols-outlined text-primary">favorite</span>
+                <span className="mt-2 block text-sm font-bold text-text-primary dark:text-white">Member</span>
+                <span className="mt-1 block text-xs leading-5 text-text-secondary">Track your wellbeing and access private support.</span>
+              </label>
+              <label className={`cursor-pointer rounded-2xl border-2 p-4 transition ${registrationIntent === "counsellor" ? "border-primary bg-primary/5" : "border-border-light dark:border-border-dark"}`}>
+                <input type="radio" name="registrationIntent" value="counsellor" checked={registrationIntent === "counsellor"} onChange={() => setRegistrationIntent("counsellor")} className="sr-only" />
+                <span className="material-symbols-outlined text-primary">support_agent</span>
+                <span className="mt-2 block text-sm font-bold text-text-primary dark:text-white">Counsellor</span>
+                <span className="mt-1 block text-xs leading-5 text-text-secondary">Submit professional credentials for KYC review.</span>
+              </label>
+            </div>
+            {registrationIntent === "counsellor" && <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">Counsellor access is granted only after an administrator verifies your KYC application.</p>}
+          </fieldset>
           <div>
             <Input
               label="Email Address"
@@ -357,7 +378,7 @@ export default function SignupPage() {
                 Creating account...
               </span>
             ) : (
-              "Create My Safe Space"
+              registrationIntent === "counsellor" ? "Create counsellor application" : "Create My Safe Space"
             )}
           </Button>
         </form>

@@ -52,6 +52,7 @@ export async function createUserProfile(
   email: string,
   displayName: string | null = null,
   photoURL: string | null = null,
+  registrationIntent: "member" | "counsellor" = "member",
 ): Promise<UserProfile> {
   const userProfile: UserProfile = {
     uid,
@@ -64,6 +65,7 @@ export async function createUserProfile(
     cycleData: null,
     pregnancyData: null,
     preferences: DEFAULT_PREFERENCES,
+    registrationIntent,
   };
 
   await setDoc(doc(db, "users", uid), {

@@ -10,6 +10,8 @@ export interface UserProfile {
   cycleData: CycleData | null;
   pregnancyData: PregnancyData | null;
   preferences: UserPreferences;
+  /** Sign-up path only; it never grants a privileged Firebase role. */
+  registrationIntent?: "member" | "counsellor";
 }
 
 export interface PregnancyData {

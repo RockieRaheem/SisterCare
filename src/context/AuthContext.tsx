@@ -34,10 +34,10 @@ interface AuthContextType {
   loading: boolean;
   profileLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, registrationIntent?: "member" | "counsellor") => Promise<void>;
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
+  signInWithGoogle: (registrationIntent?: "member" | "counsellor") => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
@@ -177,11 +177,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await signInWithEmailAndPassword(auth, email, password);
   };
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string, registrationIntent: "member" | "counsellor" = "member") => {
     const result = await createUserWithEmailAndPassword(auth, email, password);
     // Try to create user profile in Firestore, but don't block signup if offline
     try {
-      await createUserProfile(result.user.uid, email, null, null);
+      await createUserProfile(result.user.uid, email, null, null, registrationIntent);
     } catch (error) {
       console.warn(
         "Could not create profile in Firestore (may be offline):",
@@ -221,7 +221,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUserProfile(null);
   };
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (registrationIntent: "member" | "counsellor" = "member") => {
     const provider = new GoogleAuthProvider();
     const result = await signInWithPopup(auth, provider);
 
@@ -234,6 +234,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           result.user.email || "",
           result.user.displayName,
           result.user.photoURL,
+          registrationIntent,
         );
       }
     } catch (error) {
