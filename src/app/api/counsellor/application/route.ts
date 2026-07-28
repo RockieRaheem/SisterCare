@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
   const registrationNumber = text(body.registrationNumber, 120);
   const credentialType = text(body.credentialType, 120);
   const phoneNumber = text(body.phoneNumber, 40);
+  const photoURL = text(body.photoURL, 1000);
   const languages = Array.isArray(body.languages) ? body.languages.map((item: unknown) => text(item, 40)).filter(Boolean).slice(0, 10) : [];
   const specializations = Array.isArray(body.specializations)
     ? body.specializations.filter((item: unknown): item is CounsellorSpecialty => SPECIALTIES.includes(item as CounsellorSpecialty)).slice(0, 5)
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
     ? body.documentReferences.map((item: unknown) => text(item, 500)).filter(Boolean).slice(0, 5)
     : [];
   const credentialExpiresAt = new Date(text(body.credentialExpiresAt, 40));
-  if (!name || !title || !bio || !legalName || !registrationNumber || !credentialType || !phoneNumber || !languages.length || !specializations.length || !documentReferences.length || Number.isNaN(credentialExpiresAt.getTime()) || credentialExpiresAt <= new Date()) {
+  if (!name || !title || !bio || !legalName || !registrationNumber || !credentialType || !phoneNumber || !photoURL || !/^https:\/\//i.test(photoURL) || !languages.length || !specializations.length || !documentReferences.length || Number.isNaN(credentialExpiresAt.getTime()) || credentialExpiresAt <= new Date()) {
     return NextResponse.json({ success: false, error: "Complete all profile, credential and KYC document fields with a future credential expiry." }, { status: 400 });
   }
   const db = getAdminDb()!;
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
   await db.collection("counsellorApplications").doc(auth.uid).set({
     applicantUid: auth.uid,
     status: "pending",
-    profile: { name, title, bio, specializations, languages, phoneNumber },
+    profile: { name, title, bio, photoURL, specializations, languages, phoneNumber },
     legalName,
     registrationNumber,
     credentialType,

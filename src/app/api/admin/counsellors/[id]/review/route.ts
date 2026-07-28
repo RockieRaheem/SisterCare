@@ -30,7 +30,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const batch = db.batch();
   batch.set(counsellorRef, {
     ...profile,
-    photoURL: "",
     whatsappNumber: profile.phoneNumber,
     status: "offline",
     rating: 0,

@@ -276,7 +276,7 @@ export interface CounsellorApplication {
   status: "pending" | "verified" | "rejected";
   profile: Pick<
     Counsellor,
-    "name" | "title" | "bio" | "specializations" | "languages" | "phoneNumber"
+    "name" | "title" | "bio" | "photoURL" | "specializations" | "languages" | "phoneNumber"
   >;
   legalName: string;
   registrationNumber: string;
