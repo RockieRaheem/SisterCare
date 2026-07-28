@@ -32,6 +32,7 @@ import { authenticateRequest } from "@/lib/firebaseAdmin";
 import { createSessionRequest } from "@/lib/server/sessions";
 import { emitEvent } from "@/lib/server/events";
 import { withApiObservability } from "@/lib/observability";
+import { getClinicalRuntimeIssues } from "@/lib/clinicalGovernance";
 import { hasConfiguredAgentProvider } from "@/lib/agent/modelRouter";
 import {
   assertCompleteResponse,
@@ -684,6 +685,17 @@ function fallbackLocalizedResponse(
  */
 async function postChat(request: NextRequest) {
   try {
+    // Never present unreviewed clinical or crisis guidance as a production
+    // service. This is intentionally independent of model/provider health.
+    if (getClinicalRuntimeIssues().length > 0) {
+      return NextResponse.json(
+        {
+          error: "Clinical safety review is incomplete. SisterCare guidance is temporarily unavailable.",
+          code: "CLINICAL_GOVERNANCE_BLOCKED",
+        },
+        { status: 503 },
+      );
+    }
     // Trust boundary: when Firebase Admin is configured, the caller MUST
     // present a valid ID token and the verified uid overrides whatever
     // userId the request body claims. Without Admin configured (dev mode)

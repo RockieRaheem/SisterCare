@@ -124,8 +124,23 @@ export interface GovernanceIssue {
     | "missing_content"
     | "unregistered_content"
     | "approval_required"
-    | "review_expired";
+    | "review_expired"
+    | "approval_config_invalid"
+    | "approval_version_mismatch";
   message: string;
+}
+
+/**
+ * A production attestation is deliberately supplied outside source control.
+ * It records the real named reviewer against the exact content version they
+ * reviewed; engineering cannot silently convert a pending record to approved.
+ */
+export interface ClinicalApprovalAttestation {
+  id: string;
+  version: string;
+  reviewedBy: string;
+  reviewedAt: string;
+  reviewDueAt: string;
 }
 
 function isValidDate(value?: string): boolean {
@@ -216,3 +231,97 @@ export function getClinicalGovernanceRecord(
   return CLINICAL_CONTENT_REGISTRY.find((record) => record.id === id) ?? null;
 }
 
+function parseApprovalAttestations(raw: string | undefined): {
+  approvals: ClinicalApprovalAttestation[];
+  issue?: GovernanceIssue;
+} {
+  if (!raw?.trim()) {
+    return {
+      approvals: [],
+      issue: {
+        id: "clinical-approvals",
+        code: "approval_config_invalid",
+        message: "CLINICAL_APPROVALS_JSON is required for a production launch",
+      },
+    };
+  }
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) throw new Error("Expected an array");
+    const approvals = parsed.filter((item): item is ClinicalApprovalAttestation =>
+      Boolean(
+        item && typeof item === "object" &&
+        typeof (item as ClinicalApprovalAttestation).id === "string" &&
+        typeof (item as ClinicalApprovalAttestation).version === "string" &&
+        typeof (item as ClinicalApprovalAttestation).reviewedBy === "string" &&
+        typeof (item as ClinicalApprovalAttestation).reviewedAt === "string" &&
+        typeof (item as ClinicalApprovalAttestation).reviewDueAt === "string",
+      ),
+    );
+    if (approvals.length !== parsed.length) throw new Error("Invalid approval record");
+    return { approvals };
+  } catch {
+    return {
+      approvals: [],
+      issue: {
+        id: "clinical-approvals",
+        code: "approval_config_invalid",
+        message: "CLINICAL_APPROVALS_JSON must be a valid array of approval attestations",
+      },
+    };
+  }
+}
+
+/**
+ * Runtime launch gate. Development and controlled pilots can exercise the
+ * product with pending content, but production must carry real, current
+ * reviewer attestations for every governed clinical asset.
+ */
+export function getClinicalRuntimeIssues(
+  environment: NodeJS.ProcessEnv = process.env,
+  now = new Date(),
+): GovernanceIssue[] {
+  if (environment.NODE_ENV !== "production") return [];
+
+  const baseline = validateClinicalGovernance(
+    CLINICAL_CONTENT_REGISTRY.map((record) => record.id),
+    { now },
+  );
+  const { approvals, issue } = parseApprovalAttestations(
+    environment.CLINICAL_APPROVALS_JSON,
+  );
+  if (issue) return [...baseline, issue];
+
+  const approvalsById = new Map<string, ClinicalApprovalAttestation>();
+  const issues = [...baseline];
+  for (const approval of approvals) {
+    if (approvalsById.has(approval.id)) {
+      issues.push({
+        id: approval.id,
+        code: "approval_config_invalid",
+        message: `Clinical approval "${approval.id}" is duplicated`,
+      });
+    }
+    approvalsById.set(approval.id, approval);
+  }
+
+  for (const record of CLINICAL_CONTENT_REGISTRY) {
+    const approval = approvalsById.get(record.id);
+    if (!approval) {
+      issues.push({ id: record.id, code: "approval_required", message: `Clinical approval is required for "${record.id}"` });
+      continue;
+    }
+    if (approval.version !== record.version) {
+      issues.push({ id: record.id, code: "approval_version_mismatch", message: `Clinical approval for "${record.id}" does not match version ${record.version}` });
+      continue;
+    }
+    if (!approval.reviewedBy.trim() || !isValidDate(approval.reviewedAt) || !isValidDate(approval.reviewDueAt)) {
+      issues.push({ id: record.id, code: "approval_required", message: `Clinical approval metadata is incomplete for "${record.id}"` });
+      continue;
+    }
+    if (new Date(approval.reviewDueAt).getTime() <= now.getTime()) {
+      issues.push({ id: record.id, code: "review_expired", message: `Clinical approval has expired for "${record.id}"` });
+    }
+  }
+  return issues;
+}

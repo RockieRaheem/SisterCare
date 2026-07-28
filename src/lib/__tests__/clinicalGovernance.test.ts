@@ -3,6 +3,7 @@ import { HEALTH_KNOWLEDGE_BASE } from "@/lib/agent/knowledge";
 import { CRISIS_RESPONSES } from "@/lib/safety";
 import {
   CLINICAL_CONTENT_REGISTRY,
+  getClinicalRuntimeIssues,
   validateClinicalGovernance,
 } from "@/lib/clinicalGovernance";
 
@@ -39,5 +40,29 @@ describe("clinical content governance", () => {
       true,
     );
   });
-});
 
+  it("requires a production attestation for every exact content version", () => {
+    const approvals = CLINICAL_CONTENT_REGISTRY.map((record) => ({
+      id: record.id,
+      version: record.version,
+      reviewedBy: "Dr Amina Reviewer, licence 12345",
+      reviewedAt: "2026-07-01",
+      reviewDueAt: "2027-07-01",
+    }));
+    expect(getClinicalRuntimeIssues({
+      NODE_ENV: "production",
+      CLINICAL_APPROVALS_JSON: JSON.stringify(approvals),
+    }, new Date("2026-07-29T00:00:00.000Z"))).toEqual([]);
+
+    const mismatched = [...approvals];
+    mismatched[0] = { ...mismatched[0], version: "0.0.1" };
+    expect(getClinicalRuntimeIssues({
+      NODE_ENV: "production",
+      CLINICAL_APPROVALS_JSON: JSON.stringify(mismatched),
+    }, new Date("2026-07-29T00:00:00.000Z")).some((issue) => issue.code === "approval_version_mismatch")).toBe(true);
+  });
+
+  it("does not impose the production gate on development or controlled pilots", () => {
+    expect(getClinicalRuntimeIssues({ NODE_ENV: "development" })).toEqual([]);
+  });
+});
