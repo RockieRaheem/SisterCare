@@ -259,6 +259,36 @@ export async function createReminder(
   return ref.id;
 }
 
+/** Mark unsent menstrual reminders inactive when a user enters pregnancy mode. */
+export async function pausePeriodReminders(uid: string): Promise<void> {
+  const db = getAdminDb();
+  if (!db) return;
+
+  const reminders = await db
+    .collection("users")
+    .doc(uid)
+    .collection("reminders")
+    .where("sent", "==", false)
+    .get();
+  const periodReminders = reminders.docs.filter(
+    (reminder) =>
+      reminder.data().type === "period_coming" ||
+      reminder.data().type === "period_start",
+  );
+  for (let index = 0; index < periodReminders.length; index += 450) {
+    const batch = db.batch();
+    periodReminders.slice(index, index + 450).forEach((reminder) => {
+      batch.update(reminder.ref, {
+        sent: true,
+        read: true,
+        cancelledAt: FieldValue.serverTimestamp(),
+        cancellationReason: "pregnancy_mode",
+      });
+    });
+    await batch.commit();
+  }
+}
+
 // ============================================
 // AGENT OBSERVABILITY
 // ============================================

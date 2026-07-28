@@ -13,6 +13,8 @@ import {
   getAgentSystemOverview,
   getConversationMemory,
   savePregnancyData,
+  createReminder,
+  pausePeriodReminders,
 } from "@/lib/server/serverData";
 import { getCycleInfo, calculateNextPeriod } from "@/lib/cycle";
 import {
@@ -138,6 +140,51 @@ function hasPregnancyConfirmation(
     (entry) =>
       entry.role === "user" && isConfirmedPregnancyIntent(entry.content),
   );
+}
+
+/**
+ * Pregnancy dates are interpreted day-first (DD/MM/YYYY), matching the
+ * product's displayed date convention. A duration such as "pregnant 30 days"
+ * is also enough to derive an LMP without making a user repeat themselves.
+ */
+function getPregnancyLmpFromMessages(
+  messages: string[],
+): Date | null {
+  for (const message of [...messages].reverse()) {
+    const dateMatch = message.match(
+      /\b(\d{1,2})[\/-](\d{1,2})[\/-]((?:19|20)\d{2})\b/,
+    );
+    if (dateMatch) {
+      const day = Number(dateMatch[1]);
+      const month = Number(dateMatch[2]);
+      const year = Number(dateMatch[3]);
+      const candidate = new Date(year, month - 1, day);
+      if (
+        candidate.getFullYear() === year &&
+        candidate.getMonth() === month - 1 &&
+        candidate.getDate() === day
+      ) {
+        return candidate;
+      }
+    }
+
+    const duration = message.match(
+      /\b(?:pregnant|pregnancy)\D{0,18}(\d{1,3})\s*days?\b|\b(\d{1,3})\s*days?\s+pregnant\b/i,
+    );
+    const days = Number(duration?.[1] || duration?.[2]);
+    if (Number.isInteger(days) && days >= 14 && days <= 294) {
+      const candidate = new Date();
+      candidate.setDate(candidate.getDate() - days);
+      return candidate;
+    }
+
+    if (/\b(?:one|1)\s+month(?:\s+)?pregnant\b|\bpregnant\s+(?:for\s+)?(?:one|1)\s+month\b/i.test(message)) {
+      const candidate = new Date();
+      candidate.setDate(candidate.getDate() - 30);
+      return candidate;
+    }
+  }
+  return null;
 }
 
 function getPregnancyDetailsFromLmp(lastPeriodDate: Date): {
@@ -747,10 +794,17 @@ async function postChat(request: NextRequest) {
       trimmedMessage,
       effectiveConversationHistory,
     );
+    const pregnancyLmpFromConversation = getPregnancyLmpFromMessages([
+      ...effectiveConversationHistory
+        .filter((entry) => entry.role === "user")
+        .map((entry) => entry.content),
+      trimmedMessage,
+    ]);
     const shouldActivatePregnancy =
       confirmedPregnancy &&
       (isConfirmedPregnancyIntent(trimmedMessage) ||
-        isPregnancyActivationRequest(trimmedMessage));
+        isPregnancyActivationRequest(trimmedMessage) ||
+        pregnancyLmpFromConversation !== null);
 
     const directLugandaResponse =
       userLanguage === "lug" && !shouldActivatePregnancy
@@ -901,7 +955,7 @@ async function postChat(request: NextRequest) {
         trimmedMessage,
       ) && !/\b(ago|back|last week|update|backtrack)\b/i.test(trimmedMessage);
     const parsedStartDate =
-      userId && cycleData
+      userId && cycleData && !shouldActivatePregnancy
         ? derivePeriodStartDate(
             trimmedMessage,
             effectiveConversationHistory,
@@ -950,8 +1004,10 @@ async function postChat(request: NextRequest) {
       }
     }
 
-    if (userId && cycleData && shouldActivatePregnancy) {
-      const lastPeriodDate = new Date(cycleData.lastPeriodDate);
+    if (userId && shouldActivatePregnancy) {
+      const lastPeriodDate =
+        pregnancyLmpFromConversation ||
+        (cycleData ? new Date(cycleData.lastPeriodDate) : new Date("invalid"));
       const pregnancy = getPregnancyDetailsFromLmp(lastPeriodDate);
       const hasPlausibleRecordedLmp =
         !Number.isNaN(lastPeriodDate.getTime()) &&
@@ -968,6 +1024,18 @@ async function postChat(request: NextRequest) {
             weeksPregnant: pregnancy.weeksPregnant,
             trimester: pregnancy.trimester,
           });
+          await pausePeriodReminders(userId);
+          if (!userProfile?.pregnancyData?.isPregnant) {
+            const checkIn = new Date();
+            checkIn.setDate(checkIn.getDate() + 7);
+            await createReminder(userId, {
+              userId,
+              type: "check_in",
+              title: "Pregnancy check-in",
+              message: "How are you feeling? Take a moment to review your pregnancy support and antenatal plan.",
+              scheduledFor: checkIn,
+            });
+          }
           await logAgentEvent({
             userId,
             type: "pregnancy_updated",
@@ -994,7 +1062,7 @@ async function postChat(request: NextRequest) {
             source: "agent_action",
             type: "agent",
             toolsUsed: ["get_system_overview", "update_pregnancy_status"],
-            actions: ["Updated pregnancy status from recorded cycle data"],
+            actions: ["Updated pregnancy status", "Scheduled pregnancy check-in"],
             triage,
             actionStatuses: [
               ...actionStatuses,

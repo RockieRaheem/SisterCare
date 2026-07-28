@@ -91,6 +91,44 @@ interface ChatApiResponse {
 const CHAT_LANGUAGE_OPTIONS: SupportedLanguageCode[] = ["eng", "lug"];
 const MAX_MESSAGE_LENGTH = 2000;
 
+function parseConversation(payload: Record<string, unknown>): ChatConversation {
+  return {
+    id: String(payload.id || ""),
+    userId: String(payload.userId || ""),
+    title: String(payload.title || "New Chat"),
+    type: payload.type === "counsellor" ? "counsellor" : "ai_support",
+    status: String(payload.status || "active"),
+    lastMessage: String(payload.lastMessage || ""),
+    messageCount: Number(payload.messageCount || 0),
+    createdAt: new Date(String(payload.createdAt || Date.now())),
+    updatedAt: new Date(String(payload.updatedAt || Date.now())),
+  } as ChatConversation;
+}
+
+async function conversationRequest<T>(
+  path: string,
+  init: RequestInit = {},
+): Promise<T> {
+  const token = await auth.currentUser?.getIdToken().catch(() => null);
+  const response = await fetch(path, {
+    ...init,
+    headers: {
+      ...(init.body ? { "Content-Type": "application/json" } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...init.headers,
+    },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(
+      typeof payload?.error === "string"
+        ? payload.error
+        : "Conversation storage request failed",
+    );
+  }
+  return payload as T;
+}
+
 function StreamedText({
   text,
   animate,
@@ -286,20 +324,27 @@ export default function ChatPage() {
     setMessages([]);
     setFreshChatId(localConv.id);
 
-    // Try to also create in Firestore for multi-device sync
+    // Create the canonical thread through the authenticated server API. The
+    // browser copy is only a short-lived offline cache and is intentionally
+    // purged at sign-out.
     try {
-      const firestoreId = await createNewChat(user.uid, "New Chat");
-      // Link local ID to Firestore ID
-      const updated = { ...localConv, id: firestoreId, title: "New Chat" };
+      const response = await conversationRequest<{
+        conversation: Record<string, unknown>;
+      }>("/api/conversations", {
+        method: "POST",
+        body: JSON.stringify({ title: "New Chat" }),
+      });
+      const updated = parseConversation(response.conversation);
       migrateLocalConversationId(localConv.id, updated);
       setConversations((prev) =>
         prev.map((c) => (c.id === localConv.id ? updated : c)),
       );
-      setActiveConversationId(firestoreId);
-      setFreshChatId(firestoreId);
-      return firestoreId;
+      setActiveConversationId(updated.id);
+      setFreshChatId(updated.id);
+      return updated.id;
     } catch {
-      // Local-only is fine
+      // Keep the local thread for a temporary offline session, but do not
+      // mistake it for durable cross-session history.
       return localConv.id;
     }
   }, [user]);
@@ -512,7 +557,15 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const key = `sistercare-chat-draft-${activeConversationId || "global"}`;
+    // A blank new chat never inherits a global draft. Drafts belong only to a
+    // concrete, selected conversation; otherwise text from one thread can
+    // appear when the user intentionally starts another.
+    if (!activeConversationId) {
+      setInputValue("");
+      if (inputRef.current) inputRef.current.style.height = "auto";
+      return;
+    }
+    const key = `sistercare-chat-draft-${activeConversationId}`;
     const existingDraft = window.localStorage.getItem(key) || "";
     setInputValue(existingDraft);
     if (inputRef.current) {
@@ -524,8 +577,8 @@ export default function ChatPage() {
   }, [activeConversationId]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const key = `sistercare-chat-draft-${activeConversationId || "global"}`;
+    if (typeof window === "undefined" || !activeConversationId) return;
+    const key = `sistercare-chat-draft-${activeConversationId}`;
     window.localStorage.setItem(key, inputValue);
   }, [activeConversationId, inputValue]);
 
@@ -591,16 +644,19 @@ export default function ChatPage() {
         setMessages(cleaned);
       }
 
-      // Try loading from Firestore for fresh data
+      // The server route is the durable transcript source. Local storage is
+      // deliberately a fallback because it is cleared on sign-out.
       try {
-        const firestoreMessages = await getMessages(conversationId);
-        const firestoreCleaned = firestoreMessages
-          .filter((msg) => !isLikelyUiMarkup(msg.content))
+        const response = await conversationRequest<{
+          messages: Array<Record<string, unknown>>;
+        }>(`/api/conversations/${encodeURIComponent(conversationId)}`);
+        const firestoreCleaned = response.messages
+          .filter((msg) => !isLikelyUiMarkup(String(msg.content)))
           .map((msg) => ({
-            id: msg.id,
+            id: String(msg.id),
             sender: (msg.sender === "user" ? "user" : "sister") as Message["sender"],
-            text: msg.content,
-            timestamp: msg.timestamp,
+            text: String(msg.content),
+            timestamp: new Date(String(msg.timestamp)),
           }));
         if (firestoreCleaned.length > 0) {
           setMessages(firestoreCleaned);
@@ -667,10 +723,14 @@ export default function ChatPage() {
       } catch {}
     } catch {}
 
-    // Try Firestore
+    // Read the server-owned index so chats survive logging out, changing
+    // browsers, and clearing this device's private cache.
     let firestoreConvs: ChatConversation[] = [];
     try {
-      firestoreConvs = await getUserConversations(user.uid);
+      const response = await conversationRequest<{
+        conversations: Array<Record<string, unknown>>;
+      }>("/api/conversations");
+      firestoreConvs = response.conversations.map(parseConversation);
       const cleanFirestore = firestoreConvs.filter(
         (c) => !isLikelyDummyConversation(c),
       );
@@ -778,9 +838,15 @@ export default function ChatPage() {
         // Always update locally
         updateLocalConversationTitle(conversationId, editTitleValue.trim());
 
-        // Try Firestore sync
+        // Update the durable server copy.
         try {
-          await updateConversationTitle(conversationId, editTitleValue.trim());
+          await conversationRequest(
+            `/api/conversations/${encodeURIComponent(conversationId)}`,
+            {
+              method: "PATCH",
+              body: JSON.stringify({ title: editTitleValue.trim() }),
+            },
+          );
         } catch {}
 
         setConversations((prev) =>
@@ -848,11 +914,16 @@ export default function ChatPage() {
         ),
       );
 
-      // Persist title update locally + Firestore if it was the default
+      // Persist title update locally + server if it was the default
       const currentConv = conversationsRef.current.find((c) => c.id === currentConversationId);
       if (currentConv && ["New Chat", "New Conversation", "Untitled"].includes(currentConv.title)) {
         updateLocalConversationTitle(currentConversationId, generatedTitle);
-        try { await updateConversationTitle(currentConversationId, generatedTitle); } catch {}
+        try {
+          await conversationRequest(
+            `/api/conversations/${encodeURIComponent(currentConversationId)}`,
+            { method: "PATCH", body: JSON.stringify({ title: generatedTitle }) },
+          );
+        } catch {}
       }
       setInputValue("");
       if (typeof window !== "undefined") {
@@ -872,14 +943,13 @@ export default function ChatPage() {
         read: true,
       });
 
-      // Try Firestore for user message
+      // Persist the user turn through the authenticated server route. This is
+      // what gives the agent durable memory across sessions and devices.
       try {
-        await addMessage(currentConversationId, {
-          conversationId: currentConversationId,
-          sender: "user",
-          content: text.trim(),
-        });
-        await updateConversationPreview(currentConversationId, text.trim());
+        await conversationRequest(
+          `/api/conversations/${encodeURIComponent(currentConversationId)}`,
+          { method: "POST", body: JSON.stringify({ sender: "user", content: text.trim() }) },
+        );
       } catch {}
 
       try {
@@ -1016,14 +1086,13 @@ export default function ChatPage() {
 
           touchLocalConversation(currentConversationId, data.response);
 
-          // Try Firestore for AI response
+          // Persist the assistant turn through the same server-owned
+          // transcript, rather than silently losing it with browser storage.
           try {
-            await addMessage(currentConversationId, {
-              conversationId: currentConversationId,
-              sender: "ai",
-              content: data.response,
-            });
-            await updateConversationPreview(currentConversationId, data.response);
+            await conversationRequest(
+              `/api/conversations/${encodeURIComponent(currentConversationId)}`,
+              { method: "POST", body: JSON.stringify({ sender: "ai", content: data.response }) },
+            );
           } catch {}
 
           setConversations((prev) =>

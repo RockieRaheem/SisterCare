@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { FieldValue } from "firebase-admin/firestore";
 import {
   authenticateRequest,
   getAdminDb,
@@ -13,6 +14,100 @@ function unavailable() {
     },
     { status: 503 },
   );
+}
+
+function serializeMessage(id: string, data: Record<string, unknown>) {
+  const timestamp = data.timestamp;
+  const date =
+    timestamp && typeof timestamp === "object" && "toDate" in timestamp
+      ? (timestamp as { toDate: () => Date }).toDate()
+      : new Date();
+  return {
+    id,
+    conversationId: String(data.conversationId || ""),
+    sender: data.sender === "user" ? "user" : "ai",
+    content: String(data.content || ""),
+    timestamp: date.toISOString(),
+    read: Boolean(data.read),
+  };
+}
+
+async function authorizedConversation(
+  request: NextRequest,
+  context: { params: Promise<{ conversationId: string }> },
+) {
+  if (!isAuthEnforced()) return { error: unavailable() };
+  const auth = await authenticateRequest(request);
+  if (auth.status !== "verified") {
+    return { error: NextResponse.json({ error: "Authentication required" }, { status: 401 }) };
+  }
+  const { conversationId } = await context.params;
+  const db = getAdminDb();
+  if (!db || !conversationId || conversationId.startsWith("local-")) {
+    return { error: unavailable() };
+  }
+  const ref = db.collection("conversations").doc(conversationId);
+  const conversation = await ref.get();
+  if (!conversation.exists) {
+    return { error: NextResponse.json({ error: "Conversation not found" }, { status: 404 }) };
+  }
+  if (conversation.data()?.userId !== auth.uid) {
+    return { error: NextResponse.json({ error: "Not authorized" }, { status: 403 }) };
+  }
+  return { auth, db, conversationId, ref, conversation };
+}
+
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ conversationId: string }> },
+) {
+  const result = await authorizedConversation(request, context);
+  if ("error" in result) return result.error;
+  const messages = await result.ref.collection("messages").orderBy("timestamp", "asc").limit(200).get();
+  return NextResponse.json({
+    messages: messages.docs.map((document) => serializeMessage(document.id, document.data())),
+  });
+}
+
+export async function POST(
+  request: NextRequest,
+  context: { params: Promise<{ conversationId: string }> },
+) {
+  const result = await authorizedConversation(request, context);
+  if ("error" in result) return result.error;
+  const body = await request.json().catch(() => ({}));
+  const sender = body.sender === "user" ? "user" : body.sender === "ai" ? "ai" : null;
+  const content = typeof body.content === "string" ? body.content.trim() : "";
+  if (!sender || !content || content.length > 8000) {
+    return NextResponse.json({ error: "Invalid message" }, { status: 400 });
+  }
+  const now = new Date();
+  const message = await result.ref.collection("messages").add({
+    conversationId: result.conversationId,
+    sender,
+    content,
+    timestamp: now,
+    read: sender === "ai",
+  });
+  await result.ref.update({
+    lastMessage: content.slice(0, 100),
+    messageCount: FieldValue.increment(1),
+    updatedAt: now,
+  });
+  return NextResponse.json({ message: serializeMessage(message.id, (await message.get()).data() || {}) }, { status: 201 });
+}
+
+export async function PATCH(
+  request: NextRequest,
+  context: { params: Promise<{ conversationId: string }> },
+) {
+  const result = await authorizedConversation(request, context);
+  if ("error" in result) return result.error;
+  const body = await request.json().catch(() => ({}));
+  const title = typeof body.title === "string" ? body.title.trim().slice(0, 80) : "";
+  if (!title) return NextResponse.json({ error: "Invalid title" }, { status: 400 });
+  await result.ref.update({ title, updatedAt: new Date() });
+  return NextResponse.json({ success: true });
 }
 
 /**

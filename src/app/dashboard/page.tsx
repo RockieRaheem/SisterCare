@@ -330,6 +330,66 @@ export default function DashboardPage() {
 
   // Date formatting based on language
   const dateLocale = language === "lg" ? "en-US" : "en-US"; // Luganda uses English date names for now
+  const pregnancy = profile?.pregnancyData;
+
+  // Pregnancy is a distinct tracking mode. Do not leave period countdowns or
+  // late-period prompts visible once pregnancy support has been confirmed.
+  if (pregnancy?.isPregnant) {
+    const dueDate = pregnancy.estimatedDueDate;
+    const weeks = pregnancy.weeksPregnant;
+    const trimester = pregnancy.trimester;
+    return (
+      <div className="app-page flex min-h-screen flex-col">
+        <Header variant="app" />
+        <main className="main-content page-container flex-1 py-5 sm:py-8">
+          <div className="mb-7 flex flex-col gap-2 sm:mb-9">
+            <span className="eyebrow">Pregnancy support</span>
+            <h1 className="page-title text-3xl dark:text-white sm:text-4xl">
+              Your pregnancy journey, {displayName}
+            </h1>
+            <p className="max-w-2xl text-text-secondary dark:text-gray-300">
+              Your dashboard is now tailored for pregnancy support. Period tracking and period reminders are paused.
+            </p>
+          </div>
+
+          <div className="grid gap-5 lg:grid-cols-3 lg:gap-7">
+            <Card padding="lg" className="relative overflow-hidden border-primary/15 bg-white dark:bg-card-dark lg:col-span-2">
+              <span className="mb-4 inline-flex rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
+                {trimester ? `${trimester[0].toUpperCase()}${trimester.slice(1)} trimester` : "Pregnancy support active"}
+              </span>
+              <h2 className="text-2xl font-bold text-text-primary dark:text-white">
+                {typeof weeks === "number" ? `${weeks} weeks pregnant` : "Your pregnancy support is ready"}
+              </h2>
+              <p className="mt-3 max-w-xl text-text-secondary dark:text-gray-300">
+                Keep up with antenatal care, rest, hydration, and any changes in how you feel. SisterCare will use pregnancy-aware guidance from here.
+              </p>
+              {dueDate && (
+                <div className="mt-6 rounded-2xl border border-primary/15 bg-primary/5 p-4">
+                  <p className="text-sm font-medium text-text-secondary dark:text-gray-300">Estimated due date</p>
+                  <p className="mt-1 text-lg font-bold text-primary">
+                    {dueDate.toLocaleDateString(dateLocale, { month: "long", day: "numeric", year: "numeric" })}
+                  </p>
+                </div>
+              )}
+            </Card>
+
+            <Card className="border-primary/10 bg-white dark:bg-card-dark">
+              <h2 className="text-lg font-bold text-text-primary dark:text-white">Next steps</h2>
+              <ul className="mt-4 space-y-3 text-sm text-text-secondary dark:text-gray-300">
+                <li>Arrange or continue antenatal care.</li>
+                <li>Use chat to log symptoms or ask pregnancy questions.</li>
+                <li>Seek urgent care for severe pain, heavy bleeding, or worrying symptoms.</li>
+              </ul>
+              <Link href="/chat" className="mt-6 block">
+                <Button fullWidth icon="chat_bubble">Talk to Sister</Button>
+              </Link>
+            </Card>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="app-page flex min-h-screen flex-col">
