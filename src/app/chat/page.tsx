@@ -610,10 +610,13 @@ export default function ChatPage() {
   const openConversationFromSidebar = useCallback(
     async (conversationId: string) => {
       if (!conversationId) return;
-      if (conversationId === activeConversationId) return;
+      // A previous Firestore/local-storage read can fail transiently. Allow a
+      // tap on the active but empty conversation to retry instead of trapping
+      // the user in a blank chat view.
+      if (conversationId === activeConversationId && messages.length > 0) return;
       await loadConversation(conversationId);
     },
-    [activeConversationId, loadConversation],
+    [activeConversationId, loadConversation, messages.length],
   );
 
   const loadConversations = useCallback(async () => {

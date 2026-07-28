@@ -38,14 +38,14 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 md:hidden px-2 pb-2"
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-border-light/80 bg-white/95 md:hidden dark:border-border-dark dark:bg-card-dark/95"
       aria-label={t.nav.home}
       role="navigation"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
-      <div className="mx-auto max-w-md overflow-hidden rounded-[22px] border border-border-light/80 bg-white/92 shadow-[0_-8px_30px_rgba(35,27,45,0.12)] backdrop-blur-xl dark:border-border-dark dark:bg-card-dark/92">
+      <div className="mx-auto max-w-md backdrop-blur-xl">
         <div
-          className="flex h-[64px] items-center justify-around px-2"
+          className="flex h-[64px] items-center justify-around px-1"
           role="menubar"
         >
           {navItems.map((item) => {
@@ -73,21 +73,21 @@ export default function BottomNav() {
                 aria-current={isActive ? "page" : undefined}
                 aria-label={`${label}${isActive ? " (current page)" : ""}`}
                 className={`
-                  relative flex flex-col items-center justify-center 
-                  flex-1 h-[56px] py-1.5 px-1
+                  relative flex flex-col items-center justify-center
+                  flex-1 h-[60px] py-1.5 px-1
                   transition-all duration-200 ease-out
                   touch-target focus-ring rounded-xl
                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2
                   ${
                     isActive
-                      ? "text-primary bg-primary/[0.07]"
+                      ? "text-primary"
                       : "text-text-secondary dark:text-gray-400 active:text-primary"
                   }
                 `}
               >
                 {/* Active indicator */}
                 {isActive && (
-                  <span className="absolute top-0 h-0.5 w-7 rounded-full bg-primary" aria-hidden="true" />
+                  <span className="absolute top-0 h-0.5 w-8 rounded-full bg-primary" aria-hidden="true" />
                 )}
 
                 <span
