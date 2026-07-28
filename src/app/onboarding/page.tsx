@@ -29,8 +29,7 @@ export default function OnboardingPage() {
   const [periodLength, setPeriodLength] = useState(5);
   const [reminderDays, setReminderDays] = useState(3);
 
-  // Track if user wants to skip onboarding
-  const [skipped, setSkipped] = useState(false);
+  const [skipping, setSkipping] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -44,10 +43,24 @@ export default function OnboardingPage() {
     }
   }, [user, loading, userProfile, router]);
 
-  // Handle skip for now - works even without Firestore
-  const handleSkip = () => {
-    setSkipped(true);
-    router.push("/dashboard");
+  // Skipping is a valid completed state: users can add cycle details later.
+  // Persist it so route guards and future sessions do not force onboarding.
+  const handleSkip = async () => {
+    if (skipping) return;
+    setSkipping(true);
+    setError("");
+    try {
+      if (user) {
+        await updateUserProfile(user.uid, { onboardingCompleted: true });
+        await refreshProfile();
+      }
+    } catch (skipError) {
+      console.warn("Could not persist skipped onboarding:", skipError);
+      // Navigation remains available when a temporary network issue prevents
+      // persistence; the user can return and complete onboarding later.
+    } finally {
+      router.replace("/dashboard");
+    }
   };
 
   const steps: OnboardingStep[] = [
@@ -160,9 +173,10 @@ export default function OnboardingPage() {
             {currentStep !== "complete" && (
               <button
                 onClick={handleSkip}
+                disabled={skipping}
                 className="touch-target rounded-xl px-3 text-xs font-semibold text-text-secondary transition-colors hover:bg-primary/5 hover:text-primary sm:text-sm"
               >
-                Skip for now
+                {skipping ? "Skipping…" : "Skip for now"}
               </button>
             )}
           </header>
