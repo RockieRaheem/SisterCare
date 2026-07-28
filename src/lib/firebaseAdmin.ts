@@ -22,6 +22,7 @@ import {
 } from "firebase-admin/app";
 import { getAuth, type DecodedIdToken } from "firebase-admin/auth";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
+import { getStorage } from "firebase-admin/storage";
 
 let adminApp: App | null = null;
 let warnedUnconfigured = false;
@@ -111,6 +112,13 @@ export function isAuthEnforced(): boolean {
 export function getAdminDb(): Firestore | null {
   const app = getAdminApp();
   return app ? getFirestore(app) : null;
+}
+
+/** Private Storage bucket for server-authorized KYC document access. */
+export function getAdminStorageBucket() {
+  const app = getAdminApp();
+  const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+  return app && bucketName ? getStorage(app).bucket(bucketName) : null;
 }
 
 export type AuthResult =

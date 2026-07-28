@@ -35,7 +35,8 @@ export async function POST(request: NextRequest) {
     ? body.documentReferences.map((item: unknown) => text(item, 500)).filter(Boolean).slice(0, 5)
     : [];
   const credentialExpiresAt = new Date(text(body.credentialExpiresAt, 40));
-  if (!name || !title || !bio || !legalName || !registrationNumber || !credentialType || !phoneNumber || !photoURL || !/^https:\/\//i.test(photoURL) || !languages.length || !specializations.length || !documentReferences.length || Number.isNaN(credentialExpiresAt.getTime()) || credentialExpiresAt <= new Date()) {
+  const isOwnedKycDocument = (path: string) => new RegExp(`^counsellor-kyc/${auth.uid.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/[^/]+$`).test(path);
+  if (!name || !title || !bio || !legalName || !registrationNumber || !credentialType || !phoneNumber || !photoURL || !/^https:\/\//i.test(photoURL) || !languages.length || !specializations.length || !documentReferences.length || !documentReferences.every(isOwnedKycDocument) || Number.isNaN(credentialExpiresAt.getTime()) || credentialExpiresAt <= new Date()) {
     return NextResponse.json({ success: false, error: "Complete all profile, credential and KYC document fields with a future credential expiry." }, { status: 400 });
   }
   const db = getAdminDb()!;

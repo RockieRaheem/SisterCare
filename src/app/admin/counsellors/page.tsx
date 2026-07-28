@@ -100,6 +100,16 @@ export default function CounsellorOperationsPage() {
     }
   };
 
+  const openDocument = async (applicationId: string, index: number) => {
+    setError("");
+    try {
+      const response = await authorizedFetch(`/api/admin/counsellors/${applicationId}/documents?index=${index}`);
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Could not open the private document");
+      window.open(result.data.url, "_blank", "noopener,noreferrer");
+    } catch (documentError) { setError(documentError instanceof Error ? documentError.message : "Could not open the private document"); }
+  };
+
   const save = async (record: OperationsRecord) => {
     setSaving(record.id);
     setError("");
@@ -144,7 +154,7 @@ export default function CounsellorOperationsPage() {
                   <p className="text-sm text-gray-600 dark:text-gray-300">{application.title} · {application.credentialType}</p>
                   <p className="mt-2 text-xs text-gray-600 dark:text-gray-300">Legal name: {application.legalName} · Registration: {application.registrationNumber}</p>
                   <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">Credential expiry: {application.credentialExpiresAt?.slice(0, 10) || "Not supplied"}</p>
-                  <div className="mt-3 flex flex-wrap gap-2">{application.documentReferences.map((reference) => <a key={reference} href={reference} target="_blank" rel="noreferrer" className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-primary">Review document</a>)}</div>
+                  <div className="mt-3 flex flex-wrap gap-2">{application.documentReferences.map((reference, index) => <button key={reference} type="button" onClick={() => openDocument(application.id, index)} className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-primary">Open private document {index + 1}</button>)}</div>
                   <div className="mt-4 flex gap-2"><button onClick={() => review(application, "approve")} disabled={saving === application.id} className="rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Approve KYC</button><button onClick={() => review(application, "reject")} disabled={saving === application.id} className="rounded-xl border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 disabled:opacity-50">Decline</button></div>
                 </article>
               ))}
