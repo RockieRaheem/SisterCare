@@ -33,6 +33,7 @@ import { createSessionRequest } from "@/lib/server/sessions";
 import { emitEvent } from "@/lib/server/events";
 import { withApiObservability } from "@/lib/observability";
 import { getClinicalRuntimeIssues } from "@/lib/clinicalGovernance";
+import { enforceChatRateLimit } from "@/lib/server/rateLimit";
 import { hasConfiguredAgentProvider } from "@/lib/agent/modelRouter";
 import {
   assertCompleteResponse,
@@ -741,6 +742,12 @@ async function postChat(request: NextRequest) {
       conversationId,
       userLanguage: clientLanguage,
     } = preflight.request;
+    if (auth.status === "verified" && userId) {
+      const quota = await enforceChatRateLimit(userId, request.headers.get("x-forwarded-for"));
+      if (!quota.allowed) {
+        return NextResponse.json({ error: "Please wait a moment before sending another message.", code: "RATE_LIMITED", retryAfter: quota.retryAfterSeconds }, { status: 429, headers: { "Retry-After": String(quota.retryAfterSeconds) } });
+      }
+    }
     let cycleData = clientCycleData;
     let userProfile = clientUserProfile;
     let effectiveConversationHistory = conversationHistory;
