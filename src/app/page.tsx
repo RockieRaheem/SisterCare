@@ -18,31 +18,23 @@ const LANGUAGES = [
 const FEATURES = [
   {
     icon: "calendar_month",
-    title: "Smart Cycle Tracking",
+    title: "Cycle tracking",
     text: "Know exactly when your period is coming — even offline. Sister learns your rhythm and reminds you before it matters.",
-    tint: "bg-primary/10 text-primary",
-    ring: "group-hover:ring-primary/30",
   },
   {
     icon: "chat_bubble",
-    title: "Sister, Your AI Companion",
+    title: "A place to talk",
     text: "Someone to talk to at 2am who never judges. Share anything — Sister listens, remembers, and truly helps.",
-    tint: "bg-pink-100 text-pink-500 dark:bg-pink-900/30",
-    ring: "group-hover:ring-pink-300/40",
   },
   {
     icon: "psychology",
-    title: "Mental Wellness",
+    title: "Wellbeing tools",
     text: "Track your moods, understand your patterns, and get gentle support on the hardest days. You are not alone.",
-    tint: "bg-blue-100 text-blue-500 dark:bg-blue-900/30",
-    ring: "group-hover:ring-blue-300/40",
   },
   {
     icon: "support_agent",
-    title: "Real Human Counsellors",
+    title: "Counsellor support",
     text: "When you need a person, Sister connects you to a verified counsellor — privately, in the app, in your language.",
-    tint: "bg-emerald-100 text-emerald-500 dark:bg-emerald-900/30",
-    ring: "group-hover:ring-emerald-300/40",
   },
 ];
 
@@ -66,23 +58,16 @@ const STEPS = [
 
 export default function Home() {
   return (
-    <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-white dark:bg-background-dark">
+    <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-background-light dark:bg-background-dark">
       <Header variant="landing" />
 
       <main className="flex-1">
         {/* ============ HERO ============ */}
         <section
           id="mission"
-          className="relative scroll-mt-20 overflow-hidden pt-safe"
+          className="scroll-mt-20 border-b border-border-light pt-safe dark:border-border-dark"
         >
-          {/* Ambient background */}
-          <div className="pointer-events-none absolute inset-0">
-            <div className="absolute inset-0 bg-gradient-to-b from-purple-50/70 via-white to-white dark:from-purple-950/30 dark:via-background-dark dark:to-background-dark" />
-            <div className="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
-            <div className="absolute top-64 -left-40 h-80 w-80 rounded-full bg-pink-200/30 blur-3xl dark:bg-pink-900/20" />
-          </div>
-
-          <div className="relative mx-auto grid max-w-container items-center gap-12 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-2 lg:gap-8 lg:px-20 lg:py-24">
+          <div className="mx-auto grid max-w-container items-center gap-10 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-[1.05fr_.95fr] lg:gap-16 lg:px-20 lg:py-28">
             {/* Narrative */}
             <div className="text-center lg:text-left">
               <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-xs font-semibold text-primary dark:bg-primary/10">
@@ -92,11 +77,8 @@ export default function Home() {
                 Built for Uganda · multilingual · private by design
               </span>
 
-              <h1 className="mb-6 text-4xl font-extrabold leading-[1.1] tracking-tight text-text-primary dark:text-white sm:text-5xl lg:text-6xl">
-                Breaking the{" "}
-                <span className="bg-gradient-to-r from-primary to-pink-500 bg-clip-text text-transparent">
-                  Silence
-                </span>
+              <h1 className="page-title mb-6 dark:text-white">
+                Support for every part of your health.
               </h1>
 
               <p className="mx-auto mb-8 max-w-xl text-lg leading-relaxed text-text-secondary dark:text-gray-400 sm:text-xl lg:mx-0">
@@ -106,10 +88,10 @@ export default function Home() {
                 counsellors the moment you need one.
               </p>
 
-              <div className="mb-10 flex flex-col justify-center gap-4 sm:flex-row lg:justify-start">
+              <div className="mb-10 flex flex-col justify-center gap-3 sm:flex-row lg:justify-start">
                 <Link
                   href="/auth/signup"
-                  className="touch-target inline-flex h-14 items-center justify-center gap-2 rounded-full bg-primary px-8 font-semibold text-white shadow-primary-lg transition-all hover:-translate-y-0.5 hover:bg-primary-dark"
+                  className="touch-target inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-6 font-semibold text-white shadow-primary-sm transition-colors hover:bg-primary-dark"
                 >
                   Create your account
                   <span className="material-symbols-outlined text-xl">
@@ -118,7 +100,7 @@ export default function Home() {
                 </Link>
                 <Link
                   href="/auth/login"
-                  className="touch-target inline-flex h-14 items-center justify-center gap-2 rounded-full border border-border-light bg-white px-8 font-semibold text-text-primary transition-colors hover:bg-gray-50 dark:border-border-dark dark:bg-card-dark dark:text-white dark:hover:bg-gray-800"
+                  className="touch-target inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-border-light bg-white px-6 font-semibold text-text-primary transition-colors hover:border-primary/30 hover:text-primary dark:border-border-dark dark:bg-card-dark dark:text-white"
                 >
                   Sign In
                 </Link>
@@ -139,11 +121,11 @@ export default function Home() {
             </div>
 
             {/* Product visualization — pure CSS chat mockup */}
-            <div className="relative mx-auto w-full max-w-md animate-fade-in-up lg:mx-0 lg:ml-auto">
-              <div className="relative rounded-4xl border border-border-light bg-white p-5 shadow-soft-lg dark:border-border-dark dark:bg-card-dark">
+            <div className="relative mx-auto w-full max-w-md lg:mx-0 lg:ml-auto">
+              <div className="relative rounded-2xl border border-border-light bg-white p-5 shadow-soft-lg dark:border-border-dark dark:bg-card-dark">
                 {/* Mock header */}
                 <div className="mb-4 flex items-center gap-3 border-b border-border-light pb-4 dark:border-border-dark">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-pink-500 text-lg text-white">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-lg text-white">
                     💜
                   </div>
                   <div>
@@ -171,7 +153,7 @@ export default function Home() {
                     or shall I check in with you tomorrow?
                   </div>
                   {/* Cycle insight card */}
-                  <div className="flex items-center gap-3 rounded-2xl border border-primary/15 bg-gradient-to-r from-primary/5 to-pink-50 p-3 dark:from-primary/10 dark:to-pink-950/20">
+                  <div className="flex items-center gap-3 rounded-xl border border-primary/15 bg-primary/5 p-3 dark:bg-primary/10">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10">
                       <span className="material-symbols-outlined text-lg text-primary">
                         calendar_month
@@ -190,13 +172,13 @@ export default function Home() {
               </div>
 
               {/* Floating language chips */}
-              <span className="absolute -left-3 top-10 hidden rotate-[-6deg] rounded-full border border-border-light bg-white px-3 py-1 text-xs font-semibold text-primary shadow-soft dark:border-border-dark dark:bg-card-dark sm:block">
+              <span className="hidden">
                 Luganda
               </span>
-              <span className="absolute -right-2 top-1/3 hidden rotate-[5deg] rounded-full border border-border-light bg-white px-3 py-1 text-xs font-semibold text-pink-500 shadow-soft dark:border-border-dark dark:bg-card-dark sm:block">
+              <span className="hidden">
                 Swahili
               </span>
-              <span className="absolute -bottom-3 left-10 hidden rotate-[-3deg] rounded-full border border-border-light bg-white px-3 py-1 text-xs font-semibold text-emerald-600 shadow-soft dark:border-border-dark dark:bg-card-dark sm:block">
+              <span className="hidden">
                 Acholi 🎙️
               </span>
             </div>
@@ -204,7 +186,7 @@ export default function Home() {
         </section>
 
         {/* ============ STAT BAND ============ */}
-        <section className="border-y border-border-light bg-gray-50/70 dark:border-border-dark dark:bg-gray-900/40">
+        <section className="border-b border-border-light bg-white dark:border-border-dark dark:bg-card-dark">
           <div className="mx-auto grid max-w-container grid-cols-2 gap-6 px-4 py-8 text-center sm:px-6 md:grid-cols-4 lg:px-20">
             {[
               ["8", "Ugandan languages"],
@@ -231,7 +213,7 @@ export default function Home() {
         >
           <div className="mx-auto max-w-container">
             <div className="mb-12 text-center lg:mb-16">
-              <h2 className="mb-4 text-3xl font-bold text-text-primary dark:text-white sm:text-4xl">
+              <h2 className="section-title mb-4 dark:text-white">
                 Three Pillars of Care
               </h2>
               <p className="mx-auto max-w-xl text-lg text-text-secondary dark:text-gray-400">
@@ -244,10 +226,10 @@ export default function Home() {
               {FEATURES.map((f) => (
                 <div
                   key={f.title}
-                  className={`group rounded-3xl border border-border-light bg-white p-6 shadow-soft ring-1 ring-transparent transition-all duration-200 hover:-translate-y-1 hover:shadow-soft-lg dark:border-border-dark dark:bg-card-dark ${f.ring}`}
+                  className="group rounded-2xl border border-border-light bg-white p-6 shadow-soft transition-shadow duration-200 hover:shadow-soft-lg dark:border-border-dark dark:bg-card-dark"
                 >
                   <div
-                    className={`mb-4 flex h-12 w-12 items-center justify-center rounded-2xl ${f.tint}`}
+                    className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary"
                   >
                     <span className="material-symbols-outlined text-2xl">
                       {f.icon}
@@ -266,14 +248,14 @@ export default function Home() {
         </section>
 
         {/* ============ VOICE & LANGUAGES ============ */}
-        <section className="bg-gray-50/70 px-4 py-16 dark:bg-gray-900/40 sm:px-6 sm:py-20 lg:px-20">
+        <section className="border-y border-border-light bg-white px-4 py-16 dark:border-border-dark dark:bg-card-dark sm:px-6 sm:py-20 lg:px-20">
           <div className="mx-auto grid max-w-container items-center gap-10 lg:grid-cols-2">
             <div>
-              <span className="mb-4 inline-flex items-center gap-2 rounded-full bg-pink-100 px-4 py-1.5 text-xs font-semibold text-pink-600 dark:bg-pink-900/30 dark:text-pink-300">
+              <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3 py-1.5 text-xs font-semibold text-primary dark:bg-primary/10">
                 <span className="material-symbols-outlined text-sm">mic</span>
                 Voice first
               </span>
-              <h2 className="mb-4 text-3xl font-bold text-text-primary dark:text-white sm:text-4xl">
+              <h2 className="section-title mb-4 dark:text-white">
                 Speak to Sister in{" "}
                 <span className="text-primary">your own language</span>
               </h2>
@@ -296,12 +278,12 @@ export default function Home() {
 
             {/* Voice visual */}
             <div className="mx-auto w-full max-w-sm">
-              <div className="rounded-4xl border border-border-light bg-white p-6 shadow-soft-lg dark:border-border-dark dark:bg-card-dark">
+              <div className="rounded-2xl border border-border-light bg-white p-6 shadow-soft-lg dark:border-border-dark dark:bg-card-dark">
                 <div className="mb-5 flex items-center justify-center gap-1">
                   {[10, 22, 14, 30, 18, 34, 12, 26, 16, 24, 10].map((h, i) => (
                     <span
                       key={i}
-                      className="w-1.5 rounded-full bg-gradient-to-t from-primary to-pink-400"
+                      className="w-1.5 rounded-full bg-primary/75"
                       style={{ height: `${h * 2}px` }}
                     />
                   ))}
@@ -328,11 +310,8 @@ export default function Home() {
           className="scroll-mt-20 px-4 py-16 sm:px-6 sm:py-20 lg:px-20 lg:py-24"
         >
           <div className="mx-auto max-w-container">
-            <div className="relative overflow-hidden rounded-4xl bg-gradient-to-br from-primary via-purple-600 to-indigo-700 p-8 text-center text-white sm:p-12 lg:p-16">
-              <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
-              <div className="pointer-events-none absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-pink-400/20 blur-3xl" />
-
-              <div className="relative">
+            <div className="rounded-2xl bg-primary p-8 text-center text-white sm:p-12 lg:p-16">
+              <div>
                 <span className="material-symbols-outlined mb-6 text-5xl opacity-90">
                   lock
                 </span>
@@ -353,7 +332,7 @@ export default function Home() {
                   ].map(([icon, label]) => (
                     <span
                       key={label}
-                      className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 backdrop-blur-sm"
+                      className="flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2"
                     >
                       <span className="material-symbols-outlined text-lg">
                         {icon}
@@ -368,10 +347,10 @@ export default function Home() {
         </section>
 
         {/* ============ HOW IT WORKS ============ */}
-        <section className="bg-gray-50/70 px-4 py-16 dark:bg-gray-900/40 sm:px-6 sm:py-20 lg:px-20 lg:py-24">
+        <section className="bg-background-light px-4 py-16 dark:bg-background-dark sm:px-6 sm:py-20 lg:px-20 lg:py-24">
           <div className="mx-auto max-w-content">
             <div className="mb-12 text-center">
-              <h2 className="mb-3 text-3xl font-bold text-text-primary dark:text-white sm:text-4xl">
+              <h2 className="section-title mb-3 dark:text-white">
                 Get Started in 3 Steps
               </h2>
               <p className="text-lg text-text-secondary dark:text-gray-400">
@@ -381,16 +360,16 @@ export default function Home() {
 
             <div className="relative space-y-8">
               {/* Connector line */}
-              <div className="absolute bottom-8 left-6 top-8 hidden w-px bg-gradient-to-b from-primary/40 via-primary/20 to-transparent sm:block" />
+              <div className="absolute bottom-8 left-6 top-8 hidden w-px bg-border-light sm:block dark:bg-border-dark" />
 
               {STEPS.map((step, i) => (
                 <div key={step.title} className="relative flex items-start gap-5">
-                  <div className="z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-primary shadow-soft ring-1 ring-primary/20 dark:bg-card-dark">
+                  <div className="z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-primary/15 bg-white text-primary shadow-soft dark:bg-card-dark">
                     <span className="material-symbols-outlined">
                       {step.icon}
                     </span>
                   </div>
-                  <div className="rounded-2xl border border-border-light bg-white p-5 shadow-soft dark:border-border-dark dark:bg-card-dark">
+                  <div className="rounded-xl border border-border-light bg-white p-5 shadow-soft dark:border-border-dark dark:bg-card-dark">
                     <p className="mb-1 text-2xs font-bold uppercase tracking-widest text-primary">
                       Step {i + 1}
                     </p>
@@ -409,7 +388,7 @@ export default function Home() {
 
         {/* ============ ALWAYS-THERE STRIP ============ */}
         <section className="px-4 py-10 sm:px-6 lg:px-20">
-          <div className="mx-auto flex max-w-content flex-col items-center gap-3 rounded-3xl border border-emerald-200 bg-emerald-50 p-6 text-center dark:border-emerald-800 dark:bg-emerald-900/20 sm:flex-row sm:text-left">
+          <div className="mx-auto flex max-w-content flex-col items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-6 text-center dark:border-emerald-800 dark:bg-emerald-900/20 sm:flex-row sm:text-left">
             <span className="material-symbols-outlined text-3xl text-emerald-600 dark:text-emerald-400">
               health_and_safety
             </span>
@@ -427,7 +406,7 @@ export default function Home() {
         {/* ============ FINAL CTA ============ */}
         <section className="safe-bottom px-4 py-16 sm:px-6 sm:py-20 lg:px-20 lg:py-24">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="mb-4 text-3xl font-bold text-text-primary dark:text-white sm:text-4xl">
+            <h2 className="section-title mb-4 dark:text-white">
               You Deserve Support
             </h2>
             <p className="mb-8 text-lg text-text-secondary dark:text-gray-400">
@@ -437,7 +416,7 @@ export default function Home() {
             <div className="flex flex-col justify-center gap-4 sm:flex-row">
               <Link
                 href="/auth/signup"
-                className="touch-target inline-flex h-14 items-center justify-center gap-2 rounded-full bg-primary px-8 font-semibold text-white shadow-primary-lg transition-all hover:-translate-y-0.5 hover:bg-primary-dark"
+                className="touch-target inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-6 font-semibold text-white shadow-primary-sm transition-colors hover:bg-primary-dark"
               >
                 Start Free
                 <span className="material-symbols-outlined text-xl">
@@ -446,7 +425,7 @@ export default function Home() {
               </Link>
               <Link
                 href="/counsellors"
-                className="touch-target inline-flex h-14 items-center justify-center gap-2 rounded-full border border-border-light bg-white px-8 font-semibold text-text-primary transition-colors hover:bg-gray-50 dark:border-border-dark dark:bg-card-dark dark:text-white dark:hover:bg-gray-800"
+                className="touch-target inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-border-light bg-white px-6 font-semibold text-text-primary transition-colors hover:border-primary/30 hover:text-primary dark:border-border-dark dark:bg-card-dark dark:text-white"
               >
                 <span className="material-symbols-outlined text-xl text-emerald-500">
                   support_agent

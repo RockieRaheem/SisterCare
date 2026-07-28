@@ -30,11 +30,11 @@ export default function Button({
   ...props
 }: ButtonProps) {
   const baseStyles =
-    "group inline-flex items-center justify-center whitespace-nowrap font-semibold rounded-[14px] transition-all duration-200 ease-out btn-press disabled:opacity-45 disabled:cursor-not-allowed disabled:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-[0.98]";
+    "group inline-flex items-center justify-center whitespace-nowrap rounded-lg font-semibold transition-colors duration-200 ease-out btn-press disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-[0.98]";
 
   const variantStyles = {
     primary:
-      "bg-primary text-white shadow-primary-sm hover:-translate-y-0.5 hover:bg-primary-dark hover:shadow-primary-lg",
+      "bg-primary text-white shadow-primary-sm hover:bg-primary-dark",
     secondary:
       "bg-white dark:bg-card-dark border border-border-light dark:border-border-dark text-text-primary dark:text-white shadow-soft hover:border-primary/30 hover:bg-primary/5",
     outline:

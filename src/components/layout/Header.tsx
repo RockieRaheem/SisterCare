@@ -101,7 +101,7 @@ export default function Header({ variant = "landing" }: HeaderProps) {
       <>
         {/* Mobile Header */}
         <header className="md:hidden sticky top-0 z-40 safe-top">
-          <div className="flex h-16 items-center justify-between border-b border-border-light/80 bg-white/88 px-4 shadow-[0_1px_0_rgba(35,27,45,0.02)] backdrop-blur-xl dark:border-border-dark dark:bg-card-dark/88">
+          <div className="flex h-16 items-center justify-between border-b border-border-light bg-white/95 px-4 shadow-[0_1px_0_rgba(35,27,45,0.02)] backdrop-blur dark:border-border-dark dark:bg-card-dark/95">
             {/* Logo */}
             <Link
               href="/dashboard"
@@ -163,7 +163,7 @@ export default function Header({ variant = "landing" }: HeaderProps) {
         </header>
 
         {/* Desktop Header */}
-        <header className="sticky top-0 z-40 hidden min-h-[72px] items-center justify-between whitespace-nowrap border-b border-border-light/80 bg-white/88 px-6 backdrop-blur-xl dark:border-border-dark dark:bg-card-dark/88 md:flex lg:px-10">
+        <header className="sticky top-0 z-40 hidden min-h-[72px] items-center justify-between whitespace-nowrap border-b border-border-light bg-white/95 px-6 backdrop-blur dark:border-border-dark dark:bg-card-dark/95 md:flex lg:px-10">
           <div className="flex items-center gap-8">
             <Link
               href="/dashboard"
@@ -185,7 +185,7 @@ export default function Header({ variant = "landing" }: HeaderProps) {
                   key={link.href}
                   href={link.href}
                   className={`
-                    flex items-center gap-2 px-3.5 py-2.5 rounded-[14px] text-sm font-semibold transition-all
+                    flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-sm font-semibold transition-colors
                     ${
                       isActive(link.href)
                         ? "bg-primary/[0.09] text-primary shadow-[inset_0_0_0_1px_rgba(109,53,212,0.08)]"
@@ -258,7 +258,7 @@ export default function Header({ variant = "landing" }: HeaderProps) {
                     }}
                   />
                 ) : (
-                  <div className="flex items-center justify-center rounded-full w-9 h-9 border-2 border-primary/20 bg-gradient-to-br from-primary to-purple-600 text-white text-sm font-bold">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-primary/20 bg-primary text-sm font-bold text-white">
                     {getInitials(
                       user?.displayName || null,
                       user?.email || null,
@@ -284,7 +284,7 @@ export default function Header({ variant = "landing" }: HeaderProps) {
   // Landing page header
   return (
     <>
-      <header className="safe-top sticky top-0 z-50 flex min-h-[68px] items-center justify-between border-b border-border-light/70 bg-white/82 px-4 backdrop-blur-xl dark:border-border-dark/70 dark:bg-background-dark/82 sm:px-6 lg:px-12 xl:px-20">
+      <header className="safe-top sticky top-0 z-50 flex min-h-[68px] items-center justify-between border-b border-border-light bg-white/95 px-4 backdrop-blur dark:border-border-dark dark:bg-background-dark/95 sm:px-6 lg:px-12 xl:px-20">
         <Link href="/" className="flex items-center gap-2 sm:gap-3">
           <div className="text-primary flex items-center justify-center">
             <span
@@ -334,13 +334,13 @@ export default function Header({ variant = "landing" }: HeaderProps) {
           <div className="hidden sm:flex gap-2">
             <Link
               href="/auth/login"
-              className="flex h-11 items-center justify-center rounded-[14px] border border-border-light bg-white px-5 text-sm font-semibold text-text-primary shadow-soft transition-all hover:border-primary/30 hover:text-primary dark:border-border-dark dark:bg-card-dark dark:text-white"
+              className="flex h-11 items-center justify-center rounded-lg border border-border-light bg-white px-5 text-sm font-semibold text-text-primary transition-colors hover:border-primary/30 hover:text-primary dark:border-border-dark dark:bg-card-dark dark:text-white"
             >
               Login
             </Link>
             <Link
               href="/auth/signup"
-              className="flex h-11 items-center justify-center rounded-[14px] bg-primary px-5 text-sm font-semibold text-white shadow-primary-sm transition-all hover:-translate-y-0.5 hover:bg-primary-dark hover:shadow-primary-lg"
+              className="flex h-11 items-center justify-center rounded-lg bg-primary px-5 text-sm font-semibold text-white shadow-primary-sm transition-colors hover:bg-primary-dark"
             >
               Get Started
             </Link>

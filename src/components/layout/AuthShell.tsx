@@ -17,9 +17,7 @@ export default function AuthShell({
   return (
     <div className="flex min-h-screen bg-background-light dark:bg-background-dark">
       {/* ===== Brand panel (desktop only) ===== */}
-      <aside className="relative hidden w-[44%] overflow-hidden bg-[linear-gradient(145deg,#5220ad_0%,#6d35d4_48%,#9c477c_120%)] lg:flex lg:flex-col lg:justify-between lg:p-12 xl:p-16">
-        <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-white/10 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-32 -left-20 h-96 w-96 rounded-full bg-pink-400/20 blur-3xl" />
+      <aside className="hidden w-[44%] bg-primary lg:flex lg:flex-col lg:justify-between lg:p-12 xl:p-16">
 
         <Link href="/" className="relative flex items-center gap-3 text-white">
           <span
@@ -32,7 +30,7 @@ export default function AuthShell({
         </Link>
 
         <div className="relative max-w-md">
-          <span className="mb-5 inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold text-white/90 backdrop-blur">
+          <span className="mb-5 inline-flex rounded-full border border-white/25 px-3 py-1 text-xs font-semibold text-white/90">
             Private, practical, human
           </span>
           <h2 className="mb-4 text-4xl font-extrabold leading-[1.08] text-white xl:text-5xl">
@@ -50,7 +48,7 @@ export default function AuthShell({
               ["support_agent", "Verified counsellors, one tap away"],
             ].map(([icon, text]) => (
               <div key={text} className="flex items-center gap-3 text-white/90">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15 backdrop-blur-sm">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15">
                   <span className="material-symbols-outlined text-lg">
                     {icon}
                   </span>
@@ -67,7 +65,7 @@ export default function AuthShell({
       </aside>
 
       {/* ===== Form panel ===== */}
-      <main className="flex flex-1 flex-col">
+      <main className="flex flex-1 flex-col bg-background-light dark:bg-background-dark">
         {/* Mobile header */}
         <div className="safe-top flex items-center justify-center py-6 lg:hidden">
           <Link href="/" className="flex items-center gap-2 text-primary">
@@ -86,7 +84,7 @@ export default function AuthShell({
         <div className="flex flex-1 items-start justify-center px-4 py-5 sm:items-center sm:px-8 sm:py-10">
           <div className="w-full max-w-[440px]">
             {/* Login / signup toggle */}
-            <div className="mb-6 flex rounded-[16px] border border-border-light bg-white p-1 shadow-soft dark:border-border-dark dark:bg-card-dark">
+            <div className="mb-6 flex rounded-xl border border-border-light bg-white p-1 shadow-soft dark:border-border-dark dark:bg-card-dark">
               {(
                 [
                   ["login", "Sign In", "/auth/login"],

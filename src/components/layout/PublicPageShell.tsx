@@ -13,7 +13,7 @@ export default function PublicPageShell({
 }) {
   return (
     <div className="app-page">
-      <header className="safe-top sticky top-0 z-40 border-b border-border-light/70 bg-white/86 backdrop-blur-xl dark:border-border-dark dark:bg-card-dark/86">
+      <header className="safe-top sticky top-0 z-40 border-b border-border-light bg-white/95 backdrop-blur dark:border-border-dark dark:bg-card-dark/95">
         <div className="page-container flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5 text-primary">
             <span
@@ -39,10 +39,10 @@ export default function PublicPageShell({
       </header>
 
       <main className="safe-bottom">
-        <section className="border-b border-border-light/70 bg-gradient-to-b from-primary/[0.07] to-transparent dark:border-border-dark">
+        <section className="border-b border-border-light bg-background-light dark:border-border-dark dark:bg-background-dark">
           <div className="page-container py-12 sm:py-16">
             <span className="eyebrow">{eyebrow}</span>
-            <h1 className="mt-3 max-w-3xl text-4xl font-extrabold leading-tight text-text-primary dark:text-white sm:text-5xl">
+            <h1 className="page-title mt-3 max-w-3xl dark:text-white">
               {title}
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-7 text-text-secondary dark:text-gray-300 sm:text-lg">

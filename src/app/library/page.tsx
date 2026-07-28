@@ -233,7 +233,7 @@ export default function LibraryPage() {
           {/* Page Heading */}
           <div className="flex flex-col gap-1.5 sm:gap-2">
             <span className="eyebrow">Learn at your pace</span>
-            <h1 className="text-3xl font-extrabold leading-tight text-text-primary dark:text-white sm:text-4xl">
+            <h1 className="page-title text-3xl dark:text-white sm:text-4xl">
               Health & Wellness Library
             </h1>
             <p className="text-text-secondary text-xs xs:text-sm sm:text-base md:text-lg font-normal leading-normal max-w-2xl">

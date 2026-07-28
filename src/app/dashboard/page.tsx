@@ -395,7 +395,7 @@ export default function DashboardPage() {
         <div className="mb-6 flex flex-col justify-between gap-4 sm:mb-8 sm:flex-row sm:flex-wrap sm:items-end">
           <div className="flex flex-col gap-1">
             <span className="eyebrow mb-1">{t.dashboard.healthAtGlance}</span>
-            <h1 className="text-3xl font-extrabold leading-tight text-text-primary dark:text-white sm:text-4xl">
+            <h1 className="page-title text-3xl dark:text-white sm:text-4xl">
               {t.dashboard.welcomeBack}, {displayName}
             </h1>
           </div>
@@ -421,7 +421,7 @@ export default function DashboardPage() {
           {/* Main Tracking Column */}
           <div className="lg:col-span-2 space-y-5 sm:space-y-6 lg:space-y-8">
             {/* Timer & Status Section */}
-            <Card padding="lg" className="relative overflow-hidden border-primary/10 bg-gradient-to-br from-white via-white to-primary/[0.055] dark:from-card-dark dark:via-card-dark dark:to-primary/10">
+            <Card padding="lg" className="relative overflow-hidden border-primary/15 bg-white dark:bg-card-dark">
               <div className="flex flex-col items-center text-center">
                 <span
                   className={`bg-primary/10 ${currentPhaseInfo.color} px-4 py-1 rounded-full text-sm font-bold mb-4 uppercase tracking-wider`}
@@ -549,7 +549,7 @@ export default function DashboardPage() {
                         </div>
                         <div className="w-full bg-pink-100 dark:bg-pink-900/30 h-3 rounded-full overflow-hidden">
                           <div
-                            className="bg-gradient-to-r from-pink-400 to-pink-600 h-full transition-all rounded-full"
+                            className="h-full rounded-full bg-primary transition-all"
                             style={{
                               width: `${Math.min((cycleInfo.dayInCycle / (profile.cycleData.periodLength || 5)) * 100, 100)}%`,
                             }}
@@ -676,7 +676,7 @@ export default function DashboardPage() {
           {/* Side Column */}
           <div className="space-y-5 sm:space-y-6 lg:space-y-8">
             {/* Daily Tip Card */}
-            <div className="surface group relative overflow-hidden bg-gradient-to-br from-primary/[0.07] to-pink-50 p-6 dark:to-pink-950/10">
+            <div className="surface group relative overflow-hidden border-primary/15 bg-primary/5 p-6 dark:bg-primary/10">
               <div className="relative z-10">
                 <div className="flex items-center gap-2 mb-3">
                   <span className="material-symbols-outlined text-primary">

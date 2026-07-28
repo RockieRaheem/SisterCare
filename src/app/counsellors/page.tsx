@@ -218,8 +218,7 @@ export default function CounsellorsPage() {
 
       <main className="main-content page-container py-5 sm:py-7">
         {/* Hero Section */}
-        <div className="relative mb-6 overflow-hidden rounded-[28px] bg-[linear-gradient(135deg,#5120aa_0%,#6d35d4_58%,#9c477c_130%)] p-6 text-white shadow-primary-lg sm:p-8">
-          <div className="absolute inset-0 bg-black/5"></div>
+        <div className="relative mb-6 overflow-hidden rounded-2xl bg-primary p-6 text-white shadow-primary-sm sm:p-8">
           <div className="absolute -top-20 -right-20 w-40 sm:w-64 h-40 sm:h-64 bg-white/10 rounded-full blur-3xl"></div>
           <div className="absolute -bottom-20 -left-20 w-40 sm:w-64 h-40 sm:h-64 bg-pink-500/20 rounded-full blur-3xl"></div>
 
@@ -490,7 +489,7 @@ export default function CounsellorsPage() {
         )}
 
         {/* Help Section */}
-        <div className="mt-8 sm:mt-10 md:mt-12 bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 rounded-xl sm:rounded-2xl p-4 sm:p-5 md:p-6 border border-purple-200 dark:border-purple-800">
+        <div className="mt-8 rounded-2xl border border-primary/20 bg-primary/5 p-4 dark:border-primary/30 dark:bg-primary/10 sm:mt-10 sm:p-5 md:mt-12 md:p-6">
           <div className="flex flex-col md:flex-row items-start md:items-center gap-3 sm:gap-4">
             <div className="flex-shrink-0">
               <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center shadow-lg">

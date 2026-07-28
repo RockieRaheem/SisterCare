@@ -252,7 +252,7 @@ export default function ProfilePage() {
         {/* Page Header */}
         <div className="flex flex-col gap-1.5 sm:gap-2 mb-5 sm:mb-6 md:mb-8">
           <span className="eyebrow">Your health context</span>
-          <h1 className="text-3xl font-extrabold leading-tight text-text-primary dark:text-white sm:text-4xl">
+          <h1 className="page-title text-3xl dark:text-white sm:text-4xl">
             Your Profile
           </h1>
           <p className="text-text-secondary text-sm sm:text-base">

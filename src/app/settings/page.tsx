@@ -495,7 +495,7 @@ export default function SettingsPage() {
         <div className="flex flex-wrap justify-between gap-2 sm:gap-3 mb-5 sm:mb-6 md:mb-8">
           <div className="flex min-w-0 sm:min-w-72 flex-col gap-1.5 sm:gap-2 md:gap-3">
             <span className="eyebrow">Account controls</span>
-            <h1 className="text-3xl font-extrabold leading-tight text-text-primary dark:text-white sm:text-4xl">
+            <h1 className="page-title text-3xl dark:text-white sm:text-4xl">
               {t.settings.title}
             </h1>
             <p className="text-text-secondary text-sm sm:text-base font-normal leading-normal">

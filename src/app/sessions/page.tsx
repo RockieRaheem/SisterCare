@@ -89,7 +89,7 @@ export default function SessionsPage() {
         <div className="mb-6 flex items-center justify-between">
           <div>
             <span className="eyebrow">Human care</span>
-            <h1 className="mt-1 text-3xl font-extrabold text-text-primary dark:text-white">
+            <h1 className="page-title mt-1 text-3xl dark:text-white">
               My Sessions
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">

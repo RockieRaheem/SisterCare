@@ -141,9 +141,9 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_50%_-20%,rgba(109,53,212,0.12),transparent_30rem)] bg-background-light dark:bg-background-dark flex flex-col">
+    <div className="flex min-h-screen flex-col bg-background-light dark:bg-background-dark">
       {/* Header */}
-      <div className="safe-top flex justify-center border-b border-border-light/70 bg-white/70 py-2 backdrop-blur-xl dark:border-border-dark dark:bg-card-dark/70 sm:py-3">
+      <div className="safe-top flex justify-center border-b border-border-light bg-white/95 py-2 backdrop-blur dark:border-border-dark dark:bg-card-dark/95 sm:py-3">
         <div className="flex flex-col max-w-[1200px] flex-1 px-4 sm:px-6">
           <header className="flex items-center justify-between whitespace-nowrap py-2 sm:py-3">
             <div className="flex items-center gap-2 sm:gap-4 text-primary">
@@ -174,7 +174,7 @@ export default function OnboardingPage() {
         <div className="mx-auto w-full max-w-[560px] px-4 py-4 sm:px-6 sm:py-5">
           <div className="h-1.5 overflow-hidden rounded-full bg-border-light dark:bg-border-dark">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-primary to-primary-light transition-all duration-500 ease-out"
+              className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
               style={{ width: `${progress}%` }}
             />
           </div>
