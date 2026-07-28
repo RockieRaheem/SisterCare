@@ -1885,7 +1885,7 @@ ${JSON.stringify(contextSummary)}`;
 
   const messages: XaiMessage[] = [
     { role: "system", content: systemPrompt },
-    ...context.conversationHistory.slice(-15).map(
+    ...context.conversationHistory.slice(-30).map(
       (entry): XaiMessage => ({
         role: entry.role === "user" ? "user" : "assistant",
         content: entry.content,
@@ -1995,7 +1995,7 @@ async function executeWithModel(
 
   // Build conversation with context - include more history for better context
   const contents = [
-    ...context.conversationHistory.slice(-15).map((msg) => ({
+  ...context.conversationHistory.slice(-30).map((msg) => ({
       role: msg.role === "user" ? "user" : "model",
       parts: [{ text: msg.content }],
     })),

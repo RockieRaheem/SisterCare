@@ -837,7 +837,7 @@ export default function ChatPage() {
       } catch {}
 
       try {
-        const conversationHistory = currentMessages.slice(-10).map((msg) => ({
+        const conversationHistory = currentMessages.slice(-30).map((msg) => ({
           role: msg.sender === "user" ? "user" : "assistant",
           content: msg.text,
         }));

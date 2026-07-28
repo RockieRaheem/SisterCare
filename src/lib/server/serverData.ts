@@ -51,7 +51,9 @@ export async function saveCycleData(
 
   const ref = db.collection("users").doc(uid);
   const snap = await ref.get();
-  if (!snap.exists) return;
+  if (!snap.exists) {
+    throw new Error("Cannot update cycle data because the user profile is missing");
+  }
 
   const currentData = snap.data()?.cycleData || {};
   const updatedCycleData = {
@@ -69,6 +71,43 @@ export async function saveCycleData(
     cycleData: updatedCycleData,
     updatedAt: FieldValue.serverTimestamp(),
   });
+}
+
+export async function getConversationMemory(
+  uid: string,
+  conversationId: string,
+  maximumMessages: number = 50,
+): Promise<Array<{ role: "user" | "assistant"; content: string }>> {
+  const db = getAdminDb();
+  if (!db) return [];
+
+  const conversation = await db.collection("conversations").doc(conversationId).get();
+  if (!conversation.exists || conversation.data()?.userId !== uid) {
+    return [];
+  }
+
+  const snapshot = await db
+    .collection("conversations")
+    .doc(conversationId)
+    .collection("messages")
+    .orderBy("timestamp", "desc")
+    .limit(Math.min(Math.max(maximumMessages, 1), 50))
+    .get();
+
+  return snapshot.docs
+    .reverse()
+    .map((message) => {
+      const data = message.data();
+      if (typeof data.content !== "string" || !data.content.trim()) return null;
+      return {
+        role: data.sender === "user" ? "user" : "assistant",
+        content: data.content.trim().slice(0, 4000),
+      };
+    })
+    .filter(
+      (message): message is { role: "user" | "assistant"; content: string } =>
+        message !== null,
+    );
 }
 
 export async function savePregnancyData(

@@ -11,6 +11,7 @@ import {
   getActiveCounsellorForConversation,
   getCounsellors,
   getAgentSystemOverview,
+  getConversationMemory,
 } from "@/lib/server/serverData";
 import { getCycleInfo, calculateNextPeriod } from "@/lib/cycle";
 import {
@@ -33,6 +34,8 @@ import {
   assertCompleteResponse,
   isClearlyIncompleteResponse,
 } from "@/lib/agent/responseIntegrity";
+import { selectConversationMemory } from "@/lib/chatPipeline/memory";
+import { derivePeriodStartDate } from "@/lib/periodUpdateIntent";
 import {
   ChatPipelineError,
   evaluateHandoffPolicy,
@@ -60,9 +63,6 @@ export const runtime = "nodejs";
  * The agent goes beyond text generation to actually help users
  * manage their menstrual health through intelligent actions.
  */
-
-const PERIOD_START_PATTERN =
-  /(period (started|came|has started|began|arrived)|i got my period|my period is here|started my period|got my periods|(started|began).*\d+\s*(day|week)s?\s*ago|backtrack|go back|update.*period)/i;
 
 function toPhoneHref(phoneNumber: string): string {
   return `tel:${phoneNumber.replace(/[^+\d]/g, "")}`;
@@ -556,6 +556,7 @@ async function postChat(request: NextRequest) {
     } = preflight.request;
     let cycleData = clientCycleData;
     let userProfile = clientUserProfile;
+    let effectiveConversationHistory = conversationHistory;
     if (auth.status === "verified" && userId) {
       try {
         const canonicalContext = await getAgentSystemOverview(userId);
@@ -569,9 +570,28 @@ async function postChat(request: NextRequest) {
         userProfile = undefined;
         cycleData = undefined;
       }
+
+      if (conversationId) {
+        try {
+          const storedHistory = await getConversationMemory(
+            userId,
+            conversationId,
+          );
+          effectiveConversationHistory = selectConversationMemory(
+            storedHistory,
+            conversationHistory,
+            trimmedMessage,
+          );
+        } catch (error) {
+          console.warn("[chat] Durable conversation memory unavailable", {
+            userId: userId.slice(0, 8),
+            error: error instanceof Error ? error.message : "unknown",
+          });
+        }
+      }
     }
     const actionStatuses: AgentActionStatus[] = preflight.actionStatuses;
-    const priorSafetyMessages = conversationHistory
+    const priorSafetyMessages = effectiveConversationHistory
       .filter((entry) => entry.role === "user")
       .map((entry) => entry.content);
     let safetyAssessment = preflight.safety;
@@ -743,9 +763,11 @@ async function postChat(request: NextRequest) {
         trimmedMessage,
       ) && !/\b(ago|back|last week|update|backtrack)\b/i.test(trimmedMessage);
     const parsedStartDate =
-      userId && cycleData && PERIOD_START_PATTERN.test(trimmedMessage)
-        ? parsePeriodStartDate(trimmedMessage) ||
-          (impliesStartingNow ? new Date() : null)
+      userId && cycleData
+        ? derivePeriodStartDate(
+            trimmedMessage,
+            effectiveConversationHistory,
+          ) || (impliesStartingNow ? new Date() : null)
         : null;
 
     if (userId && cycleData && parsedStartDate) {
@@ -760,6 +782,13 @@ async function postChat(request: NextRequest) {
           nextPeriodDate: nextPeriod,
           currentPhase: "menstrual",
         });
+
+        cycleData = {
+          ...cycleData,
+          lastPeriodDate: parsedStartDate,
+          nextPeriodDate: nextPeriod,
+          currentPhase: "menstrual",
+        };
 
         await logAgentEvent({
           userId,
@@ -1281,7 +1310,7 @@ async function postChat(request: NextRequest) {
             birthDate: userProfile.pregnancyData.birthDate?.toISOString(),
           }
         : undefined,
-      conversationHistory,
+      conversationHistory: effectiveConversationHistory,
     });
 
     let responseText = agentResult.response;
