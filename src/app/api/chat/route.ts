@@ -37,6 +37,10 @@ import {
 import { selectConversationMemory } from "@/lib/chatPipeline/memory";
 import { derivePeriodStartDate } from "@/lib/periodUpdateIntent";
 import {
+  buildLocalizedReasoningMessage,
+  buildTranslationPrompt,
+} from "@/lib/localization";
+import {
   ChatPipelineError,
   evaluateHandoffPolicy,
   inferCounsellorSpecialty,
@@ -215,7 +219,7 @@ function getDirectLugandaResponse(message: string): string | null {
   }
 
   if (
-    /(jebale|jebala|webale|gyebale|osiibye otya|oli otya|hello|hi)/i.test(m)
+    /(jebale|jebala|webale|gyebale|osiibye otya|oli otya|kili kitya|hello|hi)/i.test(m)
   ) {
     return "Gyebale ko! Ndi Sister wo era ndi wano okukuyamba. 💜 Leero oyagala twogere ku ki?";
   }
@@ -397,13 +401,7 @@ async function translateWithGemini(
           role: "user",
           parts: [
             {
-              text: [
-                `Translate every sentence of the text to ${targetLanguage}.`,
-                "Return only the complete translation with no commentary.",
-                "Never stop mid-sentence; preserve all safety guidance and questions.",
-                "",
-                text,
-              ].join("\n"),
+              text: buildTranslationPrompt(text, targetLanguage),
             },
           ],
         },
@@ -828,45 +826,29 @@ async function postChat(request: NextRequest) {
     const localizeResponse = async (text: string) => {
       let localizedText = text;
       if (userLanguage !== "eng") {
-        // The agent was already given a mandatory target-language instruction.
-        // Translating that output again as though it were English corrupted
-        // Luganda responses and could return a partial answer. Only translate
-        // when the model clearly ignored the requested language.
-        if (isProbablyEnglishText(text)) {
+        // The reasoning stage writes controlled English. Localizing it here
+        // keeps medical reasoning, tool use, and Luganda translation separate.
+        try {
+          if (apiKey) {
+            localizedText = await translateWithGemini(
+              apiKey,
+              text,
+              SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
+            );
+          } else {
+            const translated = await translateText(text, "eng", userLanguage);
+            localizedText = translated.translatedText;
+          }
+        } catch (translationError) {
+          console.warn(
+            "Dedicated response localization failed:",
+            translationError,
+          );
           try {
             const translated = await translateText(text, "eng", userLanguage);
             localizedText = translated.translatedText;
-
-            if (
-              apiKey &&
-              (localizedText.trim() === text.trim() ||
-                isProbablyEnglishText(localizedText))
-            ) {
-              localizedText = await translateWithGemini(
-                apiKey,
-                text,
-                SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
-              );
-            }
-          } catch (translationError) {
-            console.warn(
-              "Failed to translate English agent response:",
-              translationError,
-            );
-            if (apiKey) {
-              try {
-                localizedText = await translateWithGemini(
-                  apiKey,
-                  text,
-                  SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
-                );
-              } catch (geminiTranslationError) {
-                console.warn(
-                  "Gemini fallback translation failed:",
-                  geminiTranslationError,
-                );
-              }
-            }
+          } catch (sunbirdTranslationError) {
+            console.warn("Sunbird localization fallback failed:", sunbirdTranslationError);
           }
         }
 
@@ -903,18 +885,12 @@ async function postChat(request: NextRequest) {
       return { localizedText, audio };
     };
 
-    // Fallback: if translation services are unavailable, still nudge the model
-    // to answer directly in the user's chosen language.
     const agentMessage =
       userLanguage !== "eng"
-        ? [
-            `MANDATORY LANGUAGE MODE: ${SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage}`,
-            "You must respond ONLY in this language.",
-            "Do not reply in English.",
-            "Keep response natural and culturally appropriate for Uganda.",
-            "",
-            `User message: ${messageForAgent}`,
-          ].join("\n")
+        ? buildLocalizedReasoningMessage(
+            messageForAgent,
+            SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
+          )
         : messageForAgent;
 
     // Check both the original conversation and the English translation. The
@@ -1311,6 +1287,8 @@ async function postChat(request: NextRequest) {
           }
         : undefined,
       conversationHistory: effectiveConversationHistory,
+    }, {
+      preferGemini: userLanguage !== "eng",
     });
 
     let responseText = agentResult.response;

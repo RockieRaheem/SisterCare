@@ -42,4 +42,16 @@ describe("agent model router", () => {
     );
     expect(hasConfiguredAgentProvider({ GROQ_API_KEY: "groq-key" })).toBe(true);
   });
+
+  it("can lead a localized response with Gemini while retaining Groq fallback", () => {
+    const plan = buildAgentModelPlan(
+      {
+        GEMINI_API_KEY: "gemini-key",
+        GROQ_API_KEY: "groq-key",
+      },
+      ["gemini", "groq"],
+    );
+    expect(plan[0].provider).toBe("gemini");
+    expect(plan.at(-1)?.provider).toBe("groq");
+  });
 });

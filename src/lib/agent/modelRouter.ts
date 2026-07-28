@@ -27,9 +27,10 @@ function providerOrder(value?: string): AgentProviderName[] {
 
 export function buildAgentModelPlan(
   env: AgentProviderEnv = process.env,
+  preferredProviders?: AgentProviderName[],
 ): AgentModelAttempt[] {
   const attempts: AgentModelAttempt[] = [];
-  for (const provider of providerOrder(env.AGENT_PROVIDER_ORDER)) {
+  for (const provider of preferredProviders || providerOrder(env.AGENT_PROVIDER_ORDER)) {
     if (provider === "gemini" && env.GEMINI_API_KEY) {
       for (const model of GEMINI_MODELS) {
         attempts.push({

@@ -1714,6 +1714,7 @@ export async function executeAgent(
   apiKey: string,
   message: string,
   context: AgentContext,
+  options?: { preferGemini?: boolean },
 ): Promise<{
   response: string;
   toolsUsed: string[];
@@ -1772,7 +1773,7 @@ export async function executeAgent(
   const modelPlan = buildAgentModelPlan({
     ...process.env,
     GEMINI_API_KEY: apiKey || process.env.GEMINI_API_KEY,
-  });
+  }, options?.preferGemini ? ["gemini", "groq"] : undefined);
 
   for (const attempt of modelPlan) {
     try {
