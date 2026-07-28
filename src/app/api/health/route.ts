@@ -4,11 +4,13 @@ import {
   validateProductionSecurityConfig,
 } from "@/lib/firebaseAdmin";
 import { getClinicalRuntimeIssues } from "@/lib/clinicalGovernance";
+import { getMaintenanceReadiness } from "@/lib/server/operations";
 
 export async function GET() {
   const securityErrors = validateProductionSecurityConfig();
   const clinicalIssues = getClinicalRuntimeIssues();
-  const ready = securityErrors.length === 0 && clinicalIssues.length === 0 && isAuthEnforced();
+  const maintenanceReady = await getMaintenanceReadiness();
+  const ready = securityErrors.length === 0 && clinicalIssues.length === 0 && maintenanceReady && isAuthEnforced();
 
   return NextResponse.json(
     {
@@ -17,6 +19,7 @@ export async function GET() {
       checks: {
         security: securityErrors.length === 0,
         clinicalGovernance: clinicalIssues.length === 0,
+        maintenance: maintenanceReady,
       },
     },
     {
