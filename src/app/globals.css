@@ -5,12 +5,12 @@
 /* stylelint-enable at-rule-no-unknown */
 
 :root {
-  --primary: #7439d1;
+  --primary: #8c30e8;
   --background-light: #fcfbfa;
   --background-dark: #1b1820;
-  --color-primary: 116 57 209;
-  --color-primary-light: 147 92 231;
-  --color-primary-dark: 86 31 164;
+  --color-primary: 140 48 232;
+  --color-primary-light: 168 85 247;
+  --color-primary-dark: 107 33 168;
   --color-canvas: 252 251 250;
   --color-canvas-dark: 27 24 32;
   --color-surface: 255 255 255;

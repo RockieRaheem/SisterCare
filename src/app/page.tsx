@@ -70,7 +70,7 @@ export default function Home() {
           <div className="mx-auto grid max-w-container items-center gap-10 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-[1.05fr_.95fr] lg:gap-16 lg:px-20 lg:py-28">
             {/* Narrative */}
             <div className="text-center lg:text-left">
-              <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-xs font-semibold text-primary dark:bg-primary/10">
+              <span className="hidden">
                 <span className="material-symbols-outlined text-sm">
                   language
                 </span>
