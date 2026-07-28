@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
-import Header from "@/components/layout/Header";
+import CounsellorShell from "@/components/counsellor/CounsellorShell";
 import { auth, storage } from "@/lib/firebase";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { COUNSELLOR_SPECIALTIES } from "@/lib/counsellors";
@@ -83,9 +83,8 @@ export default function CounsellorApplicationPage() {
     ["name", "Professional name"], ["title", "Professional title"], ["legalName", "Legal name"], ["registrationNumber", "Registration or licence number"], ["credentialType", "Credential type"], ["phoneNumber", "Professional phone number"],
   ];
 
-  return <div className="app-page">
-    <Header variant="app" />
-    <main className="main-content mx-auto w-full max-w-2xl px-4 py-8 sm:px-6">
+  return <CounsellorShell>
+    <div className="mx-auto w-full max-w-2xl">
       <Link href="/counsellor" className="text-sm font-medium text-primary">Back to counsellor portal</Link>
       <h1 className="mt-4 text-3xl font-bold text-text-primary dark:text-white">Join the care network</h1>
       <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">Your application stays private until an authorised reviewer completes KYC. Approval creates your counsellor profile, but you remain offline until you sign in and choose Available.</p>
@@ -113,6 +112,6 @@ export default function CounsellorApplicationPage() {
         {status && <p className="text-sm text-red-700">{status}</p>}
         <button disabled={submitting || photoUploading} className="rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{submitting ? "Submitting..." : "Submit for KYC review"}</button>
       </form>}
-    </main>
-  </div>;
+    </div>
+  </CounsellorShell>;
 }

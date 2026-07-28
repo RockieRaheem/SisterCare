@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import Header from "@/components/layout/Header";
+import CounsellorShell from "@/components/counsellor/CounsellorShell";
 import { useAuth } from "@/context/AuthContext";
 import { auth } from "@/lib/firebase";
 import { CounsellingSession } from "@/types";
@@ -413,10 +413,5 @@ function EmptyRow({ text }: { text: string }) {
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="app-page">
-      <Header variant="app" />
-      <main className="main-content mx-auto w-full max-w-3xl px-4 pt-7 sm:px-6">{children}</main>
-    </div>
-  );
+  return <CounsellorShell>{children}</CounsellorShell>;
 }

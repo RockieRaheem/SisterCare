@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { auth } from "@/lib/firebase";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { completeOnboarding, updateUserProfile } from "@/lib/firestore";
@@ -47,6 +48,17 @@ export default function OnboardingPage() {
       router.push("/dashboard");
     }
   }, [user, loading, userProfile, router]);
+
+  // A verified professional must never fall through into the member journey,
+  // including when they paste the onboarding URL directly.
+  useEffect(() => {
+    if (!user) return;
+    auth.currentUser?.getIdTokenResult().then((result) => {
+      const role = result.claims.role;
+      if (role === "admin") router.replace("/admin");
+      if (role === "counsellor") router.replace("/counsellor");
+    }).catch(() => {});
+  }, [router, user]);
 
   // Skipping is a valid completed state: users can add cycle details later.
   // Persist it so route guards and future sessions do not force onboarding.

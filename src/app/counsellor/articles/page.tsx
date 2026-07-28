@@ -2,18 +2,57 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import Header from "@/components/layout/Header";
+import CounsellorShell from "@/components/counsellor/CounsellorShell";
 import { auth } from "@/lib/firebase";
 
-type Article = { id: string; title: string; status: "pending_review" | "published" | "rejected"; updatedAt?: { seconds?: number }; };
+type Article = { id: string; title: string; status: "pending_review" | "published" | "rejected" };
 const categories = [{ id: "comfort", label: "Comfort & Hygiene" }, { id: "emotional", label: "Emotional Well-being" }, { id: "medical", label: "When to See a Doctor" }, { id: "nutrition", label: "Nutrition & Diet" }];
-async function api(path: string, init?: RequestInit) { const token = await auth.currentUser?.getIdToken(); return fetch(path, { ...init, headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "", ...init?.headers } }); }
+
+async function api(path: string, init?: RequestInit) {
+  const token = await auth.currentUser?.getIdToken();
+  return fetch(path, { ...init, headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "", ...init?.headers } });
+}
 
 export default function CounsellorArticlesPage() {
-  const [articles, setArticles] = useState<Article[]>([]); const [error, setError] = useState(""); const [notice, setNotice] = useState(""); const [saving, setSaving] = useState(false);
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ title: "", description: "", content: "", categoryId: "comfort", tags: "", coverImageUrl: "" });
-  const load = useCallback(async () => { try { const response = await api("/api/counsellor/articles"); const result = await response.json(); if (!response.ok) throw new Error(result.error); setArticles(result.data.articles || []); } catch (loadError) { setError(loadError instanceof Error ? loadError.message : "Could not load articles"); } }, []);
+  const load = useCallback(async () => {
+    try {
+      const response = await api("/api/counsellor/articles"); const result = await response.json();
+      if (!response.ok) throw new Error(result.error); setArticles(result.data.articles || []);
+    } catch (loadError) { setError(loadError instanceof Error ? loadError.message : "Could not load articles"); }
+  }, []);
   useEffect(() => { load(); }, [load]);
-  const submit = async (event: FormEvent) => { event.preventDefault(); setSaving(true); setError(""); setNotice(""); try { const response = await api("/api/counsellor/articles", { method: "POST", body: JSON.stringify({ ...form, tags: form.tags.split(",").map((tag) => tag.trim()).filter(Boolean) }) }); const result = await response.json(); if (!response.ok) throw new Error(result.error); setForm({ title: "", description: "", content: "", categoryId: "comfort", tags: "", coverImageUrl: "" }); setNotice("Article submitted for editorial review. It will appear in the library only after an administrator publishes it."); await load(); } catch (submitError) { setError(submitError instanceof Error ? submitError.message : "Could not submit article"); } finally { setSaving(false); } };
-  return <div className="app-page"><Header variant="app" /><main className="main-content mx-auto w-full max-w-5xl px-4 py-7 sm:px-6"><Link href="/counsellor" className="text-sm font-semibold text-primary">Back to counsellor workspace</Link><div className="mt-4 grid gap-6 lg:grid-cols-[1.3fr_0.7fr]"><section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-soft dark:border-gray-700 dark:bg-card-dark sm:p-6"><span className="eyebrow">Professional contribution</span><h1 className="mt-1 text-3xl font-extrabold text-text-primary dark:text-white">Write a library article</h1><p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">Share evidence-informed, practical guidance. An administrator reviews every article before publication.</p><form onSubmit={submit} className="mt-6 space-y-4"><label className="block text-sm font-semibold text-gray-700 dark:text-gray-200">Title<input required maxLength={140} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} className="mt-1 w-full rounded-xl border-gray-300 dark:bg-gray-800" /></label><label className="block text-sm font-semibold text-gray-700 dark:text-gray-200">Short summary<input required maxLength={360} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} className="mt-1 w-full rounded-xl border-gray-300 dark:bg-gray-800" /></label><div className="grid gap-4 sm:grid-cols-2"><label className="text-sm font-semibold text-gray-700 dark:text-gray-200">Category<select value={form.categoryId} onChange={(event) => setForm({ ...form, categoryId: event.target.value })} className="mt-1 w-full rounded-xl border-gray-300 dark:bg-gray-800">{categories.map((category) => <option key={category.id} value={category.id}>{category.label}</option>)}</select></label><label className="text-sm font-semibold text-gray-700 dark:text-gray-200">Tags<input value={form.tags} onChange={(event) => setForm({ ...form, tags: event.target.value })} placeholder="Nutrition, self-care" className="mt-1 w-full rounded-xl border-gray-300 dark:bg-gray-800" /></label></div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-200">Cover image URL <span className="font-normal text-gray-500">(optional)</span><input type="url" value={form.coverImageUrl} onChange={(event) => setForm({ ...form, coverImageUrl: event.target.value })} placeholder="https://…" className="mt-1 w-full rounded-xl border-gray-300 dark:bg-gray-800" /></label><label className="block text-sm font-semibold text-gray-700 dark:text-gray-200">Article content<textarea required minLength={120} rows={15} value={form.content} onChange={(event) => setForm({ ...form, content: event.target.value })} placeholder="Write clear, practical, evidence-informed guidance…" className="mt-1 w-full rounded-xl border-gray-300 dark:bg-gray-800" /></label>{error && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300">{error}</p>}{notice && <p className="rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-300">{notice}</p>}<button disabled={saving} className="rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">{saving ? "Submitting…" : "Submit for publication"}</button></form></section><aside className="rounded-3xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-card-dark"><h2 className="font-bold text-gray-900 dark:text-white">Your submissions</h2><div className="mt-4 space-y-3">{articles.length ? articles.map((article) => <div key={article.id} className="rounded-2xl bg-gray-50 p-4 dark:bg-gray-800"><p className="font-semibold text-gray-900 dark:text-white">{article.title}</p><p className="mt-2 text-xs font-semibold uppercase tracking-wide text-primary">{article.status.replace("_", " ")}</p></div>) : <p className="rounded-2xl border border-dashed border-gray-300 p-5 text-center text-sm text-gray-500 dark:border-gray-700">Your submitted articles will appear here.</p>}</div></aside></div></main></div>;
+  const submit = async (event: FormEvent) => {
+    event.preventDefault(); setSaving(true); setError(""); setNotice("");
+    try {
+      const response = await api("/api/counsellor/articles", { method: "POST", body: JSON.stringify({ ...form, tags: form.tags.split(",").map((tag) => tag.trim()).filter(Boolean) }) });
+      const result = await response.json(); if (!response.ok) throw new Error(result.error);
+      setForm({ title: "", description: "", content: "", categoryId: "comfort", tags: "", coverImageUrl: "" });
+      setNotice("Article submitted for editorial review. It will appear in the library only after an administrator publishes it."); await load();
+    } catch (submitError) { setError(submitError instanceof Error ? submitError.message : "Could not submit article"); } finally { setSaving(false); }
+  };
+
+  return <CounsellorShell>
+    <Link href="/counsellor" className="text-sm font-semibold text-primary">Back to care desk</Link>
+    <div className="mt-4 grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
+      <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-soft dark:border-gray-700 dark:bg-card-dark sm:p-6">
+        <span className="eyebrow">Professional contribution</span><h1 className="mt-1 text-3xl font-extrabold text-text-primary dark:text-white">Write a library article</h1>
+        <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">Share evidence-informed, practical guidance. An administrator reviews every article before publication.</p>
+        <form onSubmit={submit} className="mt-6 space-y-4">
+          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200">Title<input required maxLength={140} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} className="mt-1 w-full rounded-xl border-gray-300 dark:bg-gray-800" /></label>
+          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200">Short summary<input required maxLength={360} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} className="mt-1 w-full rounded-xl border-gray-300 dark:bg-gray-800" /></label>
+          <div className="grid gap-4 sm:grid-cols-2"><label className="text-sm font-semibold text-gray-700 dark:text-gray-200">Category<select value={form.categoryId} onChange={(event) => setForm({ ...form, categoryId: event.target.value })} className="mt-1 w-full rounded-xl border-gray-300 dark:bg-gray-800">{categories.map((category) => <option key={category.id} value={category.id}>{category.label}</option>)}</select></label><label className="text-sm font-semibold text-gray-700 dark:text-gray-200">Tags<input value={form.tags} onChange={(event) => setForm({ ...form, tags: event.target.value })} placeholder="Nutrition, self-care" className="mt-1 w-full rounded-xl border-gray-300 dark:bg-gray-800" /></label></div>
+          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200">Cover image URL <span className="font-normal text-gray-500">(optional)</span><input type="url" value={form.coverImageUrl} onChange={(event) => setForm({ ...form, coverImageUrl: event.target.value })} placeholder="https://..." className="mt-1 w-full rounded-xl border-gray-300 dark:bg-gray-800" /></label>
+          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200">Article content<textarea required minLength={120} rows={15} value={form.content} onChange={(event) => setForm({ ...form, content: event.target.value })} placeholder="Write clear, practical, evidence-informed guidance..." className="mt-1 w-full rounded-xl border-gray-300 dark:bg-gray-800" /></label>
+          {error && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300">{error}</p>}{notice && <p className="rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-300">{notice}</p>}
+          <button disabled={saving} className="rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">{saving ? "Submitting..." : "Submit for publication"}</button>
+        </form>
+      </section>
+      <aside className="rounded-3xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-card-dark"><h2 className="font-bold text-gray-900 dark:text-white">Your submissions</h2><div className="mt-4 space-y-3">{articles.length ? articles.map((article) => <div key={article.id} className="rounded-2xl bg-gray-50 p-4 dark:bg-gray-800"><p className="font-semibold text-gray-900 dark:text-white">{article.title}</p><p className="mt-2 text-xs font-semibold uppercase tracking-wide text-primary">{article.status.replace("_", " ")}</p></div>) : <p className="rounded-2xl border border-dashed border-gray-300 p-5 text-center text-sm text-gray-500 dark:border-gray-700">Your submitted articles will appear here.</p>}</div></aside>
+    </div>
+  </CounsellorShell>;
 }

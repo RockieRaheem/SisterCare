@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Header from "@/components/layout/Header";
+import AdminShell from "@/components/admin/AdminShell";
 import { auth } from "@/lib/firebase";
 
 type MetricDay = Record<string, string | number>;
@@ -37,9 +37,7 @@ export default function OperationsDashboardPage() {
   );
 
   return (
-    <div className="app-page">
-      <Header variant="app" />
-      <main className="main-content page-container pt-8">
+    <AdminShell>
         <span className="eyebrow">Service health</span>
         <h1 className="mt-1 text-3xl font-extrabold text-text-primary dark:text-white">
           Operations
@@ -69,7 +67,6 @@ export default function OperationsDashboardPage() {
             Metrics will appear after instrumented requests are served.
           </p>
         )}
-      </main>
-    </div>
+    </AdminShell>
   );
 }

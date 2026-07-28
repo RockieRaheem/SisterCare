@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Header from "@/components/layout/Header";
+import AdminShell from "@/components/admin/AdminShell";
 import { useAuth } from "@/context/AuthContext";
 import { auth } from "@/lib/firebase";
 
@@ -205,10 +205,5 @@ function Stat({
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="app-page">
-      <Header variant="app" />
-      <main className="main-content mx-auto w-full max-w-4xl px-4 pt-8 sm:px-6">{children}</main>
-    </div>
-  );
+  return <AdminShell>{children}</AdminShell>;
 }

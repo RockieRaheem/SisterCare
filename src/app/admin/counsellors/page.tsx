@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { auth } from "@/lib/firebase";
-import Header from "@/components/layout/Header";
+import AdminShell from "@/components/admin/AdminShell";
 
 interface OperationsRecord {
   id: string;
@@ -111,9 +111,7 @@ export default function CounsellorOperationsPage() {
   };
 
   return (
-    <div className="app-page">
-      <Header variant="app" />
-      <main className="main-content page-container pt-8">
+    <AdminShell>
         <span className="eyebrow">Care network</span>
         <h1 className="mt-1 text-3xl font-extrabold text-text-primary dark:text-white">
           Counsellor operations
@@ -283,7 +281,6 @@ export default function CounsellorOperationsPage() {
             </section>
           ))}
         </div>
-      </main>
-    </div>
+    </AdminShell>
   );
 }
