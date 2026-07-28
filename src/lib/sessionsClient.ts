@@ -105,11 +105,12 @@ export async function transitionSession(
 
 export async function sendPresence(
   status: "available" | "offline",
-): Promise<void> {
-  await sessionsFetch("/api/presence", {
+): Promise<"available" | "in_session" | "offline"> {
+  const data = await sessionsFetch<{ status?: "available" | "in_session" | "offline" }>("/api/presence", {
     method: "POST",
     body: JSON.stringify({ status }),
   });
+  return data.status || status;
 }
 
 /** Display metadata per state, shared by the list, room, and portal UIs. */

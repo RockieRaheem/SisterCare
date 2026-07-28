@@ -15,6 +15,8 @@ interface OperationsRecord {
   crisisTrained: boolean;
   supervisorId: string;
   availableHours: { start: string; end: string; days: string[] };
+  liveStatus: "available" | "in_session" | "offline";
+  lastHeartbeat: string | null;
 }
 
 interface ApplicationRecord {
@@ -26,6 +28,12 @@ interface ApplicationRecord {
   credentialType: string;
   credentialExpiresAt: string | null;
   documentReferences: string[];
+}
+
+function liveStatusMeta(status: OperationsRecord["liveStatus"]) {
+  if (status === "available") return { label: "Live · available", tone: "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300" };
+  if (status === "in_session") return { label: "Live · in session", tone: "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300" };
+  return { label: "Offline", tone: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300" };
 }
 
 async function authorizedFetch(url: string, init?: RequestInit) {
@@ -63,6 +71,8 @@ export default function CounsellorOperationsPage() {
 
   useEffect(() => {
     load();
+    const timer = setInterval(load, 15_000);
+    return () => clearInterval(timer);
   }, [load]);
 
   const update = (id: string, changes: Partial<OperationsRecord>) => {
@@ -117,7 +127,7 @@ export default function CounsellorOperationsPage() {
           Counsellor operations
         </h1>
         <p className="mb-6 text-sm text-gray-500">
-          Verification, capacity, crisis training and shift eligibility.
+          Verification, capacity, crisis training and shift eligibility. Live status refreshes every 15 seconds and uses the same availability rules as member matching.
         </p>
         {error && (
           <div className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">
@@ -147,11 +157,9 @@ export default function CounsellorOperationsPage() {
               key={record.id}
               className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-card-dark"
             >
-              <div className="mb-4">
-                <h2 className="font-semibold text-gray-900 dark:text-white">
-                  {record.name}
-                </h2>
-                <p className="text-xs text-gray-500">{record.title}</p>
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                <div><h2 className="font-semibold text-gray-900 dark:text-white">{record.name}</h2><p className="text-xs text-gray-500">{record.title}</p></div>
+                <div className="text-right"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${liveStatusMeta(record.liveStatus).tone}`}>{liveStatusMeta(record.liveStatus).label}</span><p className="mt-1 text-[11px] text-gray-500">{record.lastHeartbeat ? `Last signal ${new Date(record.lastHeartbeat).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "No live signal received"}</p></div>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="text-xs text-gray-600 dark:text-gray-300">

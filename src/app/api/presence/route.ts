@@ -55,8 +55,8 @@ export async function POST(request: NextRequest) {
       await setOffline(auth.uid);
       return NextResponse.json({ success: true, data: { drained: 0 } });
     }
-    const { drained } = await recordHeartbeat(auth.uid, status);
-    return NextResponse.json({ success: true, data: { drained } });
+    const { drained, status: effectiveStatus } = await recordHeartbeat(auth.uid, status);
+    return NextResponse.json({ success: true, data: { drained, status: effectiveStatus } });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Presence update failed";

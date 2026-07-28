@@ -42,6 +42,7 @@ export default function CounsellorPortalPage() {
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const presenceRef = useRef<PresenceStatus>("offline");
+  const presenceStartedRef = useRef(false);
   presenceRef.current = presence;
 
   // Role gate: portal is for verified counsellors (admins may observe).
@@ -92,14 +93,28 @@ export default function CounsellorPortalPage() {
     return () => clearInterval(interval);
   }, [isCounsellor, refresh]);
 
+  // Opening the professional care desk establishes real server presence.
+  // The UI only says "available" after the protected endpoint confirms it.
+  useEffect(() => {
+    if (!isCounsellor || presenceStartedRef.current) return;
+    presenceStartedRef.current = true;
+    sendPresence("available").then((effectiveStatus) => {
+      setPresence(effectiveStatus);
+      return refresh();
+    }).catch(() => {
+      setPresence("offline");
+      setError("You are offline because your account is not currently eligible to receive sessions.");
+    });
+  }, [isCounsellor, refresh]);
+
   // Availability is user-controlled; in-session state is calculated by the server.
   useEffect(() => {
     if (!isCounsellor) return;
 
     if (presence === "available") {
-      sendPresence("available").catch(() => setError("Presence update failed."));
+      sendPresence("available").then(setPresence).catch(() => setError("Presence update failed."));
       heartbeatRef.current = setInterval(() => {
-        if (presenceRef.current === "available") sendPresence("available").catch(() => {});
+        if (presenceRef.current === "available") sendPresence("available").then(setPresence).catch(() => {});
       }, HEARTBEAT_MS);
     }
 
@@ -129,9 +144,9 @@ export default function CounsellorPortalPage() {
 
   const setStatus = async (status: PresenceStatus) => {
     if (status === "in_session") return;
-    setPresence(status);
     try {
-      await sendPresence(status);
+      const effectiveStatus = await sendPresence(status);
+      setPresence(effectiveStatus);
       await refresh();
     } catch {
       setError("Presence update failed.");

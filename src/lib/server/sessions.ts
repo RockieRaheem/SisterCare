@@ -108,7 +108,7 @@ function docToSession(
 export async function recordHeartbeat(
   counsellorUid: string,
   status: "available",
-): Promise<{ drained: number }> {
+): Promise<{ drained: number; status: "available" | "in_session" }> {
   const db = requireDb();
   await assertCounsellorOperationallyEligible(counsellorUid, "normal");
   const liveSessions = await db
@@ -145,9 +145,9 @@ export async function recordHeartbeat(
   // Newly available (or freshly back) → try to drain the queue toward them.
   if (effectiveStatus === "available") {
     const result = await drainQueue();
-    return { drained: result.matched };
-  }
-  return { drained: 0 };
+      return { drained: result.matched, status: effectiveStatus };
+    }
+    return { drained: 0, status: effectiveStatus };
 }
 
 export async function setOffline(counsellorUid: string): Promise<void> {

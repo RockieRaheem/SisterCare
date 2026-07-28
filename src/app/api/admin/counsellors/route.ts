@@ -6,6 +6,7 @@ import {
   isAuthEnforced,
 } from "@/lib/firebaseAdmin";
 import { Timestamp } from "firebase-admin/firestore";
+import { getLiveCounsellors } from "@/lib/server/serverData";
 
 export async function GET(request: NextRequest) {
   if (!isAuthEnforced()) {
@@ -23,29 +24,32 @@ export async function GET(request: NextRequest) {
   }
 
   const db = getAdminDb()!;
-  const [snapshot, applicationsSnapshot] = await Promise.all([
-    db.collection("counsellors").get(),
+  const [liveCounsellors, applicationsSnapshot, presenceSnapshot] = await Promise.all([
+    getLiveCounsellors(),
     db.collection("counsellorApplications").where("status", "==", "pending").get(),
+    db.collection("presence").get(),
   ]);
-  const counsellors = snapshot.docs.map((document) => {
-    const data = document.data();
-    const expiry = data.credentialExpiresAt;
+  const presenceById = new Map(presenceSnapshot.docs.map((document) => [document.id, document.data()]));
+  const counsellors = liveCounsellors.map((counsellor) => {
+    const heartbeat = presenceById.get(counsellor.id)?.lastHeartbeat;
     return {
-      id: document.id,
-      name: data.name || "Unnamed counsellor",
-      title: data.title || "Counsellor",
-      verificationStatus: data.verificationStatus || "pending",
+      id: counsellor.id,
+      name: counsellor.name || "Unnamed counsellor",
+      title: counsellor.title || "Counsellor",
+      verificationStatus: counsellor.verificationStatus || "pending",
       credentialExpiresAt:
-        expiry instanceof Timestamp ? expiry.toDate().toISOString() : null,
-      maxConcurrentSessions: data.maxConcurrentSessions || 1,
-      acceptingNewSessions: data.acceptingNewSessions === true,
-      crisisTrained: data.crisisTrained === true,
-      supervisorId: data.supervisorId || "",
-      availableHours: data.availableHours || {
+        counsellor.credentialExpiresAt instanceof Date ? counsellor.credentialExpiresAt.toISOString() : null,
+      maxConcurrentSessions: counsellor.maxConcurrentSessions || 1,
+      acceptingNewSessions: counsellor.acceptingNewSessions === true,
+      crisisTrained: counsellor.crisisTrained === true,
+      supervisorId: counsellor.supervisorId || "",
+      availableHours: counsellor.availableHours || {
         start: "08:00",
         end: "17:00",
         days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
       },
+      liveStatus: counsellor.status,
+      lastHeartbeat: heartbeat instanceof Timestamp ? heartbeat.toDate().toISOString() : null,
     };
   });
 
