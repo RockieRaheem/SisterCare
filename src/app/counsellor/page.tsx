@@ -6,6 +6,11 @@ import { useRouter } from "next/navigation";
 import CounsellorShell from "@/components/counsellor/CounsellorShell";
 import { useAuth } from "@/context/AuthContext";
 import { auth } from "@/lib/firebase";
+import {
+  type CounsellorApplicationStatus,
+  resolveCounsellorPortalState,
+} from "@/lib/counsellorApplicationStatus";
+import { getSupabaseBrowserClient } from "@/lib/supabase";
 import { CounsellingSession } from "@/types";
 import {
   listCounsellorSessions,
@@ -19,6 +24,12 @@ const HEARTBEAT_MS = 60_000;
 const REFRESH_MS = 8_000;
 
 type PresenceStatus = "available" | "in_session" | "offline";
+type ApplicationReview = {
+  status: CounsellorApplicationStatus;
+  submitted_at: string;
+  reviewed_at: string | null;
+  review_note: string | null;
+};
 
 function timeAgo(date: Date): string {
   const minutes = Math.floor((Date.now() - date.getTime()) / 60000);
@@ -35,6 +46,8 @@ export default function CounsellorPortalPage() {
 
   const [role, setRole] = useState<string | null>(null);
   const [roleChecked, setRoleChecked] = useState(false);
+  const [application, setApplication] = useState<ApplicationReview | null>(null);
+  const [accessError, setAccessError] = useState<string | null>(null);
   const [presence, setPresence] = useState<PresenceStatus>("offline");
   const [assigned, setAssigned] = useState<CounsellingSession[]>([]);
   const [openCritical, setOpenCritical] = useState<CounsellingSession[]>([]);
@@ -45,20 +58,42 @@ export default function CounsellorPortalPage() {
   const presenceStartedRef = useRef(false);
   presenceRef.current = presence;
 
-  // Role gate: portal is for verified counsellors (admins may observe).
+  const refreshAccess = useCallback(async () => {
+    if (!user) return;
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const [profileResult, applicationResult] = await Promise.all([
+        supabase.from("profiles").select("role").eq("id", user.uid).maybeSingle(),
+        supabase
+          .from("counsellor_applications")
+          .select("status, submitted_at, reviewed_at, review_note")
+          .eq("counsellor_id", user.uid)
+          .maybeSingle(),
+      ]);
+      if (profileResult.error) throw profileResult.error;
+      if (applicationResult.error) throw applicationResult.error;
+      setRole(profileResult.data?.role || "member");
+      setApplication((applicationResult.data as ApplicationReview | null) || null);
+      setAccessError(null);
+    } catch {
+      setAccessError("We could not verify your counsellor application status. Check your connection and try again.");
+    } finally {
+      setRoleChecked(true);
+    }
+  }, [user]);
+
+  // Re-read both role and KYC state so an administrator's decision appears
+  // without requiring the applicant to sign out or lose the status message.
   useEffect(() => {
     if (!authLoading && !user) {
-      router.push("/auth/login");
+      router.replace("/auth/login?next=/counsellor");
       return;
     }
-    if (user) {
-      auth.currentUser
-        ?.getIdTokenResult()
-        .then((result) => setRole((result.claims.role as string) || "user"))
-        .catch(() => setRole("user"))
-        .finally(() => setRoleChecked(true));
-    }
-  }, [user, authLoading, router]);
+    if (!user) return;
+    void refreshAccess();
+    const interval = setInterval(() => void refreshAccess(), 15_000);
+    return () => clearInterval(interval);
+  }, [user, authLoading, refreshAccess, router]);
 
   const refresh = useCallback(async () => {
     try {
@@ -85,6 +120,7 @@ export default function CounsellorPortalPage() {
   }, []);
 
   const isCounsellor = role === "counsellor" || role === "admin";
+  const portalState = resolveCounsellorPortalState(role, application?.status || null);
 
   useEffect(() => {
     if (!isCounsellor) return;
@@ -178,24 +214,27 @@ export default function CounsellorPortalPage() {
     );
   }
 
+  if (accessError && !role) {
+    return (
+      <Shell>
+        <div className="mx-auto max-w-lg rounded-3xl border border-red-200 bg-white p-8 text-center shadow-soft dark:border-red-900 dark:bg-card-dark">
+          <span className="material-symbols-outlined text-5xl text-red-500">cloud_off</span>
+          <h1 className="mt-3 text-xl font-bold text-gray-900 dark:text-white">Application status unavailable</h1>
+          <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">{accessError}</p>
+          <button onClick={() => void refreshAccess()} className="mt-5 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white">Try again</button>
+        </div>
+      </Shell>
+    );
+  }
+
   if (!isCounsellor) {
     return (
       <Shell>
-        <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center dark:border-gray-700 dark:bg-card-dark">
-          <span className="material-symbols-outlined mb-3 text-5xl text-purple-300">
-            badge
-          </span>
-          <h1 className="mb-1 text-lg font-semibold text-gray-900 dark:text-white">
-            Counsellor access required
-          </h1>
-          <p className="mx-auto max-w-sm text-sm text-gray-500 dark:text-gray-400">
-            This portal is for verified SisterCare counsellors. If you are a
-            counsellor, submit your KYC application for review first.
-          </p>
-          <Link href="/counsellor/apply" className="mt-5 inline-flex rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white">
-            Apply to join the care network
-          </Link>
-        </div>
+        <ApplicationStatePanel
+          state={portalState}
+          application={application}
+          onRefresh={() => void refreshAccess()}
+        />
       </Shell>
     );
   }
@@ -210,6 +249,15 @@ export default function CounsellorPortalPage() {
 
   return (
     <Shell>
+      {application?.status === "verified" && (
+        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-green-200 bg-green-50 p-4 text-green-900 dark:border-green-900 dark:bg-green-950/30 dark:text-green-200">
+          <span className="material-symbols-outlined mt-0.5">verified</span>
+          <div>
+            <p className="font-bold">Your counsellor application is approved</p>
+            <p className="mt-1 text-sm leading-6">Your verified professional workspace is active. Set your availability below when you are ready to receive care requests.</p>
+          </div>
+        </div>
+      )}
       {/* Presence control */}
       <div className="mb-6 flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-card-dark">
         <div>
@@ -423,6 +471,65 @@ function EmptyRow({ text }: { text: string }) {
   return (
     <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-6 text-center text-sm text-gray-400 dark:border-gray-700 dark:bg-card-dark">
       {text}
+    </div>
+  );
+}
+
+function ApplicationStatePanel({
+  state,
+  application,
+  onRefresh,
+}: {
+  state: ReturnType<typeof resolveCounsellorPortalState>;
+  application: ApplicationReview | null;
+  onRefresh: () => void;
+}) {
+  if (state === "pending") {
+    return (
+      <div className="mx-auto max-w-xl rounded-3xl border border-amber-200 bg-white p-8 text-center shadow-soft dark:border-amber-900 dark:bg-card-dark">
+        <span className="material-symbols-outlined text-5xl text-amber-500">hourglass_top</span>
+        <p className="mt-4 text-xs font-bold uppercase tracking-[0.16em] text-amber-700 dark:text-amber-300">KYC review in progress</p>
+        <h1 className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">Your application is awaiting administrator approval</h1>
+        <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-gray-600 dark:text-gray-300">Your documents were submitted securely. Your professional workspace will remain locked while an authorised administrator verifies your identity and credentials.</p>
+        {application?.submitted_at && <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">Submitted {new Date(application.submitted_at).toLocaleString()}</p>}
+        <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+          <button onClick={onRefresh} className="rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white">Check review status</button>
+          <Link href="/counsellor/apply" className="rounded-xl border border-gray-300 px-5 py-2.5 text-sm font-semibold text-gray-700 dark:border-gray-600 dark:text-gray-200">View submitted application</Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (state === "verified") {
+    return (
+      <div className="mx-auto max-w-xl rounded-3xl border border-green-200 bg-white p-8 text-center shadow-soft dark:border-green-900 dark:bg-card-dark">
+        <span className="material-symbols-outlined text-5xl text-green-600">verified</span>
+        <h1 className="mt-4 text-2xl font-bold text-gray-900 dark:text-white">Your counsellor application was approved</h1>
+        <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-gray-600 dark:text-gray-300">Verification succeeded. SisterCare is activating your professional workspace now.</p>
+        <button onClick={onRefresh} className="mt-6 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white">Open counsellor workspace</button>
+      </div>
+    );
+  }
+
+  if (state === "rejected") {
+    return (
+      <div className="mx-auto max-w-xl rounded-3xl border border-red-200 bg-white p-8 text-center shadow-soft dark:border-red-900 dark:bg-card-dark">
+        <span className="material-symbols-outlined text-5xl text-red-500">cancel</span>
+        <p className="mt-4 text-xs font-bold uppercase tracking-[0.16em] text-red-700 dark:text-red-300">Application not approved</p>
+        <h1 className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">Your counsellor verification was unsuccessful</h1>
+        <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-gray-600 dark:text-gray-300">{application?.review_note || "The administrator could not verify the submitted credentials. Contact SisterCare support before submitting new documents."}</p>
+        {application?.reviewed_at && <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">Reviewed {new Date(application.reviewed_at).toLocaleString()}</p>}
+        <Link href="/help" className="mt-6 inline-flex rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white">Contact SisterCare support</Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-xl rounded-3xl border border-gray-200 bg-white p-8 text-center shadow-soft dark:border-gray-700 dark:bg-card-dark">
+      <span className="material-symbols-outlined text-5xl text-primary">badge</span>
+      <h1 className="mt-4 text-2xl font-bold text-gray-900 dark:text-white">Complete your counsellor application</h1>
+      <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-gray-600 dark:text-gray-300">Submit your professional profile and private KYC documents. Counsellor access is granted only after administrator verification.</p>
+      <Link href="/counsellor/apply" className="mt-6 inline-flex rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white">Apply to join the care network</Link>
     </div>
   );
 }
