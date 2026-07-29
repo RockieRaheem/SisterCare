@@ -8,6 +8,7 @@ import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import AuthShell from "@/components/layout/AuthShell";
 import { resolveSignedInWorkspace } from "@/lib/workspaceClient";
+import { isOAuthWorkspaceReturn } from "@/lib/workspaceRouting";
 
 // Email validation regex
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -73,7 +74,14 @@ export default function LoginPage() {
   }, [loginIntent, router]);
 
   useEffect(() => {
-    if (authLoading || profileLoading || !user) return;
+    if (
+      !isOAuthWorkspaceReturn(window.location.search) ||
+      authLoading ||
+      profileLoading ||
+      !user
+    ) {
+      return;
+    }
     void routeToWorkspace().catch((routeError) => {
       setError(
         routeError instanceof Error

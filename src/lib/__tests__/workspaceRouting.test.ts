@@ -1,8 +1,21 @@
 import { describe, expect, it } from "vitest";
 import {
+  isOAuthWorkspaceReturn,
   resolveRegistrationIntent,
   resolveWorkspaceRoute,
 } from "../workspaceRouting";
+
+describe("login callback routing", () => {
+  it("does not auto-route an ordinary login-page visit", () => {
+    expect(isOAuthWorkspaceReturn("")).toBe(false);
+    expect(isOAuthWorkspaceReturn("?redirect=%2Fdashboard")).toBe(false);
+  });
+
+  it("auto-routes only an explicit OAuth return", () => {
+    expect(isOAuthWorkspaceReturn("?oauth=1")).toBe(true);
+    expect(isOAuthWorkspaceReturn("?oauth=0")).toBe(false);
+  });
+});
 
 describe("workspace routing", () => {
   it("always routes administrators to administration", () => {

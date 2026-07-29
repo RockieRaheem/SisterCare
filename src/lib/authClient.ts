@@ -97,7 +97,9 @@ class SupabaseAuthFacade {
     window.localStorage.setItem("sistercare-registration-intent", registrationIntent);
     const { error } = await getSupabaseBrowserClient().auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/login` },
+      options: {
+        redirectTo: `${window.location.origin}/auth/login?oauth=1`,
+      },
     });
     if (error) throw error;
   }

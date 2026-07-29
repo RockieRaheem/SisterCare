@@ -5,6 +5,10 @@ export type CounsellorApplicationStatus =
   | "rejected"
   | null;
 
+export function isOAuthWorkspaceReturn(search: string): boolean {
+  return new URLSearchParams(search).get("oauth") === "1";
+}
+
 export function resolveRegistrationIntent(input: {
   role?: string | null;
   storedIntent?: string | null;
