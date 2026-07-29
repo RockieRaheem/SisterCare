@@ -7,14 +7,15 @@
 import { initializeApp, getApps, cert, applicationDefault, type App } from "firebase-admin/app";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
-import { createSupabaseUserClient, getSupabaseAdmin } from "./supabaseAdmin";
+import { getSupabaseAdmin, verifySupabaseAccessToken } from "./supabaseAdmin";
 
 let legacyApp: App | null = null;
 export type UserRole = "user" | "counsellor" | "admin";
 export const USER_ROLES: UserRole[] = ["user", "counsellor", "admin"];
 export type AuthResult =
   | { status: "verified"; uid: string; token: { uid: string; email?: string; role?: UserRole } }
-  | { status: "unauthenticated" }
+  | { status: "unauthenticated"; reason?: "missing_token" | "invalid_token" }
+  | { status: "unavailable"; reason: "token_verifier" | "profile_lookup" }
   | { status: "unenforced" };
 
 export function allowsUnauthenticatedDevelopment(env: { NODE_ENV?: string; ALLOW_UNAUTHENTICATED_DEV?: string } = process.env) {
@@ -57,26 +58,28 @@ export function hasRole(auth: AuthResult, role: UserRole) { return auth.status =
 
 export async function authenticateRequest(request: Request): Promise<AuthResult> {
   const match = (request.headers.get("authorization") || "").match(/^Bearer\s+(.+)$/i);
-  if (!match) return allowsUnauthenticatedDevelopment() ? { status: "unenforced" } : { status: "unauthenticated" };
+  if (!match) return allowsUnauthenticatedDevelopment() ? { status: "unenforced" } : { status: "unauthenticated", reason: "missing_token" };
   try {
-    // Verify exactly the access token supplied by the browser. The public
-    // client is intentional here: service-role credentials are for database
-    // administration, not for interpreting an end-user browser session.
-    const { data: authData, error: authError } = await createSupabaseUserClient(match[1]).auth.getUser(match[1]);
-    if (authError || !authData.user) return { status: "unauthenticated" };
-    const { data: record, error } = await getSupabaseAdmin().from("profiles").select("role").eq("id", authData.user.id).maybeSingle();
+    // getUser(accessToken) asks the Supabase Auth server to validate the exact
+    // browser JWT. It does not trust locally decoded or browser-stored claims.
+    const { user, error: authError } = await verifySupabaseAccessToken(match[1]);
+    if (authError || !user) {
+      console.warn("Supabase rejected a bearer token:", authError?.message || "user missing");
+      return { status: "unauthenticated", reason: "invalid_token" };
+    }
+    const { data: record, error } = await getSupabaseAdmin().from("profiles").select("role").eq("id", user.id).maybeSingle();
     if (error) {
       console.warn("Supabase profile authorization lookup failed:", error.message);
-      return { status: "unauthenticated" };
+      return { status: "unavailable", reason: "profile_lookup" };
     }
     // A valid Supabase identity remains authenticated even if its application
     // profile was not created by the database trigger. Role checks still fail
     // closed because the role remains undefined; bootstrap/profile recovery
     // routes can safely repair the missing row using the verified user id.
     const role = record?.role === "member" ? "user" : record?.role as UserRole | undefined;
-    return { status: "verified", uid: authData.user.id, token: { uid: authData.user.id, email: authData.user.email, role } };
+    return { status: "verified", uid: user.id, token: { uid: user.id, email: user.email, role } };
   } catch (error) {
     console.warn("Supabase access-token verification failed:", error);
-    return { status: "unauthenticated" };
+    return { status: "unavailable", reason: "token_verifier" };
   }
 }

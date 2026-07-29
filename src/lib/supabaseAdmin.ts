@@ -15,13 +15,8 @@ export function getSupabaseAdmin(): SupabaseClient {
   return adminClient;
 }
 
-/** A request-scoped client for verifying a supplied bearer token. */
-export function createSupabaseUserClient(accessToken: string): SupabaseClient {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !publishableKey) throw new Error("Supabase browser credentials are not configured.");
-  return createClient(url, publishableKey, {
-    global: { headers: { Authorization: `Bearer ${accessToken}` } },
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+/** Validate an end-user JWT with Supabase Auth using the server's project client. */
+export async function verifySupabaseAccessToken(accessToken: string) {
+  const { data, error } = await getSupabaseAdmin().auth.getUser(accessToken);
+  return { user: data.user || null, error };
 }

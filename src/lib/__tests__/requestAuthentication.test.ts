@@ -6,7 +6,10 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../supabaseAdmin", () => ({
-  createSupabaseUserClient: () => ({ auth: { getUser: mocks.getUser } }),
+  verifySupabaseAccessToken: async (token: string) => {
+    const result = await mocks.getUser(token);
+    return { user: result.data.user, error: result.error };
+  },
   getSupabaseAdmin: () => ({
     from: () => ({
       select: () => ({
@@ -26,6 +29,16 @@ describe("request authentication", () => {
       data: { user: { id: "user-1", email: "person@example.com" } },
       error: null,
     });
+  });
+
+  it("distinguishes a rejected JWT from a server verification failure", async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: null }, error: new Error("invalid JWT") });
+
+    const result = await authenticateRequest(new Request("https://sistercare.test/api", {
+      headers: { Authorization: "Bearer rejected-token" },
+    }));
+
+    expect(result).toEqual({ status: "unauthenticated", reason: "invalid_token" });
   });
 
   it("keeps a verified identity authenticated while its profile is repaired", async () => {
