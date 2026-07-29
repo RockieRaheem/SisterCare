@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
 import { useAuth } from "@/context/AuthContext";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
+import { readApiResponse } from "@/lib/apiResponse";
 
 /** One-time bootstrap for the first administrator. The secret is never stored. */
 export default function AdminSetupPage() {
@@ -19,7 +20,7 @@ export default function AdminSetupPage() {
       if (refreshError || !data.session?.access_token) throw new Error("Your secure session could not be refreshed. Sign out, sign in again, and retry.");
       const token = data.session.access_token;
       const response = await fetch("/api/admin/roles", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, "x-admin-bootstrap-secret": secret }, body: JSON.stringify({ email: user?.email, role: "admin" }) });
-      const result = await response.json(); if (!response.ok) throw new Error(result.error || "Administrator activation failed");
+      const result = await readApiResponse<any>(response); if (!response.ok) throw new Error(result.error || "Administrator activation failed");
       setSecret(""); setMessage("Administrator access is active. Sign out and back in, then open the admin workspace.");
     } catch (activationError) { setError(activationError instanceof Error ? activationError.message : "Administrator activation failed"); } finally { setSaving(false); }
   };

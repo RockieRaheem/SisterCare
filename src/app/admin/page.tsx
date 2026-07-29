@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
 import { useAuth } from "@/context/AuthContext";
 import { auth } from "@/lib/authClient";
+import { readApiResponse } from "@/lib/apiResponse";
 
 type Overview = {
   counts: { members: number; counsellors: number; available: number; inSession: number; pendingKyc: number; liveSessions: number; waiting: number; openIncidents: number };
@@ -45,7 +46,7 @@ export default function AdminDashboardPage() {
   const load = useCallback(async () => {
     try {
       const response = await adminFetch("/api/admin/overview");
-      const result = await response.json();
+      const result = await readApiResponse<any>(response);
       if (!response.ok) throw new Error(result.error || "Could not load the admin overview");
       setOverview(result.data); setError("");
     } catch (loadError) { setError(loadError instanceof Error ? loadError.message : "Could not load the admin overview"); }
@@ -60,7 +61,7 @@ export default function AdminDashboardPage() {
     event.preventDefault(); setSaving(true); setNotice(""); setError("");
     try {
       const response = await adminFetch("/api/admin/roles", { method: "POST", body: JSON.stringify({ email: accountEmail.trim(), role: accountRole }) });
-      const result = await response.json();
+      const result = await readApiResponse<any>(response);
       if (!response.ok) throw new Error(result.error || "Role assignment failed");
       setNotice(`${accountEmail.trim()} is now assigned the ${accountRole} role. They should sign out and back in.`); setAccountEmail("");
     } catch (assignmentError) { setError(assignmentError instanceof Error ? assignmentError.message : "Role assignment failed"); } finally { setSaving(false); }

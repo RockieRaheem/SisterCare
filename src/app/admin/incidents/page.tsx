@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import AdminShell from "@/components/admin/AdminShell";
 import { auth } from "@/lib/authClient";
+import { readApiResponse } from "@/lib/apiResponse";
 
 interface Incident {
   id: string;
@@ -35,7 +36,7 @@ export default function IncidentsPage() {
   const load = useCallback(async () => {
     try {
       const response = await callIncidents();
-      const result = await response.json();
+      const result = await readApiResponse<any>(response);
       if (!response.ok) throw new Error(result.error);
       setIncidents(result.data.incidents);
     } catch (loadError) {
@@ -65,7 +66,7 @@ export default function IncidentsPage() {
         method: "PATCH",
         body: JSON.stringify({ incidentId: incident.id, to, resolutionNote }),
       });
-      const result = await response.json();
+      const result = await readApiResponse<any>(response);
       if (!response.ok) throw new Error(result.error);
       await load();
     } catch (transitionError) {

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { auth } from "@/lib/authClient";
+import { readApiResponse } from "@/lib/apiResponse";
 import AdminShell from "@/components/admin/AdminShell";
 
 interface OperationsRecord {
@@ -58,7 +59,7 @@ export default function CounsellorOperationsPage() {
   const load = useCallback(async () => {
     try {
       const response = await authorizedFetch("/api/admin/counsellors");
-      const result = await response.json();
+      const result = await readApiResponse<any>(response);
       if (!response.ok) throw new Error(result.error);
       setRecords(result.data.counsellors);
       setApplications(result.data.applications || []);
@@ -90,7 +91,7 @@ export default function CounsellorOperationsPage() {
       const response = await authorizedFetch(`/api/admin/counsellors/${application.id}/review`, {
         method: "POST", body: JSON.stringify({ decision }),
       });
-      const result = await response.json();
+      const result = await readApiResponse<any>(response);
       if (!response.ok) throw new Error(result.error);
       await load();
     } catch (reviewError) {
@@ -104,7 +105,7 @@ export default function CounsellorOperationsPage() {
     setError("");
     try {
       const response = await authorizedFetch(`/api/admin/counsellors/${applicationId}/documents?index=${index}`);
-      const result = await response.json();
+      const result = await readApiResponse<any>(response);
       if (!response.ok) throw new Error(result.error || "Could not open the private document");
       window.open(result.data.url, "_blank", "noopener,noreferrer");
     } catch (documentError) { setError(documentError instanceof Error ? documentError.message : "Could not open the private document"); }
@@ -118,7 +119,7 @@ export default function CounsellorOperationsPage() {
         `/api/admin/counsellors/${record.id}/operations`,
         { method: "PATCH", body: JSON.stringify(record) },
       );
-      const result = await response.json();
+      const result = await readApiResponse<any>(response);
       if (!response.ok) throw new Error(result.error);
       await load();
     } catch (saveError) {

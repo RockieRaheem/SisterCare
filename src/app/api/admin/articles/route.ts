@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest, hasRole, isAuthEnforced } from "@/lib/serverAuth";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import { withApiObservability } from "@/lib/observability";
 
 async function requireAdmin(request: NextRequest) {
   if (!isAuthEnforced()) return null;
@@ -8,7 +9,7 @@ async function requireAdmin(request: NextRequest) {
   return auth.status === "verified" && hasRole(auth, "admin") ? auth : null;
 }
 
-export async function GET(request: NextRequest) {
+async function getArticles(request: NextRequest) {
   const auth = await requireAdmin(request);
   if (!auth) return NextResponse.json({ success: false, error: "Admin privileges required" }, { status: 403 });
   const db = getSupabaseAdmin();
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ success: true, data: { articles } });
 }
 
-export async function PATCH(request: NextRequest) {
+async function patchArticle(request: NextRequest) {
   const auth = await requireAdmin(request);
   if (!auth) return NextResponse.json({ success: false, error: "Admin privileges required" }, { status: 403 });
   const body = await request.json().catch(() => null) as { articleId?: string; decision?: string } | null;
@@ -58,3 +59,9 @@ export async function PATCH(request: NextRequest) {
   if (!data) return NextResponse.json({ success: false, error: "Article is not awaiting review" }, { status: 409 });
   return NextResponse.json({ success: true });
 }
+
+export const GET = withApiObservability("admin_articles_get", getArticles);
+export const PATCH = withApiObservability(
+  "admin_articles_patch",
+  patchArticle,
+);

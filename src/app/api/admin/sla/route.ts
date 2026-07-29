@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest, hasRole, isAuthEnforced } from "@/lib/serverAuth";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import { withApiObservability } from "@/lib/observability";
 
-export async function GET(request: NextRequest) {
+async function getSla(request: NextRequest) {
   if (!isAuthEnforced()) return NextResponse.json({ success: false, error: "Crisis monitoring is unavailable" }, { status: 503 });
   const auth = await authenticateRequest(request);
   if (!hasRole(auth, "admin")) return NextResponse.json({ success: false, error: "Admin privileges required" }, { status: 403 });
@@ -42,3 +43,5 @@ export async function GET(request: NextRequest) {
     recent: sessions.slice(0, 20),
   } });
 }
+
+export const GET = withApiObservability("admin_sla_get", getSla);

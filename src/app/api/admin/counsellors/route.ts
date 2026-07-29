@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest, hasRole, isAuthEnforced } from "@/lib/serverAuth";
 import { getLiveCounsellors } from "@/lib/server/serverData";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import { withApiObservability } from "@/lib/observability";
 
 type ApplicationPayload = {
   profile?: { name?: string; title?: string };
@@ -12,7 +13,7 @@ type ApplicationPayload = {
   documentReferences?: string[];
 };
 
-export async function GET(request: NextRequest) {
+async function getCounsellors(request: NextRequest) {
   if (!isAuthEnforced()) {
     return NextResponse.json({ success: false, error: "Counsellor operations are unavailable" }, { status: 503 });
   }
@@ -60,3 +61,8 @@ export async function GET(request: NextRequest) {
   });
   return NextResponse.json({ success: true, data: { counsellors, applications } });
 }
+
+export const GET = withApiObservability(
+  "admin_counsellors_get",
+  getCounsellors,
+);

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import AdminShell from "@/components/admin/AdminShell";
 import { auth } from "@/lib/authClient";
+import { readApiResponse } from "@/lib/apiResponse";
 
 type MetricDay = Record<string, string | number>;
 
@@ -17,7 +18,7 @@ export default function OperationsDashboardPage() {
       const response = await fetch("/api/admin/metrics", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const result = await response.json();
+      const result = await readApiResponse<any>(response);
       if (!response.ok) throw new Error(result.error);
       setDays(result.data.days);
     } catch (loadError) {
