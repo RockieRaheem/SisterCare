@@ -7,7 +7,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import NotificationBell from "@/components/ui/NotificationBell";
-import { auth } from "@/lib/firebase";
+import { auth } from "@/lib/authClient";
 
 // Helper function to get initials from name or email
 function getInitials(displayName: string | null, email: string | null): string {

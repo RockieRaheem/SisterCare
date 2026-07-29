@@ -11,7 +11,7 @@ import {
   COUNSELLOR_SPECIALTIES,
   COUNSELLOR_STATUS_FILTERS,
 } from "@/lib/counsellors";
-import { auth } from "@/lib/firebase";
+import { auth } from "@/lib/authClient";
 import { AppShellSkeleton } from "@/components/ui/Skeleton";
 
 export default function CounsellorsPage() {

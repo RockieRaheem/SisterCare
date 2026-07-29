@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateRequest, isAuthEnforced } from "@/lib/firebaseAdmin";
+import { authenticateRequest, isAuthEnforced } from "@/lib/serverAuth";
 import { getLiveCounsellors } from "@/lib/server/serverData";
 
 /** Authenticated member directory. Availability is calculated server-side. */

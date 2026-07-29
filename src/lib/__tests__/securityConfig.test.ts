@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   allowsUnauthenticatedDevelopment,
   validateProductionSecurityConfig,
-} from "@/lib/firebaseAdmin";
+} from "@/lib/serverAuth";
 
 describe("fail-closed API security configuration", () => {
   it("allows unenforced auth only through an explicit non-production opt-in", () => {

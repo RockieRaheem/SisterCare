@@ -7,8 +7,8 @@ import { useAuth } from "@/context/AuthContext";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import AuthShell from "@/components/layout/AuthShell";
-import { getUserProfile } from "@/lib/firestore";
-import { auth } from "@/lib/firebase";
+import { getUserProfile } from "@/lib/dataClient";
+import { auth } from "@/lib/authClient";
 import { resolveWorkspaceRoute } from "@/lib/workspaceRouting";
 
 // Email validation regex

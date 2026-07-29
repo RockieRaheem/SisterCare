@@ -7,7 +7,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import Header from "@/components/layout/Header";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
-import { getUserProfile, getSymptoms, getAgentEvents } from "@/lib/firestore";
+import { getUserProfile, getSymptoms, getAgentEvents } from "@/lib/dataClient";
 import { UserProfile, SymptomLog, MoodType, AgentEvent } from "@/types";
 import { AppShellSkeleton } from "@/components/ui/Skeleton";
 

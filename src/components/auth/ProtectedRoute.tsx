@@ -3,7 +3,7 @@
 import { ReactNode, useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { getUserProfile } from "@/lib/firestore";
+import { getUserProfile } from "@/lib/dataClient";
 
 interface ProtectedRouteProps {
   children: ReactNode;

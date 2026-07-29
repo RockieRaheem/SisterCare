@@ -3,7 +3,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import CounsellorShell from "@/components/counsellor/CounsellorShell";
-import { auth } from "@/lib/firebase";
+import { auth } from "@/lib/authClient";
 
 type Article = { id: string; title: string; status: "pending_review" | "published" | "rejected" };
 const categories = [{ id: "comfort", label: "Comfort & Hygiene" }, { id: "emotional", label: "Emotional Well-being" }, { id: "medical", label: "When to See a Doctor" }, { id: "nutrition", label: "Nutrition & Diet" }];

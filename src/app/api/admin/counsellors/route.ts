@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateRequest, hasRole, isAuthEnforced } from "@/lib/firebaseAdmin";
+import { authenticateRequest, hasRole, isAuthEnforced } from "@/lib/serverAuth";
 import { getLiveCounsellors } from "@/lib/server/serverData";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
 import { useAuth } from "@/context/AuthContext";
-import { auth } from "@/lib/firebase";
+import { auth } from "@/lib/authClient";
 
 type Overview = {
   counts: { members: number; counsellors: number; available: number; inSession: number; pendingKyc: number; liveSessions: number; waiting: number; openIncidents: number };

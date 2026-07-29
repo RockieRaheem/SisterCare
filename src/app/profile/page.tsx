@@ -17,7 +17,7 @@ import {
   getCurrentPhase,
   getCycleInfo,
   schedulePeriodReminders,
-} from "@/lib/firestore";
+} from "@/lib/dataClient";
 import { UserProfile, CycleData, UserPreferences } from "@/types";
 import { ProfileSkeleton } from "@/components/ui/Skeleton";
 

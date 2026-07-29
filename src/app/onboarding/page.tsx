@@ -3,15 +3,15 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { auth } from "@/lib/firebase";
+import { auth } from "@/lib/authClient";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
-import { completeOnboarding, updateUserProfile } from "@/lib/firestore";
+import { completeOnboarding, updateUserProfile } from "@/lib/dataClient";
 import {
   calculateNextPeriod,
   getCurrentPhase,
   schedulePeriodReminders,
-} from "@/lib/firestore";
+} from "@/lib/dataClient";
 
 type OnboardingStep = "welcome" | "name" | "cycle" | "reminders" | "complete";
 

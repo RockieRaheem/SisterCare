@@ -1,10 +1,4 @@
-/**
- * Supabase-backed client data access.
- *
- * The filename is retained temporarily so existing product imports remain
- * stable during the Firebase-to-Supabase cutover. It contains no Firebase SDK
- * code and can be renamed once every caller has moved to a neutral name.
- */
+/** Supabase-backed client data access. */
 import {
   AgentEvent,
   ChatConversation,

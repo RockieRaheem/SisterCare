@@ -3,7 +3,7 @@ import {
   authenticateRequest,
   deleteAuthUser,
   isAuthEnforced,
-} from "@/lib/firebaseAdmin";
+} from "@/lib/serverAuth";
 import { deleteUserData } from "@/lib/server/accountDeletion";
 
 export async function DELETE(request: NextRequest) {

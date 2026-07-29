@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import AdminShell from "@/components/admin/AdminShell";
-import { auth } from "@/lib/firebase";
+import { auth } from "@/lib/authClient";
 
 type Article = { id: string; title: string; description: string; content: string; category: string; tags: string[]; authorName: string; authorTitle: string };
 async function api(path: string, init?: RequestInit) { const token = await auth.currentUser?.getIdToken(); return fetch(path, { ...init, headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "", ...init?.headers } }); }

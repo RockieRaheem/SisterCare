@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateRequest, isAuthEnforced } from "@/lib/firebaseAdmin";
+import { authenticateRequest, isAuthEnforced } from "@/lib/serverAuth";
 import { getSession } from "@/lib/server/sessions";
 
 /**

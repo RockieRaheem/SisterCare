@@ -1,10 +1,4 @@
-/**
- * Transitional import facade for legacy UI modules.
- *
- * Despite the filename, this module is entirely Supabase-backed. It lets the
- * remaining UI move without a risky, all-at-once import rename. No Firebase
- * package is imported or initialized here.
- */
+/** Supabase-backed browser authentication facade. */
 "use client";
 
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";

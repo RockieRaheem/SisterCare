@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import CounsellorShell from "@/components/counsellor/CounsellorShell";
 import { useAuth } from "@/context/AuthContext";
-import { auth } from "@/lib/firebase";
+import { auth } from "@/lib/authClient";
 import {
   type CounsellorApplicationStatus,
   resolveCounsellorPortalState,

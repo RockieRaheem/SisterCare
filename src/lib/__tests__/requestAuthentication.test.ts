@@ -19,7 +19,7 @@ vi.mock("../supabaseAdmin", () => ({
   }),
 }));
 
-import { authenticateRequest } from "../firebaseAdmin";
+import { authenticateRequest } from "../serverAuth";
 
 describe("request authentication", () => {
   beforeEach(() => {

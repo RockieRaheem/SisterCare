@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
 import { useAuth } from "@/context/AuthContext";
-import { auth } from "@/lib/firebase";
+import { auth } from "@/lib/authClient";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 import { CounsellingSession, SessionState } from "@/types";
 import {

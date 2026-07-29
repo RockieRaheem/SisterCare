@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateRequest, hasRole, isAuthEnforced } from "@/lib/firebaseAdmin";
+import { authenticateRequest, hasRole, isAuthEnforced } from "@/lib/serverAuth";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 /** Approving KYC atomically changes the profile role and creates an offline directory entry. */

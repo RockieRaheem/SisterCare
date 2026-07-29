@@ -7,8 +7,8 @@ import {
   useEffect,
   ReactNode,
 } from "react";
-import { auth } from "@/lib/firebase";
-import { getUserProfile, updateUserProfile } from "@/lib/firestore";
+import { auth } from "@/lib/authClient";
+import { getUserProfile, updateUserProfile } from "@/lib/dataClient";
 import { clearPrivateClientData } from "@/lib/privacy";
 import { UserProfile as FullUserProfile } from "@/types";
 import { getSupabaseBrowserClient } from "@/lib/supabase";

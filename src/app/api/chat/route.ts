@@ -28,7 +28,7 @@ import {
   assessConversationSafety,
   assessTriageSeverity,
 } from "@/lib/safety";
-import { authenticateRequest } from "@/lib/firebaseAdmin";
+import { authenticateRequest } from "@/lib/serverAuth";
 import { createSessionRequest } from "@/lib/server/sessions";
 import { emitEvent } from "@/lib/server/events";
 import { withApiObservability } from "@/lib/observability";

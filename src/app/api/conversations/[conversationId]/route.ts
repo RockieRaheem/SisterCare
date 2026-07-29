@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateRequest, isAuthEnforced } from "@/lib/firebaseAdmin";
+import { authenticateRequest, isAuthEnforced } from "@/lib/serverAuth";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 const unavailable = () => NextResponse.json({ success: false, error: "Secure conversation storage is temporarily unavailable." }, { status: 503 });

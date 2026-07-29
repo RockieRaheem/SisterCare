@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateRequest, hasRole, isAuthEnforced } from "@/lib/firebaseAdmin";
+import { authenticateRequest, hasRole, isAuthEnforced } from "@/lib/serverAuth";
 import { IncidentStatus } from "@/lib/incidents";
 import { withApiObservability } from "@/lib/observability";
 import { transitionIncident } from "@/lib/server/incidents";

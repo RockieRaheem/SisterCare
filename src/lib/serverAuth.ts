@@ -1,15 +1,6 @@
-/**
- * Server authentication boundary. The filename remains during the staged
- * import rename; all authentication and role data is now Supabase-backed.
- * Firebase Admin access is retained only until the remaining legacy admin
- * routes are migrated in the next cutover stage.
- */
-import { initializeApp, getApps, cert, applicationDefault, type App } from "firebase-admin/app";
-import { getFirestore, type Firestore } from "firebase-admin/firestore";
-import { getStorage } from "firebase-admin/storage";
+/** Supabase-backed server authentication and authorization boundary. */
 import { getSupabaseAdmin, verifySupabaseAccessToken } from "./supabaseAdmin";
 
-let legacyApp: App | null = null;
 export type UserRole = "user" | "counsellor" | "admin";
 export const USER_ROLES: UserRole[] = ["user", "counsellor", "admin"];
 export type AuthResult =
@@ -32,20 +23,6 @@ export function validateProductionSecurityConfig(env: NodeJS.ProcessEnv = proces
   return errors;
 }
 
-function getLegacyApp(): App | null {
-  if (legacyApp) return legacyApp;
-  const existing = getApps(); if (existing.length) return (legacyApp = existing[0]);
-  try {
-    const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-    if (serviceAccount) return (legacyApp = initializeApp({ credential: cert(JSON.parse(serviceAccount)) }));
-    if (process.env.GOOGLE_APPLICATION_CREDENTIALS) return (legacyApp = initializeApp({ credential: applicationDefault() }));
-  } catch (error) { console.error("Legacy Firebase Admin initialization failed:", error); }
-  return null;
-}
-/** @deprecated Remaining legacy routes only; do not use in new code. */
-export function getAdminDb(): Firestore | null { const app = getLegacyApp(); return app ? getFirestore(app) : null; }
-/** @deprecated Remaining legacy KYC route only; do not use in new code. */
-export function getAdminStorageBucket() { const app = getLegacyApp(); const name = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET; return app && name ? getStorage(app).bucket(name) : null; }
 export function isAuthEnforced() { return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY)); }
 
 export async function setUserRole(uid: string, role: UserRole) {

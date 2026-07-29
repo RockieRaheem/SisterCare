@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import AdminShell from "@/components/admin/AdminShell";
-import { auth } from "@/lib/firebase";
+import { auth } from "@/lib/authClient";
 
 interface Incident {
   id: string;

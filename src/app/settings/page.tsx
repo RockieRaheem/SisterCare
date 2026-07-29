@@ -18,7 +18,7 @@ import {
   getPendingReminders,
   getCycleHistory,
   getUserConversations,
-} from "@/lib/firestore";
+} from "@/lib/dataClient";
 import {
   requestNotificationPermission,
   getNotificationPermission,

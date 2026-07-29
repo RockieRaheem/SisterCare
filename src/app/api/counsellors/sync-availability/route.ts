@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { batchUpdateCounsellorAvailability } from "@/lib/server/serverData";
-import { authenticateRequest, hasRole } from "@/lib/firebaseAdmin";
+import { authenticateRequest, hasRole } from "@/lib/serverAuth";
 import { recordMaintenanceRun } from "@/lib/server/operations";
 
 function isScheduler(request: NextRequest) {

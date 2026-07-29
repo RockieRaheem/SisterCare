@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateRequest, hasRole, isAuthEnforced, type UserRole } from "@/lib/firebaseAdmin";
+import { authenticateRequest, hasRole, isAuthEnforced, type UserRole } from "@/lib/serverAuth";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { resolveFirstAdminTarget } from "@/lib/adminBootstrap";
 

@@ -7,7 +7,7 @@ import { useParams, useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
 import BottomNav from "@/components/layout/BottomNav";
 import { useAuth } from "@/context/AuthContext";
-import { auth } from "@/lib/firebase";
+import { auth } from "@/lib/authClient";
 import { Counsellor, CounsellorStatus } from "@/types";
 
 export default function CounsellorProfilePage() {

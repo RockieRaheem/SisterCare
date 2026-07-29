@@ -3,7 +3,7 @@
  * calls and shared display metadata. Browser code only.
  */
 
-import { auth } from "@/lib/firebase";
+import { auth } from "@/lib/authClient";
 import { CounsellingSession, SessionState } from "@/types";
 
 async function authHeaders(): Promise<Record<string, string>> {

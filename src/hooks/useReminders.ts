@@ -7,7 +7,7 @@ import {
   markReminderRead,
   schedulePeriodReminders,
   getUserProfile,
-} from "@/lib/firestore";
+} from "@/lib/dataClient";
 import { Reminder } from "@/types";
 
 interface UseRemindersReturn {

@@ -3,7 +3,7 @@ import {
   authenticateRequest,
   isAuthEnforced,
   hasRole,
-} from "@/lib/firebaseAdmin";
+} from "@/lib/serverAuth";
 import {
   acceptSession,
   declineSession,

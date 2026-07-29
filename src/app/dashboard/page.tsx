@@ -16,9 +16,9 @@ import {
   logSymptoms,
   getCurrentPhase,
   getCycleInfo,
-} from "@/lib/firestore";
+} from "@/lib/dataClient";
 import { UserProfile, MoodType } from "@/types";
-import { auth } from "@/lib/firebase";
+import { auth } from "@/lib/authClient";
 
 const phaseColors: Record<string, string> = {
   menstrual: "text-red-500",

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import {
   isAuthEnforced,
   validateProductionSecurityConfig,
-} from "@/lib/firebaseAdmin";
+} from "@/lib/serverAuth";
 import { getClinicalRuntimeIssues } from "@/lib/clinicalGovernance";
 import { getMaintenanceReadiness } from "@/lib/server/operations";
 

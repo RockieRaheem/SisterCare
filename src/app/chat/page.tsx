@@ -13,7 +13,7 @@ import {
   updateConversationTitle,
   updateConversationPreview,
   getUserProfile,
-} from "@/lib/firestore";
+} from "@/lib/dataClient";
 import {
   loadLocalConversations,
   saveLocalConversation,

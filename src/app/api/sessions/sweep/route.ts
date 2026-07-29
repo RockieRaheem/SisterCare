@@ -3,7 +3,7 @@ import {
   authenticateRequest,
   isAuthEnforced,
   hasRole,
-} from "@/lib/firebaseAdmin";
+} from "@/lib/serverAuth";
 import { sweepSessions } from "@/lib/server/sessions";
 import { recordMaintenanceRun } from "@/lib/server/operations";
 
