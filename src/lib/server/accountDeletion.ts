@@ -1,76 +1,40 @@
-import { getAdminDb, getAdminStorageBucket } from "@/lib/firebaseAdmin";
+import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
-const USER_OWNED_COLLECTIONS = [
-  "conversations",
-  "sessions",
-  "reminders",
-  "symptomLogs",
-  "cycleHistory",
-  "agentEvents",
-] as const;
+async function removeStoragePrefix(bucket: string, uid: string): Promise<number> {
+  const storage = getSupabaseAdmin().storage.from(bucket);
+  const { data, error } = await storage.list(uid, { limit: 1000 });
+  if (error) throw new Error(error.message);
+  const paths = (data || []).filter((item) => item.name).map((item) => `${uid}/${item.name}`);
+  if (!paths.length) return 0;
+  const removed = await storage.remove(paths);
+  if (removed.error) throw new Error(removed.error.message);
+  return paths.length;
+}
 
 /**
- * Permanently removes user-owned Firestore data. recursiveDelete also removes
- * nested messages and profile subcollections. Auth deletion happens only
- * after this completes so a partial failure can be retried by the user.
+ * Remove data that can block auth-user deletion. Profile-owned records then
+ * cascade from auth.users through profiles under the Supabase schema.
  */
 export async function deleteUserData(uid: string): Promise<{
   deletedDocuments: number;
   deletedFiles: number;
 }> {
-  const db = getAdminDb();
-  if (!db) throw new Error("Firebase Admin is not configured");
-
+  const db = getSupabaseAdmin();
   let deletedDocuments = 0;
-  let deletedFiles = 0;
-  const deleteRef = async (ref: FirebaseFirestore.DocumentReference) => {
-    await db.recursiveDelete(ref);
-    deletedDocuments += 1;
+  const articles = await db.from("library_articles").delete({ count: "exact" }).eq("author_id", uid);
+  if (articles.error) throw new Error(articles.error.message);
+  deletedDocuments += articles.count || 0;
+
+  const events = await db.from("audit_events").delete({ count: "exact" }).or(`actor_id.eq.${uid},subject_id.eq.${uid}`);
+  if (events.error) throw new Error(events.error.message);
+  deletedDocuments += events.count || 0;
+
+  const fileCounts = await Promise.all([
+    removeStoragePrefix("counsellor-profile", uid),
+    removeStoragePrefix("counsellor-kyc", uid),
+  ]);
+  return {
+    deletedDocuments,
+    deletedFiles: fileCounts.reduce((sum, value) => sum + value, 0),
   };
-  const userRef = db.collection("users").doc(uid);
-  const userSnapshot = await userRef.get();
-  if (userSnapshot.exists) {
-    await deleteRef(userRef);
-  }
-
-  for (const collectionName of USER_OWNED_COLLECTIONS) {
-    const snapshot = await db
-      .collection(collectionName)
-      .where("userId", "==", uid)
-      .get();
-    for (const document of snapshot.docs) {
-      await deleteRef(document.ref);
-    }
-  }
-
-  const eventSnapshot = await db
-    .collection("events")
-    .where("payload.userId", "==", uid)
-    .get();
-  for (const document of eventSnapshot.docs) {
-    await deleteRef(document.ref);
-  }
-
-  // Professional identity/KYC is user-owned, even when the account once held
-  // a counsellor role. Shared session records are intentionally not erased
-  // here; their retention requires a documented clinical/legal policy.
-  for (const ref of [
-    db.collection("counsellorApplications").doc(uid),
-    db.collection("counsellors").doc(uid),
-    db.collection("presence").doc(uid),
-  ]) {
-    if ((await ref.get()).exists) await deleteRef(ref);
-  }
-  const counsellorEvents = await db.collection("events").where("payload.counsellorId", "==", uid).get();
-  for (const document of counsellorEvents.docs) await deleteRef(document.ref);
-
-  const bucket = getAdminStorageBucket();
-  if (bucket) {
-    for (const prefix of [`counsellor-profile/${uid}/`, `counsellor-kyc/${uid}/`]) {
-      const [files] = await bucket.getFiles({ prefix });
-      await Promise.all(files.map(async (file) => { await file.delete({ ignoreNotFound: true }); deletedFiles += 1; }));
-    }
-  }
-
-  return { deletedDocuments, deletedFiles };
 }

@@ -1,13 +1,36 @@
 import { NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebaseAdmin";
+import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 /** Published articles are the only counsellor content exposed to the library. */
 export async function GET() {
-  const db = getAdminDb();
-  if (!db) return NextResponse.json({ success: true, data: { articles: [] } });
-  const snapshot = await db.collection("libraryArticles").where("status", "==", "published").get();
-  const articles = snapshot.docs
-    .sort((a, b) => Number(b.data().publishedAt?.toMillis?.() || 0) - Number(a.data().publishedAt?.toMillis?.() || 0))
-    .map((document) => ({ id: document.id, ...document.data() }));
-  return NextResponse.json({ success: true, data: { articles } });
+  try {
+    const db = getSupabaseAdmin();
+    const { data, error } = await db.from("library_articles").select("*").eq("status", "published").order("published_at", { ascending: false });
+    if (error) throw error;
+    const authorIds = [...new Set((data || []).map((row) => row.author_id))];
+    const { data: counsellors, error: counsellorError } = authorIds.length
+      ? await db.from("counsellors").select("id, profile").in("id", authorIds)
+      : { data: [], error: null };
+    if (counsellorError) throw counsellorError;
+    const authors = new Map((counsellors || []).map((row) => [row.id, row.profile as { name?: string; title?: string }]));
+    const articles = (data || []).map((row) => ({
+      id: row.id,
+      title: row.title,
+      description: row.summary,
+      content: row.content,
+      category: row.category,
+      tags: row.tags || [],
+      coverImageUrl: row.cover_image_url,
+      authorId: row.author_id,
+      authorName: authors.get(row.author_id)?.name || "SisterCare counsellor",
+      authorTitle: authors.get(row.author_id)?.title || "Counsellor",
+      status: row.status,
+      publishedAt: row.published_at,
+      updatedAt: row.updated_at,
+    }));
+    return NextResponse.json({ success: true, data: { articles } });
+  } catch (error) {
+    console.error("Published article query failed:", error);
+    return NextResponse.json({ success: false, error: "The library is temporarily unavailable" }, { status: 503 });
+  }
 }
