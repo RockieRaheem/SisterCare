@@ -52,11 +52,37 @@ export async function getMaintenanceReadiness(now = Date.now()): Promise<boolean
 export async function getDatabaseReadiness(): Promise<boolean> {
   try {
     const client = getSupabaseAdmin();
-    const checks = await Promise.all(
-      REQUIRED_TABLES.map((table) =>
-        client.from(table).select("*", { count: "exact", head: true }),
-      ),
-    );
+    const [tables, sessionColumns, articleColumns, matchingFunction] =
+      await Promise.all([
+        Promise.all(
+          REQUIRED_TABLES.map((table) =>
+            client.from(table).select("*", { count: "exact", head: true }),
+          ),
+        ),
+        client
+          .from("counselling_sessions")
+          .select(
+            "matched_at,accepted_at,active_at,completed_at,time_to_human_seconds,match_attempts,declined_by",
+            { head: true },
+          ),
+        client
+          .from("library_articles")
+          .select(
+            "reviewed_by,reviewed_at,published_at,tags,cover_image_url",
+            { head: true },
+          ),
+        client.rpc("claim_counselling_session", {
+          target_session_id: "00000000-0000-0000-0000-000000000000",
+          target_counsellor_id: "00000000-0000-0000-0000-000000000000",
+          target_counsellor_name: "Readiness probe",
+        }),
+      ]);
+    const checks = [
+      ...tables,
+      sessionColumns,
+      articleColumns,
+      matchingFunction,
+    ];
     return checks.every((result) => !result.error);
   } catch {
     return false;
