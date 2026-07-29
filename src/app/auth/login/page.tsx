@@ -7,8 +7,9 @@ import { useAuth } from "@/context/AuthContext";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import AuthShell from "@/components/layout/AuthShell";
-import { auth } from "@/lib/firebase";
 import { getUserProfile } from "@/lib/firestore";
+import { auth } from "@/lib/firebase";
+import { resolveWorkspaceRoute } from "@/lib/workspaceRouting";
 
 // Email validation regex
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -54,11 +55,8 @@ export default function LoginPage() {
   const routeToWorkspace = async () => {
     const firebaseUser = auth.currentUser;
     if (!firebaseUser) throw new Error("Authentication required");
-    const role = (await firebaseUser.getIdTokenResult()).claims.role;
-    if (role === "admin") { router.replace("/admin"); return; }
-    if (role === "counsellor") { router.replace("/counsellor"); return; }
     const profile = await getUserProfile(firebaseUser.uid).catch(() => null);
-    router.replace(profile?.registrationIntent === "counsellor" ? "/counsellor/apply" : "/dashboard");
+    router.replace(resolveWorkspaceRoute(profile || {}));
   };
 
   const validateForm = useCallback((): boolean => {

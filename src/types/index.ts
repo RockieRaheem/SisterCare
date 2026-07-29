@@ -12,6 +12,8 @@ export interface UserProfile {
   preferences: UserPreferences;
   /** Sign-up path only; it never grants a privileged Firebase role. */
   registrationIntent?: "member" | "counsellor";
+  /** Server-controlled Supabase role; never accepted from a browser update. */
+  role?: "member" | "counsellor" | "admin";
 }
 
 export interface PregnancyData {

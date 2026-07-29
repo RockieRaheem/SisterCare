@@ -104,6 +104,7 @@ function profileFromRow(row: JsonRecord): UserProfile {
     cycleData: reviveCycle((row.cycle_data as JsonRecord | null) || null),
     pregnancyData: revivePregnancy((row.pregnancy_data as JsonRecord | null) || null),
     registrationIntent: row.registration_intent === "counsellor" ? "counsellor" : "member",
+    role: row.role as UserProfile["role"],
   };
 }
 
