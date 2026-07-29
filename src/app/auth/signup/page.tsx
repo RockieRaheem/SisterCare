@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import AuthShell from "@/components/layout/AuthShell";
+import { resolveSignedInWorkspace } from "@/lib/workspaceClient";
 
 // Email validation regex
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -138,7 +139,7 @@ export default function SignupPage() {
         setNotice("Check your email to confirm your account, then sign in to continue with SisterCare.");
         return;
       }
-      router.push(registrationIntent === "counsellor" ? "/counsellor/apply" : "/onboarding");
+      router.replace(await resolveSignedInWorkspace(registrationIntent));
     } catch (err: unknown) {
       const errorCode = (err as { code?: string })?.code || "";
       setError(getSignupErrorMessage(errorCode, (err as { message?: string })?.message));
@@ -154,7 +155,6 @@ export default function SignupPage() {
 
     try {
       await signInWithGoogle(registrationIntent);
-      router.push(registrationIntent === "counsellor" ? "/counsellor/apply" : "/onboarding");
     } catch (err: unknown) {
       const errorCode = (err as { code?: string })?.code || "";
       if (errorCode === "auth/popup-closed-by-user") {

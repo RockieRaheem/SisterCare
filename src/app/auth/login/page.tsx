@@ -1,15 +1,13 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import AuthShell from "@/components/layout/AuthShell";
-import { getUserProfile } from "@/lib/dataClient";
-import { auth } from "@/lib/authClient";
-import { resolveWorkspaceRoute } from "@/lib/workspaceRouting";
+import { resolveSignedInWorkspace } from "@/lib/workspaceClient";
 
 // Email validation regex
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -40,6 +38,9 @@ const getLoginErrorMessage = (errorCode: string, providerMessage?: string): stri
 };
 
 export default function LoginPage() {
+  const [loginIntent, setLoginIntent] = useState<"member" | "counsellor">(
+    "member",
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -49,15 +50,38 @@ export default function LoginPage() {
   }>({});
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const { signIn, signInWithGoogle } = useAuth();
+  const {
+    signIn,
+    signInWithGoogle,
+    user,
+    loading: authLoading,
+    profileLoading,
+  } = useAuth();
   const router = useRouter();
+  const routingRef = useRef(false);
 
-  const routeToWorkspace = async () => {
-    const supabaseUser = auth.currentUser;
-    if (!supabaseUser) throw new Error("Authentication required");
-    const profile = await getUserProfile(supabaseUser.uid).catch(() => null);
-    router.replace(resolveWorkspaceRoute(profile || {}));
-  };
+  const routeToWorkspace = useCallback(async () => {
+    if (routingRef.current) return;
+    routingRef.current = true;
+    try {
+      const destination = await resolveSignedInWorkspace(loginIntent);
+      router.replace(destination);
+    } catch (routeError) {
+      routingRef.current = false;
+      throw routeError;
+    }
+  }, [loginIntent, router]);
+
+  useEffect(() => {
+    if (authLoading || profileLoading || !user) return;
+    void routeToWorkspace().catch((routeError) => {
+      setError(
+        routeError instanceof Error
+          ? routeError.message
+          : "Unable to open your SisterCare workspace",
+      );
+    });
+  }, [authLoading, profileLoading, routeToWorkspace, user]);
 
   const validateForm = useCallback((): boolean => {
     const errors: { email?: string; password?: string } = {};
@@ -107,8 +131,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await signInWithGoogle();
-      await routeToWorkspace();
+      await signInWithGoogle(loginIntent);
     } catch (err: unknown) {
       const errorCode = (err as { code?: string })?.code || "";
       if (errorCode === "auth/popup-closed-by-user") {
@@ -161,6 +184,62 @@ export default function LoginPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <fieldset>
+            <legend className="mb-2 px-1 text-sm font-semibold text-text-primary dark:text-white">
+              Open my workspace as
+            </legend>
+            <div className="grid grid-cols-2 gap-3">
+              <label
+                className={`cursor-pointer rounded-2xl border-2 p-3 transition ${
+                  loginIntent === "member"
+                    ? "border-primary bg-primary/5"
+                    : "border-border-light dark:border-border-dark"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="loginIntent"
+                  value="member"
+                  checked={loginIntent === "member"}
+                  onChange={() => setLoginIntent("member")}
+                  className="sr-only"
+                />
+                <span className="material-symbols-outlined text-primary">
+                  favorite
+                </span>
+                <span className="ml-2 text-sm font-bold text-text-primary dark:text-white">
+                  Member
+                </span>
+              </label>
+              <label
+                className={`cursor-pointer rounded-2xl border-2 p-3 transition ${
+                  loginIntent === "counsellor"
+                    ? "border-primary bg-primary/5"
+                    : "border-border-light dark:border-border-dark"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="loginIntent"
+                  value="counsellor"
+                  checked={loginIntent === "counsellor"}
+                  onChange={() => setLoginIntent("counsellor")}
+                  className="sr-only"
+                />
+                <span className="material-symbols-outlined text-primary">
+                  support_agent
+                </span>
+                <span className="ml-2 text-sm font-bold text-text-primary dark:text-white">
+                  Counsellor
+                </span>
+              </label>
+            </div>
+            <p className="mt-2 px-1 text-xs leading-5 text-text-secondary">
+              Your verified account role always takes priority. Choosing
+              counsellor can resume or begin KYC, but cannot grant professional
+              access.
+            </p>
+          </fieldset>
           <div>
             <Input
               label="Email Address"

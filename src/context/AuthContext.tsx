@@ -70,7 +70,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const deferredIntent = window.localStorage.getItem("sistercare-registration-intent");
-      if (deferredIntent === "counsellor" && profile.registrationIntent !== "counsellor") {
+      if (
+        deferredIntent === "counsellor" &&
+        profile.role === "member" &&
+        profile.registrationIntent !== "counsellor"
+      ) {
         await updateUserProfile(uid, { registrationIntent: "counsellor" });
         profile.registrationIntent = "counsellor";
       }
