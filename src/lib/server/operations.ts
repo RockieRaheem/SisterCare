@@ -1,6 +1,20 @@
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
-const STALE_AFTER_MS = 20 * 60 * 1000;
+// Vercel Hobby runs scheduled work at most once per day. A 36-hour window
+// tolerates its documented hourly execution imprecision and one delayed run.
+const STALE_AFTER_MS = 36 * 60 * 60 * 1000;
+const REQUIRED_TABLES = [
+  "profiles",
+  "counsellors",
+  "counsellor_applications",
+  "counselling_sessions",
+  "library_articles",
+  "audit_events",
+  "incidents",
+  "metrics_daily",
+  "operations_heartbeats",
+  "rate_limits",
+] as const;
 
 export async function recordMaintenanceRun(
   job: "session_sweep" | "availability_sync",
@@ -29,6 +43,21 @@ export async function getMaintenanceReadiness(now = Date.now()): Promise<boolean
       const ranAt = heartbeat?.ran_at ? new Date(heartbeat.ran_at).getTime() : 0;
       return heartbeat?.success === true && ranAt > 0 && now - ranAt <= STALE_AFTER_MS;
     });
+  } catch {
+    return false;
+  }
+}
+
+/** Confirm that every production data domain is visible to the server role. */
+export async function getDatabaseReadiness(): Promise<boolean> {
+  try {
+    const client = getSupabaseAdmin();
+    const checks = await Promise.all(
+      REQUIRED_TABLES.map((table) =>
+        client.from(table).select("*", { count: "exact", head: true }),
+      ),
+    );
+    return checks.every((result) => !result.error);
   } catch {
     return false;
   }

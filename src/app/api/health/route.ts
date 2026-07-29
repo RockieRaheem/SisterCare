@@ -4,13 +4,24 @@ import {
   validateProductionSecurityConfig,
 } from "@/lib/serverAuth";
 import { getClinicalRuntimeIssues } from "@/lib/clinicalGovernance";
-import { getMaintenanceReadiness } from "@/lib/server/operations";
+import {
+  getDatabaseReadiness,
+  getMaintenanceReadiness,
+} from "@/lib/server/operations";
 
 export async function GET() {
   const securityErrors = validateProductionSecurityConfig();
   const clinicalIssues = getClinicalRuntimeIssues();
-  const maintenanceReady = await getMaintenanceReadiness();
-  const ready = securityErrors.length === 0 && clinicalIssues.length === 0 && maintenanceReady && isAuthEnforced();
+  const [databaseReady, maintenanceReady] = await Promise.all([
+    getDatabaseReadiness(),
+    getMaintenanceReadiness(),
+  ]);
+  const ready =
+    securityErrors.length === 0 &&
+    clinicalIssues.length === 0 &&
+    databaseReady &&
+    maintenanceReady &&
+    isAuthEnforced();
 
   return NextResponse.json(
     {
@@ -18,6 +29,7 @@ export async function GET() {
       service: "sistercare",
       checks: {
         security: securityErrors.length === 0,
+        database: databaseReady,
         clinicalGovernance: clinicalIssues.length === 0,
         maintenance: maintenanceReady,
       },

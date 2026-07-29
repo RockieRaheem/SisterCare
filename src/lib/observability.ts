@@ -112,8 +112,19 @@ export function withApiObservability<TArgs extends unknown[]>(
         errorType: error instanceof Error ? error.name : "unknown",
       });
       void recordOperationalMetric(`route_${routeName}_errors`);
+      const detail = error instanceof Error ? error.message : "";
+      const databaseMigrationRequired =
+        /relation .* does not exist|column .* does not exist|schema cache|could not find the table/i.test(
+          detail,
+        );
       return NextResponse.json(
-        { success: false, error: "Internal service error", requestId },
+        {
+          success: false,
+          error: databaseMigrationRequired
+            ? "Database setup is incomplete. Apply the latest Supabase migrations."
+            : "Internal service error",
+          requestId,
+        },
         { status: 500, headers: { "x-request-id": requestId } },
       );
     }
