@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 const links = [
   ["/counsellor", "Care desk", "support_agent"],
   ["/counsellor/articles", "Library contributions", "edit_note"],
+  ["/counsellor/support", "Operations support", "contact_support"],
 ] as const;
 
 export default function CounsellorShell({ children }: { children: React.ReactNode }) {

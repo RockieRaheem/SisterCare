@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
 
 export default function BottomNav() {
   const pathname = usePathname();
   const { t } = useLanguage();
+  const { userProfile } = useAuth();
 
   // Navigation items with translation keys
   const navItems = [
@@ -31,7 +33,11 @@ export default function BottomNav() {
   if (
     hiddenPaths.includes(pathname) ||
     pathname.startsWith("/admin") ||
-    pathname === "/counsellor"
+    pathname === "/counsellor" ||
+    pathname.startsWith("/counsellor/") ||
+    userProfile?.role === "admin" ||
+    userProfile?.role === "counsellor" ||
+    userProfile?.registrationIntent === "counsellor"
   ) {
     return null;
   }

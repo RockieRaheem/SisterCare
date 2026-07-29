@@ -5,6 +5,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 import BottomNav from "@/components/layout/BottomNav";
 import OfflineIndicator from "@/components/ui/OfflineIndicator";
+import WorkspaceBoundary from "@/components/auth/WorkspaceBoundary";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -122,7 +123,7 @@ export default function RootLayout({
               <OfflineIndicator />
               <div className="flex flex-col min-h-screen">
                 <main id="main-content" tabIndex={-1}>
-                  {children}
+                  <WorkspaceBoundary>{children}</WorkspaceBoundary>
                 </main>
               </div>
               <BottomNav />
