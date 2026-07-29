@@ -3,12 +3,13 @@
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import CounsellorShell from "@/components/counsellor/CounsellorShell";
-import { auth } from "@/lib/firebase";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 import { COUNSELLOR_SPECIALTIES } from "@/lib/counsellors";
 
 async function authorisedFetch(path: string, init?: RequestInit) {
-  const token = await auth.currentUser?.getIdToken();
+  const token = await getSupabaseBrowserClient().auth.getSession()
+    .then(({ data }) => data.session?.access_token ?? null)
+    .catch(() => null);
   if (!token) throw new Error("Please sign in before applying.");
   return fetch(path, { ...init, headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...init?.headers } });
 }
@@ -37,7 +38,7 @@ export default function CounsellorApplicationPage() {
       setStatus("Use a JPG, PNG, or WebP image smaller than 5 MB.");
       return;
     }
-    const uid = auth.currentUser?.uid;
+    const uid = await getSupabaseBrowserClient().auth.getUser().then(({ data }) => data.user?.id || null);
     if (!uid) {
       setStatus("Please sign in before uploading a photo.");
       return;
@@ -65,7 +66,7 @@ export default function CounsellorApplicationPage() {
     const selected = Array.from(files).slice(0, 5 - form.documentPaths.length);
     if (!selected.length) { setStatus("You can submit up to five KYC documents."); return; }
     if (selected.some((file) => (file.type !== "application/pdf" && !file.type.startsWith("image/")) || file.size > 10 * 1024 * 1024)) { setStatus("Use PDF or image documents smaller than 10 MB."); return; }
-    const uid = auth.currentUser?.uid;
+    const uid = await getSupabaseBrowserClient().auth.getUser().then(({ data }) => data.user?.id || null);
     if (!uid) { setStatus("Please sign in before uploading KYC documents."); return; }
     setDocumentsUploading(true); setStatus("");
     try {
