@@ -11,7 +11,16 @@ export async function POST(request: NextRequest) {
   const auth = await authenticateRequest(request);
   const body = await request.json().catch(() => null) as { role?: UserRole; uid?: string; email?: string } | null;
   if (!body || !body.role || !roles.includes(body.role)) return NextResponse.json({ success: false, error: "Invalid role" }, { status: 400 });
-  if (auth.status === "unavailable") return NextResponse.json({ success: false, error: "Authentication verification is temporarily unavailable" }, { status: 503 });
+  if (auth.status === "unavailable") {
+    const profileLookupFailed = auth.reason === "profile_lookup";
+    return NextResponse.json({
+      success: false,
+      code: profileLookupFailed ? "SUPABASE_SERVICE_ACCESS_FAILED" : "SUPABASE_AUTH_VERIFIER_FAILED",
+      error: profileLookupFailed
+        ? "The server cannot read Supabase profiles. Verify that SUPABASE_SERVICE_ROLE_KEY is the secret key from the same Supabase project."
+        : "The server cannot reach Supabase Auth. Verify NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.",
+    }, { status: 503 });
+  }
   if (auth.status !== "verified") return NextResponse.json({ success: false, error: "Your Supabase session token was rejected. Sign out and sign in again." }, { status: 401 });
   const db = getSupabaseAdmin();
   const { count, error: countError } = await db.from("profiles").select("id", { count: "exact", head: true }).eq("role", "admin");
