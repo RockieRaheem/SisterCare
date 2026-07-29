@@ -15,12 +15,14 @@ export async function POST(request: NextRequest) {
     const { data: authData, error: authError } = await createSupabaseUserClient(match[1]).auth.getUser();
     if (authError || !authData.user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     const user = authData.user;
+    const registrationIntent = user.user_metadata.registration_intent === "counsellor" ? "counsellor" : "member";
     const { error } = await getSupabaseAdmin().from("profiles").upsert({
       id: user.id,
       email: user.email || "",
       display_name: typeof user.user_metadata.full_name === "string" ? user.user_metadata.full_name : null,
       photo_url: typeof user.user_metadata.avatar_url === "string" ? user.user_metadata.avatar_url : null,
-    }, { onConflict: "id", ignoreDuplicates: true });
+      registration_intent: registrationIntent,
+    }, { onConflict: "id" });
     if (error) throw error;
     return NextResponse.json({ success: true });
   } catch (error) {
