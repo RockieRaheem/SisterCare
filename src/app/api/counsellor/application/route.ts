@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest, isAuthEnforced } from "@/lib/serverAuth";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { CounsellorSpecialty } from "@/types";
+import { resolveApplicationSubmissionStatus } from "@/lib/counsellorApplicationStatus";
 
 const SPECIALTIES: CounsellorSpecialty[] = ["Mental Health", "Menstrual Health", "Reproductive Health", "Nutrition & Wellness", "Pregnancy & Postpartum", "Sexual Health", "Adolescent Health", "Relationship Counselling"];
 const text = (value: unknown, maximum: number) => typeof value === "string" ? value.trim().slice(0, maximum) : "";
@@ -23,8 +24,25 @@ export async function POST(request: NextRequest) {
   const db = getSupabaseAdmin();
   const { data: existing, error: existingError } = await db.from("counsellor_applications").select("status").eq("counsellor_id", auth.uid).maybeSingle();
   if (existingError) return NextResponse.json({ success: false, error: "Could not load the application" }, { status: 503 });
-  if (existing?.status === "verified") return NextResponse.json({ success: false, error: "This account is already verified." }, { status: 409 });
-  const { error } = await db.from("counsellor_applications").upsert({ counsellor_id: auth.uid, status: "pending", application, submitted_at: new Date().toISOString(), reviewed_at: null, reviewed_by: null, review_note: null }, { onConflict: "counsellor_id" });
+  let nextStatus: "pending";
+  try {
+    nextStatus = resolveApplicationSubmissionStatus(
+      (existing?.status as "pending" | "verified" | "rejected" | undefined) ||
+        null,
+    );
+  } catch (statusError) {
+    return NextResponse.json(
+      {
+        success: false,
+        error:
+          statusError instanceof Error
+            ? statusError.message
+            : "This account cannot submit another application.",
+      },
+      { status: 409 },
+    );
+  }
+  const { error } = await db.from("counsellor_applications").upsert({ counsellor_id: auth.uid, status: nextStatus, application, submitted_at: new Date().toISOString(), reviewed_at: null, reviewed_by: null, review_note: null }, { onConflict: "counsellor_id" });
   if (error) { console.error("KYC submission failed:", error); return NextResponse.json({ success: false, error: "Could not submit your KYC application." }, { status: 503 }); }
   return NextResponse.json({ success: true });
 }

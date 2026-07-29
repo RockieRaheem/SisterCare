@@ -517,9 +517,13 @@ function ApplicationStatePanel({
         <span className="material-symbols-outlined text-5xl text-red-500">cancel</span>
         <p className="mt-4 text-xs font-bold uppercase tracking-[0.16em] text-red-700 dark:text-red-300">Application not approved</p>
         <h1 className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">Your counsellor verification was unsuccessful</h1>
-        <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-gray-600 dark:text-gray-300">{application?.review_note || "The administrator could not verify the submitted credentials. Contact SisterCare support before submitting new documents."}</p>
+        <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-gray-600 dark:text-gray-300">{application?.review_note || "The administrator could not verify the submitted credentials. You can correct the application and submit it for another review."}</p>
         {application?.reviewed_at && <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">Reviewed {new Date(application.reviewed_at).toLocaleString()}</p>}
-        <Link href="/help" className="mt-6 inline-flex rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white">Contact SisterCare support</Link>
+        <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+          <Link href="/counsellor/apply?mode=revise" className="rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white">Edit and resubmit</Link>
+          <Link href="/counsellor/apply?mode=fresh" className="rounded-xl border border-gray-300 px-5 py-2.5 text-sm font-semibold text-gray-700 dark:border-gray-600 dark:text-gray-200">Start afresh</Link>
+        </div>
+        <Link href="/counsellor/support" className="mt-4 inline-flex text-sm font-semibold text-primary hover:underline">Contact counsellor operations</Link>
       </div>
     );
   }

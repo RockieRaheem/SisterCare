@@ -9,3 +9,13 @@ export function resolveCounsellorPortalState(
   if (role === "counsellor" || role === "admin") return "workspace";
   return applicationStatus || "not_applied";
 }
+
+/** Rejected applications may be corrected; verified identities cannot reapply. */
+export function resolveApplicationSubmissionStatus(
+  currentStatus: CounsellorApplicationStatus | null,
+): "pending" {
+  if (currentStatus === "verified") {
+    throw new Error("This account is already verified.");
+  }
+  return "pending";
+}

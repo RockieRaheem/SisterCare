@@ -7,25 +7,120 @@ import CounsellorShell from "@/components/counsellor/CounsellorShell";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 import { COUNSELLOR_SPECIALTIES } from "@/lib/counsellors";
 import { useAuth } from "@/context/AuthContext";
+import { readApiResponse } from "@/lib/apiResponse";
+
+type ApplicationDraft = {
+  name: string;
+  title: string;
+  bio: string;
+  legalName: string;
+  registrationNumber: string;
+  credentialType: string;
+  credentialExpiresAt: string;
+  phoneNumber: string;
+  photoURL: string;
+  documentPaths: string[];
+  languages: string;
+  specializations: string[];
+};
+
+type SavedApplication = {
+  status: "pending" | "verified" | "rejected";
+  profile?: {
+    name?: string;
+    title?: string;
+    bio?: string;
+    photoURL?: string;
+    specializations?: string[];
+    languages?: string[];
+    phoneNumber?: string;
+  };
+  legalName?: string;
+  registrationNumber?: string;
+  credentialType?: string;
+  credentialExpiresAt?: string;
+  documentReferences?: string[];
+  reviewNote?: string | null;
+};
+
+const emptyDraft = (): ApplicationDraft => ({
+  name: "",
+  title: "",
+  bio: "",
+  legalName: "",
+  registrationNumber: "",
+  credentialType: "",
+  credentialExpiresAt: "",
+  phoneNumber: "",
+  photoURL: "",
+  documentPaths: [],
+  languages: "English",
+  specializations: [],
+});
+
+function draftFromApplication(application: SavedApplication): ApplicationDraft {
+  return {
+    name: application.profile?.name || "",
+    title: application.profile?.title || "",
+    bio: application.profile?.bio || "",
+    legalName: application.legalName || "",
+    registrationNumber: application.registrationNumber || "",
+    credentialType: application.credentialType || "",
+    credentialExpiresAt: application.credentialExpiresAt
+      ? application.credentialExpiresAt.slice(0, 10)
+      : "",
+    phoneNumber: application.profile?.phoneNumber || "",
+    photoURL: application.profile?.photoURL || "",
+    documentPaths: application.documentReferences || [],
+    languages: application.profile?.languages?.join(", ") || "English",
+    specializations: application.profile?.specializations || [],
+  };
+}
 
 export default function CounsellorApplicationPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [status, setStatus] = useState("");
+  const [reviewStatus, setReviewStatus] = useState<
+    "pending" | "verified" | "rejected" | ""
+  >("");
+  const [savedApplication, setSavedApplication] =
+    useState<SavedApplication | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [documentsUploading, setDocumentsUploading] = useState(false);
   const [photoPreview, setPhotoPreview] = useState("");
-  const [form, setForm] = useState({
-    name: "", title: "", bio: "", legalName: "", registrationNumber: "", credentialType: "", credentialExpiresAt: "", phoneNumber: "", photoURL: "", documentPaths: [] as string[], languages: "English", specializations: [] as string[],
-  });
+  const [form, setForm] = useState<ApplicationDraft>(emptyDraft);
 
   useEffect(() => {
     if (!authLoading && !user) { router.replace("/auth/login?next=/counsellor/apply"); return; }
     if (!user) return;
     void (async () => {
-      const { data } = await getSupabaseBrowserClient().from("counsellor_applications").select("status").eq("counsellor_id", user.uid).maybeSingle();
-      if (data?.status) setStatus(data.status);
+      const token = await getSupabaseBrowserClient()
+        .auth.getSession()
+        .then(({ data }) => data.session?.access_token);
+      if (!token) return;
+      const response = await fetch("/api/counsellor/application", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const result = await readApiResponse<{
+        success: boolean;
+        error?: string;
+        data?: { application: SavedApplication | null };
+      }>(response);
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Could not load your application.");
+      }
+      const application = result.data?.application || null;
+      if (!application) return;
+      setSavedApplication(application);
+      setReviewStatus(application.status);
+      if (
+        application.status === "rejected" &&
+        new URLSearchParams(window.location.search).get("mode") !== "fresh"
+      ) {
+        setForm(draftFromApplication(application));
+      }
     })();
   }, [authLoading, router, user]);
 
@@ -89,32 +184,40 @@ export default function CounsellorApplicationPage() {
       const { data: sessionData } = await getSupabaseBrowserClient().auth.getSession();
       const uid = sessionData.session?.user.id;
       if (!uid) throw new Error("Your session has expired. Please sign in again before submitting KYC.");
-      const application = {
-        profile: { name: form.name.trim(), title: form.title.trim(), bio: form.bio.trim(), photoURL: form.photoURL, specializations: form.specializations, languages: form.languages.split(",").map((item) => item.trim()).filter(Boolean), phoneNumber: form.phoneNumber.trim() },
-        legalName: form.legalName.trim(), registrationNumber: form.registrationNumber.trim(), credentialType: form.credentialType.trim(), credentialExpiresAt: new Date(form.credentialExpiresAt).toISOString(), documentReferences: form.documentPaths,
-      };
-      const supabase = getSupabaseBrowserClient();
-      const { data: existing, error: lookupError } = await supabase
-        .from("counsellor_applications")
-        .select("status")
-        .eq("counsellor_id", uid)
-        .maybeSingle();
-      if (lookupError) throw lookupError;
-      if (existing?.status === "verified") throw new Error("Your KYC application has already been approved.");
-      if (existing?.status === "rejected") throw new Error("This application was reviewed. Contact SisterCare support before submitting a replacement.");
-
-      const submittedAt = new Date().toISOString();
-      const submission = existing
-        ? await supabase
-            .from("counsellor_applications")
-            .update({ application, submitted_at: submittedAt })
-            .eq("counsellor_id", uid)
-            .eq("status", "pending")
-        : await supabase
-            .from("counsellor_applications")
-            .insert({ counsellor_id: uid, application, submitted_at: submittedAt });
-      if (submission.error) throw submission.error;
-      setStatus("pending");
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Your session has expired. Please sign in again.");
+      const response = await fetch("/api/counsellor/application", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: form.name,
+          title: form.title,
+          bio: form.bio,
+          legalName: form.legalName,
+          registrationNumber: form.registrationNumber,
+          credentialType: form.credentialType,
+          credentialExpiresAt: form.credentialExpiresAt,
+          phoneNumber: form.phoneNumber,
+          photoURL: form.photoURL,
+          documentReferences: form.documentPaths,
+          languages: form.languages
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean),
+          specializations: form.specializations,
+        }),
+      });
+      const result = await readApiResponse<{ success: boolean; error?: string }>(
+        response,
+      );
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Could not submit your application.");
+      }
+      setReviewStatus("pending");
+      setStatus("");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Could not submit your application.");
     } finally {
@@ -131,15 +234,16 @@ export default function CounsellorApplicationPage() {
       <Link href="/counsellor" className="text-sm font-medium text-primary">Back to counsellor portal</Link>
       <h1 className="mt-4 text-3xl font-bold text-text-primary dark:text-white">Join the care network</h1>
       <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">Your application stays private until an authorised reviewer completes KYC. Approval creates your counsellor profile, but you remain offline until you sign in and choose Available.</p>
-      {status === "pending" || status === "verified" ? <div className="mt-6 rounded-2xl border border-primary/20 bg-primary/5 p-5 text-sm text-text-primary dark:text-white">{status === "verified" ? "Your KYC has been approved. Sign out and back in to activate your counsellor portal." : "Your KYC application is awaiting review. We will not show your profile or route users to you until it is approved."}</div> : <form onSubmit={submit} className="mt-6 space-y-5 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-card-dark">
+      {reviewStatus === "pending" || reviewStatus === "verified" ? <div className="mt-6 rounded-2xl border border-primary/20 bg-primary/5 p-5 text-sm text-text-primary dark:text-white">{reviewStatus === "verified" ? "Your KYC has been approved. Sign out and back in to activate your counsellor portal." : "Your updated KYC application is awaiting review. We will not show your profile or route users to you until it is approved."}</div> : <form onSubmit={submit} className="mt-6 space-y-5 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-card-dark">
+        {reviewStatus === "rejected" && <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100"><p className="font-bold">Revise and resubmit your application</p><p className="mt-1 text-sm leading-6">{savedApplication?.reviewNote || "Review the previous details, correct the issue, and submit again for a new administrator review."}</p><div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => savedApplication && setForm(draftFromApplication(savedApplication))} className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-amber-900 shadow-sm dark:bg-gray-900 dark:text-amber-100">Restore previous details</button><button type="button" onClick={() => { setForm(emptyDraft()); setPhotoPreview(""); setStatus("A fresh application form is ready."); }} className="rounded-xl border border-amber-300 px-4 py-2 text-sm font-semibold text-amber-900 dark:border-amber-800 dark:text-amber-100">Start afresh</button></div></section>}
         <section className="rounded-2xl border border-dashed border-primary/35 bg-primary/5 p-4">
           <div className="flex flex-wrap items-center gap-4">
             {photoPreview ? <img src={photoPreview} alt="Professional profile preview" className="h-16 w-16 rounded-2xl object-cover" /> : <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/15 text-primary"><span className="material-symbols-outlined">add_a_photo</span></div>}
             <div className="min-w-0 flex-1">
               <label className="block text-sm font-semibold text-gray-800 dark:text-white">Professional profile photo
-                <input required type="file" accept="image/*" capture="user" onChange={(event) => uploadPhoto(event.target.files?.[0])} className="mt-2 block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:font-semibold file:text-white dark:text-gray-300" />
+                <input type="file" accept="image/*" capture="user" onChange={(event) => uploadPhoto(event.target.files?.[0])} className="mt-2 block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:font-semibold file:text-white dark:text-gray-300" />
               </label>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Use a clear headshot. JPG, PNG, or WebP up to 5 MB. This is shown on your verified profile; it is separate from your private KYC documents.</p>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{form.photoURL && !photoPreview ? "Your previously uploaded profile photo is retained. Choose another file only if you want to replace it." : "Use a clear headshot. JPG, PNG, or WebP up to 5 MB. This is shown on your verified profile; it is separate from your private KYC documents."}</p>
             </div>
           </div>
           {photoUploading && <p className="mt-3 text-sm text-primary">Uploading your photo...</p>}
@@ -151,7 +255,7 @@ export default function CounsellorApplicationPage() {
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Professional bio<textarea required rows={4} value={form.bio} onChange={(event) => set("bio", event.target.value)} className="mt-1 w-full rounded-xl border-gray-300 dark:bg-gray-800" /></label>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Languages, separated by commas<input required value={form.languages} onChange={(event) => set("languages", event.target.value)} className="mt-1 w-full rounded-xl border-gray-300 dark:bg-gray-800" /></label>
         <fieldset><legend className="text-sm font-medium text-gray-700 dark:text-gray-200">Areas of practice</legend><div className="mt-2 grid gap-2 sm:grid-cols-2">{COUNSELLOR_SPECIALTIES.map((specialty) => <label key={specialty} className="text-sm text-gray-600 dark:text-gray-300"><input type="checkbox" checked={form.specializations.includes(specialty)} onChange={(event) => set("specializations", event.target.checked ? [...form.specializations, specialty] : form.specializations.filter((item) => item !== specialty))} className="mr-2" />{specialty}</label>)}</div></fieldset>
-        <section className="rounded-2xl border border-dashed border-gray-300 p-4 dark:border-gray-700"><label className="block text-sm font-semibold text-gray-800 dark:text-white">Private KYC documents<input required type="file" multiple accept="application/pdf,image/*" onChange={(event) => uploadDocuments(event.target.files)} className="mt-2 block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:font-semibold file:text-white dark:text-gray-300" /></label><p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Upload your registration, licence, or credential evidence. PDF, JPG, PNG, or WebP; up to 10 MB each. Only an authorised reviewer can open these files.</p>{form.documentPaths.length > 0 && <ul className="mt-3 space-y-1 text-sm text-green-800 dark:text-green-300">{form.documentPaths.map((path, index) => <li key={path}>Document {index + 1} uploaded securely</li>)}</ul>}{documentsUploading && <p className="mt-3 text-sm text-primary">Uploading secure documents...</p>}</section>
+        <section className="rounded-2xl border border-dashed border-gray-300 p-4 dark:border-gray-700"><label className="block text-sm font-semibold text-gray-800 dark:text-white">Private KYC documents<input type="file" multiple accept="application/pdf,image/*" onChange={(event) => uploadDocuments(event.target.files)} className="mt-2 block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:font-semibold file:text-white dark:text-gray-300" /></label><p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Upload your registration, licence, or credential evidence. PDF, JPG, PNG, or WebP; up to 10 MB each. Only an authorised reviewer can open these files.</p>{form.documentPaths.length > 0 && <ul className="mt-3 space-y-1 text-sm text-green-800 dark:text-green-300">{form.documentPaths.map((path, index) => <li key={path}>Document {index + 1} uploaded securely</li>)}</ul>}{documentsUploading && <p className="mt-3 text-sm text-primary">Uploading secure documents...</p>}</section>
         {status && <p className="text-sm text-red-700">{status}</p>}
         <button disabled={submitting || photoUploading || documentsUploading || form.documentPaths.length === 0} className="rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{submitting ? "Submitting..." : "Submit for KYC review"}</button>
       </form>}
