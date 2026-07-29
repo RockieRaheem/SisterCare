@@ -6,6 +6,7 @@ import AdminShell from "@/components/admin/AdminShell";
 import { useAuth } from "@/context/AuthContext";
 import { auth } from "@/lib/authClient";
 import { readApiResponse } from "@/lib/apiResponse";
+import { useAdminAccess } from "@/hooks/useAdminAccess";
 
 interface WaitingRow {
   id: string;
@@ -35,7 +36,7 @@ function fmtDuration(seconds: number | null): string {
 export default function CrisisMonitorPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const { isAdmin, checking, verificationUnavailable, retry } = useAdminAccess();
   const [data, setData] = useState<SlaData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,12 +44,6 @@ export default function CrisisMonitorPage() {
     if (!authLoading && !user) {
       router.push("/auth/login");
       return;
-    }
-    if (user) {
-      auth.currentUser
-        ?.getIdTokenResult()
-        .then((r) => setIsAdmin(r.claims.role === "admin"))
-        .catch(() => setIsAdmin(false));
     }
   }, [user, authLoading, router]);
 
@@ -74,10 +69,17 @@ export default function CrisisMonitorPage() {
     return () => clearInterval(interval);
   }, [isAdmin, load]);
 
-  if (authLoading || isAdmin === null) {
+  if (checking) {
     return (
       <Shell>
-        <p className="py-16 text-center text-gray-400">Loading…</p>
+        <div className="py-16 text-center">
+          <p className="text-gray-500 dark:text-gray-400">Verifying secure workspace…</p>
+          {verificationUnavailable && (
+            <button onClick={() => void retry()} className="mt-4 rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold dark:border-gray-600 dark:bg-card-dark">
+              Retry verification
+            </button>
+          )}
+        </div>
       </Shell>
     );
   }
@@ -110,6 +112,12 @@ export default function CrisisMonitorPage() {
       {error && (
         <div className="mb-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
           {error}
+        </div>
+      )}
+      {verificationUnavailable && (
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
+          <span>Live access verification is temporarily unavailable. Protected requests remain server-authorised.</span>
+          <button onClick={() => void retry()} className="shrink-0 font-semibold underline underline-offset-2">Retry</button>
         </div>
       )}
 
