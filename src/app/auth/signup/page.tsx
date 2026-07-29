@@ -66,6 +66,7 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{
     email?: string;
     password?: string;
@@ -117,6 +118,7 @@ export default function SignupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setNotice("");
     setFieldErrors({});
 
     if (!validateForm()) {
@@ -131,7 +133,11 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      await signUp(email.trim().toLowerCase(), password, registrationIntent);
+      const result = await signUp(email.trim().toLowerCase(), password, registrationIntent);
+      if (result.emailConfirmationRequired) {
+        setNotice("Check your email to confirm your account, then sign in to continue with SisterCare.");
+        return;
+      }
       router.push(registrationIntent === "counsellor" ? "/counsellor/apply" : "/onboarding");
     } catch (err: unknown) {
       const errorCode = (err as { code?: string })?.code || "";
@@ -206,6 +212,13 @@ export default function SignupPage() {
           >
             <span className="material-symbols-outlined text-lg">error</span>
             {error}
+          </div>
+        )}
+
+        {notice && (
+          <div role="status" className="mb-4 flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm text-text-primary dark:text-white">
+            <span className="material-symbols-outlined text-lg text-primary">mark_email_read</span>
+            {notice}
           </div>
         )}
 

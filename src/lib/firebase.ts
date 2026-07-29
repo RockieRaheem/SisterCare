@@ -89,7 +89,7 @@ class SupabaseAuthFacade {
     });
     if (error) throw error;
     await this.notify(data.session);
-    return data.user ? toUser(data.session || { user: data.user } as Session) : null;
+    return { emailConfirmationRequired: Boolean(data.user && !data.session) };
   }
 
   async signInWithGoogle(registrationIntent: "member" | "counsellor") {

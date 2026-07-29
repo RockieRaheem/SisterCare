@@ -26,7 +26,7 @@ interface AuthContextType {
   loading: boolean;
   profileLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, registrationIntent?: "member" | "counsellor") => Promise<void>;
+  signUp: (email: string, password: string, registrationIntent?: "member" | "counsellor") => Promise<{ emailConfirmationRequired: boolean }>;
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<void>;
   signInWithGoogle: (registrationIntent?: "member" | "counsellor") => Promise<void>;
@@ -137,7 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string, registrationIntent: "member" | "counsellor" = "member") => {
-    await auth.createUserWithEmailAndPassword(email, password, registrationIntent);
+    return auth.createUserWithEmailAndPassword(email, password, registrationIntent);
   };
 
   const signOut = async () => {
