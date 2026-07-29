@@ -7,17 +7,8 @@ import {
   useEffect,
   ReactNode,
 } from "react";
-import {
-  User,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut as firebaseSignOut,
-  onAuthStateChanged,
-  GoogleAuthProvider,
-  signInWithPopup,
-} from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { createUserProfile, getUserProfile } from "@/lib/firestore";
+import { createUserProfile, getUserProfile, updateUserProfile } from "@/lib/firestore";
 import { clearPrivateClientData } from "@/lib/privacy";
 import { UserProfile as FullUserProfile } from "@/types";
 
@@ -49,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(false);
 
-  // Load user profile from Firestore with retry logic
+  // Load the Postgres profile after the Supabase session has been verified.
   const loadUserProfile = async (
     uid: string,
     email: string,
@@ -66,64 +57,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile = await createUserProfile(uid, email, displayName, photoURL);
       }
 
+      const deferredIntent = window.localStorage.getItem("sistercare-registration-intent");
+      if (deferredIntent === "counsellor" && profile.registrationIntent !== "counsellor") {
+        await updateUserProfile(uid, { registrationIntent: "counsellor" });
+        profile.registrationIntent = "counsellor";
+      }
+      window.localStorage.removeItem("sistercare-registration-intent");
+
       setUserProfile(profile);
     } catch (error: unknown) {
-      const firebaseError = error as { code?: string; message?: string };
-
-      // Handle offline, unavailable, or permission errors
-      const isOfflineError =
-        firebaseError.message?.includes("offline") ||
-        firebaseError.code === "unavailable";
-      const isPermissionError =
-        firebaseError.message?.includes("permission") ||
-        firebaseError.code === "permission-denied";
-
-      if (isOfflineError || isPermissionError) {
-        console.warn("Using temporary profile due to Firestore access issue.");
-      } else {
-        console.error("Error loading user profile:", error);
-      }
-
-      if (isOfflineError || isPermissionError) {
-        console.log(
-          isPermissionError
-            ? "Firestore permission error, using temporary profile..."
-            : "Firestore offline, using temporary profile...",
-        );
-        // Set a temporary profile so the user can continue
-        setUserProfile({
-          uid,
-          email,
-          displayName,
-          photoURL,
-          onboardingCompleted: false,
-          preferences: {
-            emailNotifications: true,
-            pushNotifications: true,
-            reminderDaysBefore: 3,
-            theme: "system",
-            language: "en",
-          },
-          cycleData: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        } as FullUserProfile);
-
-        // Only retry for offline errors (not permission errors)
-        if (isOfflineError && retryCount < 3) {
-          setTimeout(
-            () => {
-              loadUserProfile(
-                uid,
-                email,
-                displayName,
-                photoURL,
-                retryCount + 1,
-              );
-            },
-            3000 * (retryCount + 1),
-          );
-        }
+      console.error("Error loading the Supabase profile:", error);
+      // Do not silently substitute a writable local profile for health data.
+      // A retry is safe for transient failures; permission/configuration faults
+      // remain visible rather than creating split-brain user records.
+      if (retryCount < 2) {
+        setTimeout(() => void loadUserProfile(uid, email, displayName, photoURL, retryCount + 1), 1500 * (retryCount + 1));
       }
     } finally {
       setProfileLoading(false);
@@ -143,24 +91,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(
-      auth,
-      async (firebaseUser: User | null) => {
-        if (firebaseUser) {
+    const unsubscribe = auth.onAuthStateChanged(
+      async (authenticatedUser) => {
+        if (authenticatedUser) {
           const userData = {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            displayName: firebaseUser.displayName,
-            photoURL: firebaseUser.photoURL,
+            uid: authenticatedUser.uid,
+            email: authenticatedUser.email,
+            displayName: authenticatedUser.displayName,
+            photoURL: authenticatedUser.photoURL,
           };
           setUser(userData);
 
           // Load Firestore profile
           await loadUserProfile(
-            firebaseUser.uid,
-            firebaseUser.email || "",
-            firebaseUser.displayName,
-            firebaseUser.photoURL,
+            authenticatedUser.uid,
+            authenticatedUser.email || "",
+            authenticatedUser.displayName,
+            authenticatedUser.photoURL,
           );
         } else {
           setUser(null);
@@ -174,40 +121,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    await signInWithEmailAndPassword(auth, email, password);
+    await auth.signInWithEmailAndPassword(email, password);
   };
 
   const signUp = async (email: string, password: string, registrationIntent: "member" | "counsellor" = "member") => {
-    const result = await createUserWithEmailAndPassword(auth, email, password);
-    // Try to create user profile in Firestore, but don't block signup if offline
-    try {
-      await createUserProfile(result.user.uid, email, null, null, registrationIntent);
-    } catch (error) {
-      console.warn(
-        "Could not create profile in Firestore (may be offline):",
-        error,
-      );
-      // Profile will be created when loadUserProfile runs with retry logic
-    }
+    const created = await auth.createUserWithEmailAndPassword(email, password, registrationIntent);
+    if (created) await createUserProfile(created.uid, email, null, null, registrationIntent);
   };
 
   const signOut = async () => {
-    // Local cache cleanup is important, but it must never prevent a user from
-    // ending their authenticated Firebase session.
     try {
       await clearPrivateClientData();
     } catch (error) {
       console.warn("Could not clear all private client data during sign-out:", error);
     }
-    await firebaseSignOut(auth);
+    await auth.signOut();
     setUser(null);
     setUserProfile(null);
   };
 
   const deleteAccount = async () => {
-    const firebaseUser = auth.currentUser;
-    if (!firebaseUser) throw new Error("Authentication required");
-    const token = await firebaseUser.getIdToken(true);
+    const currentUser = auth.currentUser;
+    if (!currentUser) throw new Error("Authentication required");
+    const token = await currentUser.getIdToken(true);
     const response = await fetch("/api/account", {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
@@ -222,28 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signInWithGoogle = async (registrationIntent: "member" | "counsellor" = "member") => {
-    const provider = new GoogleAuthProvider();
-    const result = await signInWithPopup(auth, provider);
-
-    // Try to check/create profile, but don't block sign-in if Firestore is offline
-    try {
-      const existingProfile = await getUserProfile(result.user.uid);
-      if (!existingProfile) {
-        await createUserProfile(
-          result.user.uid,
-          result.user.email || "",
-          result.user.displayName,
-          result.user.photoURL,
-          registrationIntent,
-        );
-      }
-    } catch (error) {
-      console.warn(
-        "Could not sync profile to Firestore (may be offline):",
-        error,
-      );
-      // Profile will be created/synced when loadUserProfile runs with retry logic
-    }
+    await auth.signInWithGoogle(registrationIntent);
   };
 
   return (

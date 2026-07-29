@@ -1,40 +1,30 @@
+/**
+ * Supabase-backed client data access.
+ *
+ * The filename is retained temporarily so existing product imports remain
+ * stable during the Firebase-to-Supabase cutover. It contains no Firebase SDK
+ * code and can be renamed once every caller has moved to a neutral name.
+ */
 import {
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc,
-  collection,
-  query,
-  where,
-  orderBy,
-  getDocs,
-  addDoc,
-  deleteDoc,
-  Timestamp,
-  serverTimestamp,
-  limit as firestoreLimit,
-} from "firebase/firestore";
-import { db } from "./firebase";
-import {
-  UserProfile,
-  CycleData,
-  PregnancyData,
-  UserPreferences,
-  ChatMessage,
+  AgentEvent,
   ChatConversation,
+  ChatMessage,
+  Counsellor,
+  CounsellorSpecialty,
+  CounsellorStatus,
+  CycleData,
+  CycleHistory,
+  PregnancyData,
   Reminder,
   SymptomLog,
-  CycleHistory,
-  Counsellor,
-  CounsellorStatus,
-  CounsellorSpecialty,
-  AgentEvent,
   TriageSeverity,
+  UserPreferences,
+  UserProfile,
 } from "@/types";
+import { calculateNextPeriod, getCurrentPhase } from "./cycle";
+import { getSupabaseBrowserClient } from "./supabase";
 
-// ============================================
-// USER PROFILE OPERATIONS
-// ============================================
+export { calculateNextPeriod, getCycleInfo, getCurrentPhase } from "./cycle";
 
 const DEFAULT_PREFERENCES: UserPreferences = {
   emailNotifications: true,
@@ -44,9 +34,79 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   language: "en",
 };
 
-/**
- * Create a new user profile in Firestore
- */
+type JsonRecord = Record<string, unknown>;
+const client = () => getSupabaseBrowserClient();
+const asDate = (value: unknown, fallback = new Date()) =>
+  value ? new Date(value as string) : fallback;
+const dateValue = (value: Date | undefined) => value?.toISOString();
+
+function fail(error: { message?: string } | null) {
+  if (error) throw new Error(error.message);
+}
+function required<T>(value: T | null, context: string): T {
+  if (value === null) throw new Error(`Supabase returned no ${context}.`);
+  return value;
+}
+
+function reviveCycle(raw: JsonRecord | null): CycleData | null {
+  if (!raw) return null;
+  return {
+    ...(raw as unknown as CycleData),
+    lastPeriodDate: asDate(raw.lastPeriodDate),
+    nextPeriodDate: asDate(raw.nextPeriodDate),
+  };
+}
+
+function revivePregnancy(raw: JsonRecord | null): PregnancyData | null {
+  if (!raw) return null;
+  const value = raw as unknown as PregnancyData;
+  return {
+    ...value,
+    estimatedDueDate: dateValue(value.estimatedDueDate) ? asDate(raw.estimatedDueDate) : undefined,
+    lastMenstrualPeriodDate: dateValue(value.lastMenstrualPeriodDate) ? asDate(raw.lastMenstrualPeriodDate) : undefined,
+    conceptionDate: dateValue(value.conceptionDate) ? asDate(raw.conceptionDate) : undefined,
+    birthDate: dateValue(value.birthDate) ? asDate(raw.birthDate) : undefined,
+    createdAt: raw.createdAt ? asDate(raw.createdAt) : undefined,
+    updatedAt: raw.updatedAt ? asDate(raw.updatedAt) : undefined,
+  };
+}
+
+function serialiseCycle(data: Partial<CycleData>): JsonRecord {
+  return {
+    ...data,
+    lastPeriodDate: dateValue(data.lastPeriodDate),
+    nextPeriodDate: dateValue(data.nextPeriodDate),
+  };
+}
+
+function serialisePregnancy(data: Partial<PregnancyData>): JsonRecord {
+  return {
+    ...data,
+    estimatedDueDate: dateValue(data.estimatedDueDate),
+    lastMenstrualPeriodDate: dateValue(data.lastMenstrualPeriodDate),
+    conceptionDate: dateValue(data.conceptionDate),
+    birthDate: dateValue(data.birthDate),
+    createdAt: dateValue(data.createdAt),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function profileFromRow(row: JsonRecord): UserProfile {
+  return {
+    uid: row.id as string,
+    email: (row.email as string) || "",
+    displayName: (row.display_name as string | null) || null,
+    photoURL: (row.photo_url as string | null) || null,
+    createdAt: asDate(row.created_at),
+    updatedAt: asDate(row.updated_at),
+    onboardingCompleted: Boolean(row.onboarding_completed),
+    preferences: { ...DEFAULT_PREFERENCES, ...((row.preferences as JsonRecord) || {}) },
+    cycleData: reviveCycle((row.cycle_data as JsonRecord | null) || null),
+    pregnancyData: revivePregnancy((row.pregnancy_data as JsonRecord | null) || null),
+    registrationIntent: row.registration_intent === "counsellor" ? "counsellor" : "member",
+  };
+}
+
 export async function createUserProfile(
   uid: string,
   email: string,
@@ -54,1205 +114,140 @@ export async function createUserProfile(
   photoURL: string | null = null,
   registrationIntent: "member" | "counsellor" = "member",
 ): Promise<UserProfile> {
-  const userProfile: UserProfile = {
-    uid,
+  const { data, error } = await client().from("profiles").upsert({
+    id: uid,
     email,
-    displayName,
-    photoURL,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    onboardingCompleted: false,
-    cycleData: null,
-    pregnancyData: null,
-    preferences: DEFAULT_PREFERENCES,
-    registrationIntent,
-  };
-
-  await setDoc(doc(db, "users", uid), {
-    ...userProfile,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
-
-  return userProfile;
+    display_name: displayName,
+    photo_url: photoURL,
+    registration_intent: registrationIntent,
+  }).select().single();
+  fail(error);
+  return profileFromRow(data as JsonRecord);
 }
 
-/**
- * Get user profile from Firestore
- */
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
-  const docRef = doc(db, "users", uid);
-  const docSnap = await getDoc(docRef);
-
-  if (docSnap.exists()) {
-    const data = docSnap.data();
-    return {
-      ...data,
-      createdAt: data.createdAt?.toDate() || new Date(),
-      updatedAt: data.updatedAt?.toDate() || new Date(),
-      cycleData: data.cycleData
-        ? {
-            ...data.cycleData,
-            lastPeriodDate: data.cycleData.lastPeriodDate?.toDate(),
-            nextPeriodDate: data.cycleData.nextPeriodDate?.toDate(),
-          }
-        : null,
-      pregnancyData: data.pregnancyData
-        ? {
-            ...data.pregnancyData,
-            estimatedDueDate: data.pregnancyData.estimatedDueDate?.toDate(),
-            lastMenstrualPeriodDate: data.pregnancyData.lastMenstrualPeriodDate?.toDate(),
-            conceptionDate: data.pregnancyData.conceptionDate?.toDate(),
-            birthDate: data.pregnancyData.birthDate?.toDate(),
-            createdAt: data.pregnancyData.createdAt?.toDate(),
-            updatedAt: data.pregnancyData.updatedAt?.toDate(),
-          }
-        : null,
-    } as UserProfile;
-  }
-
-  return null;
+  const { data, error } = await client().from("profiles").select("*").eq("id", uid).maybeSingle();
+  fail(error);
+  return data ? profileFromRow(data as JsonRecord) : null;
 }
 
-/**
- * Update user profile
- */
-export async function updateUserProfile(
-  uid: string,
-  updates: Partial<UserProfile>,
-): Promise<void> {
-  const docRef = doc(db, "users", uid);
-  await updateDoc(docRef, {
-    ...updates,
-    updatedAt: serverTimestamp(),
-  });
+export async function updateUserProfile(uid: string, updates: Partial<UserProfile>): Promise<void> {
+  const payload: JsonRecord = {};
+  if (updates.email !== undefined) payload.email = updates.email;
+  if (updates.displayName !== undefined) payload.display_name = updates.displayName;
+  if (updates.photoURL !== undefined) payload.photo_url = updates.photoURL;
+  if (updates.onboardingCompleted !== undefined) payload.onboarding_completed = updates.onboardingCompleted;
+  if (updates.preferences !== undefined) payload.preferences = updates.preferences;
+  if (updates.cycleData !== undefined) payload.cycle_data = updates.cycleData ? serialiseCycle(updates.cycleData) : null;
+  if (updates.pregnancyData !== undefined) payload.pregnancy_data = updates.pregnancyData ? serialisePregnancy(updates.pregnancyData) : null;
+  if (updates.registrationIntent !== undefined) payload.registration_intent = updates.registrationIntent;
+  const { error } = await client().from("profiles").update(payload).eq("id", uid);
+  fail(error);
 }
 
-/**
- * Update user preferences
- */
-export async function updateUserPreferences(
-  uid: string,
-  preferences: Partial<UserPreferences>,
-): Promise<void> {
-  const docRef = doc(db, "users", uid);
-  const userDoc = await getDoc(docRef);
-
-  if (userDoc.exists()) {
-    const currentPrefs = userDoc.data().preferences || DEFAULT_PREFERENCES;
-    await updateDoc(docRef, {
-      preferences: { ...currentPrefs, ...preferences },
-      updatedAt: serverTimestamp(),
-    });
-  }
+export async function updateUserPreferences(uid: string, preferences: Partial<UserPreferences>): Promise<void> {
+  const existing = await getUserProfile(uid);
+  await updateUserProfile(uid, { preferences: { ...DEFAULT_PREFERENCES, ...existing?.preferences, ...preferences } });
 }
 
-// ============================================
-// CYCLE DATA OPERATIONS
-// ============================================
-
-// Cycle math lives in src/lib/cycle.ts (pure + unit-tested). Re-exported here
-// so existing importers keep working.
-import { calculateNextPeriod, getCurrentPhase } from "./cycle";
-export { calculateNextPeriod, getCycleInfo, getCurrentPhase } from "./cycle";
-import {
-  evaluateTimeAvailability,
-  selectCandidates,
-  rankCounsellors,
-} from "./counsellorMatching";
-
-/**
- * Save or update cycle data for a user
- */
-export async function saveCycleData(
-  uid: string,
-  cycleData: Partial<CycleData>,
-): Promise<void> {
-  const docRef = doc(db, "users", uid);
-  const userDoc = await getDoc(docRef);
-
-  if (userDoc.exists()) {
-    const currentData = userDoc.data().cycleData || {};
-    const updatedCycleData = {
-      ...currentData,
-      ...cycleData,
-      lastPeriodDate: cycleData.lastPeriodDate
-        ? Timestamp.fromDate(cycleData.lastPeriodDate)
-        : currentData.lastPeriodDate,
-      nextPeriodDate: cycleData.nextPeriodDate
-        ? Timestamp.fromDate(cycleData.nextPeriodDate)
-        : currentData.nextPeriodDate,
-    };
-
-    await updateDoc(docRef, {
-      cycleData: updatedCycleData,
-      updatedAt: serverTimestamp(),
-    });
-  }
+export async function saveCycleData(uid: string, cycleData: Partial<CycleData>): Promise<void> {
+  const existing = await getUserProfile(uid);
+  await updateUserProfile(uid, { cycleData: { ...existing?.cycleData, ...cycleData } as CycleData });
 }
 
-/**
- * Complete onboarding with initial cycle data
- */
-export async function completeOnboarding(
-  uid: string,
-  lastPeriodDate: Date,
-  cycleLength: number,
-  periodLength: number,
-): Promise<void> {
+export async function completeOnboarding(uid: string, lastPeriodDate: Date, cycleLength: number, periodLength: number): Promise<void> {
   const nextPeriodDate = calculateNextPeriod(lastPeriodDate, cycleLength);
   const { phase } = getCurrentPhase(lastPeriodDate, cycleLength, periodLength);
-
-  const cycleData: CycleData = {
-    lastPeriodDate,
-    cycleLength,
-    periodLength,
-    nextPeriodDate,
-    currentPhase: phase as CycleData["currentPhase"],
-    symptoms: [],
-    history: [],
-  };
-
-  const docRef = doc(db, "users", uid);
-  await updateDoc(docRef, {
-    cycleData: {
-      ...cycleData,
-      lastPeriodDate: Timestamp.fromDate(lastPeriodDate),
-      nextPeriodDate: Timestamp.fromDate(nextPeriodDate),
-    },
+  await updateUserProfile(uid, {
     onboardingCompleted: true,
-    updatedAt: serverTimestamp(),
+    cycleData: { lastPeriodDate, cycleLength, periodLength, nextPeriodDate, currentPhase: phase as CycleData["currentPhase"], symptoms: [], history: [] },
   });
 }
 
-// ============================================
-// PREGNANCY DATA OPERATIONS
-// ============================================
-
-/**
- * Save or update pregnancy data for a user
- */
-export async function savePregnancyData(
-  uid: string,
-  pregnancyData: Partial<PregnancyData>,
-): Promise<void> {
-  const docRef = doc(db, "users", uid);
-  const userDoc = await getDoc(docRef);
-
-  if (userDoc.exists()) {
-    const currentPreg = userDoc.data().pregnancyData || {};
-    const timestamp = new Date();
-    const updatedPregnancyData = {
-      ...currentPreg,
+export async function savePregnancyData(uid: string, pregnancyData: Partial<PregnancyData>): Promise<void> {
+  const existing = await getUserProfile(uid);
+  await updateUserProfile(uid, {
+    pregnancyData: {
+      ...existing?.pregnancyData,
       ...pregnancyData,
-      updatedAt: timestamp,
-      isPregnant: pregnancyData.isPregnant ?? currentPreg.isPregnant ?? false,
-      gaveBirth: pregnancyData.gaveBirth ?? currentPreg.gaveBirth ?? false,
-      estimatedDueDate: pregnancyData.estimatedDueDate
-        ? Timestamp.fromDate(pregnancyData.estimatedDueDate)
-        : currentPreg.estimatedDueDate,
-      lastMenstrualPeriodDate: pregnancyData.lastMenstrualPeriodDate
-        ? Timestamp.fromDate(pregnancyData.lastMenstrualPeriodDate)
-        : currentPreg.lastMenstrualPeriodDate,
-      conceptionDate: pregnancyData.conceptionDate
-        ? Timestamp.fromDate(pregnancyData.conceptionDate)
-        : currentPreg.conceptionDate,
-      birthDate: pregnancyData.birthDate
-        ? Timestamp.fromDate(pregnancyData.birthDate)
-        : currentPreg.birthDate,
-      createdAt: currentPreg.createdAt || Timestamp.fromDate(timestamp),
-    };
-
-    await updateDoc(docRef, {
-      pregnancyData: updatedPregnancyData,
-      updatedAt: serverTimestamp(),
-    });
-  }
-}
-
-/**
- * Clear pregnancy data and resume normal cycle tracking after birth
- */
-export async function clearPregnancyData(uid: string): Promise<void> {
-  const docRef = doc(db, "users", uid);
-  await updateDoc(docRef, {
-    pregnancyData: null,
-    updatedAt: serverTimestamp(),
+      isPregnant: pregnancyData.isPregnant ?? existing?.pregnancyData?.isPregnant ?? false,
+      gaveBirth: pregnancyData.gaveBirth ?? existing?.pregnancyData?.gaveBirth ?? false,
+    },
   });
 }
 
-/**
- * Resume cycle tracking after birth by setting the birth date as last period start
- */
-export async function updateCycleAfterBirth(
-  uid: string,
-  birthDate: Date,
-  cycleLength: number = 28,
-  periodLength: number = 5,
-): Promise<void> {
+export async function clearPregnancyData(uid: string): Promise<void> { await updateUserProfile(uid, { pregnancyData: null }); }
+
+export async function updateCycleAfterBirth(uid: string, birthDate: Date, cycleLength = 28, periodLength = 5): Promise<void> {
   const nextPeriodDate = calculateNextPeriod(birthDate, cycleLength);
   const { phase } = getCurrentPhase(birthDate, cycleLength, periodLength);
-
-  const docRef = doc(db, "users", uid);
-  await updateDoc(docRef, {
-    cycleData: {
-      lastPeriodDate: Timestamp.fromDate(birthDate),
-      cycleLength,
-      periodLength,
-      nextPeriodDate: Timestamp.fromDate(nextPeriodDate),
-      currentPhase: phase,
-      symptoms: [],
-      history: [],
-    },
-    pregnancyData: null,
-    updatedAt: serverTimestamp(),
-  });
+  await updateUserProfile(uid, { pregnancyData: null, cycleData: { lastPeriodDate: birthDate, cycleLength, periodLength, nextPeriodDate, currentPhase: phase as CycleData["currentPhase"], symptoms: [], history: [] } });
 }
 
-// ============================================
-// SYMPTOM LOGGING OPERATIONS
-// ============================================
-
-/**
- * Log symptoms for a specific date
- */
-export async function logSymptoms(
-  uid: string,
-  symptomLog: Omit<SymptomLog, "id">,
-): Promise<string> {
-  const symptomsRef = collection(db, "users", uid, "symptoms");
-  const docRef = await addDoc(symptomsRef, {
-    ...symptomLog,
-    date: Timestamp.fromDate(symptomLog.date),
-  });
-  return docRef.id;
+async function addRecord(uid: string, recordType: string, payload: JsonRecord): Promise<string> {
+  const { data, error } = await client().from("user_records").insert({ user_id: uid, record_type: recordType, payload }).select("id").single();
+  fail(error); return required(data, "record").id;
+}
+async function records(uid: string, recordType: string) {
+  const { data, error } = await client().from("user_records").select("*").eq("user_id", uid).eq("record_type", recordType).order("created_at", { ascending: false });
+  fail(error); return (data || []) as Array<JsonRecord>;
 }
 
-/**
- * Get symptoms for a date range
- */
-export async function getSymptoms(
-  uid: string,
-  startDate: Date,
-  endDate: Date,
-): Promise<SymptomLog[]> {
-  const symptomsRef = collection(db, "users", uid, "symptoms");
-  const q = query(
-    symptomsRef,
-    where("date", ">=", Timestamp.fromDate(startDate)),
-    where("date", "<=", Timestamp.fromDate(endDate)),
-    orderBy("date", "desc"),
-  );
-
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-    date: doc.data().date.toDate(),
-  })) as SymptomLog[];
+export async function logSymptoms(uid: string, symptomLog: Omit<SymptomLog, "id">): Promise<string> {
+  return addRecord(uid, "symptom", { ...symptomLog, date: symptomLog.date.toISOString() });
+}
+export async function getSymptoms(uid: string, startDate: Date, endDate: Date): Promise<SymptomLog[]> {
+  return (await records(uid, "symptom")).map((row) => ({ id: row.id as string, ...(row.payload as JsonRecord), date: asDate((row.payload as JsonRecord).date) } as SymptomLog)).filter((item) => item.date >= startDate && item.date <= endDate);
+}
+export async function logCycleHistory(uid: string, cycle: Omit<CycleHistory, "id">): Promise<string> {
+  return addRecord(uid, "cycle_history", { ...cycle, startDate: cycle.startDate.toISOString(), endDate: dateValue(cycle.endDate || undefined) });
+}
+export async function getCycleHistory(uid: string, count = 12): Promise<CycleHistory[]> {
+  return (await records(uid, "cycle_history")).slice(0, count).map((row) => ({ id: row.id as string, ...(row.payload as JsonRecord), startDate: asDate((row.payload as JsonRecord).startDate), endDate: (row.payload as JsonRecord).endDate ? asDate((row.payload as JsonRecord).endDate) : null } as CycleHistory));
 }
 
-// ============================================
-// CHAT OPERATIONS
-// ============================================
-
-/**
- * Create a new chat conversation
- */
-export async function createConversation(
-  uid: string,
-  type: "ai_support" | "counsellor" = "ai_support",
-): Promise<string> {
-  const conversationsRef = collection(db, "conversations");
-  const docRef = await addDoc(conversationsRef, {
-    userId: uid,
-    type,
-    status: "active",
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
-  return docRef.id;
+export async function createConversation(uid: string, type: "ai_support" | "counsellor" = "ai_support"): Promise<string> {
+  const { data, error } = await client().from("conversations").insert({ user_id: uid, type }).select("id").single(); fail(error); return required(data, "conversation").id;
 }
-
-/**
- * Get or create active conversation for user
- */
-export async function getOrCreateConversation(
-  uid: string,
-  type: "ai_support" | "counsellor" = "ai_support",
-): Promise<string> {
-  const conversationsRef = collection(db, "conversations");
-  // Simplified query to avoid composite index requirement
-  const q = query(conversationsRef, where("userId", "==", uid));
-
-  const querySnapshot = await getDocs(q);
-
-  // Filter locally for type and status
-  const activeConversation = querySnapshot.docs.find((doc) => {
-    const data = doc.data();
-    return data.type === type && data.status === "active";
-  });
-
-  if (activeConversation) {
-    return activeConversation.id;
-  }
-
-  return createConversation(uid, type);
+export async function getOrCreateConversation(uid: string, type: "ai_support" | "counsellor" = "ai_support"): Promise<string> {
+  const { data, error } = await client().from("conversations").select("id").eq("user_id", uid).eq("type", type).eq("status", "active").order("updated_at", { ascending: false }).limit(1).maybeSingle(); fail(error); return data?.id || createConversation(uid, type);
 }
-
-/**
- * Add a message to a conversation
- */
-export async function addMessage(
-  conversationId: string,
-  message: Omit<ChatMessage, "id" | "timestamp" | "read">,
-): Promise<string> {
-  const messagesRef = collection(
-    db,
-    "conversations",
-    conversationId,
-    "messages",
-  );
-  const docRef = await addDoc(messagesRef, {
-    ...message,
-    timestamp: serverTimestamp(),
-    read: false,
-  });
-
-  // Update conversation's updatedAt
-  await updateDoc(doc(db, "conversations", conversationId), {
-    updatedAt: serverTimestamp(),
-  });
-
-  return docRef.id;
+export async function addMessage(conversationId: string, message: Omit<ChatMessage, "id" | "timestamp" | "read">): Promise<string> {
+  const { data, error } = await client().from("messages").insert({ conversation_id: conversationId, sender: message.sender, content: message.content, metadata: message.metadata || null }).select("id").single(); fail(error); return required(data, "message").id;
 }
-
-/**
- * Get messages for a conversation
- */
-export async function getMessages(
-  conversationId: string,
-  limit: number = 50,
-): Promise<ChatMessage[]> {
-  const messagesRef = collection(
-    db,
-    "conversations",
-    conversationId,
-    "messages",
-  );
-  const q = query(messagesRef, orderBy("timestamp", "asc"));
-
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-    timestamp: doc.data().timestamp?.toDate() || new Date(),
-  })) as ChatMessage[];
+export async function getMessages(conversationId: string, count = 50): Promise<ChatMessage[]> {
+  const { data, error } = await client().from("messages").select("*").eq("conversation_id", conversationId).order("created_at", { ascending: true }).limit(count); fail(error); return (data || []).map((row) => ({ id: row.id, conversationId: row.conversation_id, sender: row.sender, content: row.content, metadata: row.metadata || undefined, read: row.read, timestamp: asDate(row.created_at) } as ChatMessage));
 }
-
-/**
- * Get all conversations for a user
- */
-export async function getUserConversations(
-  uid: string,
-): Promise<ChatConversation[]> {
-  const conversationsRef = collection(db, "conversations");
-  const q = query(conversationsRef, where("userId", "==", uid));
-
-  const querySnapshot = await getDocs(q);
-  const conversations = querySnapshot.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-    createdAt: doc.data().createdAt?.toDate() || new Date(),
-    updatedAt: doc.data().updatedAt?.toDate() || new Date(),
-  })) as ChatConversation[];
-
-  // Sort by updatedAt descending (most recent first)
-  return conversations.sort(
-    (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime(),
-  );
+export async function getUserConversations(uid: string): Promise<ChatConversation[]> {
+  const { data, error } = await client().from("conversations").select("*").eq("user_id", uid).order("updated_at", { ascending: false }); fail(error); return (data || []).map((row) => ({ id: row.id, userId: row.user_id, title: row.title, type: row.type, status: row.status, lastMessage: row.last_message || undefined, messageCount: row.message_count, activeCounsellorId: row.active_counsellor_id || undefined, createdAt: asDate(row.created_at), updatedAt: asDate(row.updated_at) } as ChatConversation));
 }
-
-/**
- * Create a new chat conversation with a title
- */
-export async function createNewChat(
-  uid: string,
-  title: string = "New Chat",
-): Promise<string> {
-  const conversationsRef = collection(db, "conversations");
-  const docRef = await addDoc(conversationsRef, {
-    userId: uid,
-    title,
-    type: "ai_support",
-    status: "active",
-    lastMessage: "",
-    messageCount: 0,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
-  return docRef.id;
-}
-
-/**
- * Update conversation title
- */
-export async function updateConversationTitle(
-  conversationId: string,
-  title: string,
-): Promise<void> {
-  const docRef = doc(db, "conversations", conversationId);
-  await updateDoc(docRef, {
-    title,
-    updatedAt: serverTimestamp(),
-  });
-}
-
-/**
- * Delete a conversation and all its messages
- */
-export async function deleteConversation(
-  conversationId: string,
-): Promise<void> {
-  // Delete all messages in the conversation
-  const messagesRef = collection(
-    db,
-    "conversations",
-    conversationId,
-    "messages",
-  );
-  const messagesSnapshot = await getDocs(messagesRef);
-
-  for (const messageDoc of messagesSnapshot.docs) {
-    await deleteDoc(messageDoc.ref);
-  }
-
-  // Delete the conversation document
-  await deleteDoc(doc(db, "conversations", conversationId));
-}
-
-/**
- * Update conversation's last message preview
- */
-export async function updateConversationPreview(
-  conversationId: string,
-  lastMessage: string,
-): Promise<void> {
-  const docRef = doc(db, "conversations", conversationId);
-  const conversationDoc = await getDoc(docRef);
-
-  if (conversationDoc.exists()) {
-    const currentCount = conversationDoc.data().messageCount || 0;
-    await updateDoc(docRef, {
-      lastMessage: lastMessage.substring(0, 100),
-      messageCount: currentCount + 1,
-      updatedAt: serverTimestamp(),
-    });
-  }
-}
-
-// ============================================
-// REMINDER OPERATIONS
-// ============================================
-
-/**
- * Create a reminder
- */
-export async function createReminder(
-  uid: string,
-  reminder: Omit<Reminder, "id" | "sent" | "read">,
-): Promise<string> {
-  const remindersRef = collection(db, "users", uid, "reminders");
-  const docRef = await addDoc(remindersRef, {
-    ...reminder,
-    scheduledFor: Timestamp.fromDate(reminder.scheduledFor),
-    sent: false,
-    read: false,
-  });
-  return docRef.id;
-}
-
-/**
- * Get pending reminders for a user
- */
-export async function getPendingReminders(uid: string): Promise<Reminder[]> {
-  const remindersRef = collection(db, "users", uid, "reminders");
-  // Simple query without composite index requirement
-  const q = query(remindersRef, where("sent", "==", false));
-
-  const querySnapshot = await getDocs(q);
-  const reminders = querySnapshot.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-    scheduledFor: doc.data().scheduledFor?.toDate() || new Date(),
-  })) as Reminder[];
-
-  // Sort locally by scheduledFor
-  return reminders.sort(
-    (a, b) => a.scheduledFor.getTime() - b.scheduledFor.getTime(),
-  );
-}
-
-/**
- * Schedule period reminders based on cycle data
- */
-export async function schedulePeriodReminders(
-  uid: string,
-  nextPeriodDate: Date,
-  reminderDaysBefore: number = 3,
-): Promise<void> {
-  // Clear existing period reminders
-  const remindersRef = collection(db, "users", uid, "reminders");
-  const existingQuery = query(
-    remindersRef,
-    where("type", "==", "period_coming"),
-    where("sent", "==", false),
-  );
-  const existingReminders = await getDocs(existingQuery);
-
-  for (const reminder of existingReminders.docs) {
-    await deleteDoc(reminder.ref);
-  }
-
-  // Create new reminder
-  const reminderDate = new Date(nextPeriodDate);
-  reminderDate.setDate(reminderDate.getDate() - reminderDaysBefore);
-
-  if (reminderDate > new Date()) {
-    await createReminder(uid, {
-      userId: uid,
-      type: "period_coming",
-      title: "Period Coming Soon",
-      message: `Your period is expected in ${reminderDaysBefore} days. Time to prepare!`,
-      scheduledFor: reminderDate,
-    });
-  }
-}
-
-/**
- * Mark reminder as sent
- */
-export async function markReminderSent(
-  uid: string,
-  reminderId: string,
-): Promise<void> {
-  const reminderRef = doc(db, "users", uid, "reminders", reminderId);
-  await updateDoc(reminderRef, {
-    sent: true,
-    sentAt: serverTimestamp(),
-  });
-}
-
-/**
- * Mark reminder as read
- */
-export async function markReminderRead(
-  uid: string,
-  reminderId: string,
-): Promise<void> {
-  const reminderRef = doc(db, "users", uid, "reminders", reminderId);
-  await updateDoc(reminderRef, {
-    read: true,
-  });
-}
-
-// ============================================
-// CYCLE HISTORY OPERATIONS
-// ============================================
-
-/**
- * Log a completed cycle
- */
-export async function logCycleHistory(
-  uid: string,
-  cycle: Omit<CycleHistory, "id">,
-): Promise<string> {
-  const historyRef = collection(db, "users", uid, "cycleHistory");
-  const docRef = await addDoc(historyRef, {
-    ...cycle,
-    startDate: Timestamp.fromDate(cycle.startDate),
-    endDate: cycle.endDate ? Timestamp.fromDate(cycle.endDate) : null,
-  });
-  return docRef.id;
-}
-
-/**
- * Get cycle history
- */
-export async function getCycleHistory(
-  uid: string,
-  limit: number = 12,
-): Promise<CycleHistory[]> {
-  const historyRef = collection(db, "users", uid, "cycleHistory");
-  const q = query(historyRef, orderBy("startDate", "desc"));
-
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.slice(0, limit).map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-    startDate: doc.data().startDate.toDate(),
-    endDate: doc.data().endDate?.toDate() || null,
-  })) as CycleHistory[];
-}
-
-// ============================================
-// COUNSELLOR OPERATIONS
-// ============================================
-
-/**
- * Get all counsellors
- */
-export async function getCounsellors(): Promise<Counsellor[]> {
-  const counsellorsRef = collection(db, "counsellors");
-  const q = query(counsellorsRef, orderBy("rating", "desc"));
-
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-    createdAt: doc.data().createdAt?.toDate() || new Date(),
-  })) as Counsellor[];
-}
-
-/**
- * Get counsellors by status
- */
-export async function getCounsellorsByStatus(
-  status: CounsellorStatus,
-): Promise<Counsellor[]> {
-  const counsellorsRef = collection(db, "counsellors");
-  const q = query(
-    counsellorsRef,
-    where("status", "==", status),
-    orderBy("rating", "desc"),
-  );
-
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-    createdAt: doc.data().createdAt?.toDate() || new Date(),
-  })) as Counsellor[];
-}
-
-/**
- * Get counsellors by specialty
- */
-export async function getCounsellorsBySpecialty(
-  specialty: CounsellorSpecialty,
-): Promise<Counsellor[]> {
-  const counsellorsRef = collection(db, "counsellors");
-  const q = query(
-    counsellorsRef,
-    where("specializations", "array-contains", specialty),
-    orderBy("rating", "desc"),
-  );
-
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-    createdAt: doc.data().createdAt?.toDate() || new Date(),
-  })) as Counsellor[];
-}
-
-/**
- * Get a single counsellor by ID
- */
-export async function getCounsellor(
-  counsellorId: string,
-): Promise<Counsellor | null> {
-  const counsellorRef = doc(db, "counsellors", counsellorId);
-  const counsellorDoc = await getDoc(counsellorRef);
-
-  if (!counsellorDoc.exists()) {
-    return null;
-  }
-
-  return {
-    id: counsellorDoc.id,
-    ...counsellorDoc.data(),
-    createdAt: counsellorDoc.data().createdAt?.toDate() || new Date(),
-  } as Counsellor;
-}
-
-/**
- * Update counsellor status
- */
-export async function updateCounsellorStatus(
-  counsellorId: string,
-  status: CounsellorStatus,
-): Promise<void> {
-  const counsellorRef = doc(db, "counsellors", counsellorId);
-  await updateDoc(counsellorRef, { status });
-}
-
-/**
- * Create a new counsellor (admin function)
- */
-export async function createCounsellor(
-  counsellor: Omit<Counsellor, "id" | "createdAt">,
-): Promise<string> {
-  const counsellorsRef = collection(db, "counsellors");
-  const docRef = await addDoc(counsellorsRef, {
-    ...counsellor,
-    createdAt: serverTimestamp(),
-  });
-  return docRef.id;
-}
-
-/**
- * Seed sample counsellors for demo purposes
- */
-export async function seedCounsellors(): Promise<void> {
-  const sampleCounsellors: Omit<Counsellor, "id" | "createdAt">[] = [
-    {
-      name: "Dr. Sarah Nakamya",
-      title: "Licensed Clinical Psychologist",
-      bio: "With over 10 years of experience in women's mental health, I specialize in helping women navigate life transitions, anxiety, and emotional wellness. My approach is warm, non-judgmental, and rooted in evidence-based practices.",
-      specializations: [
-        "Mental Health",
-        "Reproductive Health",
-        "Relationship Counselling",
-      ],
-      photoURL:
-        "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face",
-      status: "available",
-      rating: 4.9,
-      reviewCount: 156,
-      yearsExperience: 10,
-      languages: ["English", "Luganda", "Swahili"],
-      phoneNumber: "+256700123456",
-      whatsappNumber: "+256700123456",
-      availableHours: {
-        start: "09:00",
-        end: "17:00",
-        days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
-      },
-      sessionCount: 1240,
-      verified: true,
-    },
-    {
-      name: "Dr. Grace Achieng",
-      title: "Reproductive Health Specialist",
-      bio: "I am passionate about empowering women with knowledge about their bodies. Whether you're dealing with menstrual health issues, fertility concerns, or need guidance during pregnancy, I'm here to support you every step of the way.",
-      specializations: [
-        "Menstrual Health",
-        "Reproductive Health",
-        "Pregnancy & Postpartum",
-      ],
-      photoURL:
-        "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop&crop=face",
-      status: "in_session",
-      rating: 4.8,
-      reviewCount: 203,
-      yearsExperience: 12,
-      languages: ["English", "Luo", "Swahili"],
-      phoneNumber: "+256700234567",
-      whatsappNumber: "+256700234567",
-      availableHours: {
-        start: "08:00",
-        end: "16:00",
-        days: [
-          "Monday",
-          "Tuesday",
-          "Wednesday",
-          "Thursday",
-          "Friday",
-          "Saturday",
-        ],
-      },
-      sessionCount: 1890,
-      verified: true,
-    },
-    {
-      name: "Counsellor Mary Atim",
-      title: "Adolescent Health Counsellor",
-      bio: "I believe every young woman deserves access to accurate health information and a safe space to discuss her concerns. I specialize in helping teens and young adults understand their bodies and build healthy habits.",
-      specializations: [
-        "Adolescent Health",
-        "Menstrual Health",
-        "Sexual Health",
-      ],
-      photoURL:
-        "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=400&fit=crop&crop=face",
-      status: "available",
-      rating: 4.7,
-      reviewCount: 89,
-      yearsExperience: 6,
-      languages: ["English", "Luganda", "Acholi"],
-      phoneNumber: "+256700345678",
-      whatsappNumber: "+256700345678",
-      availableHours: {
-        start: "10:00",
-        end: "18:00",
-        days: ["Monday", "Tuesday", "Wednesday", "Friday"],
-      },
-      sessionCount: 567,
-      verified: true,
-    },
-    {
-      name: "Dr. Elizabeth Mugisha",
-      title: "Nutrition & Wellness Expert",
-      bio: "Proper nutrition is the foundation of good health. I help women understand how diet affects their menstrual cycles, energy levels, and overall well-being. Let me help you create a personalized wellness plan.",
-      specializations: [
-        "Nutrition & Wellness",
-        "Menstrual Health",
-        "Reproductive Health",
-      ],
-      photoURL:
-        "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=400&fit=crop&crop=face",
-      status: "offline",
-      rating: 4.9,
-      reviewCount: 134,
-      yearsExperience: 8,
-      languages: ["English", "Runyankole", "Swahili"],
-      phoneNumber: "+256700456789",
-      whatsappNumber: "+256700456789",
-      availableHours: {
-        start: "09:00",
-        end: "15:00",
-        days: ["Tuesday", "Wednesday", "Thursday", "Saturday"],
-      },
-      sessionCount: 892,
-      verified: true,
-    },
-    {
-      name: "Counsellor Janet Nakabugo",
-      title: "Pregnancy & Postpartum Specialist",
-      bio: "Becoming a mother is a beautiful journey, but it can also be overwhelming. I provide compassionate support for women during pregnancy, childbirth, and the postpartum period, including guidance on postpartum mental health.",
-      specializations: [
-        "Pregnancy & Postpartum",
-        "Mental Health",
-        "Reproductive Health",
-      ],
-      photoURL:
-        "https://images.unsplash.com/photo-1551836022-deb4988cc6c0?w=400&h=400&fit=crop&crop=face",
-      status: "available",
-      rating: 4.8,
-      reviewCount: 178,
-      yearsExperience: 14,
-      languages: ["English", "Luganda"],
-      phoneNumber: "+256700567890",
-      whatsappNumber: "+256700567890",
-      availableHours: {
-        start: "08:00",
-        end: "14:00",
-        days: ["Monday", "Wednesday", "Friday", "Saturday"],
-      },
-      sessionCount: 2100,
-      verified: true,
-    },
-    {
-      name: "Dr. Patience Akello",
-      title: "Sexual Health Counsellor",
-      bio: "Sexual health is an important part of overall wellness. I create a safe, confidential space where you can discuss any concerns about your sexual health without judgment. Education and empowerment are at the heart of what I do.",
-      specializations: [
-        "Sexual Health",
-        "Reproductive Health",
-        "Relationship Counselling",
-      ],
-      photoURL:
-        "https://images.unsplash.com/photo-1607990281513-2c110a25bd8c?w=400&h=400&fit=crop&crop=face",
-      status: "in_session",
-      rating: 4.6,
-      reviewCount: 95,
-      yearsExperience: 7,
-      languages: ["English", "Luo", "Ateso"],
-      phoneNumber: "+256700678901",
-      whatsappNumber: "+256700678901",
-      availableHours: {
-        start: "11:00",
-        end: "19:00",
-        days: ["Monday", "Tuesday", "Thursday", "Friday"],
-      },
-      sessionCount: 634,
-      verified: true,
-    },
-  ];
-
-  // Check if counsellors already exist
-  const existing = await getCounsellors();
-  if (existing.length > 0) {
-    console.log("Counsellors already seeded");
-    return;
-  }
-
-  // Add each counsellor
-  for (const counsellor of sampleCounsellors) {
-    await createCounsellor(counsellor);
-  }
-
-  console.log("Sample counsellors seeded successfully");
-}
-
-// ============================================
-// AGENTIC WORKFLOW OPERATIONS
-// ============================================
-
-// Availability evaluation, scoring, ranking, and the static fallback
-// directory live in src/lib/counsellorMatching.ts (pure + shared with the
-// admin-SDK server data layer).
-
-/**
- * Count active conversations per counsellor for load-balancing.
- * Returns a Map of counsellorId → active conversation count.
- */
-async function getCounsellorLoads(): Promise<Map<string, number>> {
-  const loadMap = new Map<string, number>();
-  try {
-    const conversationsRef = collection(db, "conversations");
-    const q = query(
-      conversationsRef,
-      where("type", "==", "counsellor"),
-      where("status", "==", "active"),
-    );
-    const snapshot = await getDocs(q);
-    for (const doc of snapshot.docs) {
-      const data = doc.data();
-      const counsellorId = data.activeCounsellorId || data.counsellorId;
-      if (counsellorId) {
-        loadMap.set(counsellorId, (loadMap.get(counsellorId) || 0) + 1);
-      }
-    }
-  } catch (err) {
-    console.warn("Failed to count counsellor loads:", err);
-  }
-  return loadMap;
-}
-
-/**
- * Auto-update counsellor statuses based on time availability.
- * This batch updates all counsellors whose scheduled availability
- * does not match their current status.
- */
-export async function batchUpdateCounsellorAvailability(): Promise<{
-  updated: number;
-  errors: number;
-}> {
-  let updated = 0;
-  let errors = 0;
-
-  try {
-    const counsellors = await getCounsellors();
-    for (const counsellor of counsellors) {
-      try {
-        const { isAvailableNow } = evaluateTimeAvailability(counsellor);
-        const correctStatus: CounsellorStatus = isAvailableNow
-          ? "available"
-          : "offline";
-
-        if (counsellor.status !== correctStatus) {
-          await updateCounsellorStatus(counsellor.id, correctStatus);
-          updated++;
-        }
-      } catch {
-        errors++;
-      }
-    }
-  } catch (err) {
-    console.error("Failed to batch update counsellor availability:", err);
-    errors++;
-  }
-
-  return { updated, errors };
-}
-
-/**
- * Auto-update a single counsellor's status based on time availability.
- * Lightweight — meant to be called during routing for the selected counsellor.
- */
-export async function autoUpdateCounsellorStatus(
-  counsellorId: string,
-): Promise<CounsellorStatus | null> {
-  try {
-    const counsellor = await getCounsellor(counsellorId);
-    if (!counsellor) return null;
-
-    const { isAvailableNow } = evaluateTimeAvailability(counsellor);
-    const correctStatus: CounsellorStatus = isAvailableNow
-      ? "available"
-      : "offline";
-
-    if (counsellor.status !== correctStatus) {
-      await updateCounsellorStatus(counsellorId, correctStatus);
-    }
-    return correctStatus;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Assign the best counsellor for a user using intelligent scoring.
- *
- * Algorithm:
- * 1. Fetch counsellors from Firestore (by specialty if given, otherwise all)
- * 2. Fall back to static counsellors if Firestore is empty
- * 3. Evaluate time-based availability for each counsellor
- * 4. Count active conversation loads for load balancing
- * 5. Score each counsellor on: availability, language match, specialty,
- *    load balance, and rating
- * 6. Return the highest-scoring counsellor
- */
-export async function assignCounsellor(params: {
-  specialty?: CounsellorSpecialty;
-  preferredLanguage?: string;
-  userId?: string;
-}): Promise<Counsellor | null> {
-  const { specialty, preferredLanguage } = params;
-
-  // 1. Fetch candidate counsellors
-  let candidates: Counsellor[] = [];
-  try {
-    if (specialty) {
-      candidates = await getCounsellorsBySpecialty(specialty);
-    } else {
-      candidates = await getCounsellors();
-    }
-  } catch (error) {
-    console.warn("Firestore counsellor fetch failed, using static:", error);
-  }
-
-  // 2. Static fallback + language filtering, then score and rank (shared
-  // pure logic in counsellorMatching.ts)
-  candidates = selectCandidates(candidates, { specialty, preferredLanguage });
-  const loadMap = await getCounsellorLoads();
-  return rankCounsellors(candidates, { specialty, preferredLanguage }, loadMap);
-}
-
-export async function routeCounsellor(params: {
-  specialty?: CounsellorSpecialty;
-  preferredLanguage?: string;
-}): Promise<Counsellor | null> {
-  return assignCounsellor(params);
-}
-
-/**
- * Create or reuse an active counsellor conversation and attach metadata.
- */
-export async function connectUserToCounsellor(params: {
-  userId: string;
-  counsellorId: string;
-  reason: "user_request" | "risk_detected";
-  summary: string;
-}): Promise<string> {
-  const { userId, counsellorId, reason, summary } = params;
-  const conversationId = await getOrCreateConversation(userId, "counsellor");
-
-  await updateDoc(doc(db, "conversations", conversationId), {
-    title: "Counsellor Support",
-    counsellorId,
-    handoffReason: reason,
-    handoffSummary: summary.substring(0, 500),
-    status: "active",
-    updatedAt: serverTimestamp(),
-  });
-
-  return conversationId;
-}
-
-/**
- * Update conversation with active counsellor metadata for context preservation
- */
-export async function setActiveCounsellorOnConversation(params: {
-  conversationId: string;
-  counsellor: Counsellor;
-}): Promise<void> {
-  const { conversationId, counsellor } = params;
-  await updateDoc(doc(db, "conversations", conversationId), {
-    activeCounsellorId: counsellor.id,
-    activeCounsellor: {
-      id: counsellor.id,
-      name: counsellor.name,
-      title: counsellor.title,
-      languages: counsellor.languages,
-      specializations: counsellor.specializations,
-      phoneNumber: counsellor.phoneNumber,
-      whatsappNumber: counsellor.whatsappNumber,
-    },
-    updatedAt: serverTimestamp(),
-  });
-}
-
-/**
- * Get active counsellor for a conversation (if one exists)
- */
-export async function getActiveCounsellorForConversation(
-  conversationId: string,
-): Promise<{
-  id: string;
-  name: string;
-  title: string;
-  languages: string[];
-  specializations: string[];
-  phoneNumber: string;
-  whatsappNumber: string;
-} | null> {
-  try {
-    const docRef = doc(db, "conversations", conversationId);
-    const docSnap = await getDoc(docRef);
-
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      return data.activeCounsellor || null;
-    }
-  } catch (err) {
-    console.warn("Failed to get active counsellor from conversation:", err);
-  }
-  return null;
-}
-
-/**
- * Log agent events for observability and evaluation metrics.
- */
-export async function logAgentEvent(params: {
-  userId: string;
-  type: AgentEvent["type"];
-  severity?: TriageSeverity;
-  conversationId?: string;
-  success?: boolean;
-}): Promise<string> {
-  const { userId, type, severity, conversationId, success } = params;
-  const ref = collection(db, "users", userId, "agentEvents");
-  const payload: Record<string, unknown> = {
-    userId,
-    type,
-    success: success ?? true,
-    createdAt: serverTimestamp(),
-  };
-
-  if (severity !== undefined) payload.severity = severity;
-  if (conversationId !== undefined) payload.conversationId = conversationId;
-
-  const docRef = await addDoc(ref, payload);
-  return docRef.id;
-}
-
-/**
- * Fetch agent evaluation events for a period in days.
- */
-export async function getAgentEvents(
-  userId: string,
-  days: number = 30,
-): Promise<AgentEvent[]> {
-  const endDate = new Date();
-  const startDate = new Date();
-  startDate.setDate(endDate.getDate() - Math.max(1, days));
-
-  const ref = collection(db, "users", userId, "agentEvents");
-  const q = query(
-    ref,
-    where("createdAt", ">=", Timestamp.fromDate(startDate)),
-    where("createdAt", "<=", Timestamp.fromDate(endDate)),
-    orderBy("createdAt", "desc"),
-    firestoreLimit(500),
-  );
-
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map((d) => ({
-    id: d.id,
-    ...d.data(),
-    createdAt: d.data().createdAt?.toDate() || new Date(),
-  })) as AgentEvent[];
-}
+export async function createNewChat(uid: string, title = "New Chat"): Promise<string> { const { data, error } = await client().from("conversations").insert({ user_id: uid, title, type: "ai_support" }).select("id").single(); fail(error); return required(data, "conversation").id; }
+export async function updateConversationTitle(id: string, title: string): Promise<void> { const { error } = await client().from("conversations").update({ title }).eq("id", id); fail(error); }
+export async function deleteConversation(id: string): Promise<void> { const { error } = await client().from("conversations").delete().eq("id", id); fail(error); }
+export async function updateConversationPreview(id: string, lastMessage: string): Promise<void> { const { data, error } = await client().from("conversations").select("message_count").eq("id", id).single(); fail(error); const result = await client().from("conversations").update({ last_message: lastMessage.slice(0, 100), message_count: (required(data, "conversation").message_count || 0) + 1 }).eq("id", id); fail(result.error); }
+
+export async function createReminder(uid: string, reminder: Omit<Reminder, "id" | "sent" | "read">): Promise<string> { return addRecord(uid, "reminder", { ...reminder, scheduledFor: reminder.scheduledFor.toISOString(), sent: false, read: false }); }
+export async function getPendingReminders(uid: string): Promise<Reminder[]> { return (await records(uid, "reminder")).map((row) => ({ id: row.id as string, ...(row.payload as JsonRecord), scheduledFor: asDate((row.payload as JsonRecord).scheduledFor) } as Reminder)).filter((item) => !item.sent).sort((a, b) => a.scheduledFor.getTime() - b.scheduledFor.getTime()); }
+export async function schedulePeriodReminders(uid: string, nextPeriodDate: Date, reminderDaysBefore = 3): Promise<void> { const date = new Date(nextPeriodDate); date.setDate(date.getDate() - reminderDaysBefore); if (date > new Date()) await createReminder(uid, { userId: uid, type: "period_coming", title: "Period Coming Soon", message: `Your period is expected in ${reminderDaysBefore} days. Time to prepare!`, scheduledFor: date }); }
+export async function markReminderSent(uid: string, id: string): Promise<void> { const { data, error } = await client().from("user_records").select("payload").eq("id", id).eq("user_id", uid).single(); fail(error); const result = await client().from("user_records").update({ payload: { ...(required(data, "reminder").payload as JsonRecord), sent: true, sentAt: new Date().toISOString() } }).eq("id", id); fail(result.error); }
+export async function markReminderRead(uid: string, id: string): Promise<void> { const { data, error } = await client().from("user_records").select("payload").eq("id", id).eq("user_id", uid).single(); fail(error); const result = await client().from("user_records").update({ payload: { ...(required(data, "reminder").payload as JsonRecord), read: true } }).eq("id", id); fail(result.error); }
+
+function counsellorFromRow(row: JsonRecord): Counsellor { return { ...(row.profile as JsonRecord), id: row.id as string, status: row.status as CounsellorStatus, verificationStatus: row.verification_status as Counsellor["verificationStatus"], acceptingNewSessions: row.accepting_new_sessions as boolean, maxConcurrentSessions: row.max_concurrent_sessions as number, verified: row.verification_status === "verified", createdAt: asDate(row.created_at) } as Counsellor; }
+export async function getCounsellors(): Promise<Counsellor[]> { const { data, error } = await client().from("counsellors").select("*"); fail(error); return (data || []).map((row) => counsellorFromRow(row as JsonRecord)).sort((a, b) => b.rating - a.rating); }
+export async function getCounsellorsByStatus(status: CounsellorStatus): Promise<Counsellor[]> { return (await getCounsellors()).filter((item) => item.status === status); }
+export async function getCounsellorsBySpecialty(specialty: CounsellorSpecialty): Promise<Counsellor[]> { return (await getCounsellors()).filter((item) => item.specializations.includes(specialty)); }
+export async function getCounsellor(id: string): Promise<Counsellor | null> { const { data, error } = await client().from("counsellors").select("*").eq("id", id).maybeSingle(); fail(error); return data ? counsellorFromRow(data as JsonRecord) : null; }
+export async function updateCounsellorStatus(id: string, status: CounsellorStatus): Promise<void> { const { error } = await client().from("counsellors").update({ status }).eq("id", id); fail(error); }
+export async function createCounsellor(counsellor: Omit<Counsellor, "id" | "createdAt">): Promise<string> { const { data, error } = await client().from("counsellors").insert({ profile: counsellor, status: counsellor.status, verification_status: counsellor.verified ? "verified" : "pending" }).select("id").single(); fail(error); return required(data, "counsellor").id; }
+export async function seedCounsellors(): Promise<void> { throw new Error("Sample counsellors are intentionally disabled. Register and verify real professionals through the KYC workflow."); }
+
+export async function batchUpdateCounsellorAvailability(): Promise<{ updated: number; errors: number }> { return { updated: 0, errors: 0 }; }
+export async function autoUpdateCounsellorStatus(id: string): Promise<CounsellorStatus | null> { return (await getCounsellor(id))?.status || null; }
+export async function assignCounsellor(params: { specialty?: CounsellorSpecialty; preferredLanguage?: string }): Promise<Counsellor | null> { return (await getCounsellors()).filter((item) => item.status === "available" && item.verified && item.acceptingNewSessions && (!params.specialty || item.specializations.includes(params.specialty)) && (!params.preferredLanguage || item.languages.some((language) => language.toLowerCase() === params.preferredLanguage?.toLowerCase()))).sort((a, b) => b.rating - a.rating)[0] || null; }
+export async function routeCounsellor(params: { specialty?: CounsellorSpecialty; preferredLanguage?: string }): Promise<Counsellor | null> { return assignCounsellor(params); }
+export async function connectUserToCounsellor(params: { userId: string; counsellorId: string; reason: "user_request" | "risk_detected"; summary: string }): Promise<string> { const id = await getOrCreateConversation(params.userId, "counsellor"); await updateConversationTitle(id, "Counsellor Support"); await client().from("conversations").update({ active_counsellor_id: params.counsellorId }).eq("id", id); return id; }
+export async function setActiveCounsellorOnConversation(params: { conversationId: string; counsellor: Counsellor }): Promise<void> { const { error } = await client().from("conversations").update({ active_counsellor_id: params.counsellor.id }).eq("id", params.conversationId); fail(error); }
+export async function getActiveCounsellorForConversation(id: string): Promise<{ id: string; name: string; title: string; languages: string[]; specializations: string[]; phoneNumber: string; whatsappNumber: string } | null> { const { data, error } = await client().from("conversations").select("active_counsellor_id").eq("id", id).single(); fail(error); const counsellor = data?.active_counsellor_id ? await getCounsellor(data.active_counsellor_id) : null; return counsellor ? { id: counsellor.id, name: counsellor.name, title: counsellor.title, languages: counsellor.languages, specializations: counsellor.specializations, phoneNumber: counsellor.phoneNumber, whatsappNumber: counsellor.whatsappNumber } : null; }
+
+export async function logAgentEvent(params: { userId: string; type: AgentEvent["type"]; severity?: TriageSeverity; conversationId?: string; success?: boolean }): Promise<string> { return addRecord(params.userId, "agent_event", { ...params, success: params.success ?? true }); }
+export async function getAgentEvents(uid: string, days = 30): Promise<AgentEvent[]> { const cutoff = Date.now() - Math.max(1, days) * 86400000; return (await records(uid, "agent_event")).filter((row) => new Date(row.created_at as string).getTime() >= cutoff).map((row) => ({ id: row.id as string, ...(row.payload as JsonRecord), createdAt: asDate(row.created_at) } as AgentEvent)); }

@@ -4,16 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
 import { useAuth } from "@/context/AuthContext";
-import { auth, db } from "@/lib/firebase";
-import {
-  addDoc,
-  collection,
-  doc,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-} from "firebase/firestore";
+import { auth } from "@/lib/firebase";
+import { getSupabaseBrowserClient } from "@/lib/supabase";
 import { CounsellingSession, SessionState } from "@/types";
 import {
   getSessionDetail,
@@ -84,41 +76,23 @@ export default function SessionRoomPage() {
   useEffect(() => {
     if (!user || !session) return;
 
-    const unsubState = onSnapshot(
-      doc(db, "sessions", sessionId),
-      (snap) => {
-        const s = snap.data()?.state as SessionState | undefined;
-        if (s) {
-          setLiveState(s);
-          if (s === "feedback_received") setFeedbackSent(true);
-        }
-      },
-      (err) => console.warn("Session state listener failed:", err),
-    );
-
-    const unsubMessages = onSnapshot(
-      query(
-        collection(db, "sessions", sessionId, "messages"),
-        orderBy("createdAt", "asc"),
-      ),
-      (snap) => {
-        setMessages(
-          snap.docs.map((d) => ({
-            id: d.id,
-            senderId: d.data().senderId,
-            senderRole: d.data().senderRole || "user",
-            text: d.data().text || "",
-            createdAt: d.data().createdAt?.toDate?.() || null,
-          })),
-        );
-      },
-      (err) => console.warn("Messages listener failed:", err),
-    );
-
-    return () => {
-      unsubState();
-      unsubMessages();
+    const supabase = getSupabaseBrowserClient();
+    const loadMessages = async () => {
+      const { data, error: loadError } = await supabase
+        .from("session_messages").select("*").eq("session_id", sessionId)
+        .order("created_at", { ascending: true });
+      if (loadError) return console.warn("Session message load failed:", loadError);
+      setMessages((data || []).map((message) => ({
+        id: message.id, senderId: message.sender_id, senderRole: message.sender_role,
+        text: message.text, createdAt: message.created_at ? new Date(message.created_at) : null,
+      })));
     };
+    void loadMessages();
+    const channel = supabase.channel(`session-room:${sessionId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "session_messages", filter: `session_id=eq.${sessionId}` }, () => void loadMessages())
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "counselling_sessions", filter: `id=eq.${sessionId}` }, () => void loadDetail())
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
   }, [user, session, sessionId]);
 
   useEffect(() => {
@@ -130,12 +104,13 @@ export default function SessionRoomPage() {
     if (!text || !uid || state !== "active") return;
     setSending(true);
     try {
-      await addDoc(collection(db, "sessions", sessionId, "messages"), {
-        senderId: uid,
-        senderRole: isSessionUser ? "user" : "counsellor",
+      const { error: insertError } = await getSupabaseBrowserClient().from("session_messages").insert({
+        session_id: sessionId,
+        sender_id: uid,
+        sender_role: isSessionUser ? "user" : "counsellor",
         text,
-        createdAt: serverTimestamp(),
       });
+      if (insertError) throw insertError;
       setDraft("");
     } catch {
       setError("Message failed to send. Check your connection.");

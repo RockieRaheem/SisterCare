@@ -1,36 +1,111 @@
-import { initializeApp, getApps } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
-import { getAnalytics, isSupported } from "firebase/analytics";
+/**
+ * Transitional import facade for legacy UI modules.
+ *
+ * Despite the filename, this module is entirely Supabase-backed. It lets the
+ * remaining UI move without a risky, all-at-once import rename. No Firebase
+ * package is imported or initialized here.
+ */
+"use client";
 
-// Firebase configuration using environment variables
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
-};
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
+import { getSupabaseBrowserClient } from "./supabase";
 
-// Initialize Firebase only if it hasn't been initialized
-const app =
-  getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-
-// Initialize Analytics only on client side
-let analytics: ReturnType<typeof getAnalytics> | null = null;
-if (typeof window !== "undefined") {
-  isSupported().then((supported) => {
-    if (supported) {
-      analytics = getAnalytics(app);
-    }
-  });
+export interface SisterCareAuthUser {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
+  getIdToken: (forceRefresh?: boolean) => Promise<string>;
+  getIdTokenResult: () => Promise<{ claims: { role?: string } }>;
 }
 
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
-export { analytics };
-export default app;
+type AuthListener = (user: SisterCareAuthUser | null) => void | Promise<void>;
+
+function toUser(session: Session | null): SisterCareAuthUser | null {
+  if (!session) return null;
+  const source = session.user;
+  return {
+    uid: source.id,
+    email: source.email ?? null,
+    displayName: (source.user_metadata.full_name as string | undefined) ?? null,
+    photoURL: (source.user_metadata.avatar_url as string | undefined) ?? null,
+    getIdToken: async () => {
+      const { data } = await getSupabaseBrowserClient().auth.getSession();
+      if (!data.session?.access_token) throw new Error("Authentication required");
+      return data.session.access_token;
+    },
+    getIdTokenResult: async () => {
+      const { data, error } = await getSupabaseBrowserClient()
+        .from("profiles")
+        .select("role")
+        .eq("id", source.id)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return { claims: { role: data?.role } };
+    },
+  };
+}
+
+class SupabaseAuthFacade {
+  private cachedUser: SisterCareAuthUser | null = null;
+  private initialized = false;
+  private listeners = new Set<AuthListener>();
+
+  get currentUser() { return this.cachedUser; }
+
+  private async notify(session: Session | null) {
+    this.cachedUser = toUser(session);
+    await Promise.all([...this.listeners].map((listener) => listener(this.cachedUser)));
+  }
+
+  private initialize() {
+    if (this.initialized) return;
+    this.initialized = true;
+    const supabase = getSupabaseBrowserClient();
+    void supabase.auth.getSession().then(({ data }) => this.notify(data.session));
+    supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session) => {
+      void this.notify(session);
+    });
+  }
+
+  onAuthStateChanged(listener: AuthListener) {
+    this.initialize();
+    this.listeners.add(listener);
+    if (this.cachedUser) void listener(this.cachedUser);
+    return () => { this.listeners.delete(listener); };
+  }
+
+  async signInWithEmailAndPassword(email: string, password: string) {
+    const { data, error } = await getSupabaseBrowserClient().auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    await this.notify(data.session);
+  }
+
+  async createUserWithEmailAndPassword(email: string, password: string, registrationIntent: "member" | "counsellor") {
+    const { data, error } = await getSupabaseBrowserClient().auth.signUp({
+      email,
+      password,
+      options: { data: { registration_intent: registrationIntent } },
+    });
+    if (error) throw error;
+    await this.notify(data.session);
+    return data.user ? toUser(data.session || { user: data.user } as Session) : null;
+  }
+
+  async signInWithGoogle(registrationIntent: "member" | "counsellor") {
+    window.localStorage.setItem("sistercare-registration-intent", registrationIntent);
+    const { error } = await getSupabaseBrowserClient().auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/auth/login` },
+    });
+    if (error) throw error;
+  }
+
+  async signOut() {
+    const { error } = await getSupabaseBrowserClient().auth.signOut();
+    if (error) throw error;
+    await this.notify(null);
+  }
+}
+
+export const auth = new SupabaseAuthFacade();

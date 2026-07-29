@@ -3,8 +3,8 @@
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import CounsellorShell from "@/components/counsellor/CounsellorShell";
-import { auth, storage } from "@/lib/firebase";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { auth } from "@/lib/firebase";
+import { getSupabaseBrowserClient } from "@/lib/supabase";
 import { COUNSELLOR_SPECIALTIES } from "@/lib/counsellors";
 
 async function authorisedFetch(path: string, init?: RequestInit) {
@@ -18,6 +18,7 @@ export default function CounsellorApplicationPage() {
   const [submitting, setSubmitting] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [documentsUploading, setDocumentsUploading] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState("");
   const [form, setForm] = useState({
     name: "", title: "", bio: "", legalName: "", registrationNumber: "", credentialType: "", credentialExpiresAt: "", phoneNumber: "", photoURL: "", documentPaths: [] as string[], languages: "English", specializations: [] as string[],
   });
@@ -45,10 +46,13 @@ export default function CounsellorApplicationPage() {
     setStatus("");
     try {
       const extension = file.name.split(".").pop()?.replace(/[^a-z0-9]/gi, "") || "jpg";
-      const location = ref(storage, `counsellor-profile/${uid}/profile-${Date.now()}.${extension}`);
-      await uploadBytes(location, file, { contentType: file.type });
-      const photoURL = await getDownloadURL(location);
-      setForm((current) => ({ ...current, photoURL }));
+      const path = `${uid}/profile-${Date.now()}.${extension}`;
+      const { error } = await getSupabaseBrowserClient().storage.from("counsellor-profile").upload(path, file, { contentType: file.type, upsert: false });
+      if (error) throw error;
+      // Keep a storage path rather than a durable public URL. Admin review and
+      // the published directory issue authorised short-lived URLs later.
+      setForm((current) => ({ ...current, photoURL: path }));
+      setPhotoPreview(URL.createObjectURL(file));
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Could not upload your photo.");
     } finally {
@@ -67,8 +71,9 @@ export default function CounsellorApplicationPage() {
     try {
       const paths = await Promise.all(selected.map(async (file, index) => {
         const extension = file.name.split(".").pop()?.replace(/[^a-z0-9]/gi, "") || "bin";
-        const path = `counsellor-kyc/${uid}/${Date.now()}-${index}.${extension}`;
-        await uploadBytes(ref(storage, path), file, { contentType: file.type });
+        const path = `${uid}/${Date.now()}-${index}.${extension}`;
+        const { error } = await getSupabaseBrowserClient().storage.from("counsellor-kyc").upload(path, file, { contentType: file.type, upsert: false });
+        if (error) throw error;
         return path;
       }));
       setForm((current) => ({ ...current, documentPaths: [...current.documentPaths, ...paths] }));
@@ -111,7 +116,7 @@ export default function CounsellorApplicationPage() {
       {status === "pending" || status === "verified" ? <div className="mt-6 rounded-2xl border border-primary/20 bg-primary/5 p-5 text-sm text-text-primary dark:text-white">{status === "verified" ? "Your KYC has been approved. Sign out and back in to activate your counsellor portal." : "Your KYC application is awaiting review. We will not show your profile or route users to you until it is approved."}</div> : <form onSubmit={submit} className="mt-6 space-y-5 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-card-dark">
         <section className="rounded-2xl border border-dashed border-primary/35 bg-primary/5 p-4">
           <div className="flex flex-wrap items-center gap-4">
-            {form.photoURL ? <img src={form.photoURL} alt="Professional profile preview" className="h-16 w-16 rounded-2xl object-cover" /> : <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/15 text-primary"><span className="material-symbols-outlined">add_a_photo</span></div>}
+            {photoPreview ? <img src={photoPreview} alt="Professional profile preview" className="h-16 w-16 rounded-2xl object-cover" /> : <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/15 text-primary"><span className="material-symbols-outlined">add_a_photo</span></div>}
             <div className="min-w-0 flex-1">
               <label className="block text-sm font-semibold text-gray-800 dark:text-white">Professional profile photo
                 <input required type="file" accept="image/*" capture="user" onChange={(event) => uploadPhoto(event.target.files?.[0])} className="mt-2 block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:font-semibold file:text-white dark:text-gray-300" />
