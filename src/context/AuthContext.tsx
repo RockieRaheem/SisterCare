@@ -8,9 +8,10 @@ import {
   ReactNode,
 } from "react";
 import { auth } from "@/lib/firebase";
-import { createUserProfile, getUserProfile, updateUserProfile } from "@/lib/firestore";
+import { getUserProfile, updateUserProfile } from "@/lib/firestore";
 import { clearPrivateClientData } from "@/lib/privacy";
 import { UserProfile as FullUserProfile } from "@/types";
+import { getSupabaseBrowserClient } from "@/lib/supabase";
 
 interface UserProfile {
   uid: string;
@@ -52,9 +53,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       let profile = await getUserProfile(uid);
 
-      // Create profile if it doesn't exist
+      // The auth-user trigger owns normal profile creation. Dashboard-created
+      // accounts may predate that trigger, so recover through a server route
+      // using the verified session rather than bypassing RLS in the browser.
       if (!profile) {
-        profile = await createUserProfile(uid, email, displayName, photoURL);
+        const { data } = await getSupabaseBrowserClient().auth.getSession();
+        const token = data.session?.access_token;
+        if (!token) throw new Error("Authentication session is unavailable");
+        const response = await fetch("/api/profile/bootstrap", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) throw new Error("Unable to initialize the account profile");
+        profile = await getUserProfile(uid);
+        if (!profile) throw new Error("Account profile was not created");
       }
 
       const deferredIntent = window.localStorage.getItem("sistercare-registration-intent");
@@ -125,8 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string, registrationIntent: "member" | "counsellor" = "member") => {
-    const created = await auth.createUserWithEmailAndPassword(email, password, registrationIntent);
-    if (created) await createUserProfile(created.uid, email, null, null, registrationIntent);
+    await auth.createUserWithEmailAndPassword(email, password, registrationIntent);
   };
 
   const signOut = async () => {
