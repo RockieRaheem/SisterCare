@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  resolveApplicationReviewAttempt,
   resolveApplicationSubmissionStatus,
   resolveCounsellorPortalState,
 } from "../counsellorApplicationStatus";
@@ -18,6 +19,31 @@ describe("counsellor portal state", () => {
     expect(resolveCounsellorPortalState("counsellor", "verified")).toBe("workspace");
     expect(resolveCounsellorPortalState("admin", null)).toBe("workspace");
     expect(resolveCounsellorPortalState("member", null)).toBe("not_applied");
+  });
+});
+
+describe("counsellor application review retries", () => {
+  it("processes a pending application", () => {
+    expect(resolveApplicationReviewAttempt("pending", "approve")).toBe("proceed");
+    expect(resolveApplicationReviewAttempt("pending", "reject")).toBe("proceed");
+  });
+
+  it("accepts a repeated copy of a completed decision", () => {
+    expect(resolveApplicationReviewAttempt("verified", "approve")).toBe(
+      "already_applied",
+    );
+    expect(resolveApplicationReviewAttempt("rejected", "reject")).toBe(
+      "already_applied",
+    );
+  });
+
+  it("rejects a decision that contradicts the stored outcome", () => {
+    expect(resolveApplicationReviewAttempt("verified", "reject")).toBe(
+      "conflict",
+    );
+    expect(resolveApplicationReviewAttempt("rejected", "approve")).toBe(
+      "conflict",
+    );
   });
 });
 
