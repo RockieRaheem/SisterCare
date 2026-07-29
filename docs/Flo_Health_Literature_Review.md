@@ -494,7 +494,7 @@ Flo operates in distinct modes based on user lifecycle:
 
 - No ISO certification
 - No anonymous mode
-- Standard Firebase auth
+- Standard managed authentication
 - _Flo has award-winning privacy_
 
 #### 8. **Limited Content Library** 🔴
