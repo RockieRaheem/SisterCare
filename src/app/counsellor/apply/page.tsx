@@ -2,19 +2,15 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import CounsellorShell from "@/components/counsellor/CounsellorShell";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 import { COUNSELLOR_SPECIALTIES } from "@/lib/counsellors";
-
-async function authorisedFetch(path: string, init?: RequestInit) {
-  const token = await getSupabaseBrowserClient().auth.getSession()
-    .then(({ data }) => data.session?.access_token ?? null)
-    .catch(() => null);
-  if (!token) throw new Error("Please sign in before applying.");
-  return fetch(path, { ...init, headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...init?.headers } });
-}
+import { useAuth } from "@/context/AuthContext";
 
 export default function CounsellorApplicationPage() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [status, setStatus] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
@@ -25,10 +21,13 @@ export default function CounsellorApplicationPage() {
   });
 
   useEffect(() => {
-    authorisedFetch("/api/counsellor/application").then((response) => response.json()).then((result) => {
-      if (result.data?.application?.status) setStatus(result.data.application.status);
-    }).catch(() => {});
-  }, []);
+    if (!authLoading && !user) { router.replace("/auth/login?next=/counsellor/apply"); return; }
+    if (!user) return;
+    void (async () => {
+      const { data } = await getSupabaseBrowserClient().from("counsellor_applications").select("status").eq("counsellor_id", user.uid).maybeSingle();
+      if (data?.status) setStatus(data.status);
+    })();
+  }, [authLoading, router, user]);
 
   const set = (key: keyof typeof form, value: string | string[]) => setForm((current) => ({ ...current, [key]: value }));
 
@@ -87,16 +86,15 @@ export default function CounsellorApplicationPage() {
     setStatus("");
     try {
       if (!form.photoURL) throw new Error("Add a professional profile photo before submitting your application.");
-      const response = await authorisedFetch("/api/counsellor/application", {
-        method: "POST",
-        body: JSON.stringify({
-          ...form,
-          languages: form.languages.split(",").map((item) => item.trim()).filter(Boolean),
-          documentReferences: form.documentPaths,
-        }),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Could not submit your application.");
+      const { data: sessionData } = await getSupabaseBrowserClient().auth.getSession();
+      const uid = sessionData.session?.user.id;
+      if (!uid) throw new Error("Your session has expired. Please sign in again before submitting KYC.");
+      const application = {
+        profile: { name: form.name.trim(), title: form.title.trim(), bio: form.bio.trim(), photoURL: form.photoURL, specializations: form.specializations, languages: form.languages.split(",").map((item) => item.trim()).filter(Boolean), phoneNumber: form.phoneNumber.trim() },
+        legalName: form.legalName.trim(), registrationNumber: form.registrationNumber.trim(), credentialType: form.credentialType.trim(), credentialExpiresAt: new Date(form.credentialExpiresAt).toISOString(), documentReferences: form.documentPaths,
+      };
+      const { error } = await getSupabaseBrowserClient().from("counsellor_applications").upsert({ counsellor_id: uid, application, submitted_at: new Date().toISOString() }, { onConflict: "counsellor_id" });
+      if (error) throw error;
       setStatus("pending");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Could not submit your application.");
