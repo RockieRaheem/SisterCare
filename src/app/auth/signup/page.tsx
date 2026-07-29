@@ -36,8 +36,7 @@ const checkPasswordStrength = (
   return { score, feedback };
 };
 
-// Firebase error messages mapping
-const getFirebaseErrorMessage = (errorCode: string): string => {
+const getSignupErrorMessage = (errorCode: string, providerMessage?: string): string => {
   const errorMessages: Record<string, string> = {
     "auth/email-already-in-use":
       "An account with this email already exists. Please sign in instead.",
@@ -48,9 +47,16 @@ const getFirebaseErrorMessage = (errorCode: string): string => {
       "Password is too weak. Please choose a stronger password.",
     "auth/network-request-failed":
       "Network error. Please check your internet connection.",
+    "signup_disabled": "Account registration is currently disabled. Please contact SisterCare support.",
+    "email_address_invalid": "Please enter a valid email address.",
+    "weak_password": "Password is too weak. Please choose a stronger password.",
+    "user_already_exists": "An account with this email already exists. Please sign in instead.",
   };
   return (
-    errorMessages[errorCode] || "Failed to create account. Please try again."
+    errorMessages[errorCode] ||
+    (providerMessage && providerMessage.length < 180
+      ? providerMessage
+      : "Failed to create account. Please try again.")
   );
 };
 
@@ -129,7 +135,7 @@ export default function SignupPage() {
       router.push(registrationIntent === "counsellor" ? "/counsellor/apply" : "/onboarding");
     } catch (err: unknown) {
       const errorCode = (err as { code?: string })?.code || "";
-      setError(getFirebaseErrorMessage(errorCode));
+      setError(getSignupErrorMessage(errorCode, (err as { message?: string })?.message));
     } finally {
       setLoading(false);
     }
