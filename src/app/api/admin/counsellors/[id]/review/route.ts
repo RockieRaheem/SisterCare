@@ -20,7 +20,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!profile || Number.isNaN(expiry.getTime()) || expiry <= new Date()) return NextResponse.json({ success: false, error: "Cannot approve an expired or incomplete credential" }, { status: 400 });
   const now = new Date().toISOString();
   const updates = await Promise.all([
-    db.from("profiles").update({ role: "counsellor" }).eq("id", id),
+    db.from("profiles").update({ role: "counsellor", registration_intent: "counsellor" }).eq("id", id),
     db.from("counsellors").upsert({ id, profile: { ...profile, whatsappNumber: profile.phoneNumber, rating: 0, reviewCount: 0, yearsExperience: 0, sessionCount: 0, availableHours: { start: "08:00", end: "17:00", days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] }, credentialType: details.credentialType, credentialExpiresAt: expiry.toISOString() }, status: "offline", verification_status: "verified", accepting_new_sessions: true, max_concurrent_sessions: 1 }, { onConflict: "id" }),
     db.from("counsellor_applications").update({ status: "verified", reviewed_at: now, reviewed_by: auth.uid, review_note: note || "KYC approved" }).eq("counsellor_id", id),
     db.from("audit_events").insert({ actor_id: auth.uid, event_type: "counsellor.kyc_approved", subject_id: id, metadata: {} }),

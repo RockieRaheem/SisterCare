@@ -14,7 +14,23 @@ export async function POST(request: NextRequest) {
   try {
     const { user, error: authError } = await verifySupabaseAccessToken(match[1]);
     if (authError || !user) return NextResponse.json({ error: "Your Supabase session token was rejected. Sign out and sign in again." }, { status: 401 });
-    const registrationIntent = user.user_metadata.registration_intent === "counsellor" ? "counsellor" : "member";
+    const existing = await getSupabaseAdmin()
+      .from("profiles")
+      .select("registration_intent")
+      .eq("id", user.id)
+      .maybeSingle();
+    const application = await getSupabaseAdmin()
+      .from("counsellor_applications")
+      .select("counsellor_id")
+      .eq("counsellor_id", user.id)
+      .maybeSingle();
+    if (existing.error || application.error) throw existing.error || application.error;
+    const registrationIntent =
+      user.user_metadata.registration_intent === "counsellor" ||
+      existing.data?.registration_intent === "counsellor" ||
+      Boolean(application.data)
+        ? "counsellor"
+        : "member";
     const { error } = await getSupabaseAdmin().from("profiles").upsert({
       id: user.id,
       email: user.email || "",
