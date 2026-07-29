@@ -110,20 +110,20 @@ export default function DashboardPage() {
         // Only mark as checked if onboarding is complete
         setOnboardingChecked(true);
       } catch (err: unknown) {
-        const firebaseError = err as { code?: string; message?: string };
+        const supabaseError = err as { code?: string; message?: string };
         console.error("Error checking onboarding:", err);
 
         // Check if it's a permission error
         const isPermissionError =
-          firebaseError.message?.includes("permission") ||
-          firebaseError.code === "permission-denied";
+          supabaseError.message?.includes("permission") ||
+          supabaseError.code === "permission-denied";
 
         if (isPermissionError) {
           // If permission error but user is authenticated, use authProfile or allow access
           if (authProfile?.onboardingCompleted) {
             setOnboardingChecked(true);
           } else {
-            // Show dashboard anyway - user can use it without Firestore temporarily
+            // Show dashboard anyway - user can use it without Supabase temporarily
             setOnboardingChecked(true);
           }
         } else {
@@ -176,13 +176,13 @@ export default function DashboardPage() {
         }
       }
     } catch (err: unknown) {
-      const firebaseError = err as { code?: string; message?: string };
+      const supabaseError = err as { code?: string; message?: string };
       console.error("Error loading dashboard data:", err);
 
       // Check if it's a permission error
       const isPermissionError =
-        firebaseError.message?.includes("permission") ||
-        firebaseError.code === "permission-denied";
+        supabaseError.message?.includes("permission") ||
+        supabaseError.code === "permission-denied";
 
       if (isPermissionError) {
         // Use authProfile if available
@@ -236,13 +236,13 @@ export default function DashboardPage() {
         setSelectedMood(null);
       }, 3000);
     } catch (err: unknown) {
-      const firebaseError = err as { code?: string; message?: string };
+      const supabaseError = err as { code?: string; message?: string };
       console.error("Error logging mood:", err);
 
       // For permission errors, still show success locally
       const isPermissionError =
-        firebaseError.message?.includes("permission") ||
-        firebaseError.code === "permission-denied";
+        supabaseError.message?.includes("permission") ||
+        supabaseError.code === "permission-denied";
 
       if (isPermissionError) {
         // Show success locally even if couldn't save to cloud

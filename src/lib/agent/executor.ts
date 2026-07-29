@@ -227,7 +227,7 @@ async function executeTool(
           notes,
         };
 
-        // PERSIST TO FIRESTORE if userId is available
+        // PERSIST TO SUPABASE if userId is available
         let logId: string | null = null;
         if (context.userId) {
           try {
@@ -313,7 +313,7 @@ async function executeTool(
         // Parse scheduled date
         const scheduledDate = parseScheduledDate(scheduledFor);
 
-        // PERSIST TO FIRESTORE if userId is available
+        // PERSIST TO SUPABASE if userId is available
         let reminderId: string | null = null;
         if (context.userId) {
           try {
@@ -391,7 +391,7 @@ async function executeTool(
       case "get_symptom_history": {
         const days = (args.days as number) || 30;
 
-        // FETCH FROM FIRESTORE if userId is available
+        // FETCH FROM SUPABASE if userId is available
         let symptoms: Array<{
           date: string;
           symptoms: string[];
@@ -514,7 +514,7 @@ async function executeTool(
           ? new Date(args.startDate as string)
           : new Date();
 
-        // PERSIST TO FIRESTORE if userId is available
+        // PERSIST TO SUPABASE if userId is available
         let persisted = false;
         let nextPeriodDate: Date | null = null;
         if (context.userId && context.cycleData) {

@@ -10,7 +10,7 @@ export interface UserProfile {
   cycleData: CycleData | null;
   pregnancyData: PregnancyData | null;
   preferences: UserPreferences;
-  /** Sign-up path only; it never grants a privileged Firebase role. */
+  /** Sign-up path only; it never grants a privileged Supabase role. */
   registrationIntent?: "member" | "counsellor";
   /** Server-controlled Supabase role; never accepted from a browser update. */
   role?: "member" | "counsellor" | "admin";

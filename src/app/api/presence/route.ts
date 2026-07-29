@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       {
         success: false,
         error:
-          "Presence requires FIREBASE_SERVICE_ACCOUNT_KEY to be configured.",
+          "Presence requires SUPABASE_SECRET_KEY to be configured.",
       },
       { status: 503 },
     );

@@ -77,12 +77,12 @@ export default function SettingsPage() {
         setTheme(profile.preferences.theme ?? "system");
       }
     } catch (error: unknown) {
-      const firebaseError = error as { code?: string; message?: string };
+      const supabaseError = error as { code?: string; message?: string };
       console.error("Error loading settings:", error);
       
       // Silently handle permission errors - user can still use settings
-      const isPermissionError = firebaseError.message?.includes("permission") ||
-        firebaseError.code === "permission-denied";
+      const isPermissionError = supabaseError.message?.includes("permission") ||
+        supabaseError.code === "permission-denied";
       if (!isPermissionError) {
         // Only log non-permission errors
       }
@@ -111,11 +111,11 @@ export default function SettingsPage() {
       // Clear message after 3 seconds
       setTimeout(() => setMessage(null), 3000);
     } catch (error: unknown) {
-      const firebaseError = error as { code?: string; message?: string };
+      const supabaseError = error as { code?: string; message?: string };
       console.error("Error saving settings:", error);
       
-      const isPermissionError = firebaseError.message?.includes("permission") ||
-        firebaseError.code === "permission-denied";
+      const isPermissionError = supabaseError.message?.includes("permission") ||
+        supabaseError.code === "permission-denied";
       
       setMessage({
         type: "error",
@@ -457,11 +457,11 @@ export default function SettingsPage() {
       });
       setTimeout(() => setMessage(null), 5000);
     } catch (error: unknown) {
-      const firebaseError = error as { code?: string; message?: string };
+      const supabaseError = error as { code?: string; message?: string };
       console.error("Error exporting data:", error);
       
-      const isPermissionError = firebaseError.message?.includes("permission") ||
-        firebaseError.code === "permission-denied";
+      const isPermissionError = supabaseError.message?.includes("permission") ||
+        supabaseError.code === "permission-denied";
       
       setMessage({
         type: "error",

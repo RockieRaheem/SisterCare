@@ -24,7 +24,7 @@ async function run(request: NextRequest, cronOnly = false) {
       {
         success: false,
         error:
-          "Session sweep requires FIREBASE_SERVICE_ACCOUNT_KEY to be configured.",
+          "Session sweep requires SUPABASE_SECRET_KEY to be configured.",
       },
       { status: 503 },
     );

@@ -653,7 +653,7 @@ export default function ChatPage() {
         const response = await conversationRequest<{
           messages: Array<Record<string, unknown>>;
         }>(`/api/conversations/${encodeURIComponent(conversationId)}`);
-        const firestoreCleaned = response.messages
+        const supabaseCleaned = response.messages
           .filter((msg) => !isLikelyUiMarkup(String(msg.content)))
           .map((msg) => ({
             id: String(msg.id),
@@ -661,9 +661,9 @@ export default function ChatPage() {
             text: String(msg.content),
             timestamp: new Date(String(msg.timestamp)),
           }));
-        if (firestoreCleaned.length > 0) {
-          setMessages(firestoreCleaned);
-          firestoreCleaned.forEach((msg) => {
+        if (supabaseCleaned.length > 0) {
+          setMessages(supabaseCleaned);
+          supabaseCleaned.forEach((msg) => {
             saveLocalMessage(conversationId, {
               id: msg.id,
               conversationId,
@@ -707,7 +707,7 @@ export default function ChatPage() {
   const openConversationFromSidebar = useCallback(
     async (conversationId: string) => {
       if (!conversationId) return;
-      // A previous Firestore/local-storage read can fail transiently. Allow a
+      // A previous Supabase/local-storage read can fail transiently. Allow a
       // tap on the active but empty conversation to retry instead of trapping
       // the user in a blank chat view.
       if (conversationId === activeConversationId && messages.length > 0) return;
@@ -728,22 +728,22 @@ export default function ChatPage() {
 
     // Read the server-owned index so chats survive logging out, changing
     // browsers, and clearing this device's private cache.
-    let firestoreConvs: ChatConversation[] = [];
+    let supabaseConvs: ChatConversation[] = [];
     try {
       const response = await conversationRequest<{
         conversations: Array<Record<string, unknown>>;
       }>("/api/conversations");
-      firestoreConvs = response.conversations.map(parseConversation);
-      const cleanFirestore = firestoreConvs.filter(
+      supabaseConvs = response.conversations.map(parseConversation);
+      const cleanSupabase = supabaseConvs.filter(
         (c) => !isLikelyDummyConversation(c),
       );
-      // Sync Firestore conversations to local storage
-      cleanFirestore.forEach((c) => saveLocalConversation(c));
-      // Clean tombstones for conversations that still exist in Firestore
-      cleanDeletedTombstones(cleanFirestore.map((c) => c.id));
+      // Sync Supabase conversations to local storage
+      cleanSupabase.forEach((c) => saveLocalConversation(c));
+      // Clean tombstones for conversations that still exist in Supabase
+      cleanDeletedTombstones(cleanSupabase.map((c) => c.id));
     } catch {}
 
-    // Merge: prefer local data (which has delete tombstones), supplemented by Firestore
+    // Merge: prefer local data (which has delete tombstones), supplemented by Supabase
     const merged = loadLocalConversations(user.uid);
 
     // History is available in the drawer, but every visit begins with a new
@@ -967,7 +967,7 @@ export default function ChatPage() {
         const makeRequest = async (
           retryCount = 0,
         ): Promise<ChatApiResponse> => {
-          // Firebase caches the ID token and auto-refreshes near expiry, so
+          // Supabase caches the ID token and auto-refreshes near expiry, so
           // fetching it per request is cheap. The server verifies it and uses
           // the token's uid — never the raw userId below — as the identity.
           const idToken = await getSupabaseBrowserClient().auth.getSession()
@@ -1044,7 +1044,7 @@ export default function ChatPage() {
         }
 
         // Client actions are server-authorized intent responses. Complete them
-        // before any best-effort chat persistence so a slow Firestore write can
+        // before any best-effort chat persistence so a slow Supabase write can
         // never leave the user on this screen after we say an action happened.
         if (data.clientAction?.type === "navigate") {
           const query = new URLSearchParams();

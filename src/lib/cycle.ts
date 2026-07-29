@@ -2,7 +2,7 @@
  * Canonical menstrual cycle math for SisterCare.
  *
  * This is the single source of truth for phase calculation, next-period
- * prediction, and lateness tracking. It is deliberately free of Firebase or
+ * prediction, and lateness tracking. It is deliberately free of Supabase or
  * network imports so it can be unit-tested in isolation — this math is the
  * product's core value, and both the agent and the data layer must agree on it.
  *

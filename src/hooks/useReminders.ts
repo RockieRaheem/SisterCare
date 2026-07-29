@@ -63,7 +63,7 @@ export function useReminders(): UseRemindersReturn {
       setReminders(activeReminders);
     } catch (err) {
       if (isPermissionDeniedError(err)) {
-        // Run silently in local mode when Firestore rules block reminders.
+        // Run silently in local mode when Supabase rules block reminders.
         setReminders([]);
         setError(null);
       } else {

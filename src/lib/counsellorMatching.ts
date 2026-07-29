@@ -1,7 +1,7 @@
 /**
  * Pure counsellor matching logic — availability evaluation, scoring, and the
- * static fallback directory. No Firebase imports, so both the client-SDK data
- * layer (src/lib/firestore.ts) and the admin-SDK server layer
+ * static fallback directory. No Supabase imports, so both the client-SDK data
+ * layer (src/lib/supabase.ts) and the admin-SDK server layer
  * (src/lib/server/serverData.ts) share ONE implementation, and the scoring
  * can be unit-tested in isolation (ARCHITECTURE_V2 §4.5).
  */
@@ -233,7 +233,7 @@ export function selectCandidates(
   return languageMatches.length > 0 ? languageMatches : specialtyMatches;
 }
 
-// Static counsellor fallback used when Firestore collection is empty.
+// Static counsellor fallback used when Supabase collection is empty.
 // NOTE: demo data — all entries share one placeholder phone number.
 export const STATIC_COUNSELLORS: Counsellor[] = [
   {

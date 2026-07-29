@@ -16,7 +16,7 @@ function sessionsUnavailable() {
     {
       success: false,
       error:
-        "Counselling sessions require FIREBASE_SERVICE_ACCOUNT_KEY to be configured.",
+        "Counselling sessions require SUPABASE_SECRET_KEY to be configured.",
     },
     { status: 503 },
   );

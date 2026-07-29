@@ -132,16 +132,16 @@ export default function OnboardingPage() {
       // Move to completion step
       goNext();
     } catch (err: unknown) {
-      const firebaseError = err as { code?: string; message?: string };
+      const supabaseError = err as { code?: string; message?: string };
       console.error("Error completing onboarding:", err);
 
       // Check if it's a permission error
       const isPermissionError =
-        firebaseError.message?.includes("permission") ||
-        firebaseError.code === "permission-denied";
+        supabaseError.message?.includes("permission") ||
+        supabaseError.code === "permission-denied";
 
       if (isPermissionError) {
-        // Still allow user to continue even without saving to Firestore
+        // Still allow user to continue even without saving to Supabase
         setError("Could not save to cloud. Your data will be stored locally.");
         // Move to completion step anyway
         setTimeout(() => {

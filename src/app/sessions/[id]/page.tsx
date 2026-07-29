@@ -71,7 +71,7 @@ export default function SessionRoomPage() {
     if (user) loadDetail();
   }, [user, authLoading, router, loadDetail]);
 
-  // Live session state + messages, straight from Firestore under the
+  // Live session state + messages, straight from Supabase under the
   // participant-scoped rules — no polling in the room itself.
   useEffect(() => {
     if (!user || !session) return;

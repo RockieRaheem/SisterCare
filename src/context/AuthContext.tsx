@@ -114,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           };
           setUser(userData);
 
-          // Load Firestore profile
+          // Load Supabase profile
           await loadUserProfile(
             authenticatedUser.uid,
             authenticatedUser.email || "",

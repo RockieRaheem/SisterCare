@@ -1,7 +1,7 @@
 /**
  * Session state machine — pure transition rules and timeout policy for
  * counselling sessions (ARCHITECTURE_V2 §4.4). No I/O: the server engine
- * (src/lib/server/sessions.ts) enforces these rules against Firestore, and
+ * (src/lib/server/sessions.ts) enforces these rules against Supabase, and
  * this module is unit-tested in isolation.
  *
  *   requested → matched | expired

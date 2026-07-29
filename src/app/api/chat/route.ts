@@ -56,7 +56,7 @@ import {
   TriageSeverity,
 } from "@/types";
 
-// Firebase Admin requires the full Node.js runtime. Keep this explicit so a
+// Supabase Admin requires the full Node.js runtime. Keep this explicit so a
 // deployment configuration change cannot move authenticated chat to Edge.
 export const runtime = "nodejs";
 
@@ -697,7 +697,7 @@ async function postChat(request: NextRequest) {
         { status: 503 },
       );
     }
-    // Trust boundary: when Firebase Admin is configured, the caller MUST
+    // Trust boundary: when Supabase Admin is configured, the caller MUST
     // present a valid ID token and the verified uid overrides whatever
     // userId the request body claims. Without Admin configured (dev mode)
     // we fall back to the body's userId, with a warning logged at startup.
@@ -1428,7 +1428,7 @@ async function postChat(request: NextRequest) {
             });
           } catch (connectError) {
             console.warn(
-              "Could not create counsellor thread in Firestore, continuing with direct handoff:",
+              "Could not create counsellor thread in Supabase, continuing with direct handoff:",
               connectError,
             );
           }

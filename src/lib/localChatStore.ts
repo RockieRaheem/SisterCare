@@ -64,7 +64,7 @@ export function saveLocalConversation(conv: ChatConversation): void {
 }
 
 /**
- * A new chat starts locally so it feels instant, then receives its Firestore
+ * A new chat starts locally so it feels instant, then receives its Supabase
  * ID when sync succeeds. Move both the conversation and its cached messages
  * to that canonical ID; leaving the temporary record behind created empty
  * chats that looked selectable but had no history.
@@ -102,7 +102,7 @@ export function migrateLocalConversationId(
     window.localStorage.removeItem(MESSAGES_PREFIX + temporaryId);
   } catch {
     // The conversation metadata still points to the durable ID even if local
-    // storage is unavailable; Firestore remains the source of truth.
+    // storage is unavailable; Supabase remains the source of truth.
   }
 }
 
@@ -202,11 +202,11 @@ function addDeletedId(id: string): void {
   saveJSON(DELETED_KEY, Array.from(set));
 }
 
-// Clean deleted tombstones for conversations that no longer exist in Firestore
+// Clean deleted tombstones for conversations that no longer exist in Supabase
 export function cleanDeletedTombstones(
-  firestoreIds: string[],
+  supabaseIds: string[],
 ): void {
-  const firestoreSet = new Set(firestoreIds);
-  const kept = Array.from(getDeletedIds()).filter((id) => firestoreSet.has(id));
+  const supabaseSet = new Set(supabaseIds);
+  const kept = Array.from(getDeletedIds()).filter((id) => supabaseSet.has(id));
   saveJSON(DELETED_KEY, kept);
 }

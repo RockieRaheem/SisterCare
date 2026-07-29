@@ -53,9 +53,9 @@ export default function LoginPage() {
   const router = useRouter();
 
   const routeToWorkspace = async () => {
-    const firebaseUser = auth.currentUser;
-    if (!firebaseUser) throw new Error("Authentication required");
-    const profile = await getUserProfile(firebaseUser.uid).catch(() => null);
+    const supabaseUser = auth.currentUser;
+    if (!supabaseUser) throw new Error("Authentication required");
+    const profile = await getUserProfile(supabaseUser.uid).catch(() => null);
     router.replace(resolveWorkspaceRoute(profile || {}));
   };
 
@@ -93,7 +93,7 @@ export default function LoginPage() {
       await signIn(email.trim().toLowerCase(), password);
       await routeToWorkspace();
     } catch (err: unknown) {
-      // Extract Firebase error code
+      // Extract Supabase error code
       const errorCode = (err as { code?: string })?.code || "";
       setError(getLoginErrorMessage(errorCode, (err as { message?: string })?.message));
     } finally {

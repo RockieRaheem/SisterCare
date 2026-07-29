@@ -82,12 +82,12 @@ export default function ProfilePage() {
         }
       }
     } catch (error: unknown) {
-      const firebaseError = error as { code?: string; message?: string };
+      const supabaseError = error as { code?: string; message?: string };
       console.error("Error loading profile:", error);
 
       const isPermissionError =
-        firebaseError.message?.includes("permission") ||
-        firebaseError.code === "permission-denied";
+        supabaseError.message?.includes("permission") ||
+        supabaseError.code === "permission-denied";
 
       if (isPermissionError) {
         setMessage({
@@ -196,12 +196,12 @@ export default function ProfilePage() {
       // Reload profile to get fresh data
       await loadProfile();
     } catch (error: unknown) {
-      const firebaseError = error as { code?: string; message?: string };
+      const supabaseError = error as { code?: string; message?: string };
       console.error("Error saving profile:", error);
 
       const isPermissionError =
-        firebaseError.message?.includes("permission") ||
-        firebaseError.code === "permission-denied";
+        supabaseError.message?.includes("permission") ||
+        supabaseError.code === "permission-denied";
 
       if (isPermissionError) {
         setMessage({
