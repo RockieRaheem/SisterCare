@@ -93,8 +93,27 @@ export default function CounsellorApplicationPage() {
         profile: { name: form.name.trim(), title: form.title.trim(), bio: form.bio.trim(), photoURL: form.photoURL, specializations: form.specializations, languages: form.languages.split(",").map((item) => item.trim()).filter(Boolean), phoneNumber: form.phoneNumber.trim() },
         legalName: form.legalName.trim(), registrationNumber: form.registrationNumber.trim(), credentialType: form.credentialType.trim(), credentialExpiresAt: new Date(form.credentialExpiresAt).toISOString(), documentReferences: form.documentPaths,
       };
-      const { error } = await getSupabaseBrowserClient().from("counsellor_applications").upsert({ counsellor_id: uid, application, submitted_at: new Date().toISOString() }, { onConflict: "counsellor_id" });
-      if (error) throw error;
+      const supabase = getSupabaseBrowserClient();
+      const { data: existing, error: lookupError } = await supabase
+        .from("counsellor_applications")
+        .select("status")
+        .eq("counsellor_id", uid)
+        .maybeSingle();
+      if (lookupError) throw lookupError;
+      if (existing?.status === "verified") throw new Error("Your KYC application has already been approved.");
+      if (existing?.status === "rejected") throw new Error("This application was reviewed. Contact SisterCare support before submitting a replacement.");
+
+      const submittedAt = new Date().toISOString();
+      const submission = existing
+        ? await supabase
+            .from("counsellor_applications")
+            .update({ application, submitted_at: submittedAt })
+            .eq("counsellor_id", uid)
+            .eq("status", "pending")
+        : await supabase
+            .from("counsellor_applications")
+            .insert({ counsellor_id: uid, application, submitted_at: submittedAt });
+      if (submission.error) throw submission.error;
       setStatus("pending");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Could not submit your application.");
