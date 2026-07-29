@@ -1,16 +1,5 @@
-/**
- * Event log — SERVER ONLY. The append-only backbone from ARCHITECTURE_V2 §4.3.
- *
- * Every domain fact is recorded here as an immutable, past-tense event.
- * Consumers (reputation, SLA dashboards, analytics) read this log instead of
- * maintaining their own truths. Emission never throws: losing one telemetry
- * event must never break the user-facing action that produced it.
- *
- * Event doc shape: { type, payload, createdAt }
- */
-
-import { FieldValue } from "firebase-admin/firestore";
-import { getAdminDb } from "../firebaseAdmin";
+/** Append-only Supabase domain-event log. Emission never breaks user actions. */
+import { getSupabaseAdmin } from "../supabaseAdmin";
 
 export type DomainEventType =
   | "session.requested"
@@ -32,19 +21,18 @@ export async function emitEvent(
   type: DomainEventType,
   payload: Record<string, unknown>,
 ): Promise<void> {
-  const db = getAdminDb();
-  if (!db) {
-    // Unconfigured dev mode — keep the signal visible in logs at least.
-    console.log(`[event:${type}]`, JSON.stringify(payload));
-    return;
-  }
-
   try {
-    await db.collection("events").add({
-      type,
-      payload,
-      createdAt: FieldValue.serverTimestamp(),
+    const subject =
+      typeof payload.sessionId === "string" &&
+      /^[0-9a-f-]{36}$/i.test(payload.sessionId)
+        ? payload.sessionId
+        : null;
+    const { error } = await getSupabaseAdmin().from("audit_events").insert({
+      event_type: type,
+      subject_id: subject,
+      metadata: payload,
     });
+    if (error) throw error;
   } catch (error) {
     console.warn(`[events] Failed to emit ${type}:`, error);
   }

@@ -1,7 +1,6 @@
 import { createHash, randomUUID } from "crypto";
-import { FieldValue } from "firebase-admin/firestore";
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebaseAdmin";
+import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 const SENSITIVE_KEYS =
   /message|text|content|summary|email|phone|name|token|authorization|password|comment/i;
@@ -57,21 +56,14 @@ export async function recordOperationalMetric(
   metric: string,
   value = 1,
 ): Promise<void> {
-  const db = getAdminDb();
-  if (!db) return;
   const day = new Date().toISOString().slice(0, 10);
   try {
-    await db
-      .collection("metrics_daily")
-      .doc(day)
-      .set(
-        {
-          date: day,
-          [metric]: FieldValue.increment(value),
-          updatedAt: FieldValue.serverTimestamp(),
-        },
-        { merge: true },
-      );
+    const { error } = await getSupabaseAdmin().rpc("increment_daily_metric", {
+      metric_date: day,
+      metric_name: metric,
+      metric_value: value,
+    });
+    if (error) throw error;
   } catch (error) {
     logOperationalEvent("warn", "metric.write_failed", {
       metric,

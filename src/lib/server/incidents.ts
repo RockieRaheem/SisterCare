@@ -1,5 +1,4 @@
-import { FieldValue } from "firebase-admin/firestore";
-import { getAdminDb } from "@/lib/firebaseAdmin";
+import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import {
   assertIncidentTransition,
   IncidentStatus,
@@ -9,23 +8,16 @@ export async function openCrisisIncident(params: {
   sessionId: string;
   waitingSeconds: number;
 }): Promise<void> {
-  const db = getAdminDb();
-  if (!db) return;
-  await db
-    .collection("incidents")
-    .doc(`crisis-${params.sessionId}`)
-    .set(
-      {
-        type: "crisis_sla_breach",
-        severity: "critical",
-        status: "open",
-        sessionId: params.sessionId,
-        waitingSecondsAtOpen: params.waitingSeconds,
-        openedAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-      },
-      { merge: true },
-    );
+  const { error } = await getSupabaseAdmin().from("incidents").upsert({
+    id: `crisis-${params.sessionId}`,
+    type: "crisis_sla_breach",
+    severity: "critical",
+    status: "open",
+    session_id: params.sessionId,
+    waiting_seconds_at_open: Math.max(0, Math.round(params.waitingSeconds)),
+    updated_at: new Date().toISOString(),
+  }, { onConflict: "id", ignoreDuplicates: true });
+  if (error) throw new Error(error.message);
 }
 
 export async function transitionIncident(params: {
@@ -34,28 +26,40 @@ export async function transitionIncident(params: {
   actorUid: string;
   resolutionNote?: string;
 }): Promise<void> {
-  const db = getAdminDb();
-  if (!db) throw new Error("Incident service unavailable");
-  const ref = db.collection("incidents").doc(params.incidentId);
-  await db.runTransaction(async (transaction) => {
-    const snapshot = await transaction.get(ref);
-    if (!snapshot.exists) throw new Error("Incident not found");
-    const from = snapshot.data()!.status as IncidentStatus;
-    assertIncidentTransition(from, params.to);
-    transaction.update(ref, {
-      status: params.to,
-      updatedAt: FieldValue.serverTimestamp(),
-      ...(params.to === "acknowledged"
-        ? {
-            acknowledgedAt: FieldValue.serverTimestamp(),
-            acknowledgedBy: params.actorUid,
-          }
-        : {
-            resolvedAt: FieldValue.serverTimestamp(),
-            resolvedBy: params.actorUid,
-            resolutionNote: (params.resolutionNote || "").slice(0, 1000),
-          }),
-    });
-  });
+  const db = getSupabaseAdmin();
+  const { data: incident, error: readError } = await db
+    .from("incidents")
+    .select("status")
+    .eq("id", params.incidentId)
+    .maybeSingle();
+  if (readError) throw new Error(readError.message);
+  if (!incident) throw new Error("Incident not found");
+  const from = incident.status as IncidentStatus;
+  assertIncidentTransition(from, params.to);
+  const now = new Date().toISOString();
+  const update = params.to === "acknowledged"
+    ? {
+        status: params.to,
+        updated_at: now,
+        acknowledged_at: now,
+        acknowledged_by: params.actorUid,
+      }
+    : {
+        status: params.to,
+        updated_at: now,
+        resolved_at: now,
+        resolved_by: params.actorUid,
+        resolution_note: (params.resolutionNote || "").slice(0, 1000),
+      };
+  const { data: changed, error } = await db
+    .from("incidents")
+    .update(update)
+    .eq("id", params.incidentId)
+    .eq("status", from)
+    .select("id")
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!changed) {
+    throw new Error("Incident changed before this update; refresh and retry");
+  }
 }
-

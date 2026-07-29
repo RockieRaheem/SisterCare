@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { FieldValue } from "firebase-admin/firestore";
-import { authenticateRequest, getAdminDb, hasRole, isAuthEnforced } from "@/lib/firebaseAdmin";
+import { authenticateRequest, hasRole, isAuthEnforced } from "@/lib/firebaseAdmin";
+import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 async function requireAdmin(request: NextRequest) {
   if (!isAuthEnforced()) return null;
@@ -11,20 +11,50 @@ async function requireAdmin(request: NextRequest) {
 export async function GET(request: NextRequest) {
   const auth = await requireAdmin(request);
   if (!auth) return NextResponse.json({ success: false, error: "Admin privileges required" }, { status: 403 });
-  const snapshot = await getAdminDb()!.collection("libraryArticles").where("status", "==", "pending_review").get();
-  return NextResponse.json({ success: true, data: { articles: snapshot.docs.map((document) => ({ id: document.id, ...document.data() })) } });
+  const db = getSupabaseAdmin();
+  const { data, error } = await db.from("library_articles").select("*").eq("status", "pending_review").order("created_at", { ascending: true });
+  if (error) return NextResponse.json({ success: false, error: error.message }, { status: 503 });
+  const authorIds = [...new Set((data || []).map((row) => row.author_id))];
+  const [profiles, counsellors] = authorIds.length
+    ? await Promise.all([
+        db.from("profiles").select("id, display_name").in("id", authorIds),
+        db.from("counsellors").select("id, profile").in("id", authorIds),
+      ])
+    : [{ data: [], error: null }, { data: [], error: null }];
+  if (profiles.error || counsellors.error) {
+    return NextResponse.json({ success: false, error: profiles.error?.message || counsellors.error?.message }, { status: 503 });
+  }
+  const names = new Map((profiles.data || []).map((row) => [row.id, row.display_name]));
+  const professional = new Map((counsellors.data || []).map((row) => [row.id, row.profile as { name?: string; title?: string }]));
+  const articles = (data || []).map((row) => ({
+    id: row.id,
+    title: row.title,
+    description: row.summary,
+    content: row.content,
+    category: row.category,
+    tags: [],
+    authorName: professional.get(row.author_id)?.name || names.get(row.author_id) || "SisterCare counsellor",
+    authorTitle: professional.get(row.author_id)?.title || "Counsellor",
+  }));
+  return NextResponse.json({ success: true, data: { articles } });
 }
 
 export async function PATCH(request: NextRequest) {
   const auth = await requireAdmin(request);
   if (!auth) return NextResponse.json({ success: false, error: "Admin privileges required" }, { status: 403 });
-  const body = await request.json().catch(() => null) || {};
-  const articleId = typeof body.articleId === "string" ? body.articleId : "";
-  const decision = body.decision;
-  if (!articleId || !["publish", "reject"].includes(decision)) return NextResponse.json({ success: false, error: "Invalid review decision" }, { status: 400 });
-  const ref = getAdminDb()!.collection("libraryArticles").doc(articleId);
-  const article = await ref.get();
-  if (!article.exists || article.data()?.status !== "pending_review") return NextResponse.json({ success: false, error: "Article is not awaiting review" }, { status: 409 });
-  await ref.update({ status: decision === "publish" ? "published" : "rejected", reviewedBy: auth.uid, reviewedAt: FieldValue.serverTimestamp(), ...(decision === "publish" ? { publishedAt: FieldValue.serverTimestamp() } : {}), updatedAt: FieldValue.serverTimestamp() });
+  const body = await request.json().catch(() => null) as { articleId?: string; decision?: string } | null;
+  if (!body?.articleId || !["publish", "reject"].includes(body.decision || "")) {
+    return NextResponse.json({ success: false, error: "Invalid review decision" }, { status: 400 });
+  }
+  const db = getSupabaseAdmin();
+  const now = new Date().toISOString();
+  const { data, error } = await db.from("library_articles").update({
+    status: body.decision === "publish" ? "published" : "rejected",
+    reviewed_by: auth.uid,
+    reviewed_at: now,
+    ...(body.decision === "publish" ? { published_at: now } : {}),
+  }).eq("id", body.articleId).eq("status", "pending_review").select("id").maybeSingle();
+  if (error) return NextResponse.json({ success: false, error: error.message }, { status: 503 });
+  if (!data) return NextResponse.json({ success: false, error: "Article is not awaiting review" }, { status: 409 });
   return NextResponse.json({ success: true });
 }

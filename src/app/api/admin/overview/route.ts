@@ -1,44 +1,55 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateRequest, getAdminDb, hasRole, isAuthEnforced } from "@/lib/firebaseAdmin";
-import { getLiveCounsellors } from "@/lib/server/serverData";
+import { authenticateRequest, hasRole, isAuthEnforced } from "@/lib/firebaseAdmin";
 import { withApiObservability } from "@/lib/observability";
+import { getLiveCounsellors } from "@/lib/server/serverData";
+import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
-/** Privacy-safe operational overview for the administrator home. */
+const fail = (error: { message?: string } | null) => {
+  if (error) throw new Error(error.message || "Supabase query failed");
+};
+
 async function getOverview(request: NextRequest) {
   if (!isAuthEnforced()) {
     return NextResponse.json({ success: false, error: "Admin overview is unavailable" }, { status: 503 });
   }
   const auth = await authenticateRequest(request);
-  if (auth.status !== "verified" || !hasRole(auth, "admin")) {
+  if (!hasRole(auth, "admin")) {
     return NextResponse.json({ success: false, error: "Admin privileges required" }, { status: 403 });
   }
-  const db = getAdminDb()!;
-  const [directory, userCount, applications, liveSessions, incidents] = await Promise.all([
+  const db = getSupabaseAdmin();
+  const [directory, members, applications, liveSessions, incidents] = await Promise.all([
     getLiveCounsellors(),
-    db.collection("users").count().get(),
-    db.collection("counsellorApplications").where("status", "==", "pending").get(),
-    db.collection("sessions").where("state", "in", ["requested", "matched", "accepted", "active"]).get(),
-    db.collection("incidents").where("status", "in", ["open", "acknowledged"]).get(),
+    db.from("profiles").select("id", { count: "exact", head: true }).eq("role", "member"),
+    db.from("counsellor_applications").select("counsellor_id, application").eq("status", "pending").order("submitted_at", { ascending: true }).limit(5),
+    db.from("counselling_sessions").select("id, state").in("state", ["requested", "matched", "accepted", "active"]),
+    db.from("incidents").select("id", { count: "exact", head: true }).in("status", ["open", "acknowledged"]),
   ]);
-  const waiting = liveSessions.docs.filter((document) => ["requested", "matched"].includes(document.data().state)).length;
+  fail(members.error);
+  fail(applications.error);
+  fail(liveSessions.error);
+  fail(incidents.error);
+  const sessions = liveSessions.data || [];
   return NextResponse.json({
     success: true,
     data: {
       counts: {
-        members: userCount.data().count,
+        members: members.count || 0,
         counsellors: directory.length,
-        available: directory.filter((counsellor) => counsellor.status === "available").length,
-        inSession: directory.filter((counsellor) => counsellor.status === "in_session").length,
-        pendingKyc: applications.size,
-        liveSessions: liveSessions.size,
-        waiting,
-        openIncidents: incidents.size,
+        available: directory.filter((item) => item.status === "available").length,
+        inSession: directory.filter((item) => item.status === "in_session").length,
+        pendingKyc: applications.data?.length || 0,
+        liveSessions: sessions.length,
+        waiting: sessions.filter((item) => ["requested", "matched"].includes(item.state)).length,
+        openIncidents: incidents.count || 0,
       },
-      applications: applications.docs.slice(0, 5).map((document) => ({
-        id: document.id,
-        name: document.data().profile?.name || "Unnamed applicant",
-        title: document.data().profile?.title || "Counsellor",
-      })),
+      applications: (applications.data || []).map((row) => {
+        const value = row.application as { profile?: { name?: string; title?: string } };
+        return {
+          id: row.counsellor_id,
+          name: value.profile?.name || "Unnamed applicant",
+          title: value.profile?.title || "Counsellor",
+        };
+      }),
     },
   });
 }
