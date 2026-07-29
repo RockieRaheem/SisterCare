@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import { auth } from "@/lib/firebase";
+import { getSupabaseBrowserClient } from "@/lib/supabase";
 import {
   addMessage,
   getMessages,
@@ -110,7 +110,9 @@ async function conversationRequest<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
-  const token = await auth.currentUser?.getIdToken().catch(() => null);
+  const token = await getSupabaseBrowserClient().auth.getSession()
+    .then(({ data }) => data.session?.access_token ?? null)
+    .catch(() => null);
   const response = await fetch(path, {
     ...init,
     headers: {
@@ -785,7 +787,9 @@ export default function ChatPage() {
         let cloudDeletionFailed = false;
         if (!conversationId.startsWith("local-")) {
           try {
-            const idToken = await auth.currentUser?.getIdToken().catch(() => null);
+            const idToken = await getSupabaseBrowserClient().auth.getSession()
+              .then(({ data }) => data.session?.access_token ?? null)
+              .catch(() => null);
             const response = await fetch(
               `/api/conversations/${encodeURIComponent(conversationId)}`,
               {
@@ -966,8 +970,8 @@ export default function ChatPage() {
           // Firebase caches the ID token and auto-refreshes near expiry, so
           // fetching it per request is cheap. The server verifies it and uses
           // the token's uid — never the raw userId below — as the identity.
-          const idToken = await auth.currentUser
-            ?.getIdToken()
+          const idToken = await getSupabaseBrowserClient().auth.getSession()
+            .then(({ data }) => data.session?.access_token ?? null)
             .catch(() => null);
           const res = await fetch("/api/chat", {
             method: "POST",
