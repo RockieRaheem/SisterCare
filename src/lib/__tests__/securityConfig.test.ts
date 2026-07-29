@@ -33,7 +33,7 @@ describe("fail-closed API security configuration", () => {
         ALLOW_UNAUTHENTICATED_DEV: "false",
       }),
     ).toEqual([
-      "Supabase URL, publishable key, and service-role key are required in production",
+      "Supabase URL, publishable key, and a server secret key are required in production",
       "CRON_SECRET must contain at least 32 characters",
       "TELEMETRY_HASH_SALT must contain at least 32 characters",
       "At least one AI provider API key is required in production",
@@ -46,7 +46,7 @@ describe("fail-closed API security configuration", () => {
         NODE_ENV: "production",
         NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
         NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_example",
-        SUPABASE_SERVICE_ROLE_KEY: "sb_secret_example",
+        SUPABASE_SECRET_KEY: "sb_secret_example",
         CRON_SECRET: "a".repeat(32),
         TELEMETRY_HASH_SALT: "b".repeat(32),
         GROQ_API_KEY: "groq-test-key",

@@ -1,10 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { verifySupabaseAccessToken } from "../supabaseAdmin";
+import { getSupabaseServerKey, verifySupabaseAccessToken } from "../supabaseAdmin";
 
 describe("Supabase access-token verification", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();
+  });
+
+  it("accepts only elevated server keys for administrative data access", () => {
+    expect(getSupabaseServerKey({ SUPABASE_SECRET_KEY: "sb_secret_backend" })).toBe("sb_secret_backend");
+    expect(() => getSupabaseServerKey({ SUPABASE_SERVICE_ROLE_KEY: "sb_publishable_public" })).toThrow(/SUPABASE_SECRET_KEY/);
   });
 
   it("validates the bearer token against the configured Auth project", async () => {

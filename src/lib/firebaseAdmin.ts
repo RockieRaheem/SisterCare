@@ -24,7 +24,7 @@ export function allowsUnauthenticatedDevelopment(env: { NODE_ENV?: string; ALLOW
 export function validateProductionSecurityConfig(env: NodeJS.ProcessEnv = process.env): string[] {
   if (env.NODE_ENV !== "production") return [];
   const errors: string[] = [];
-  if (!env.NEXT_PUBLIC_SUPABASE_URL || !env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || !env.SUPABASE_SERVICE_ROLE_KEY) errors.push("Supabase URL, publishable key, and service-role key are required in production");
+  if (!env.NEXT_PUBLIC_SUPABASE_URL || !env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || (!env.SUPABASE_SECRET_KEY && !env.SUPABASE_SERVICE_ROLE_KEY)) errors.push("Supabase URL, publishable key, and a server secret key are required in production");
   if (!env.CRON_SECRET || env.CRON_SECRET.length < 32) errors.push("CRON_SECRET must contain at least 32 characters");
   if (!env.TELEMETRY_HASH_SALT || env.TELEMETRY_HASH_SALT.length < 32) errors.push("TELEMETRY_HASH_SALT must contain at least 32 characters");
   if (!env.GEMINI_API_KEY && !env.GROQ_API_KEY) errors.push("At least one AI provider API key is required in production");
@@ -46,7 +46,7 @@ function getLegacyApp(): App | null {
 export function getAdminDb(): Firestore | null { const app = getLegacyApp(); return app ? getFirestore(app) : null; }
 /** @deprecated Remaining legacy KYC route only; do not use in new code. */
 export function getAdminStorageBucket() { const app = getLegacyApp(); const name = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET; return app && name ? getStorage(app).bucket(name) : null; }
-export function isAuthEnforced() { return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY); }
+export function isAuthEnforced() { return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY)); }
 
 export async function setUserRole(uid: string, role: UserRole) {
   const { error } = await getSupabaseAdmin().from("profiles").update({ role: role === "user" ? "member" : role }).eq("id", uid);
@@ -67,7 +67,14 @@ export async function authenticateRequest(request: Request): Promise<AuthResult>
       console.warn("Supabase rejected a bearer token:", authError?.message || "user missing");
       return { status: "unauthenticated", reason: "invalid_token" };
     }
-    const { data: record, error } = await getSupabaseAdmin().from("profiles").select("role").eq("id", user.id).maybeSingle();
+    let profileResult;
+    try {
+      profileResult = await getSupabaseAdmin().from("profiles").select("role").eq("id", user.id).maybeSingle();
+    } catch (error) {
+      console.warn("Supabase profile authorization client failed:", error);
+      return { status: "unavailable", reason: "profile_lookup" };
+    }
+    const { data: record, error } = profileResult;
     if (error) {
       console.warn("Supabase profile authorization lookup failed:", error.message);
       return { status: "unavailable", reason: "profile_lookup" };

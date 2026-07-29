@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
       success: false,
       code: profileLookupFailed ? "SUPABASE_SERVICE_ACCESS_FAILED" : "SUPABASE_AUTH_VERIFIER_FAILED",
       error: profileLookupFailed
-        ? "The server cannot read Supabase profiles. Verify that SUPABASE_SERVICE_ROLE_KEY is the secret key from the same Supabase project."
+        ? "The server cannot read Supabase profiles. Set SUPABASE_SECRET_KEY to an sb_secret_ key from this Supabase project."
         : "The server cannot reach Supabase Auth. Verify NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.",
     }, { status: 503 });
   }

@@ -2,15 +2,33 @@ import { createClient, type SupabaseClient, type User } from "@supabase/supabase
 
 let adminClient: SupabaseClient | null = null;
 
+export function getSupabaseServerKey(
+  env: Record<string, string | undefined> = process.env,
+): string {
+  const key = (env.SUPABASE_SECRET_KEY || env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+  if (key.startsWith("sb_secret_")) return key;
+
+  // Continue accepting the legacy JWT-based service_role key during Supabase's
+  // migration period, but never silently initialize an admin client with an
+  // anon/publishable key.
+  try {
+    const payload = JSON.parse(Buffer.from(key.split(".")[1] || "", "base64url").toString("utf8")) as { role?: string };
+    if (payload.role === "service_role") return key;
+  } catch {
+    // The actionable configuration error below is safer than exposing parsing details.
+  }
+  throw new Error("Set SUPABASE_SECRET_KEY to an sb_secret_ key, or SUPABASE_SERVICE_ROLE_KEY to a legacy service_role JWT");
+}
+
 /** Server-only client. Never import this module into a client component. */
 export function getSupabaseAdmin(): SupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceRoleKey) {
-    throw new Error("Supabase server access is not configured. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.");
+  if (!url) {
+    throw new Error("Supabase server access is not configured. Set NEXT_PUBLIC_SUPABASE_URL.");
   }
+  const serverKey = getSupabaseServerKey();
   if (!adminClient) {
-    adminClient = createClient(url, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } });
+    adminClient = createClient(url, serverKey, { auth: { autoRefreshToken: false, persistSession: false } });
   }
   return adminClient;
 }
