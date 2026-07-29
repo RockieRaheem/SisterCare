@@ -7,7 +7,7 @@
 import { initializeApp, getApps, cert, applicationDefault, type App } from "firebase-admin/app";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
-import { createSupabaseUserClient, getSupabaseAdmin } from "./supabaseAdmin";
+import { getSupabaseAdmin } from "./supabaseAdmin";
 
 let legacyApp: App | null = null;
 export type UserRole = "user" | "counsellor" | "admin";
@@ -59,8 +59,7 @@ export async function authenticateRequest(request: Request): Promise<AuthResult>
   const match = (request.headers.get("authorization") || "").match(/^Bearer\s+(.+)$/i);
   if (!match) return allowsUnauthenticatedDevelopment() ? { status: "unenforced" } : { status: "unauthenticated" };
   try {
-    const userClient = createSupabaseUserClient(match[1]);
-    const { data: authData, error: authError } = await userClient.auth.getUser();
+    const { data: authData, error: authError } = await getSupabaseAdmin().auth.getUser(match[1]);
     if (authError || !authData.user) return { status: "unauthenticated" };
     const { data: record, error } = await getSupabaseAdmin().from("profiles").select("role").eq("id", authData.user.id).maybeSingle();
     if (error || !record) return { status: "unauthenticated" };

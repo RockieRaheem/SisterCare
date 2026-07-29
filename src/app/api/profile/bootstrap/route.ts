@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseUserClient, getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 /**
  * Ensures the authenticated person's profile exists. Auth-user creation
@@ -12,7 +12,10 @@ export async function POST(request: NextRequest) {
   if (!match) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
 
   try {
-    const { data: authData, error: authError } = await createSupabaseUserClient(match[1]).auth.getUser();
+    // Pass the bearer token explicitly. A server service-role client has no
+    // browser session storage, so relying on its default auth context caused
+    // valid newly-created users to receive a misleading 401 here.
+    const { data: authData, error: authError } = await getSupabaseAdmin().auth.getUser(match[1]);
     if (authError || !authData.user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     const user = authData.user;
     const registrationIntent = user.user_metadata.registration_intent === "counsellor" ? "counsellor" : "member";
