@@ -65,8 +65,16 @@ export async function authenticateRequest(request: Request): Promise<AuthResult>
     const { data: authData, error: authError } = await createSupabaseUserClient(match[1]).auth.getUser(match[1]);
     if (authError || !authData.user) return { status: "unauthenticated" };
     const { data: record, error } = await getSupabaseAdmin().from("profiles").select("role").eq("id", authData.user.id).maybeSingle();
-    if (error || !record) return { status: "unauthenticated" };
-    return { status: "verified", uid: authData.user.id, token: { uid: authData.user.id, email: authData.user.email, role: record.role === "member" ? "user" : record.role as UserRole } };
+    if (error) {
+      console.warn("Supabase profile authorization lookup failed:", error.message);
+      return { status: "unauthenticated" };
+    }
+    // A valid Supabase identity remains authenticated even if its application
+    // profile was not created by the database trigger. Role checks still fail
+    // closed because the role remains undefined; bootstrap/profile recovery
+    // routes can safely repair the missing row using the verified user id.
+    const role = record?.role === "member" ? "user" : record?.role as UserRole | undefined;
+    return { status: "verified", uid: authData.user.id, token: { uid: authData.user.id, email: authData.user.email, role } };
   } catch (error) {
     console.warn("Supabase access-token verification failed:", error);
     return { status: "unauthenticated" };

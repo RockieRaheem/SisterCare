@@ -36,9 +36,24 @@ export async function POST(request: NextRequest) {
   if (!uid) return NextResponse.json({ success: false, error: "No user found with that email" }, { status: 404 });
 
   const role = body.role === "user" ? "member" : body.role;
-  const profileUpdate: { role: string; email?: string } = { role };
-  if (bootstrapTarget && auth.token.email) profileUpdate.email = auth.token.email.trim().toLowerCase();
-  const { data: updated, error } = await db.from("profiles").update(profileUpdate).eq("id", uid).select("id").maybeSingle();
+  const result = bootstrapTarget
+    ? await db
+        .from("profiles")
+        .upsert({
+          id: uid,
+          email: auth.token.email?.trim().toLowerCase() || body.email?.trim().toLowerCase() || "",
+          role,
+          registration_intent: "member",
+        }, { onConflict: "id" })
+        .select("id")
+        .maybeSingle()
+    : await db
+        .from("profiles")
+        .update({ role })
+        .eq("id", uid)
+        .select("id")
+        .maybeSingle();
+  const { data: updated, error } = result;
   if (error) return NextResponse.json({ success: false, error: "Failed to set role" }, { status: 503 });
   if (!updated) return NextResponse.json({ success: false, error: "Account profile unavailable" }, { status: 404 });
   await db.from("audit_events").insert({ actor_id: auth.status === "verified" ? auth.uid : null, event_type: "role.updated", subject_id: uid, metadata: { role, via: existingAdmin ? "admin" : "bootstrap" } });

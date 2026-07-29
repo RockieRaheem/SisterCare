@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
 import { useAuth } from "@/context/AuthContext";
-import { auth } from "@/lib/firebase";
+import { getSupabaseBrowserClient } from "@/lib/supabase";
 
 /** One-time bootstrap for the first administrator. The secret is never stored. */
 export default function AdminSetupPage() {
@@ -14,7 +14,10 @@ export default function AdminSetupPage() {
   const activate = async (event: FormEvent) => {
     event.preventDefault(); setSaving(true); setError(""); setMessage("");
     try {
-      const token = await auth.currentUser?.getIdToken(); if (!token) throw new Error("Sign in with the account you want to make an administrator.");
+      const supabase = getSupabaseBrowserClient();
+      const { data, error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError || !data.session?.access_token) throw new Error("Your secure session could not be refreshed. Sign out, sign in again, and retry.");
+      const token = data.session.access_token;
       const response = await fetch("/api/admin/roles", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, "x-admin-bootstrap-secret": secret }, body: JSON.stringify({ email: user?.email, role: "admin" }) });
       const result = await response.json(); if (!response.ok) throw new Error(result.error || "Administrator activation failed");
       setSecret(""); setMessage("Administrator access is active. Sign out and back in, then open the admin workspace.");
