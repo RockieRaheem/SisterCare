@@ -13,8 +13,7 @@ import { getUserProfile } from "@/lib/firestore";
 // Email validation regex
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Firebase error messages mapping
-const getFirebaseErrorMessage = (errorCode: string): string => {
+const getLoginErrorMessage = (errorCode: string, providerMessage?: string): string => {
   const errorMessages: Record<string, string> = {
     "auth/invalid-email": "Please enter a valid email address.",
     "auth/user-disabled":
@@ -27,10 +26,15 @@ const getFirebaseErrorMessage = (errorCode: string): string => {
     "auth/network-request-failed":
       "Network error. Please check your internet connection.",
     "auth/invalid-credential": "Invalid email or password. Please try again.",
+    "invalid_credentials": "Invalid email or password. Please try again.",
+    "email_not_confirmed": "Please confirm your email before signing in.",
+    "signup_disabled": "Account registration is currently disabled.",
   };
   return (
     errorMessages[errorCode] ||
-    "Failed to sign in. Please check your credentials."
+    (providerMessage && providerMessage.length < 180
+      ? providerMessage
+      : "Failed to sign in. Please check your credentials.")
   );
 };
 
@@ -93,7 +97,7 @@ export default function LoginPage() {
     } catch (err: unknown) {
       // Extract Firebase error code
       const errorCode = (err as { code?: string })?.code || "";
-      setError(getFirebaseErrorMessage(errorCode));
+      setError(getLoginErrorMessage(errorCode, (err as { message?: string })?.message));
     } finally {
       setLoading(false);
     }

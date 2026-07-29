@@ -55,7 +55,14 @@ class SupabaseAuthFacade {
 
   private async notify(session: Session | null) {
     this.cachedUser = toUser(session);
-    await Promise.all([...this.listeners].map((listener) => listener(this.cachedUser)));
+    // Authentication success must not be turned into a password failure when a
+    // secondary profile fetch is briefly unavailable. Each listener owns its
+    // recovery/retry path, while the valid Supabase session remains usable.
+    for (const listener of this.listeners) {
+      Promise.resolve(listener(this.cachedUser)).catch((error) =>
+        console.error("Auth state listener failed:", error),
+      );
+    }
   }
 
   private initialize() {
