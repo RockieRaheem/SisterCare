@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   authenticateRequest,
+  getAuthorizationFailure,
   isAuthEnforced,
   hasRole,
 } from "@/lib/serverAuth";
@@ -28,6 +29,13 @@ export async function POST(request: NextRequest) {
   }
 
   const auth = await authenticateRequest(request);
+  const authorizationFailure = getAuthorizationFailure(auth);
+  if (authorizationFailure) {
+    return NextResponse.json(
+      { success: false, error: authorizationFailure.error },
+      { status: authorizationFailure.status },
+    );
+  }
   if (auth.status !== "verified") {
     return NextResponse.json(
       { success: false, error: "Authentication required" },
@@ -53,7 +61,10 @@ export async function POST(request: NextRequest) {
   try {
     if (status === "offline") {
       await setOffline(auth.uid);
-      return NextResponse.json({ success: true, data: { drained: 0 } });
+      return NextResponse.json({
+        success: true,
+        data: { drained: 0, status: "offline" },
+      });
     }
     const { drained, status: effectiveStatus } = await recordHeartbeat(auth.uid, status);
     return NextResponse.json({ success: true, data: { drained, status: effectiveStatus } });

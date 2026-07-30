@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   authenticateRequest,
+  getAuthorizationFailure,
   isAuthEnforced,
   hasRole,
 } from "@/lib/serverAuth";
@@ -34,6 +35,13 @@ export async function POST(request: NextRequest) {
   if (!isAuthEnforced()) return sessionsUnavailable();
 
   const auth = await authenticateRequest(request);
+  const authorizationFailure = getAuthorizationFailure(auth);
+  if (authorizationFailure) {
+    return NextResponse.json(
+      { success: false, error: authorizationFailure.error },
+      { status: authorizationFailure.status },
+    );
+  }
   if (auth.status !== "verified") {
     return NextResponse.json(
       { success: false, error: "Authentication required" },
@@ -83,6 +91,13 @@ export async function GET(request: NextRequest) {
   if (!isAuthEnforced()) return sessionsUnavailable();
 
   const auth = await authenticateRequest(request);
+  const authorizationFailure = getAuthorizationFailure(auth);
+  if (authorizationFailure) {
+    return NextResponse.json(
+      { success: false, error: authorizationFailure.error },
+      { status: authorizationFailure.status },
+    );
+  }
   if (auth.status !== "verified") {
     return NextResponse.json(
       { success: false, error: "Authentication required" },

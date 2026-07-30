@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import CounsellorShell from "@/components/counsellor/CounsellorShell";
 import { useAuth } from "@/context/AuthContext";
-import { auth } from "@/lib/authClient";
+import { authenticatedFetch } from "@/lib/authenticatedFetch";
 import {
   type CounsellorApplicationStatus,
   resolveCounsellorPortalState,
@@ -111,8 +111,10 @@ export default function CounsellorPortalPage() {
       const status = (err as SessionApiError).status;
       if (status === 403) {
         setError("This portal requires a counsellor account.");
+      } else if (status === 401) {
+        setError("Your session expired. Sign in again to manage your availability.");
       } else if (status === 503) {
-        setError("Sessions aren't enabled on this deployment yet.");
+        setError("The care service is temporarily unavailable. Please retry.");
       } else {
         setError("Couldn't refresh sessions.");
       }
@@ -157,17 +159,12 @@ export default function CounsellorPortalPage() {
     const goOffline = () => {
       if (presenceRef.current !== "offline") {
         // Best-effort on tab close; keepalive lets the request outlive the page.
-        auth.currentUser?.getIdToken().then((token) => {
-          fetch("/api/presence", {
-            method: "POST",
-            keepalive: true,
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ status: "offline" }),
-          }).catch(() => {});
-        });
+        authenticatedFetch("/api/presence", {
+          method: "POST",
+          keepalive: true,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "offline" }),
+        }).catch(() => {});
       }
     };
     window.addEventListener("beforeunload", goOffline);
@@ -184,8 +181,12 @@ export default function CounsellorPortalPage() {
       const effectiveStatus = await sendPresence(status);
       setPresence(effectiveStatus);
       await refresh();
-    } catch {
-      setError("Presence update failed.");
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Presence update failed.",
+      );
     }
   };
 

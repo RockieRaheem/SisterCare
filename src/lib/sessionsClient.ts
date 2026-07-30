@@ -3,16 +3,8 @@
  * calls and shared display metadata. Browser code only.
  */
 
-import { auth } from "@/lib/authClient";
+import { authenticatedFetch } from "@/lib/authenticatedFetch";
 import { CounsellingSession, SessionState } from "@/types";
-
-async function authHeaders(): Promise<Record<string, string>> {
-  const token = await auth.currentUser?.getIdToken().catch(() => null);
-  return {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-}
 
 export interface SessionApiError extends Error {
   status?: number;
@@ -22,9 +14,11 @@ async function sessionsFetch<T>(
   path: string,
   init?: RequestInit,
 ): Promise<T> {
-  const res = await fetch(path, {
+  const headers = new Headers(init?.headers);
+  headers.set("Content-Type", "application/json");
+  const res = await authenticatedFetch(path, {
     ...init,
-    headers: { ...(await authHeaders()), ...(init?.headers || {}) },
+    headers,
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || data.success === false) {
