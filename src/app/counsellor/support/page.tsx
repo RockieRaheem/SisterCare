@@ -1,5 +1,9 @@
 import Link from "next/link";
 import CounsellorShell from "@/components/counsellor/CounsellorShell";
+import {
+  OperationsNotice,
+  OperationsPageHeader,
+} from "@/components/operations/OperationsUI";
 import { SUPPORT_CONTACTS } from "@/lib/supportContacts";
 
 const options = [
@@ -35,47 +39,48 @@ const options = [
 export default function CounsellorSupportPage() {
   return (
     <CounsellorShell>
-      <div className="mx-auto max-w-4xl">
-        <Link
-          href="/counsellor"
-          className="inline-flex items-center gap-1 text-sm font-semibold text-primary"
-        >
-          <span className="material-symbols-outlined text-lg">arrow_back</span>
-          Back to care desk
-        </Link>
-        <span className="eyebrow mt-6 block">Counsellor operations</span>
-        <h1 className="mt-2 text-3xl font-extrabold text-gray-900 dark:text-white">
-          Get professional account support
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600 dark:text-gray-300">
-          Contact the operations team about KYC feedback, account access,
-          availability, session assignments, or article review. Do not include
-          member health information in support messages.
-        </p>
+      <div className="mx-auto max-w-5xl">
+        <OperationsPageHeader
+          eyebrow="Counsellor operations"
+          title="Professional support"
+          description="Get help with KYC, account access, availability, session routing or editorial review. Choose the channel that matches the urgency of your issue."
+          actions={
+            <Link href="/counsellor" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 dark:border-slate-700 dark:bg-[#1b1922] dark:text-slate-200">
+              <span className="material-symbols-outlined text-xl" aria-hidden="true">arrow_back</span>
+              Care desk
+            </Link>
+          }
+        />
 
-        <section className="mt-7 grid gap-4 md:grid-cols-3">
+        <div className="mb-6">
+          <OperationsNotice tone="warning" title="Protect member confidentiality">
+            Never include a member’s name, contact information, health details or session transcript in an operations support message.
+          </OperationsNotice>
+        </div>
+
+        <section className="grid gap-4 md:grid-cols-3">
           {options.map((option) => (
             <a
               key={option.title}
               href={option.href}
               target={option.external ? "_blank" : undefined}
               rel={option.external ? "noreferrer" : undefined}
-              className="group flex min-h-64 flex-col rounded-3xl border border-violet-100 bg-white p-5 shadow-soft transition hover:-translate-y-0.5 hover:border-primary/30 dark:border-gray-700 dark:bg-card-dark"
+              className="group flex min-h-64 flex-col rounded-3xl border border-slate-200 bg-white p-6 shadow-soft transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-soft-lg dark:border-slate-800 dark:bg-[#1b1922]"
             >
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                <span className="material-symbols-outlined">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary transition group-hover:bg-primary group-hover:text-white">
+                <span className="material-symbols-outlined" aria-hidden="true">
                   {option.icon}
                 </span>
               </span>
-              <h2 className="mt-5 font-bold text-gray-900 dark:text-white">
+              <h2 className="mt-5 font-extrabold text-slate-950 dark:text-white">
                 {option.title}
               </h2>
-              <p className="mt-2 flex-1 text-sm leading-6 text-gray-600 dark:text-gray-300">
+              <p className="mt-2 flex-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
                 {option.description}
               </p>
-              <span className="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-primary">
+              <span className="mt-5 inline-flex items-center gap-1 text-sm font-bold text-primary">
                 {option.label}
-                <span className="material-symbols-outlined text-lg">
+                <span className="material-symbols-outlined text-lg transition group-hover:translate-x-0.5" aria-hidden="true">
                   arrow_forward
                 </span>
               </span>
@@ -83,13 +88,16 @@ export default function CounsellorSupportPage() {
           ))}
         </section>
 
-        <section className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
-          <h2 className="font-bold">For a faster KYC response</h2>
-          <p className="mt-2 text-sm leading-6">
-            Include the email used for your counsellor account, the review
-            feedback shown in your portal, and whether you have already
-            resubmitted corrected documents.
-          </p>
+        <section className="mt-6 grid gap-4 rounded-3xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-[#1b1922] sm:grid-cols-[auto_1fr]">
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+            <span className="material-symbols-outlined" aria-hidden="true">checklist</span>
+          </span>
+          <div>
+            <h2 className="font-extrabold text-slate-950 dark:text-white">Help us resolve the issue quickly</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+              Include the email used for your professional account, the exact error shown in the portal, when it happened and your preferred callback time. For KYC questions, include the review feedback—but never resend credential files through WhatsApp or email unless operations provides an approved secure channel.
+            </p>
+          </div>
         </section>
       </div>
     </CounsellorShell>
