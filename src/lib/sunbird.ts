@@ -4,9 +4,59 @@
  * for comprehensive local language support in SisterCare
  */
 
-const SUNBIRD_API_KEY =
-  process.env.NEXT_PUBLIC_SUNBIRD_API_KEY || process.env.SUNBIRD_API_KEY;
 const SUNBIRD_API_URL = "https://api.sunbird.ai/tasks";
+const RETRYABLE_STATUS = new Set([408, 429, 500, 502, 503, 504]);
+const REQUEST_TIMEOUT_MS = 25_000;
+
+function apiKey(): string {
+  const key = process.env.SUNBIRD_API_KEY?.trim();
+  if (!key) throw new Error("SUNBIRD_API_KEY environment variable not set");
+  return key;
+}
+
+async function sunbirdRequest(
+  endpoint: string,
+  init: RequestInit,
+  fetcher: typeof fetch = fetch,
+): Promise<Response> {
+  let lastResponse: Response | null = null;
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      const response = await fetcher(`${SUNBIRD_API_URL}${endpoint}`, {
+        ...init,
+        signal: controller.signal,
+      });
+      lastResponse = response;
+      if (!RETRYABLE_STATUS.has(response.status) || attempt === 1) {
+        return response;
+      }
+      const retryAfter = Number(response.headers.get("retry-after"));
+      await new Promise((resolve) =>
+        setTimeout(resolve, Number.isFinite(retryAfter) && retryAfter > 0
+          ? Math.min(retryAfter * 1000, 2_000)
+          : 250 + Math.round(Math.random() * 250)),
+      );
+    } catch (error) {
+      lastError = error;
+      if (attempt === 1) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+  if (lastResponse) return lastResponse;
+  throw lastError || new Error("Sunbird request failed");
+}
+
+async function errorDetail(response: Response): Promise<string> {
+  const payload = await response.json().catch(() => null);
+  return typeof payload?.detail === "string"
+    ? payload.detail
+    : response.statusText || `HTTP ${response.status}`;
+}
 
 // Language code mapping
 export const SUPPORTED_LANGUAGES = {
@@ -72,25 +122,20 @@ export async function speechToText(
   wasAudioTrimmed: boolean;
   originalDurationMinutes: number | null;
 }> {
-  if (!SUNBIRD_API_KEY) {
-    throw new Error("SUNBIRD_API_KEY environment variable not set");
-  }
-
   const formData = new FormData();
   formData.append("audio", audioFile);
   formData.append("language", languageCode);
 
-  const response = await fetch(`${SUNBIRD_API_URL}/stt`, {
+  const response = await sunbirdRequest("/stt", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${SUNBIRD_API_KEY}`,
+      Authorization: `Bearer ${apiKey()}`,
     },
     body: formData,
   });
 
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(`STT failed: ${errorData.detail || response.statusText}`);
+    throw new Error(`STT failed: ${await errorDetail(response)}`);
   }
 
   const data = await response.json();
@@ -113,24 +158,17 @@ export async function detectLanguage(text: string): Promise<{
   language: SupportedLanguageCode;
   confidence: number;
 }> {
-  if (!SUNBIRD_API_KEY) {
-    throw new Error("SUNBIRD_API_KEY environment variable not set");
-  }
-
-  const response = await fetch(`${SUNBIRD_API_URL}/language_id`, {
+  const response = await sunbirdRequest("/language_id", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${SUNBIRD_API_KEY}`,
+      Authorization: `Bearer ${apiKey()}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ text }),
   });
 
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(
-      `Language detection failed: ${errorData.detail || response.statusText}`,
-    );
+    throw new Error(`Language detection failed: ${await errorDetail(response)}`);
   }
 
   const data = await response.json();
@@ -159,10 +197,6 @@ export async function translateText(
   sourceLanguage: string;
   targetLanguage: string;
 }> {
-  if (!SUNBIRD_API_KEY) {
-    throw new Error("SUNBIRD_API_KEY environment variable not set");
-  }
-
   // If both languages are the same, return original text
   if (sourceLanguage === targetLanguage) {
     return {
@@ -172,10 +206,10 @@ export async function translateText(
     };
   }
 
-  const response = await fetch(`${SUNBIRD_API_URL}/nllb_translate`, {
+  const request: RequestInit = {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${SUNBIRD_API_KEY}`,
+      Authorization: `Bearer ${apiKey()}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -183,22 +217,76 @@ export async function translateText(
       target_language: targetLanguage,
       text,
     }),
-  });
+  };
+  // /translate is Sunbird's current Sunflower translation endpoint. Retain
+  // the documented NLLB endpoint only as a compatibility fallback for an
+  // account that has not yet been moved to the current task router.
+  let response = await sunbirdRequest("/translate", request);
+  if (response.status === 404 || response.status === 405) {
+    response = await sunbirdRequest("/nllb_translate", request);
+  }
 
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(
-      `Translation failed: ${errorData.detail || response.statusText}`,
-    );
+    throw new Error(`Translation failed: ${await errorDetail(response)}`);
   }
 
   const data = await response.json();
+  const translatedText = parseSunbirdTranslation(
+    data,
+    text,
+    sourceLanguage,
+    targetLanguage,
+  );
 
   return {
-    translatedText: data.output?.translated_text || text,
+    translatedText,
     sourceLanguage: data.output?.source_language || sourceLanguage,
     targetLanguage: data.output?.target_language || targetLanguage,
   };
+}
+
+export function parseSunbirdTranslation(
+  data: Record<string, unknown>,
+  sourceText: string,
+  sourceLanguage: SupportedLanguageCode,
+  targetLanguage: SupportedLanguageCode,
+): string {
+  const output =
+    data.output && typeof data.output === "object"
+      ? (data.output as Record<string, unknown>)
+      : {};
+  const translatedText =
+    typeof output.translated_text === "string"
+      ? output.translated_text.trim()
+      : "";
+  if (!translatedText) {
+    throw new Error("Translation failed: Sunbird returned no translated text");
+  }
+  if (
+    sourceLanguage !== targetLanguage &&
+    translatedText.toLocaleLowerCase() === sourceText.trim().toLocaleLowerCase()
+  ) {
+    throw new Error("Translation failed: Sunbird returned the source text unchanged");
+  }
+  if (
+    sourceText.trim().length >= 120 &&
+    translatedText.length < sourceText.trim().length * 0.2
+  ) {
+    throw new Error("Translation failed: Sunbird returned an incomplete translation");
+  }
+  const returnedTarget =
+    typeof output.target_language === "string"
+      ? output.target_language.toLowerCase()
+      : "";
+  const expectedTargetName = SUPPORTED_LANGUAGES[targetLanguage].name.toLowerCase();
+  if (
+    returnedTarget &&
+    returnedTarget !== targetLanguage &&
+    returnedTarget !== expectedTargetName
+  ) {
+    throw new Error("Translation failed: Sunbird returned the wrong target language");
+  }
+  return translatedText;
 }
 
 /**
@@ -219,19 +307,15 @@ export async function textToSpeech(
   sampleRate: number;
   format: string;
 }> {
-  if (!SUNBIRD_API_KEY) {
-    throw new Error("SUNBIRD_API_KEY environment variable not set");
-  }
-
   const language = SUPPORTED_LANGUAGES[languageCode];
   if (!language) {
     throw new Error(`Unsupported language: ${languageCode}`);
   }
 
-  const response = await fetch(`${SUNBIRD_API_URL}/tts`, {
+  const response = await sunbirdRequest("/tts", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${SUNBIRD_API_KEY}`,
+      Authorization: `Bearer ${apiKey()}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -243,8 +327,7 @@ export async function textToSpeech(
   });
 
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(`TTS failed: ${errorData.detail || response.statusText}`);
+    throw new Error(`TTS failed: ${await errorDetail(response)}`);
   }
 
   const data = await response.json();
@@ -305,24 +388,17 @@ export async function summarizeText(text: string): Promise<{
   summarizedText: string;
   language: string;
 }> {
-  if (!SUNBIRD_API_KEY) {
-    throw new Error("SUNBIRD_API_KEY environment variable not set");
-  }
-
-  const response = await fetch(`${SUNBIRD_API_URL}/summarise`, {
+  const response = await sunbirdRequest("/summarise", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${SUNBIRD_API_KEY}`,
+      Authorization: `Bearer ${apiKey()}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ text }),
   });
 
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(
-      `Summarization failed: ${errorData.detail || response.statusText}`,
-    );
+    throw new Error(`Summarization failed: ${await errorDetail(response)}`);
   }
 
   const data = await response.json();

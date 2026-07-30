@@ -30,10 +30,10 @@ import {
 } from "@/lib/localChatStore";
 import { AgentActionStatus, ChatConversation, UserProfile, ChatMessage } from "@/types";
 import {
-  speechToText,
   SUPPORTED_LANGUAGES,
   SupportedLanguageCode,
 } from "@/lib/sunbird";
+import { authenticatedFetch } from "@/lib/authenticatedFetch";
 import { AppShellSkeleton } from "@/components/ui/Skeleton";
 
 interface Message {
@@ -446,8 +446,18 @@ export default function ChatPage() {
 
         setError(null);
         try {
-          const result = await speechToText(audioBlob, userLanguage);
-          setInputValue(result.transcript);
+          const form = new FormData();
+          form.append("audio", audioBlob, "sistercare-voice.webm");
+          form.append("language", userLanguage);
+          const response = await authenticatedFetch("/api/language/transcribe", {
+            method: "POST",
+            body: form,
+          });
+          const result = await response.json().catch(() => null);
+          if (!response.ok || !result?.data?.transcript) {
+            throw new Error(result?.error || "Voice transcription failed");
+          }
+          setInputValue(result.data.transcript);
         } catch {
           setError("Speech-to-text conversion failed. Please try again or type your message.");
         }

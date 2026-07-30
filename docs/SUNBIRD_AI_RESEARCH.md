@@ -1,5 +1,13 @@
 # Sunbird AI & Sunflower Research Report
 
+> Current integration note (reviewed 30 July 2026): Sunbird now documents
+> `POST https://api.sunbird.ai/tasks/translate` as its primary Sunflower
+> translation endpoint. It accepts ISO 639-3 codes such as `eng` and `lug`,
+> with `source_language` optional. SisterCare uses this current endpoint first
+> and retains `/tasks/nllb_translate` only as a 404/405 compatibility fallback.
+> The `SUNBIRD_API_KEY` is server-only. Current official references:
+> https://docs.sunbird.ai/introduction and https://api.sunbird.ai/tutorial
+
 Date: January 2025
 Source: https://salt.sunbird.ai/API/ | https://sunbird.ai/
 
@@ -130,7 +138,7 @@ The Sunflower model supports 31 Ugandan languages, but the **SALT API currently 
 
 ---
 
-#### 2. **POST /tasks/nllb_translate** — Neural Translation
+#### 2. **POST /tasks/translate** — Sunflower Translation
 
 **Purpose:** Translate text between English and local languages
 
@@ -384,7 +392,7 @@ const { language } = await langDetectResponse.json();
 
 // Translate counsellor response to user's language
 const translateResponse = await fetch(
-  "https://api.sunbird.ai/tasks/nllb_translate",
+  "https://api.sunbird.ai/tasks/translate",
   {
     method: "POST",
     headers: {

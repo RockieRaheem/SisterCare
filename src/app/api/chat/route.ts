@@ -673,6 +673,43 @@ function fallbackLocalizedResponse(
   return generic[language] || originalEnglishText;
 }
 
+async function localizeResponseText(
+  englishText: string,
+  language: SupportedLanguageCode,
+  geminiApiKey: string,
+): Promise<string> {
+  if (language === "eng") return englishText;
+
+  let localizedText = "";
+  try {
+    const translated = await translateText(englishText, "eng", language);
+    localizedText = translated.translatedText;
+  } catch (sunbirdError) {
+    console.warn("Sunbird response localization failed:", sunbirdError);
+    if (geminiApiKey) {
+      try {
+        localizedText = await translateWithGemini(
+          geminiApiKey,
+          englishText,
+          SUPPORTED_LANGUAGES[language]?.name || language,
+        );
+      } catch (geminiError) {
+        console.warn("Gemini response localization fallback failed:", geminiError);
+      }
+    }
+  }
+
+  if (
+    !localizedText ||
+    isClearlyIncompleteResponse(localizedText) ||
+    (isProbablyEnglishText(localizedText) &&
+      localizedText.trim() === englishText.trim())
+  ) {
+    return fallbackLocalizedResponse(englishText, language);
+  }
+  return localizedText;
+}
+
 /**
  * POST /api/chat
  *
@@ -826,28 +863,30 @@ async function postChat(request: NextRequest) {
 
     messageForAgent = addLanguageIntentHint(messageForAgent, userLanguage);
 
-    if (isLanguageSwitchIntent(trimmedMessage) && userLanguage !== "eng") {
-      const confirmation = getLanguageSwitchConfirmation(userLanguage);
-      if (confirmation) {
-        return NextResponse.json({
-          response: confirmation,
-          language: userLanguage,
-          languageName: SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
-          translationApplied: true,
-          source: "agent",
-          type: "agent",
-          toolsUsed: [],
-          actions: ["Language preference switched"],
-          triage,
-          actionStatuses: [
-            {
-              key: "language",
-              label: `Language switched to ${SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage}`,
-              state: "done",
-            },
-          ],
-        });
-      }
+    if (isLanguageSwitchIntent(trimmedMessage) && inMessageLanguage) {
+      const confirmation = await localizeResponseText(
+        "Okay, I will use your requested language. What would you like help with?",
+        userLanguage,
+        apiKey,
+      );
+      return NextResponse.json({
+        response: confirmation,
+        language: userLanguage,
+        languageName: SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
+        translationApplied: userLanguage !== "eng",
+        source: "agent",
+        type: "agent",
+        toolsUsed: [],
+        actions: ["Reply language changed for this response"],
+        triage,
+        actionStatuses: [
+          {
+            key: "language",
+            label: `Replying in ${SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage}`,
+            state: "done",
+          },
+        ],
+      });
     }
 
     const confirmedPregnancy = hasPregnancyConfirmation(
@@ -873,31 +912,6 @@ async function postChat(request: NextRequest) {
       (isConfirmedPregnancyIntent(trimmedMessage) ||
         isPregnancyActivationRequest(trimmedMessage) ||
         pregnancyLmpFromConversation !== null);
-
-    const directLugandaResponse =
-      userLanguage === "lug" && !shouldActivatePregnancy
-        ? getDirectLugandaResponse(trimmedMessage)
-        : null;
-    if (directLugandaResponse) {
-      return NextResponse.json({
-        response: directLugandaResponse,
-        language: "lug",
-        languageName: "Luganda",
-        translationApplied: true,
-        source: "local_fallback",
-        type: "agent",
-        toolsUsed: [],
-        actions: ["Used direct Luganda response"],
-        triage,
-        actionStatuses: [
-          {
-            key: "language",
-            label: "Handled as direct Luganda response",
-            state: "done",
-          },
-        ],
-      });
-    }
 
     if (!clientLanguageCode && !storedLanguage && !inMessageLanguage) {
       try {
@@ -987,12 +1001,15 @@ async function postChat(request: NextRequest) {
         : requestedClientAction.articleId === 6
           ? "Opening Foods That Help During Your Period in the library"
           : `Opening ${requestedClientAction.href.slice(1).replace(/-/g, " ")}`;
+      const actionResponse = await localizeResponseText(
+        isSignOut ? "Signing you out securely now." : `${destinationLabel}.`,
+        userLanguage,
+        apiKey,
+      );
       return NextResponse.json({
-        response: isSignOut
-          ? "Signing you out securely now."
-          : `${destinationLabel}.`,
-        language: "eng",
-        languageName: "English",
+        response: actionResponse,
+        language: userLanguage,
+        languageName: SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
         source: "agent_action",
         type: "agent",
         toolsUsed: [],
@@ -1119,10 +1136,11 @@ async function postChat(request: NextRequest) {
             "en-US",
             { month: "long", day: "numeric", year: "numeric" },
           );
-          const pregnancyResponse =
-            userLanguage === "lug"
-              ? `Nkukyusizza mu pregnancy support nga nkozesa olunaku lw'olukale olwasembayo oluli mu SisterCare: ${formattedLmp}. Olunaku lw'oyinza okuzaala kwe ${formattedDueDate}; kati oli mu wiiki ${pregnancy.weeksPregnant} era mu trimester ${pregnancy.trimester}. Nsaba otandike oba weeyongere ku nteekateeka y'okulabirirwa mu lubuto ku ddwaliro, era ombuulire singa olunaku oluli mu system si lwe lwasooka nga tonnafuna lubuto luno.`
-              : `I've switched your profile to pregnancy support using the last period date already recorded in SisterCare: ${formattedLmp}. Your estimated due date is ${formattedDueDate}; this is about ${pregnancy.weeksPregnant} weeks pregnant and in the ${pregnancy.trimester} trimester. Please arrange antenatal care, and tell me if that recorded date is not the first day of the period before this pregnancy.`;
+          const pregnancyResponse = await localizeResponseText(
+            `I've switched your profile to pregnancy support using the last period date already recorded in SisterCare: ${formattedLmp}. Your estimated due date is ${formattedDueDate}; this is about ${pregnancy.weeksPregnant} weeks pregnant and in the ${pregnancy.trimester} trimester. Please arrange antenatal care, and tell me if that recorded date is not the first day of the period before this pregnancy.`,
+            userLanguage,
+            apiKey,
+          );
           return NextResponse.json({
             response: pregnancyResponse,
             language: userLanguage,
@@ -1164,10 +1182,15 @@ async function postChat(request: NextRequest) {
       const dueText = recordedDueDate
         ? new Date(recordedDueDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
         : "not recorded yet";
+      const pregnancyRecordResponse = await localizeResponseText(
+        `Your pregnancy record in SisterCare has your last menstrual period as ${lmpText} and your estimated due date as ${dueText}. You are currently recorded as ${userProfile.pregnancyData.weeksPregnant ?? "an unconfirmed number of"} weeks pregnant in the ${userProfile.pregnancyData.trimester || "unconfirmed"} trimester.`,
+        userLanguage,
+        apiKey,
+      );
       return NextResponse.json({
-        response: `Your pregnancy record in SisterCare has your last menstrual period as ${lmpText} and your estimated due date as ${dueText}. You are currently recorded as ${userProfile.pregnancyData.weeksPregnant ?? "an unconfirmed number of"} weeks pregnant in the ${userProfile.pregnancyData.trimester || "unconfirmed"} trimester.`,
-        language: "eng",
-        languageName: "English",
+        response: pregnancyRecordResponse,
+        language: userLanguage,
+        languageName: SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
         source: "system_record",
         type: "agent",
         toolsUsed: ["get_system_overview"],
@@ -1191,41 +1214,11 @@ async function postChat(request: NextRequest) {
     } = handoffPolicy;
 
     const localizeResponse = async (text: string) => {
-      let localizedText = text;
-      if (userLanguage !== "eng") {
-        // The reasoning stage writes controlled English. Localizing it here
-        // keeps medical reasoning, tool use, and Luganda translation separate.
-        try {
-          if (apiKey) {
-            localizedText = await translateWithGemini(
-              apiKey,
-              text,
-              SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
-            );
-          } else {
-            const translated = await translateText(text, "eng", userLanguage);
-            localizedText = translated.translatedText;
-          }
-        } catch (translationError) {
-          console.warn(
-            "Dedicated response localization failed:",
-            translationError,
-          );
-          try {
-            const translated = await translateText(text, "eng", userLanguage);
-            localizedText = translated.translatedText;
-          } catch (sunbirdTranslationError) {
-            console.warn("Sunbird localization fallback failed:", sunbirdTranslationError);
-          }
-        }
-
-        if (
-          isClearlyIncompleteResponse(localizedText) ||
-          (isProbablyEnglishText(localizedText) && localizedText.trim() === text.trim())
-        ) {
-          localizedText = fallbackLocalizedResponse(text, userLanguage);
-        }
-      }
+      const localizedText = await localizeResponseText(
+        text,
+        userLanguage,
+        apiKey,
+      );
 
       let audio:
         | { url: string; durationSeconds: number; mimeType: string }
