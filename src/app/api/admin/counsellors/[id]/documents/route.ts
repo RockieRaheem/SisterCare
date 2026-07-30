@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateRequest, hasRole, isAuthEnforced } from "@/lib/serverAuth";
+import { authenticateRequest, getAuthorizationFailure, isAuthEnforced } from "@/lib/serverAuth";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 const SIGNED_URL_TTL_SECONDS = 5 * 60;
@@ -11,7 +11,8 @@ export async function GET(
 ) {
   if (!isAuthEnforced()) return NextResponse.json({ success: false, error: "Counsellor operations are unavailable" }, { status: 503 });
   const auth = await authenticateRequest(request);
-  if (!hasRole(auth, "admin")) return NextResponse.json({ success: false, error: "Admin privileges required" }, { status: 403 });
+  const authorizationFailure = getAuthorizationFailure(auth, "admin");
+  if (authorizationFailure) return NextResponse.json({ success: false, error: authorizationFailure.error }, { status: authorizationFailure.status });
   const { id } = await params;
   const index = Number(request.nextUrl.searchParams.get("index"));
   if (!Number.isInteger(index) || index < 0 || index > 4) {

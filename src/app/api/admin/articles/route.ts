@@ -1,17 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateRequest, hasRole, isAuthEnforced } from "@/lib/serverAuth";
+import { authenticateRequest, getAuthorizationFailure, isAuthEnforced } from "@/lib/serverAuth";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { withApiObservability } from "@/lib/observability";
 
 async function requireAdmin(request: NextRequest) {
   if (!isAuthEnforced()) return null;
   const auth = await authenticateRequest(request);
-  return auth.status === "verified" && hasRole(auth, "admin") ? auth : null;
+  const failure = getAuthorizationFailure(auth, "admin");
+  if (failure) return { ok: false, failure } as const;
+  if (auth.status !== "verified") return null;
+  return { ok: true, auth } as const;
 }
 
 async function getArticles(request: NextRequest) {
   const auth = await requireAdmin(request);
-  if (!auth) return NextResponse.json({ success: false, error: "Admin privileges required" }, { status: 403 });
+  if (!auth) return NextResponse.json({ success: false, error: "Article review is unavailable" }, { status: 503 });
+  if (!auth.ok) return NextResponse.json({ success: false, error: auth.failure.error }, { status: auth.failure.status });
   const db = getSupabaseAdmin();
   const { data, error } = await db.from("library_articles").select("*").eq("status", "pending_review").order("created_at", { ascending: true });
   if (error) return NextResponse.json({ success: false, error: error.message }, { status: 503 });
@@ -42,7 +46,8 @@ async function getArticles(request: NextRequest) {
 
 async function patchArticle(request: NextRequest) {
   const auth = await requireAdmin(request);
-  if (!auth) return NextResponse.json({ success: false, error: "Admin privileges required" }, { status: 403 });
+  if (!auth) return NextResponse.json({ success: false, error: "Article review is unavailable" }, { status: 503 });
+  if (!auth.ok) return NextResponse.json({ success: false, error: auth.failure.error }, { status: auth.failure.status });
   const body = await request.json().catch(() => null) as { articleId?: string; decision?: string } | null;
   if (!body?.articleId || !["publish", "reject"].includes(body.decision || "")) {
     return NextResponse.json({ success: false, error: "Invalid review decision" }, { status: 400 });
@@ -51,7 +56,7 @@ async function patchArticle(request: NextRequest) {
   const now = new Date().toISOString();
   const { data, error } = await db.from("library_articles").update({
     status: body.decision === "publish" ? "published" : "rejected",
-    reviewed_by: auth.uid,
+    reviewed_by: auth.auth.uid,
     reviewed_at: now,
     ...(body.decision === "publish" ? { published_at: now } : {}),
   }).eq("id", body.articleId).eq("status", "pending_review").select("id").maybeSingle();

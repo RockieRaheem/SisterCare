@@ -1,6 +1,53 @@
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
 
 let adminClient: SupabaseClient | null = null;
+const TRANSIENT_STATUS = new Set([408, 429, 500, 502, 503, 504]);
+
+function retryDelay(response: Response | null, attempt: number): number {
+  const retryAfter = Number(response?.headers.get("retry-after"));
+  if (Number.isFinite(retryAfter) && retryAfter > 0) {
+    return Math.min(retryAfter * 1000, 1_500);
+  }
+  return attempt * 150;
+}
+
+/** Retry only idempotent Supabase reads; writes are never replayed. */
+export async function resilientSupabaseFetch(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+  fetcher: typeof fetch = fetch,
+  wait: (milliseconds: number) => Promise<void> = (milliseconds) =>
+    new Promise((resolve) => setTimeout(resolve, milliseconds)),
+): Promise<Response> {
+  const method = (init?.method || "GET").toUpperCase();
+  const attempts = method === "GET" || method === "HEAD" ? 3 : 1;
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      const response = await fetcher(input, init);
+      if (
+        attempt === attempts ||
+        !TRANSIENT_STATUS.has(response.status)
+      ) {
+        return response;
+      }
+      await wait(retryDelay(response, attempt));
+    } catch (error) {
+      lastError = error;
+      if (attempt === attempts) throw error;
+      await wait(retryDelay(null, attempt));
+    }
+  }
+  throw lastError || new Error("Supabase request failed");
+}
+
+export class SupabaseVerificationUnavailableError extends Error {
+  constructor(message = "Supabase authentication verification is unavailable") {
+    super(message);
+    this.name = "SupabaseVerificationUnavailableError";
+  }
+}
 
 export function getSupabaseServerKey(
   env: Record<string, string | undefined> = process.env,
@@ -28,33 +75,49 @@ export function getSupabaseAdmin(): SupabaseClient {
   }
   const serverKey = getSupabaseServerKey();
   if (!adminClient) {
-    adminClient = createClient(url, serverKey, { auth: { autoRefreshToken: false, persistSession: false } });
+    adminClient = createClient(url, serverKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false,
+      },
+      global: { fetch: resilientSupabaseFetch },
+    });
   }
   return adminClient;
 }
 
-/** Validate an end-user JWT directly against the configured Supabase Auth project. */
+type ClaimsResult = Awaited<
+  ReturnType<SupabaseClient["auth"]["getClaims"]>
+>;
+
+/** Verify an end-user JWT using cached JWKS where the project supports it. */
 export async function verifySupabaseAccessToken(
   accessToken: string,
+  verifyClaims: (token: string) => Promise<ClaimsResult> = (token) =>
+    getSupabaseAdmin().auth.getClaims(token),
 ): Promise<{ user: User | null; error: Error | null }> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !publishableKey) throw new Error("Supabase Auth verification is not configured");
-
-  const response = await fetch(`${url.replace(/\/$/, "")}/auth/v1/user`, {
-    method: "GET",
-    headers: {
-      apikey: publishableKey,
-      Authorization: `Bearer ${accessToken}`,
-    },
-    cache: "no-store",
-  });
-  if (!response.ok) {
-    const payload = await response.json().catch(() => null) as { message?: string; msg?: string } | null;
+  try {
+    const result = await verifyClaims(accessToken);
+    if (result.error || !result.data?.claims?.sub) {
+      return {
+        user: null,
+        error: new Error(result.error?.message || "Supabase rejected the access token"),
+      };
+    }
     return {
-      user: null,
-      error: new Error(payload?.message || payload?.msg || `Supabase rejected the access token (${response.status})`),
+      user: {
+        id: result.data.claims.sub,
+        email:
+          typeof result.data.claims.email === "string"
+            ? result.data.claims.email
+            : undefined,
+      } as User,
+      error: null,
     };
+  } catch (error) {
+    throw new SupabaseVerificationUnavailableError(
+      error instanceof Error ? error.message : undefined,
+    );
   }
-  return { user: await response.json() as User, error: null };
 }

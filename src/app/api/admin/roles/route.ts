@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       code: profileLookupFailed ? "SUPABASE_SERVICE_ACCESS_FAILED" : "SUPABASE_AUTH_VERIFIER_FAILED",
       error: profileLookupFailed
         ? "The server cannot read Supabase profiles. Set SUPABASE_SECRET_KEY to an sb_secret_ key from this Supabase project."
-        : "The server cannot reach Supabase Auth. Verify NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.",
+        : "The server cannot verify Supabase sessions right now. Please retry shortly.",
     }, { status: 503 });
   }
   if (auth.status !== "verified") return NextResponse.json({ success: false, error: "Your Supabase session token was rejected. Sign out and sign in again." }, { status: 401 });

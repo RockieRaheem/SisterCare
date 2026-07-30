@@ -1,5 +1,9 @@
 /** Supabase-backed server authentication and authorization boundary. */
-import { getSupabaseAdmin, verifySupabaseAccessToken } from "./supabaseAdmin";
+import {
+  getSupabaseAdmin,
+  SupabaseVerificationUnavailableError,
+  verifySupabaseAccessToken,
+} from "./supabaseAdmin";
 
 export type UserRole = "user" | "counsellor" | "admin";
 export const USER_ROLES: UserRole[] = ["user", "counsellor", "admin"];
@@ -32,6 +36,30 @@ export async function setUserRole(uid: string, role: UserRole) {
 export async function getUidByEmail(email: string) { const { data, error } = await getSupabaseAdmin().from("profiles").select("id").eq("email", email.trim().toLowerCase()).maybeSingle(); if (error) throw new Error(error.message); return data?.id || null; }
 export async function deleteAuthUser(uid: string) { const { error } = await getSupabaseAdmin().auth.admin.deleteUser(uid); if (error) throw new Error(error.message); }
 export function hasRole(auth: AuthResult, role: UserRole) { return auth.status === "verified" && auth.token.role === role; }
+export function getAuthorizationFailure(
+  auth: AuthResult,
+  role?: UserRole,
+): { status: 401 | 403 | 503; error: string } | null {
+  if (auth.status === "unavailable") {
+    return {
+      status: 503,
+      error: "Authentication verification is temporarily unavailable. Please retry.",
+    };
+  }
+  if (auth.status !== "verified") {
+    return {
+      status: 401,
+      error: "Your session is missing or expired. Please sign in again.",
+    };
+  }
+  if (role && !hasRole(auth, role)) {
+    return {
+      status: 403,
+      error: `${role === "admin" ? "Administrator" : "Counsellor"} access required`,
+    };
+  }
+  return null;
+}
 
 export async function authenticateRequest(request: Request): Promise<AuthResult> {
   const match = (request.headers.get("authorization") || "").match(/^Bearer\s+(.+)$/i);
@@ -64,6 +92,12 @@ export async function authenticateRequest(request: Request): Promise<AuthResult>
     return { status: "verified", uid: user.id, token: { uid: user.id, email: user.email, role } };
   } catch (error) {
     console.warn("Supabase access-token verification failed:", error);
-    return { status: "unavailable", reason: "token_verifier" };
+    return {
+      status: "unavailable",
+      reason:
+        error instanceof SupabaseVerificationUnavailableError
+          ? "token_verifier"
+          : "profile_lookup",
+    };
   }
 }

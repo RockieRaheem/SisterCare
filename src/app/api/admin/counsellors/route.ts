@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateRequest, hasRole, isAuthEnforced } from "@/lib/serverAuth";
+import { authenticateRequest, getAuthorizationFailure, isAuthEnforced } from "@/lib/serverAuth";
 import { getLiveCounsellors } from "@/lib/server/serverData";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { withApiObservability } from "@/lib/observability";
@@ -18,8 +18,9 @@ async function getCounsellors(request: NextRequest) {
     return NextResponse.json({ success: false, error: "Counsellor operations are unavailable" }, { status: 503 });
   }
   const auth = await authenticateRequest(request);
-  if (!hasRole(auth, "admin")) {
-    return NextResponse.json({ success: false, error: "Admin privileges required" }, { status: 403 });
+  const authorizationFailure = getAuthorizationFailure(auth, "admin");
+  if (authorizationFailure) {
+    return NextResponse.json({ success: false, error: authorizationFailure.error }, { status: authorizationFailure.status });
   }
   const db = getSupabaseAdmin();
   const [liveCounsellors, applicationsResult] = await Promise.all([

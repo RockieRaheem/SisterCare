@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateRequest, hasRole, isAuthEnforced } from "@/lib/serverAuth";
+import { authenticateRequest, getAuthorizationFailure, isAuthEnforced } from "@/lib/serverAuth";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import {
   CounsellorApplicationStatus,
@@ -10,7 +10,9 @@ import {
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!isAuthEnforced()) return NextResponse.json({ success: false, error: "Counsellor operations are unavailable" }, { status: 503 });
   const auth = await authenticateRequest(request);
-  if (auth.status !== "verified" || !hasRole(auth, "admin")) return NextResponse.json({ success: false, error: "Admin privileges required" }, { status: 403 });
+  const authorizationFailure = getAuthorizationFailure(auth, "admin");
+  if (authorizationFailure) return NextResponse.json({ success: false, error: authorizationFailure.error }, { status: authorizationFailure.status });
+  if (auth.status !== "verified") return NextResponse.json({ success: false, error: "Authentication verification is temporarily unavailable. Please retry." }, { status: 503 });
   const body = await request.json().catch(() => ({}));
   if (body.decision !== "approve" && body.decision !== "reject") return NextResponse.json({ success: false, error: "Decision must be approve or reject" }, { status: 400 });
   const { id } = await params; const db = getSupabaseAdmin();

@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../supabaseAdmin", () => ({
+  SupabaseVerificationUnavailableError: class extends Error {},
   verifySupabaseAccessToken: async (token: string) => {
     const result = await mocks.getUser(token);
     return { user: result.data.user, error: result.error };
@@ -19,7 +20,10 @@ vi.mock("../supabaseAdmin", () => ({
   }),
 }));
 
-import { authenticateRequest } from "../serverAuth";
+import {
+  authenticateRequest,
+  getAuthorizationFailure,
+} from "../serverAuth";
 
 describe("request authentication", () => {
   beforeEach(() => {
@@ -64,5 +68,28 @@ describe("request authentication", () => {
 
     expect(result.status).toBe("verified");
     if (result.status === "verified") expect(result.token.role).toBe("user");
+  });
+
+  it("distinguishes temporary verification failure from denied access", () => {
+    expect(
+      getAuthorizationFailure(
+        { status: "unavailable", reason: "token_verifier" },
+        "admin",
+      ),
+    ).toEqual({
+      status: 503,
+      error:
+        "Authentication verification is temporarily unavailable. Please retry.",
+    });
+    expect(
+      getAuthorizationFailure(
+        {
+          status: "verified",
+          uid: "user-1",
+          token: { uid: "user-1", role: "user" },
+        },
+        "admin",
+      ),
+    ).toEqual({ status: 403, error: "Administrator access required" });
   });
 });

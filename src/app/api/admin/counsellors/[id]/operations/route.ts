@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateRequest, hasRole, isAuthEnforced } from "@/lib/serverAuth";
+import { authenticateRequest, getAuthorizationFailure, isAuthEnforced } from "@/lib/serverAuth";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 const VERIFICATION_STATES = ["pending", "verified", "suspended", "expired"] as const;
@@ -10,9 +10,9 @@ export async function PATCH(
 ) {
   if (!isAuthEnforced()) return NextResponse.json({ success: false, error: "Counsellor operations are unavailable" }, { status: 503 });
   const auth = await authenticateRequest(request);
-  if (auth.status !== "verified" || !hasRole(auth, "admin")) {
-    return NextResponse.json({ success: false, error: "Admin privileges required" }, { status: 403 });
-  }
+  const authorizationFailure = getAuthorizationFailure(auth, "admin");
+  if (authorizationFailure) return NextResponse.json({ success: false, error: authorizationFailure.error }, { status: authorizationFailure.status });
+  if (auth.status !== "verified") return NextResponse.json({ success: false, error: "Authentication verification is temporarily unavailable. Please retry." }, { status: 503 });
   const body = await request.json().catch(() => null) as Record<string, unknown> | null;
   if (!body) return NextResponse.json({ success: false, error: "Invalid JSON payload" }, { status: 400 });
   const verificationStatus = String(body.verificationStatus || "");

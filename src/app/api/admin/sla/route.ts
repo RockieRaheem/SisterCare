@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateRequest, hasRole, isAuthEnforced } from "@/lib/serverAuth";
+import { authenticateRequest, getAuthorizationFailure, isAuthEnforced } from "@/lib/serverAuth";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { withApiObservability } from "@/lib/observability";
 
 async function getSla(request: NextRequest) {
   if (!isAuthEnforced()) return NextResponse.json({ success: false, error: "Crisis monitoring is unavailable" }, { status: 503 });
   const auth = await authenticateRequest(request);
-  if (!hasRole(auth, "admin")) return NextResponse.json({ success: false, error: "Admin privileges required" }, { status: 403 });
+  const authorizationFailure = getAuthorizationFailure(auth, "admin");
+  if (authorizationFailure) return NextResponse.json({ success: false, error: authorizationFailure.error }, { status: authorizationFailure.status });
   const { data, error } = await getSupabaseAdmin().from("counselling_sessions")
     .select("id, state, counsellor_id, requested_at, accepted_at, time_to_human_seconds, details")
     .eq("priority", "critical")

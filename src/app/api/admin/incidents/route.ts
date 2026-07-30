@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateRequest, hasRole, isAuthEnforced } from "@/lib/serverAuth";
+import { authenticateRequest, getAuthorizationFailure, isAuthEnforced } from "@/lib/serverAuth";
 import { IncidentStatus } from "@/lib/incidents";
 import { withApiObservability } from "@/lib/observability";
 import { transitionIncident } from "@/lib/server/incidents";
@@ -8,12 +8,16 @@ import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 async function requireAdmin(request: NextRequest) {
   if (!isAuthEnforced()) return null;
   const auth = await authenticateRequest(request);
-  return auth.status === "verified" && hasRole(auth, "admin") ? auth : null;
+  const failure = getAuthorizationFailure(auth, "admin");
+  if (failure) return { ok: false, failure } as const;
+  if (auth.status !== "verified") return null;
+  return { ok: true, auth } as const;
 }
 
 async function getIncidents(request: NextRequest) {
   const auth = await requireAdmin(request);
-  if (!auth) return NextResponse.json({ success: false, error: "Admin privileges required" }, { status: 403 });
+  if (!auth) return NextResponse.json({ success: false, error: "Incident operations are unavailable" }, { status: 503 });
+  if (!auth.ok) return NextResponse.json({ success: false, error: auth.failure.error }, { status: auth.failure.status });
   const { data, error } = await getSupabaseAdmin().from("incidents").select("*").order("opened_at", { ascending: false }).limit(100);
   if (error) return NextResponse.json({ success: false, error: error.message }, { status: 503 });
   const incidents = (data || []).map((row) => ({
@@ -33,13 +37,14 @@ async function getIncidents(request: NextRequest) {
 
 async function patchIncident(request: NextRequest) {
   const auth = await requireAdmin(request);
-  if (!auth) return NextResponse.json({ success: false, error: "Admin privileges required" }, { status: 403 });
+  if (!auth) return NextResponse.json({ success: false, error: "Incident operations are unavailable" }, { status: 503 });
+  if (!auth.ok) return NextResponse.json({ success: false, error: auth.failure.error }, { status: auth.failure.status });
   const body = await request.json().catch(() => null) as { incidentId?: string; to?: IncidentStatus; resolutionNote?: string } | null;
   if (!body?.incidentId || !body.to || !["acknowledged", "resolved"].includes(body.to)) {
     return NextResponse.json({ success: false, error: "Invalid incident transition" }, { status: 400 });
   }
   try {
-    await transitionIncident({ incidentId: body.incidentId, to: body.to, actorUid: auth.uid, resolutionNote: body.resolutionNote });
+    await transitionIncident({ incidentId: body.incidentId, to: body.to, actorUid: auth.auth.uid, resolutionNote: body.resolutionNote });
     return NextResponse.json({ success: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Update failed";
