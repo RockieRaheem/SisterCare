@@ -35,6 +35,7 @@ import { withApiObservability } from "@/lib/observability";
 import { getClinicalRuntimeIssues } from "@/lib/clinicalGovernance";
 import { enforceChatRateLimit } from "@/lib/server/rateLimit";
 import { hasConfiguredAgentProvider } from "@/lib/agent/modelRouter";
+import { assessAgentRequestPolicy } from "@/lib/agent/requestPolicy";
 import {
   assertCompleteResponse,
   isClearlyIncompleteResponse,
@@ -686,22 +687,31 @@ function fallbackLocalizedResponse(
  */
 async function postChat(request: NextRequest) {
   try {
-    // Never present unreviewed clinical or crisis guidance as a production
-    // service. This is intentionally independent of model/provider health.
-    if (getClinicalRuntimeIssues().length > 0) {
-      return NextResponse.json(
-        {
-          error: "Clinical safety review is incomplete. SisterCare guidance is temporarily unavailable.",
-          code: "CLINICAL_GOVERNANCE_BLOCKED",
-        },
-        { status: 503 },
-      );
-    }
     // Trust boundary: when Supabase Admin is configured, the caller MUST
     // present a valid ID token and the verified uid overrides whatever
     // userId the request body claims. Without Admin configured (dev mode)
     // we fall back to the body's userId, with a warning logged at startup.
     const auth = await authenticateRequest(request);
+    if (auth.status === "unavailable") {
+      return NextResponse.json(
+        {
+          response:
+            "I couldn’t securely verify your session, so I did not read or change any account data. Please retry in a moment.",
+          error: "Authentication verification is temporarily unavailable",
+          code: "AUTH_VERIFICATION_UNAVAILABLE",
+          source: "security",
+          type: "agent",
+          actionStatuses: [
+            {
+              key: "auth-verification",
+              label: "No action taken because identity verification was unavailable",
+              state: "failed",
+            },
+          ],
+        },
+        { status: 503 },
+      );
+    }
     if (auth.status === "unauthenticated") {
       return NextResponse.json(
         { error: "Authentication required" },
@@ -1596,19 +1606,86 @@ async function postChat(request: NextRequest) {
         "\n\nI am concerned by what you shared. I can connect you to a professional counsellor right now. Reply: 'Connect me to a counsellor'.";
     }
 
+    const requestPolicy = assessAgentRequestPolicy(trimmedMessage);
+    if (requestPolicy.kind === "blocked_action") {
+      const { localizedText, audio } = await localizeResponse(
+        requestPolicy.warning,
+      );
+      return NextResponse.json({
+        response: localizedText,
+        language: userLanguage,
+        languageName: SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
+        audio,
+        translationApplied,
+        source: "security",
+        type: "agent",
+        code: "ACTION_NOT_ALLOWED",
+        toolsUsed: [],
+        actions: [],
+        triage,
+        actionStatuses: [
+          ...actionStatuses,
+          {
+            key: "action-boundary",
+            label: "Unsafe or unauthorised action prevented",
+            state: "failed",
+          },
+        ],
+      });
+    }
+
+    const clinicalRuntimeIssues = getClinicalRuntimeIssues();
+    const clinicalGuidanceAllowed = clinicalRuntimeIssues.length === 0;
+    if (
+      !clinicalGuidanceAllowed &&
+      requestPolicy.kind === "clinical_guidance"
+    ) {
+      const { localizedText, audio } = await localizeResponse(
+        "I can record what you are experiencing and help you contact a verified counsellor, but I can’t provide clinical causes, diagnosis, medication, or treatment guidance until SisterCare’s clinical content has completed documented professional review. If your symptoms are severe, rapidly worsening, involve heavy bleeding, fainting, breathing difficulty, or immediate danger, seek urgent in-person care now.",
+      );
+      return NextResponse.json({
+        response: localizedText,
+        language: userLanguage,
+        languageName: SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
+        audio,
+        translationApplied,
+        source: "clinical_limit",
+        type: "agent",
+        code: "CLINICAL_REVIEW_REQUIRED",
+        toolsUsed: [],
+        actions: [],
+        triage,
+        actionStatuses: [
+          ...actionStatuses,
+          {
+            key: "clinical-governance",
+            label: "Clinical guidance limited pending professional review",
+            state: "failed",
+          },
+        ],
+      });
+    }
+
     if (!hasConfiguredAgentProvider()) {
       console.warn("No agent model provider is configured");
       return NextResponse.json(
         {
           response:
-            "I'm temporarily unable to process requests. Please try again later or contact support.",
-          source: "error",
+            "I can’t use advanced reasoning right now because no model provider is configured. No account changes were made. Please ask an administrator to check the Groq or Gemini configuration.",
+          source: "degraded",
           type: "agent",
-          error: "API key not configured",
+          code: "MODEL_PROVIDER_NOT_CONFIGURED",
           triage,
-          actionStatuses,
+          actionStatuses: [
+            ...actionStatuses,
+            {
+              key: "model-provider",
+              label: "Advanced reasoning provider unavailable",
+              state: "failed",
+            },
+          ],
         },
-        { status: 503 },
+        { status: 200 },
       );
     }
 
@@ -1643,8 +1720,7 @@ async function postChat(request: NextRequest) {
           }
         : undefined,
       conversationHistory: effectiveConversationHistory,
-    }, {
-      preferGemini: userLanguage !== "eng",
+      clinicalGuidanceAllowed,
     });
 
     let responseText = agentResult.response;

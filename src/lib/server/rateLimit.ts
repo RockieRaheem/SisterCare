@@ -2,9 +2,41 @@ import { createHash } from "crypto";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 export type RateLimitResult = { allowed: boolean; retryAfterSeconds: number };
+type LocalBucket = { count: number; windowStartedAt: number };
+const localBuckets = new Map<string, LocalBucket>();
 
 function keyFor(value: string) {
   return createHash("sha256").update(value).digest("hex").slice(0, 48);
+}
+
+/** Bounded per-instance fallback used only while the shared quota is unavailable. */
+export function consumeLocalRateLimit(
+  identity: string,
+  limit: number,
+  windowMs: number,
+  now = Date.now(),
+): RateLimitResult {
+  if (localBuckets.size > 2_000) {
+    for (const [key, bucket] of localBuckets) {
+      if (now - bucket.windowStartedAt >= windowMs) localBuckets.delete(key);
+    }
+  }
+  const bucket = localBuckets.get(identity);
+  if (!bucket || now - bucket.windowStartedAt >= windowMs) {
+    localBuckets.set(identity, { count: 1, windowStartedAt: now });
+    return { allowed: true, retryAfterSeconds: 0 };
+  }
+  if (bucket.count >= limit) {
+    return {
+      allowed: false,
+      retryAfterSeconds: Math.max(
+        1,
+        Math.ceil((windowMs - (now - bucket.windowStartedAt)) / 1000),
+      ),
+    };
+  }
+  bucket.count += 1;
+  return { allowed: true, retryAfterSeconds: 0 };
 }
 
 /** Atomic shared quota that survives Vercel instance churn and concurrent requests. */
@@ -29,8 +61,16 @@ export async function consumeRateLimit(
       retryAfterSeconds: Number(result?.retry_after_seconds || 0),
     };
   } catch (error) {
-    console.error("Shared rate limit failed:", error);
-    return { allowed: process.env.NODE_ENV !== "production", retryAfterSeconds: 60 };
+    console.warn(
+      "Shared rate limit unavailable; applying bounded instance fallback:",
+      error,
+    );
+    return consumeLocalRateLimit(
+      `${scope}-${keyFor(identity)}`,
+      limit,
+      windowMs,
+      now,
+    );
   }
 }
 

@@ -10,7 +10,7 @@
  * This goes beyond simple chatbots - the agent THINKS, ACTS, and SOLVES problems.
  */
 
-import { AGENT_TOOLS, getGeminiFunctionDeclarations } from "./tools";
+import { AGENT_TOOLS } from "./tools";
 import {
   searchHealthKnowledge,
   assessSymptomRisk,
@@ -38,6 +38,7 @@ import { SISTERCARE_AGENT_CAPABILITY_MAP } from "./systemCapabilities";
 import { bindToolArgumentsToVerifiedUser } from "./toolAuthorization";
 import { emitEvent } from "../server/events";
 import { assertCompleteResponse } from "./responseIntegrity";
+import { isToolAllowedByClinicalPolicy } from "./requestPolicy";
 
 // Types for agent execution
 interface ToolCall {
@@ -68,6 +69,7 @@ interface AgentContext {
   cycleData?: CycleDataContext;
   pregnancyData?: PregnancyDataContext;
   conversationHistory: Array<{ role: string; content: string }>;
+  clinicalGuidanceAllowed?: boolean;
 }
 
 interface UserProfileData {
@@ -240,8 +242,10 @@ async function executeTool(
         return {
           toolName: name,
           result: {
-            success: true,
-            message: `Logged ${symptoms.length} symptom(s): ${symptoms.join(", ")}`,
+            success: Boolean(logId),
+            message: logId
+              ? `Logged ${symptoms.length} symptom(s): ${symptoms.join(", ")}`
+              : "The symptoms could not be saved. Tell the user no record was created and ask them to retry.",
             logEntry: {
               ...logEntry,
               id: logId,
@@ -249,7 +253,8 @@ async function executeTool(
             },
             persisted: !!logId,
           },
-          success: true,
+          success: Boolean(logId),
+          error: logId ? undefined : "Symptom record was not persisted",
         };
       }
 
@@ -332,19 +337,22 @@ async function executeTool(
         return {
           toolName: name,
           result: {
-            success: true,
+            success: Boolean(reminderId),
             reminder: {
               id: reminderId,
               type: reminderType,
               title,
               message,
               scheduledFor: scheduledDate.toISOString(),
-              created: true,
+              created: Boolean(reminderId),
             },
-            message: `Reminder set for ${scheduledDate.toLocaleDateString()}: "${title}"`,
+            message: reminderId
+              ? `Reminder set for ${scheduledDate.toLocaleDateString()}: "${title}"`
+              : "The reminder could not be saved. Tell the user no reminder was created and ask them to retry.",
             persisted: !!reminderId,
           },
-          success: true,
+          success: Boolean(reminderId),
+          error: reminderId ? undefined : "Reminder was not persisted",
         };
       }
 
@@ -536,16 +544,19 @@ async function executeTool(
         return {
           toolName: name,
           result: {
-            success: true,
-            message: `Period start recorded for ${startDate.toLocaleDateString()}`,
+            success: persisted,
+            message: persisted
+              ? `Period start recorded for ${startDate.toLocaleDateString()}`
+              : "The period date could not be saved. Tell the user no cycle update occurred and ask them to retry.",
             startDate: startDate.toISOString(),
             nextPeriodDate: nextPeriodDate?.toISOString() || null,
             action: persisted
               ? "Your cycle data has been updated. Predictions will now be more accurate."
-              : "Period recorded. Sign in to save your data permanently.",
+              : "No account change was made.",
             persisted,
           },
-          success: true,
+          success: persisted,
+          error: persisted ? undefined : "Period date was not persisted",
         };
       }
 
@@ -663,13 +674,16 @@ async function executeTool(
         return {
           toolName: name,
           result: {
-            success: true,
+            success: persisted,
             birthDate: birthDate.toISOString(),
-            message: `Birth recorded for ${birthDate.toLocaleDateString()}. Your cycle tracking has resumed.`,
+            message: persisted
+              ? `Birth recorded for ${birthDate.toLocaleDateString()}. Your cycle tracking has resumed.`
+              : "The birth update could not be saved. Tell the user no account change occurred and ask them to retry.",
             motherHealth: motherHealth || "Not specified",
             persisted,
           },
-          success: true,
+          success: persisted,
+          error: persisted ? undefined : "Birth record was not persisted",
         };
       }
 
@@ -790,6 +804,22 @@ async function executeAuthorizedTool(
   toolCall: ToolCall,
   context: AgentContext,
 ): Promise<ToolResult> {
+  if (
+    !isToolAllowedByClinicalPolicy(
+      toolCall.name,
+      context.clinicalGuidanceAllowed !== false,
+    )
+  ) {
+    return {
+      toolName: toolCall.name,
+      result: {
+        error:
+          "This clinical reasoning tool is unavailable until documented clinical review is complete.",
+      },
+      success: false,
+      error: "Clinical governance approval required",
+    };
+  }
   const result = await executeTool(toolCall, context);
   await emitEvent("agent.tool_executed", {
     userId: context.userId || "anonymous",
@@ -1761,7 +1791,6 @@ export async function executeAgent(
   apiKey: string,
   message: string,
   context: AgentContext,
-  options?: { preferGemini?: boolean },
 ): Promise<{
   response: string;
   toolsUsed: string[];
@@ -1820,7 +1849,7 @@ export async function executeAgent(
   const modelPlan = buildAgentModelPlan({
     ...process.env,
     GEMINI_API_KEY: apiKey || process.env.GEMINI_API_KEY,
-  }, options?.preferGemini ? ["gemini", "groq"] : undefined);
+  });
 
   for (const attempt of modelPlan) {
     try {
@@ -1909,7 +1938,16 @@ async function executeWithGroq(
       : null,
     pregnancy: context.pregnancyData || null,
   };
-  const systemPrompt = `${AGENT_SYSTEM_PROMPT}
+  const clinicalRestriction =
+    context.clinicalGuidanceAllowed === false
+      ? `\n\n## TEMPORARY CLINICAL CONTENT RESTRICTION
+Documented clinical review is incomplete. You may converse, explain SisterCare,
+read factual saved user state, and perform allowed user-requested record or
+navigation actions. Do not diagnose, recommend treatment or medication, infer
+causes, or provide personalized clinical guidance. Never call a clinical
+reasoning tool. State the limitation clearly if clinical advice is requested.`
+      : "";
+  const systemPrompt = `${AGENT_SYSTEM_PROMPT}${clinicalRestriction}
 
 ## SISTERCARE SYSTEM CONTEXT
 You operate inside SisterCare. You may reason about the supplied user context
@@ -1941,7 +1979,12 @@ ${JSON.stringify(contextSummary)}`;
     ),
     { role: "user", content: message },
   ];
-  const tools = AGENT_TOOLS.map((tool) => ({
+  const tools = AGENT_TOOLS.filter((tool) =>
+    isToolAllowedByClinicalPolicy(
+      tool.name,
+      context.clinicalGuidanceAllowed !== false,
+    ),
+  ).map((tool) => ({
     type: "function",
     function: {
       name: tool.name,
@@ -2052,6 +2095,14 @@ async function executeWithModel(
 
   // Add user context to system prompt if available
   let enhancedSystemPrompt = AGENT_SYSTEM_PROMPT;
+  if (context.clinicalGuidanceAllowed === false) {
+    enhancedSystemPrompt += `\n\n## TEMPORARY CLINICAL CONTENT RESTRICTION
+Documented clinical review is incomplete. You may converse, explain SisterCare,
+read factual saved user state, and perform allowed user-requested record or
+navigation actions. Do not diagnose, recommend treatment or medication, infer
+causes, or provide personalized clinical guidance. Never call a clinical
+reasoning tool. State the limitation clearly if clinical advice is requested.`;
+  }
 
   // Add user's name PROMINENTLY for personalization
   if (context.userProfile?.displayName) {
@@ -2111,7 +2162,12 @@ Offer postpartum care advice when appropriate.
     },
     tools: [
       {
-        functionDeclarations: getGeminiFunctionDeclarations(),
+        functionDeclarations: AGENT_TOOLS.filter((tool) =>
+          isToolAllowedByClinicalPolicy(
+            tool.name,
+            context.clinicalGuidanceAllowed !== false,
+          ),
+        ),
       },
     ],
     toolConfig: {

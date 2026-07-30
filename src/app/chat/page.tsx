@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
+import { readApiResponse } from "@/lib/apiResponse";
 import {
   addMessage,
   getMessages,
@@ -49,6 +50,8 @@ interface Message {
 
 interface ChatApiResponse {
   response: string;
+  error?: string;
+  code?: string;
   clientAction?:
     | {
         type: "navigate";
@@ -1003,7 +1006,7 @@ export default function ChatPage() {
             }),
           });
 
-          const data = await res.json();
+          const data = await readApiResponse<ChatApiResponse>(res);
 
           if (res.status === 429 && retryCount < 2) {
             const retryAfter = parseInt(
@@ -1110,7 +1113,11 @@ export default function ChatPage() {
           );
         }
 
-      } catch {
+      } catch (requestError) {
+        const detail =
+          requestError instanceof Error && requestError.message.trim()
+            ? requestError.message.trim()
+            : "I couldn’t complete that request. Please try again.";
         setAgentActionStatuses([{
           key: "agent-error",
           label: "Agent response failed",
@@ -1120,7 +1127,7 @@ export default function ChatPage() {
         const errorMessage: Message = {
           id: `error-${Date.now()}`,
           sender: "sister",
-          text: "I'm sorry, I'm having a little trouble right now. Please try again in a moment.",
+          text: detail,
           timestamp: new Date(),
           animate: true,
         };
