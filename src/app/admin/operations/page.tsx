@@ -86,8 +86,8 @@ export default function OperationsDashboardPage() {
     return () => clearInterval(timer);
   }, [load]);
 
-  const latest = days[0] || {};
-  const previous = days[1] || {};
+  const latest = useMemo(() => days[0] || {}, [days]);
+  const previous = useMemo(() => days[1] || {}, [days]);
   const metrics = useMemo(
     () => Object.entries(latest).filter(([key, value]) => key !== "date" && typeof value === "number") as Array<[string, number]>,
     [latest],
