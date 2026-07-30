@@ -1,6 +1,12 @@
 "use client";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import {
+  getLegacySupabaseStorageKey,
+  getOrCreateTabId,
+  getTabAuthStorageKey,
+  migrateLegacyAuthSession,
+} from "./tabAuthStorage";
 
 let browserClient: SupabaseClient | null = null;
 
@@ -17,8 +23,22 @@ export function getSupabaseBrowserClient(): SupabaseClient {
   }
 
   if (!browserClient) {
+    const tabId = getOrCreateTabId(window, () => crypto.randomUUID());
+    const storageKey = getTabAuthStorageKey(tabId);
+    migrateLegacyAuthSession(
+      window.localStorage,
+      window.sessionStorage,
+      getLegacySupabaseStorageKey(url),
+      storageKey,
+    );
     browserClient = createClient(url, publishableKey, {
-      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        storage: window.sessionStorage,
+        storageKey,
+      },
     });
   }
   return browserClient;

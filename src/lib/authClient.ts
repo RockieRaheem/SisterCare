@@ -23,8 +23,12 @@ function toUser(session: Session | null): SisterCareAuthUser | null {
     email: source.email ?? null,
     displayName: (source.user_metadata.full_name as string | undefined) ?? null,
     photoURL: (source.user_metadata.avatar_url as string | undefined) ?? null,
-    getIdToken: async () => {
-      const { data } = await getSupabaseBrowserClient().auth.getSession();
+    getIdToken: async (forceRefresh = false) => {
+      const client = getSupabaseBrowserClient();
+      const { data, error } = forceRefresh
+        ? await client.auth.refreshSession()
+        : await client.auth.getSession();
+      if (error) throw error;
       if (!data.session?.access_token) throw new Error("Authentication required");
       return data.session.access_token;
     },
@@ -105,9 +109,26 @@ class SupabaseAuthFacade {
   }
 
   async signOut() {
-    const { error } = await getSupabaseBrowserClient().auth.signOut();
+    const { error } = await getSupabaseBrowserClient().auth.signOut({
+      scope: "local",
+    });
     if (error) throw error;
     await this.notify(null);
+  }
+
+  async sendPasswordResetEmail(email: string) {
+    const { error } = await getSupabaseBrowserClient().auth.resetPasswordForEmail(
+      email.trim().toLowerCase(),
+      { redirectTo: `${window.location.origin}/auth/reset-password` },
+    );
+    if (error) throw error;
+  }
+
+  async updatePassword(password: string) {
+    const { error } = await getSupabaseBrowserClient().auth.updateUser({
+      password,
+    });
+    if (error) throw error;
   }
 }
 

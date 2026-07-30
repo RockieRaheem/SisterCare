@@ -9,34 +9,10 @@ import Button from "@/components/ui/Button";
 import AuthShell from "@/components/layout/AuthShell";
 import { resolveSignedInWorkspace } from "@/lib/workspaceClient";
 import { isOAuthWorkspaceReturn } from "@/lib/workspaceRouting";
+import { getLoginErrorMessage } from "@/lib/authErrors";
 
 // Email validation regex
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-const getLoginErrorMessage = (errorCode: string, providerMessage?: string): string => {
-  const errorMessages: Record<string, string> = {
-    "auth/invalid-email": "Please enter a valid email address.",
-    "auth/user-disabled":
-      "This account has been disabled. Please contact support.",
-    "auth/user-not-found":
-      "No account found with this email. Please sign up first.",
-    "auth/wrong-password": "Incorrect password. Please try again.",
-    "auth/too-many-requests":
-      "Too many failed attempts. Please try again later.",
-    "auth/network-request-failed":
-      "Network error. Please check your internet connection.",
-    "auth/invalid-credential": "Invalid email or password. Please try again.",
-    "invalid_credentials": "Invalid email or password. Please try again.",
-    "email_not_confirmed": "Please confirm your email before signing in.",
-    "signup_disabled": "Account registration is currently disabled.",
-  };
-  return (
-    errorMessages[errorCode] ||
-    (providerMessage && providerMessage.length < 180
-      ? providerMessage
-      : "Failed to sign in. Please check your credentials.")
-  );
-};
 
 export default function LoginPage() {
   const [loginIntent, setLoginIntent] = useState<"member" | "counsellor">(
