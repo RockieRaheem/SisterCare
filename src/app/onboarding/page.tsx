@@ -1,17 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { auth } from "@/lib/authClient";
+import { authenticatedFetch } from "@/lib/authenticatedFetch";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
-import { completeOnboarding, updateUserProfile } from "@/lib/dataClient";
-import {
-  calculateNextPeriod,
-  getCurrentPhase,
-  schedulePeriodReminders,
-} from "@/lib/dataClient";
+import { calculateNextPeriod } from "@/lib/dataClient";
 
 type OnboardingStep = "welcome" | "name" | "cycle" | "reminders" | "complete";
 
@@ -31,6 +27,10 @@ export default function OnboardingPage() {
   const [reminderDays, setReminderDays] = useState(3);
 
   const [skipping, setSkipping] = useState(false);
+  const completionStartedRef = useRef(false);
+  const editingExistingProfile =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("mode") === "edit";
 
   useEffect(() => {
     if (!loading && !user) {
@@ -44,10 +44,42 @@ export default function OnboardingPage() {
     }
 
     // If already completed onboarding, redirect to dashboard
-    if (userProfile?.onboardingCompleted) {
-      router.push("/dashboard");
+    if (
+      userProfile?.onboardingCompleted &&
+      !editingExistingProfile &&
+      !completionStartedRef.current
+    ) {
+      router.replace("/dashboard");
     }
-  }, [user, loading, userProfile, router]);
+  }, [user, loading, userProfile, router, editingExistingProfile]);
+
+  useEffect(() => {
+    if (!editingExistingProfile || !userProfile) return;
+    setDisplayName(userProfile.displayName || "");
+    if (userProfile.cycleData) {
+      setLastPeriodDate(
+        userProfile.cycleData.lastPeriodDate.toISOString().slice(0, 10),
+      );
+      setCycleLength(userProfile.cycleData.cycleLength);
+      setPeriodLength(userProfile.cycleData.periodLength);
+      setReminderDays(userProfile.preferences?.reminderDaysBefore || 3);
+    }
+  }, [editingExistingProfile, userProfile]);
+
+  const saveOnboarding = async (body: Record<string, unknown>) => {
+    const response = await authenticatedFetch("/api/profile/onboarding", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const result = await response.json().catch(() => null);
+    if (!response.ok || result?.success === false) {
+      throw new Error(
+        result?.error || "We could not save your profile. Please retry.",
+      );
+    }
+    await refreshProfile();
+  };
 
   // A verified professional must never fall through into the member journey,
   // including when they paste the onboarding URL directly.
@@ -67,16 +99,17 @@ export default function OnboardingPage() {
     setSkipping(true);
     setError("");
     try {
-      if (user) {
-        await updateUserProfile(user.uid, { onboardingCompleted: true });
-        await refreshProfile();
-      }
-    } catch (skipError) {
-      console.warn("Could not persist skipped onboarding:", skipError);
-      // Navigation remains available when a temporary network issue prevents
-      // persistence; the user can return and complete onboarding later.
-    } finally {
+      if (!user) throw new Error("Please sign in again to continue.");
+      await saveOnboarding({ mode: "skip" });
       router.replace("/dashboard");
+    } catch (skipError) {
+      setError(
+        skipError instanceof Error
+          ? skipError.message
+          : "We could not save your choice. Please retry.",
+      );
+    } finally {
+      setSkipping(false);
     }
   };
 
@@ -111,45 +144,24 @@ export default function OnboardingPage() {
     setError("");
 
     try {
-      // Save display name
-      if (displayName) {
-        await updateUserProfile(user.uid, { displayName });
-      }
-
-      // Save cycle data and complete onboarding
-      if (lastPeriodDate) {
-        const lastDate = new Date(lastPeriodDate);
-        await completeOnboarding(user.uid, lastDate, cycleLength, periodLength);
-
-        // Schedule reminders
-        const nextPeriod = calculateNextPeriod(lastDate, cycleLength);
-        await schedulePeriodReminders(user.uid, nextPeriod, reminderDays);
-      }
-
-      // Refresh profile data
-      await refreshProfile();
-
-      // Move to completion step
+      completionStartedRef.current = true;
+      await saveOnboarding({
+        mode: "complete",
+        displayName,
+        lastPeriodDate,
+        cycleLength,
+        periodLength,
+        reminderDays,
+      });
       goNext();
     } catch (err: unknown) {
-      const supabaseError = err as { code?: string; message?: string };
       console.error("Error completing onboarding:", err);
-
-      // Check if it's a permission error
-      const isPermissionError =
-        supabaseError.message?.includes("permission") ||
-        supabaseError.code === "permission-denied";
-
-      if (isPermissionError) {
-        // Still allow user to continue even without saving to Supabase
-        setError("Could not save to cloud. Your data will be stored locally.");
-        // Move to completion step anyway
-        setTimeout(() => {
-          goNext();
-        }, 1500);
-      } else {
-        setError("Something went wrong. Please try again.");
-      }
+      completionStartedRef.current = false;
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Something went wrong. Please try again.",
+      );
     } finally {
       setSaving(false);
     }

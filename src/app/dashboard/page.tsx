@@ -737,7 +737,7 @@ export default function DashboardPage() {
                     <p className="text-amber-700 dark:text-amber-400 text-sm mb-4">
                       {t.dashboard.completeProfileDesc}
                     </p>
-                    <Link href="/onboarding">
+                    <Link href="/onboarding?mode=edit">
                       <Button>{t.dashboard.completeSetup}</Button>
                     </Link>
                   </div>

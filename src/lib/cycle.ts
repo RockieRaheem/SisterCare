@@ -28,13 +28,15 @@ export interface CycleInfo {
 
 function startOfDay(date: Date): Date {
   const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
+  // Health dates are calendar dates, not local instants. UTC normalization
+  // keeps browser calculations identical to Vercel regardless of timezone.
+  d.setUTCHours(0, 0, 0, 0);
   return d;
 }
 
 function addDays(date: Date, days: number): Date {
   const d = new Date(date);
-  d.setDate(d.getDate() + days);
+  d.setUTCDate(d.getUTCDate() + days);
   return d;
 }
 
