@@ -103,6 +103,7 @@ export default function SettingsPage() {
         pushNotifications,
         reminderDaysBefore: reminderDays,
         theme,
+        language,
       };
 
       await updateUserPreferences(user.uid, preferences);

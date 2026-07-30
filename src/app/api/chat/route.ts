@@ -46,6 +46,7 @@ import {
   buildLocalizedReasoningMessage,
   buildTranslationPrompt,
 } from "@/lib/localization";
+import { resolveChatLanguage } from "@/lib/chatLanguage";
 import {
   ChatPipelineError,
   evaluateHandoffPolicy,
@@ -809,15 +810,17 @@ async function postChat(request: NextRequest) {
     const clientLanguageCode = clientLanguage
       ? toSupportedLanguageCode(clientLanguage)
       : undefined;
-    const inMessageLanguage = toSupportedLanguageCode(
-      inferRequestedLanguage(trimmedMessage),
-    );
+    const requestedLanguageName = inferRequestedLanguage(trimmedMessage);
+    const inMessageLanguage = requestedLanguageName
+      ? toSupportedLanguageCode(requestedLanguageName)
+      : undefined;
     const inferredHealthLanguage = inferLanguageFromHealthMessage(trimmedMessage);
-    let userLanguage: SupportedLanguageCode =
-      inferredHealthLanguage || clientLanguageCode || storedLanguage || "eng";
-    if (inMessageLanguage !== "eng") {
-      userLanguage = inMessageLanguage;
-    }
+    let userLanguage = resolveChatLanguage({
+      requestedLanguage: inMessageLanguage,
+      clientLanguage: clientLanguageCode,
+      storedLanguage,
+      inferredLanguage: inferredHealthLanguage,
+    });
     let translationApplied = userLanguage !== "eng";
     let messageForAgent = trimmedMessage;
 
@@ -896,7 +899,7 @@ async function postChat(request: NextRequest) {
       });
     }
 
-    if (!clientLanguageCode && !storedLanguage) {
+    if (!clientLanguageCode && !storedLanguage && !inMessageLanguage) {
       try {
         const detected = await detectLanguage(trimmedMessage);
         userLanguage = detected.language;
@@ -1006,7 +1009,7 @@ async function postChat(request: NextRequest) {
     if (translationApplied) {
       actionStatuses.push({
         key: "language",
-        label: `Detected language: ${SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage}`,
+        label: `Reply language: ${SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage}`,
         state: "done",
       });
     }

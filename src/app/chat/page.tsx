@@ -14,6 +14,7 @@ import {
   updateConversationTitle,
   updateConversationPreview,
   getUserProfile,
+  updateUserPreferences,
 } from "@/lib/dataClient";
 import {
   loadLocalConversations,
@@ -296,6 +297,7 @@ export default function ChatPage() {
   const [counsellorProfile, setCounsellorProfile] = useState<ChatApiResponse["counsellorProfile"] | null>(null);
   const [activeSessionCard, setActiveSessionCard] = useState<ChatApiResponse["session"] | null>(null);
   const [userLanguage, setUserLanguage] = useState<SupportedLanguageCode>("eng");
+  const languageInitializedForUserRef = useRef<string | null>(null);
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const [freshChatId, setFreshChatId] = useState<string | null>(null);
   const [audioElements, setAudioElements] = useState<Record<string, HTMLAudioElement>>({});
@@ -368,13 +370,35 @@ export default function ChatPage() {
   }, []);
 
   useEffect(() => {
-    if (userProfile?.preferences?.language) {
-      const preferred = userProfile.preferences.language.toLowerCase();
-      if (preferred in SUPPORTED_LANGUAGES) {
-        setUserLanguage(preferred as SupportedLanguageCode);
-      }
+    if (!user) {
+      languageInitializedForUserRef.current = null;
+      return;
     }
-  }, [userProfile]);
+    if (
+      userProfile?.preferences?.language &&
+      languageInitializedForUserRef.current !== user.uid
+    ) {
+      const preferred =
+        userProfile.preferences.language.toLowerCase() === "lg" ? "lug" : "eng";
+      setUserLanguage(preferred);
+      languageInitializedForUserRef.current = user.uid;
+    }
+  }, [user, userProfile]);
+
+  const changeReplyLanguage = useCallback(
+    (language: SupportedLanguageCode) => {
+      setUserLanguage(language);
+      if (!user) return;
+      languageInitializedForUserRef.current = user.uid;
+      void updateUserPreferences(user.uid, {
+        language: language === "lug" ? "lg" : "en",
+      }).catch((languageError) => {
+        console.warn("Could not persist reply language:", languageError);
+        setError("Your reply language changed for this chat, but could not be saved to your profile.");
+      });
+    },
+    [user],
+  );
 
   const toggleVoiceInput = useCallback(() => {
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -1038,10 +1062,6 @@ export default function ChatPage() {
         if (data.session) {
           setActiveSessionCard(data.session);
         }
-        if (data.language) {
-          setUserLanguage(data.language as SupportedLanguageCode);
-        }
-
         if (data.counsellorProfile?.profileUrl && typeof window !== "undefined") {
           router.push(data.counsellorProfile.profileUrl);
         }
@@ -2024,7 +2044,7 @@ export default function ChatPage() {
                   <div className="relative shrink-0">
                     <select
                       value={userLanguage}
-                      onChange={(e) => setUserLanguage(e.target.value as SupportedLanguageCode)}
+                      onChange={(e) => changeReplyLanguage(e.target.value as SupportedLanguageCode)}
                       title="Reply language"
                       className="h-9 w-9 cursor-pointer appearance-none rounded-xl bg-transparent text-center text-xs text-text-secondary transition-colors hover:bg-black/[0.04] focus:outline-none focus:ring-1 focus:ring-primary/40 dark:text-gray-400 dark:hover:bg-white/10 sm:h-10 sm:w-10"
                     >
