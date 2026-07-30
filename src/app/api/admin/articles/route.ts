@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest, getAuthorizationFailure, isAuthEnforced } from "@/lib/serverAuth";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { withApiObservability } from "@/lib/observability";
+import {
+  hasRequiredPublicationAttestations,
+  PUBLICATION_ATTESTATIONS,
+} from "@/lib/adminOperations";
 
 async function requireAdmin(request: NextRequest) {
   if (!isAuthEnforced()) return null;
@@ -38,6 +42,7 @@ async function getArticles(request: NextRequest) {
     content: row.content,
     category: row.category,
     tags: [],
+    submittedAt: row.created_at,
     authorName: professional.get(row.author_id)?.name || names.get(row.author_id) || "SisterCare counsellor",
     authorTitle: professional.get(row.author_id)?.title || "Counsellor",
   }));
@@ -48,9 +53,22 @@ async function patchArticle(request: NextRequest) {
   const auth = await requireAdmin(request);
   if (!auth) return NextResponse.json({ success: false, error: "Article review is unavailable" }, { status: 503 });
   if (!auth.ok) return NextResponse.json({ success: false, error: auth.failure.error }, { status: auth.failure.status });
-  const body = await request.json().catch(() => null) as { articleId?: string; decision?: string } | null;
+  const body = await request.json().catch(() => null) as {
+    articleId?: string;
+    decision?: string;
+    attestations?: string[];
+  } | null;
   if (!body?.articleId || !["publish", "reject"].includes(body.decision || "")) {
     return NextResponse.json({ success: false, error: "Invalid review decision" }, { status: 400 });
+  }
+  if (
+    body.decision === "publish" &&
+    !hasRequiredPublicationAttestations(body.attestations)
+  ) {
+    return NextResponse.json(
+      { success: false, error: "Complete every publication review check before publishing" },
+      { status: 400 },
+    );
   }
   const db = getSupabaseAdmin();
   const now = new Date().toISOString();
@@ -62,6 +80,19 @@ async function patchArticle(request: NextRequest) {
   }).eq("id", body.articleId).eq("status", "pending_review").select("id").maybeSingle();
   if (error) return NextResponse.json({ success: false, error: error.message }, { status: 503 });
   if (!data) return NextResponse.json({ success: false, error: "Article is not awaiting review" }, { status: 409 });
+  await db.from("audit_events").insert({
+    actor_id: auth.auth.uid,
+    event_type:
+      body.decision === "publish"
+        ? "library_article.published"
+        : "library_article.rejected",
+    subject_id: body.articleId,
+    metadata: {
+      decision: body.decision,
+      attestations:
+        body.decision === "publish" ? PUBLICATION_ATTESTATIONS : [],
+    },
+  });
   return NextResponse.json({ success: true });
 }
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest, getAuthorizationFailure, isAuthEnforced } from "@/lib/serverAuth";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import { requiresCounsellorRestrictionReason } from "@/lib/adminOperations";
 
 const VERIFICATION_STATES = ["pending", "verified", "suspended", "expired"] as const;
 
@@ -34,9 +35,22 @@ export async function PATCH(
   }
   const { id } = await params;
   const db = getSupabaseAdmin();
-  const { data: existing, error: readError } = await db.from("counsellors").select("profile").eq("id", id).maybeSingle();
+  const { data: existing, error: readError } = await db.from("counsellors").select("profile, verification_status").eq("id", id).maybeSingle();
   if (readError) return NextResponse.json({ success: false, error: readError.message }, { status: 503 });
   if (!existing) return NextResponse.json({ success: false, error: "Counsellor not found" }, { status: 404 });
+  const operationsNote =
+    typeof body.operationsNote === "string" ? body.operationsNote.trim().slice(0, 500) : "";
+  if (
+    requiresCounsellorRestrictionReason(
+      existing.verification_status,
+      verificationStatus,
+    ) && operationsNote.length < 10
+  ) {
+    return NextResponse.json(
+      { success: false, error: "Add a clear reason before restricting this counsellor" },
+      { status: 400 },
+    );
+  }
   const profile = {
     ...((existing.profile as Record<string, unknown>) || {}),
     credentialExpiresAt: credentialExpiresAt.toISOString(),
@@ -60,7 +74,13 @@ export async function PATCH(
     actor_id: auth.uid,
     event_type: "counsellor.verification_changed",
     subject_id: id,
-    metadata: { verificationStatus },
+    metadata: {
+      verificationStatus,
+      previousVerificationStatus: existing.verification_status,
+      operationsNote: operationsNote || undefined,
+      acceptingNewSessions: verificationStatus === "verified" && body.acceptingNewSessions === true,
+      maxConcurrentSessions,
+    },
   });
   return NextResponse.json({ success: true });
 }

@@ -5,7 +5,12 @@ import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { withApiObservability } from "@/lib/observability";
 
 type ApplicationPayload = {
-  profile?: { name?: string; title?: string };
+  profile?: {
+    name?: string;
+    title?: string;
+    languages?: string[];
+    specializations?: string[];
+  };
   legalName?: string;
   registrationNumber?: string;
   credentialType?: string;
@@ -25,7 +30,7 @@ async function getCounsellors(request: NextRequest) {
   const db = getSupabaseAdmin();
   const [liveCounsellors, applicationsResult] = await Promise.all([
     getLiveCounsellors(),
-    db.from("counsellor_applications").select("counsellor_id, application").eq("status", "pending").order("submitted_at", { ascending: true }),
+    db.from("counsellor_applications").select("counsellor_id, application, submitted_at").eq("status", "pending").order("submitted_at", { ascending: true }),
   ]);
   if (applicationsResult.error) {
     return NextResponse.json({ success: false, error: applicationsResult.error.message }, { status: 503 });
@@ -58,6 +63,9 @@ async function getCounsellors(request: NextRequest) {
       credentialType: value.credentialType || "",
       credentialExpiresAt: value.credentialExpiresAt || null,
       documentReferences: Array.isArray(value.documentReferences) ? value.documentReferences : [],
+      languages: Array.isArray(value.profile?.languages) ? value.profile.languages : [],
+      specializations: Array.isArray(value.profile?.specializations) ? value.profile.specializations : [],
+      submittedAt: row.submitted_at,
     };
   });
   return NextResponse.json({ success: true, data: { counsellors, applications } });
