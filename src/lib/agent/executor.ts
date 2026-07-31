@@ -12,11 +12,10 @@
 
 import { AGENT_TOOLS } from "./tools";
 import {
-  searchHealthKnowledge,
   assessSymptomRisk,
   UGANDA_HEALTHCARE_RESOURCES,
-  HEALTH_KNOWLEDGE_BASE,
 } from "./knowledge";
+import { searchReviewedKnowledge } from "../server/reviewedKnowledge";
 // Server data layer: admin-SDK writes that actually persist under security
 // rules (the executor only ever runs server-side, inside /api/chat).
 import {
@@ -271,7 +270,7 @@ async function executeTool(
         const riskAssessment = assessSymptomRisk(symptoms);
 
         // Get relevant health info
-        const healthInfo = searchHealthKnowledge(symptoms.join(" "));
+        const healthInfo = await searchReviewedKnowledge(symptoms.join(" "));
 
         return {
           toolName: name,
@@ -363,7 +362,7 @@ async function executeTool(
         const query = args.query as string;
         const category = args.category as string;
 
-        const results = searchHealthKnowledge(query, category);
+        const results = await searchReviewedKnowledge(query, category);
 
         return {
           toolName: name,
@@ -373,9 +372,17 @@ async function executeTool(
               title: r.title,
               category: r.category,
               content: r.content,
-              severity: r.severity,
+              review: {
+                reviewedAt: r.reviewedAt,
+                publishedAt: r.publishedAt,
+              },
+              sourceHref: r.sourceHref,
             })),
             count: results.length,
+            governance:
+              results.length > 0
+                ? "Only clinically reviewed SisterCare publications were returned."
+                : "No reviewed SisterCare publication matched this question. Do not invent or imply a source.",
           },
           success: true,
         };

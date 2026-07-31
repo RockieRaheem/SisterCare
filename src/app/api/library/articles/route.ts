@@ -5,7 +5,14 @@ import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 export async function GET() {
   try {
     const db = getSupabaseAdmin();
-    const { data, error } = await db.from("library_articles").select("*").eq("status", "published").order("published_at", { ascending: false });
+    const { data, error } = await db
+      .from("library_articles")
+      .select("*")
+      .eq("status", "published")
+      .not("reviewed_by", "is", null)
+      .not("reviewed_at", "is", null)
+      .not("published_at", "is", null)
+      .order("published_at", { ascending: false });
     if (error) throw error;
     const authorIds = [...new Set((data || []).map((row) => row.author_id))];
     const { data: counsellors, error: counsellorError } = authorIds.length
@@ -25,6 +32,7 @@ export async function GET() {
       authorName: authors.get(row.author_id)?.name || "SisterCare counsellor",
       authorTitle: authors.get(row.author_id)?.title || "Counsellor",
       status: row.status,
+      reviewedAt: row.reviewed_at,
       publishedAt: row.published_at,
       updatedAt: row.updated_at,
     }));
