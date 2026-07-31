@@ -6,6 +6,7 @@ import Header from "@/components/layout/Header";
 import { useAuth } from "@/context/AuthContext";
 import { auth } from "@/lib/authClient";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
+import { authenticatedFetch } from "@/lib/authenticatedFetch";
 import { CounsellingSession, SessionState } from "@/types";
 import {
   getSessionDetail,
@@ -36,6 +37,11 @@ export default function SessionRoomPage() {
   const [feedbackRating, setFeedbackRating] = useState(0);
   const [feedbackComment, setFeedbackComment] = useState("");
   const [feedbackSent, setFeedbackSent] = useState(false);
+  const [audioBusy, setAudioBusy] = useState(false);
+  const [audioJoinUrl, setAudioJoinUrl] = useState<string | null>(null);
+  const [audioState, setAudioState] = useState<
+    "idle" | "connecting" | "active" | "failed"
+  >("idle");
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const uid = auth.currentUser?.uid;
@@ -131,6 +137,90 @@ export default function SessionRoomPage() {
     }
   };
 
+  const audioAction = useCallback(
+    async (action: "connected" | "end" | "fail", extra?: Record<string, unknown>) => {
+      const response = await authenticatedFetch(`/api/sessions/${sessionId}/audio`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, ...(extra || {}) }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Audio action failed.");
+      return payload;
+    },
+    [sessionId],
+  );
+
+  const startAudio = async () => {
+    setAudioBusy(true);
+    setError(null);
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error("This browser does not support private in-app audio.");
+      }
+      const permission = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: false,
+      });
+      permission.getTracks().forEach((track) => track.stop());
+      const response = await authenticatedFetch(`/api/sessions/${sessionId}/audio`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "join", microphoneConsent: true }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(
+          payload.error ||
+            "Audio could not connect. Continue safely in this text conversation.",
+        );
+      }
+      setAudioJoinUrl(payload.data.joinUrl);
+      setAudioState("connecting");
+    } catch (reason) {
+      setAudioState("failed");
+      setError(
+        reason instanceof Error
+          ? `${reason.message} You can continue by text here.`
+          : "Audio could not connect. Continue safely by text here.",
+      );
+    } finally {
+      setAudioBusy(false);
+    }
+  };
+
+  const endAudio = useCallback(async () => {
+    try {
+      await audioAction("end");
+    } catch {}
+    setAudioJoinUrl(null);
+    setAudioState("idle");
+  }, [audioAction]);
+
+  useEffect(() => {
+    if (!audioJoinUrl) return;
+    const trustedOrigin = new URL(audioJoinUrl).origin;
+    const receiveProviderState = (event: MessageEvent) => {
+      if (event.origin !== trustedOrigin || !event.data || typeof event.data !== "object") return;
+      if (event.data.type === "sistercare.audio.connected") {
+        setAudioState("active");
+        void audioAction("connected").catch(() => {
+          setAudioState("failed");
+          setError("Audio state could not be verified. Continue by text.");
+        });
+      }
+      if (event.data.type === "sistercare.audio.ended") void endAudio();
+      if (event.data.type === "sistercare.audio.failed") {
+        setAudioState("failed");
+        setAudioJoinUrl(null);
+        setError("The audio connection ended unexpectedly. Continue by text here.");
+        void audioAction("fail", { failureCode: "provider_connection_failed" }).catch(() => {});
+      }
+    };
+    window.addEventListener("message", receiveProviderState);
+    return () => window.removeEventListener("message", receiveProviderState);
+  }, [audioAction, audioJoinUrl, endAudio]);
+
   if (error && !session) {
     return (
       <Shell>
@@ -171,6 +261,15 @@ export default function SessionRoomPage() {
         </div>
         {state === "active" && (
           <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={startAudio}
+              disabled={audioBusy || Boolean(audioJoinUrl)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-base" aria-hidden="true">call</span>
+              {audioBusy ? "Preparing…" : audioState === "connecting" ? "Connecting…" : "Private audio"}
+            </button>
             {isCounsellor && (
               <button
                 onClick={() => doTransition("escalate")}
@@ -193,6 +292,33 @@ export default function SessionRoomPage() {
         <div className="mb-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
           {error}
         </div>
+      )}
+
+      {audioJoinUrl && (
+        <section className="mb-4 overflow-hidden rounded-2xl border border-primary/20 bg-slate-950 text-white">
+          <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+            <div>
+              <p className="text-sm font-bold">
+                {audioState === "active" ? "Private audio connected" : "Connecting private audio"}
+              </p>
+              <p className="text-xs text-white/65">Audio only · phone numbers hidden · recording off</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void endAudio()}
+              className="min-h-10 rounded-xl bg-red-600 px-4 text-xs font-bold text-white"
+            >
+              End call
+            </button>
+          </div>
+          <iframe
+            src={audioJoinUrl}
+            title="Private SisterCare audio session"
+            allow="microphone"
+            className="h-56 w-full border-0 bg-slate-950"
+            referrerPolicy="no-referrer"
+          />
+        </section>
       )}
 
       {/* Messages */}
