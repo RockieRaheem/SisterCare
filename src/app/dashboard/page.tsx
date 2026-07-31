@@ -716,9 +716,9 @@ export default function DashboardPage() {
                     ))}
                   </div>
                   <div className="mt-6">
-                    <Link href="/profile">
+                    <Link href="/wellbeing">
                       <Button variant="secondary" fullWidth>
-                        {t.dashboard.logDetailedSymptoms}
+                        Private wellbeing check-in
                       </Button>
                     </Link>
                   </div>

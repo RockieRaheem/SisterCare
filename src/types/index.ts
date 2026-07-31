@@ -228,6 +228,16 @@ export interface Counsellor {
   createdAt: Date;
 }
 
+export interface WellbeingCheckIn {
+  id: string;
+  mood: number;
+  stress: number;
+  sleep: number;
+  energy: number;
+  note?: string;
+  createdAt: Date;
+}
+
 // ============================================
 // COUNSELLING SESSION TYPES (Phase 2 — ARCHITECTURE_V2 §4.4)
 // ============================================
