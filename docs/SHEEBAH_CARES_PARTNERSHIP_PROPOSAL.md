@@ -1,11 +1,17 @@
 # Partnership Proposal
 
-## Transforming Sheebah Cares into an always-on digital care platform for women and girls
+## Proposal to rebrand SisterCare as Sheebah Cares and build an always-on digital care platform for women and girls
 
-**Proposed by:** Kamwanga Raheem, Founder, SisterCare  
-**Proposed to:** Sheebah Karungi and the Sheebah Cares leadership team  
-**Proposed brand:** **Sheebah Cares — powered by SisterCare**  
-**Date:** 30 July 2026  
+**Proposed by:** Kamwanga Raheem, Founder, SisterCare
+
+**Proposed to:** Sheebah Karungi and the Sheebah Cares leadership team
+
+**Proposed public brand:** **Sheebah Cares**
+
+**Transition identity:** **Sheebah Cares — powered by SisterCare**
+
+**Date:** 31 July 2026
+
 **Status:** Confidential discussion draft
 
 ---
@@ -18,11 +24,19 @@ and subsequent menstrual-health campaigns demonstrated the potential of
 combining a trusted public figure, accessible products, education and community
 partnerships.
 
-SisterCare proposes the next stage of that mission: an always-available digital
-care platform through which women and girls can privately understand their
-cycles, receive pregnancy support, access clinically reviewed information,
-communicate in familiar languages and connect with verified human counsellors
-when they need more than digital guidance.
+I began building SisterCare independently as an always-available digital care
+platform through which women and girls can privately understand their cycles,
+receive pregnancy support, access clinically reviewed information, communicate
+in familiar languages and connect with verified human counsellors when they
+need more than digital guidance.
+
+When I had the opportunity to learn about Sheebah Cares and the purpose behind
+it, the initiative immediately captured my attention. I recognised a strong
+alignment between the platform I had already been developing and Sheebah's
+commitment to menstrual dignity, women's empowerment and practical community
+support. That discovery led me to propose that SisterCare should not continue
+only as an independent technology brand: it should be considered for adoption
+and rebranding as **Sheebah Cares**.
 
 Under the proposed partnership, SisterCare would be adapted and introduced as
 **Sheebah Cares — powered by SisterCare**. Following a successful pilot and
@@ -32,7 +46,18 @@ the parties could transition the platform to the full **Sheebah Cares** identity
 This is more than a name change. It is an opportunity to transform Sheebah
 Cares from campaign-based engagement into a measurable, trusted and scalable
 care ecosystem that remains available between campaigns, product distributions
-and public appearances.
+and public appearances. I believe the Sheebah Cares name, mission and public
+trust can give the application a much stronger route to market than SisterCare
+could achieve alone, while the working SisterCare technology can give Sheebah
+Cares a credible digital service to offer its community.
+
+The proposed business model is commercially sustainable: essential safety
+information and core health tools remain accessible, while advanced AI-powered
+assistant capabilities are offered through premium membership and professional
+counsellor sessions generate session revenue. The parties would agree a
+transparent revenue-share structure that fairly compensates counsellors,
+supports safe platform operations and creates recurring income for the
+Sheebah Cares ecosystem.
 
 ## The opportunity
 
@@ -57,6 +82,13 @@ Today, a pad-distribution or awareness campaign may reach a participant once.
 The proposed platform creates a continuing relationship: before her next
 period, during symptoms, when she has a pregnancy concern, when she needs
 reliable information, or when she wants to speak with a trained person.
+
+Commercially, the Sheebah Cares brand can improve recognition, trust and user
+acquisition, particularly among people who already understand Sheebah's work.
+The platform gives that attention somewhere valuable to continue: a user can
+join, return for ongoing support, subscribe for advanced assistance or book a
+professional counselling session. This creates a recurring service relationship
+rather than relying only on one-time campaigns or application downloads.
 
 ## The proposed solution
 
@@ -166,6 +198,23 @@ The platform converts advocacy into lasting infrastructure. Women and girls can
 receive support even when Sheebah is not personally present, while her mission
 and voice remain central to the experience.
 
+### 8. It creates recurring and diversified income
+
+The platform can earn revenue through premium AI-assistant subscriptions
+and paid professional counselling sessions instead of depending entirely on
+donations or advertising. Institutional partnerships and sponsored access can
+extend the service to users who cannot afford to pay while preserving a
+commercial path for long-term operation.
+
+### 9. It gives the application a stronger route to market
+
+SisterCare contributes a developed product and operational foundation. Sheebah
+Cares contributes a mission-led identity, public relevance and the potential to
+reach communities at meaningful scale. Bringing the two together can reduce the
+time and cost required to build trust in a new health platform, provided the
+brand is used with Sheebah's explicit approval and the service consistently
+meets the standards associated with her name.
+
 ## Benefits to women and girls
 
 The partnership would give users:
@@ -185,6 +234,12 @@ disability. It should never use language that infantilises adult women or makes
 assumptions about marital status, pregnancy intentions or sexual activity.
 
 ## Brand and rebranding proposal
+
+The intended destination of this proposal is a complete public rebrand from
+SisterCare to **Sheebah Cares**. The co-branded identity below is proposed only
+as a responsible transition during the controlled pilot, allowing both parties
+to validate the working relationship, user response and safety of the service
+before completing the change.
 
 ### Recommended first-stage identity
 
@@ -305,10 +360,73 @@ be treated as proof of improved health outcomes.
 - pilot design, evaluation and public reporting;
 - crisis communication and reputation management.
 
-## Commercial and sustainability framework
+## How the platform will generate income
 
-The final budget should be developed after a joint discovery workshop and
-should separate:
+The central commercial model would have two primary revenue engines:
+
+### 1. Premium AI-powered assistant access
+
+Advanced assistant capabilities would be offered through an affordable premium
+membership. Premium access may include:
+
+- continuous personalised conversations using permitted account history;
+- advanced cycle and pregnancy planning support;
+- assistant-led updates to supported areas of the member's account;
+- proactive, personalised reminders and preparation guidance;
+- enhanced multilingual and voice experiences as they become clinically and
+  technically approved;
+- priority access to new digital support features.
+
+Free access should continue to include account controls, core tracking,
+clinically reviewed public education, urgent safety triage and emergency or
+crisis direction. A person must never be denied essential safety information
+because she cannot pay.
+
+Premium membership could be sold monthly or annually, with mobile-money and
+other locally appropriate payment options considered during implementation.
+Sponsored premium access could be purchased by schools, employers, foundations
+or campaign partners for selected communities.
+
+### 2. Paid counsellor sessions
+
+Members would be able to book or request sessions with verified counsellors at
+a clearly displayed price. Each completed paid session would generate:
+
+- a professional payout to the counsellor;
+- a platform service fee for matching, payments, security, support and
+  operations;
+- an agreed Sheebah Cares or partnership revenue share;
+- any applicable taxes or regulated payment costs.
+
+Exact percentages should be negotiated after modelling counsellor rates,
+payment costs, taxes, cancellation policies and the minimum margin required to
+operate the service safely. Counsellors should see their expected payout before
+accepting paid work, and members should see the full price before confirming.
+
+The system may also reserve sponsored or subsidised sessions for vulnerable
+users. Urgent safety escalation must not be falsely presented as a paid
+counselling session, and the platform must clearly explain when emergency or
+clinical services outside Sheebah Cares are required.
+
+### Additional revenue opportunities
+
+Once the two primary revenue engines have been validated, the partnership may
+consider:
+
+- institutional packages for employers, universities, schools and NGOs;
+- sponsored memberships or counselling hours;
+- grants for language access, menstrual education or safeguarding programs;
+- carefully governed Holic Pads campaigns, product bundles or member benefits;
+- licensed country or partner deployments after local review.
+
+The platform should not sell identifiable health data, allow advertisers to
+target users using reproductive-health information, or make the quality of
+clinical guidance dependent on a sponsor.
+
+### Costs and financial planning
+
+The final budget and revenue-share agreement should be developed after a joint
+discovery workshop. The financial model should separate:
 
 - one-time branding and implementation;
 - platform hosting and technical operations;
@@ -319,14 +437,11 @@ should separate:
 - monitoring, research and evaluation;
 - future language or country expansion.
 
-Possible sustainable funding can include institutional sponsorship,
-development-partner grants, responsibly structured employer or school
-programs, funded counselling capacity and premium convenience features for
-adults who can pay. Essential safety information and emergency guidance should
-never be placed behind a payment barrier.
-
-Commercial sponsorship must not influence clinical answers or allow sponsors to
-target users using private reproductive-health information.
+Monthly reporting should distinguish gross subscription revenue, counselling
+revenue, counsellor payouts, refunds, payment charges, operating expenditure,
+sponsored access and the distributable partnership share. This prevents
+headline user numbers from hiding whether the service is financially
+sustainable.
 
 ## Essential safeguards
 
@@ -361,9 +476,17 @@ agreement for approval.
 
 ## Closing
 
+I had already begun the work of building SisterCare before discovering Sheebah
+Cares. What captured my attention was how naturally the two ideas fit:
+SisterCare provides the digital infrastructure, while Sheebah Cares provides a
+powerful mission and identity through which the platform can reach and serve
+more women.
+
 Sheebah has already helped bring menstrual dignity into public conversation.
-SisterCare can provide the digital infrastructure needed to make that support
-private, continuous, measurable and connected to accountable human care.
+Rebranding SisterCare as Sheebah Cares can make that support private,
+continuous, measurable and connected to accountable human care, while creating
+a sustainable business through premium AI-assistant access and professional
+counsellor sessions.
 
 Together, we can build Sheebah Cares into more than a campaign or application:
 a trusted care network that listens to women, respects their privacy and helps
