@@ -17,42 +17,42 @@ const LANGUAGES = [
 
 const FEATURES = [
   {
-    icon: "calendar_month",
-    title: "Cycle tracking",
-    text: "Know exactly when your period is coming — even offline. Sister learns your rhythm and reminds you before it matters.",
-  },
-  {
     icon: "chat_bubble",
-    title: "A place to talk",
-    text: "Someone to talk to at 2am who never judges. Share anything — Sister listens, remembers, and truly helps.",
-  },
-  {
-    icon: "psychology",
-    title: "Wellbeing tools",
-    text: "Track your moods, understand your patterns, and get gentle support on the hardest days. You are not alone.",
+    title: "A private first conversation",
+    text: "Ask the question that feels too difficult to say aloud. Sister responds respectfully and helps you choose a safe next step.",
   },
   {
     icon: "support_agent",
-    title: "Counsellor support",
-    text: "When you need a person, Sister connects you to a verified counsellor — privately, in the app, in your language.",
+    title: "Verified human support",
+    text: "Request a private conversation with an eligible counsellor without exposing your identity to them by default.",
+  },
+  {
+    icon: "psychology",
+    title: "Emotional wellbeing",
+    text: "Record mood, stress, sleep, and energy without streaks or judgment, then decide what you want to discuss.",
+  },
+  {
+    icon: "calendar_month",
+    title: "Menstrual support",
+    text: "Track periods and symptoms privately, understand changes, and know when a concern deserves professional attention.",
   },
 ];
 
 const STEPS = [
   {
     icon: "person_add",
-    title: "Create your free account",
-    text: "Under a minute, just an email. No credit card, no real name required.",
+    title: "Create a private account",
+    text: "Begin with the minimum information needed to protect your access. Optional health setup can wait.",
   },
   {
-    icon: "edit_calendar",
-    title: "Tell Sister about your cycle",
-    text: "Your last period and usual length — Sister handles everything else.",
+    icon: "tune",
+    title: "Choose what feels comfortable",
+    text: "Set your language, notification privacy, and what you want SisterCare to remember or share.",
   },
   {
-    icon: "favorite",
-    title: "Start your journey",
-    text: "Chat, track, learn. The more you share, the better Sister supports you.",
+    icon: "forum",
+    title: "Talk or track",
+    text: "Ask Sister privately, request a verified counsellor, or record your menstrual and emotional wellbeing.",
   },
 ];
 
@@ -70,22 +70,15 @@ export default function Home() {
           <div className="mx-auto grid max-w-container items-center gap-10 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-[1.05fr_.95fr] lg:gap-16 lg:px-20 lg:py-28">
             {/* Narrative */}
             <div className="text-center lg:text-left">
-              <span className="hidden">
-                <span className="material-symbols-outlined text-sm">
-                  language
-                </span>
-                Built for Uganda · multilingual · private by design
-              </span>
-
               <h1 className="page-title mb-6 dark:text-white">
-                Support for every part of your health.
+                A private place to ask what feels hard to say.
               </h1>
 
               <p className="mx-auto mb-8 max-w-xl text-lg leading-relaxed text-text-secondary dark:text-gray-400 sm:text-xl lg:mx-0">
-                For every woman who had questions she couldn&apos;t ask and
-                feelings she couldn&apos;t share — Sister listens without
-                judgment, tracks your cycle, and connects you to real
-                counsellors the moment you need one.
+                SisterCare helps girls and women speak freely about
+                menstruation, emotional wellbeing, relationships, and other
+                sensitive concerns without shame. Talk privately, track what
+                matters, or reach a verified counsellor.
               </p>
 
               <div className="mb-10 flex flex-col justify-center gap-3 sm:flex-row lg:justify-start">
@@ -107,7 +100,7 @@ export default function Home() {
               </div>
 
               <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-text-secondary dark:text-gray-400 lg:justify-start">
-                {["Easy to begin", "Available any time", "Privacy controls"].map(
+                {["No judgment", "Member-controlled privacy", "Verified care"].map(
                   (item) => (
                     <span key={item} className="flex items-center gap-1.5">
                       <span className="material-symbols-outlined text-lg text-success">
@@ -134,7 +127,7 @@ export default function Home() {
                     </p>
                     <p className="flex items-center gap-1 text-xs text-success">
                       <span className="h-1.5 w-1.5 rounded-full bg-success" />
-                      Always here for you
+                      Private support space
                     </p>
                   </div>
                   <span className="material-symbols-outlined ml-auto text-text-secondary/60">
@@ -148,9 +141,9 @@ export default function Home() {
                     Sister, nfunye obulumi mu lubuto...
                   </div>
                   <div className="max-w-[85%] rounded-2xl rounded-bl-md bg-primary/5 px-4 py-2.5 text-sm text-text-primary dark:bg-primary/15 dark:text-gray-200">
-                    Nkuwulira nnyo. 💜 You&apos;re on day 26 — cramps are
-                    common before your period. Would you like a gentle remedy,
-                    or shall I check in with you tomorrow?
+                    Nkuwulira. I&apos;m sorry you&apos;re hurting. How severe
+                    is the pain, and do you have heavy bleeding, faintness, or
+                    vomiting? We can work out a safe next step together.
                   </div>
                   {/* Cycle insight card */}
                   <div className="flex items-center gap-3 rounded-xl border border-primary/15 bg-primary/5 p-3 dark:bg-primary/10">
@@ -189,10 +182,10 @@ export default function Home() {
         <section className="border-b border-border-light bg-white dark:border-border-dark dark:bg-card-dark">
           <div className="mx-auto grid max-w-container grid-cols-2 gap-6 px-4 py-8 text-center sm:px-6 md:grid-cols-4 lg:px-20">
             {[
-              ["8", "Ugandan languages"],
-              ["24/7", "Sister is awake"],
-              ["Private", "by design"],
-              ["Verified", "counsellors only"],
+              ["Private", "first conversations"],
+              ["Human", "support when requested"],
+              ["Voice + text", "ways to communicate"],
+              ["Verified", "counsellor network"],
             ].map(([big, small]) => (
               <div key={small}>
                 <p className="text-2xl font-extrabold text-text-primary dark:text-white sm:text-3xl">
@@ -214,11 +207,12 @@ export default function Home() {
           <div className="mx-auto max-w-container">
             <div className="mb-12 text-center lg:mb-16">
               <h2 className="section-title mb-4 dark:text-white">
-                Three Pillars of Care
+                Support built around difficult conversations
               </h2>
               <p className="mx-auto max-w-xl text-lg text-text-secondary dark:text-gray-400">
-                Mental wellness, menstrual health, and human support — one
-                private space that&apos;s always on your side.
+                Start with what you need today. SisterCare keeps conversation,
+                menstrual support, emotional wellbeing, and human care
+                connected without making you disclose more than necessary.
               </p>
             </div>
 
@@ -260,9 +254,10 @@ export default function Home() {
                 <span className="text-primary">your own language</span>
               </h2>
               <p className="mb-6 text-lg leading-relaxed text-text-secondary dark:text-gray-400">
-                Don&apos;t type — just talk. Send a voice note in Luganda and
-                hear Sister answer back. Health advice lands differently when
-                it speaks your mother tongue.
+                Type, speak, or use both. SisterCare is being built to
+                understand local language and code-switching so a sensitive
+                question does not have to be translated into unfamiliar words
+                before it can be heard.
               </p>
               <div className="flex flex-wrap gap-2">
                 {LANGUAGES.map((lang) => (
@@ -319,16 +314,17 @@ export default function Home() {
                   Your Privacy is Sacred
                 </h2>
                 <p className="mx-auto mb-8 max-w-xl text-lg text-white/80">
-                  Some conversations are yours alone. We never sell your data,
-                  never show ads, never track you — and you can delete
-                  everything, any time, forever.
+                  Sensitive support requires honest privacy controls.
+                  SisterCare limits collection, does not sell health data or
+                  use it for advertising, and gives you clear choices about
+                  retention, sharing, export, and deletion.
                 </p>
                 <div className="flex flex-wrap justify-center gap-3 text-sm">
                   {[
                     ["verified", "Private by design"],
                     ["block", "Never sold"],
-                    ["visibility_off", "No tracking"],
-                    ["delete_forever", "Delete anytime"],
+                    ["visibility_off", "Minimum access"],
+                    ["delete_forever", "Deletion controls"],
                   ].map(([icon, label]) => (
                     <span
                       key={label}
@@ -396,9 +392,10 @@ export default function Home() {
               <span className="font-semibold">
                 If you&apos;re ever in danger or crisis,
               </span>{" "}
-              Sister immediately shares real help — Sauti 116 (toll-free,
-              24/7), police 999/112 — and can alert a counsellor for you. No
-              judgment, ever.
+              SisterCare shows validated support options for your configured
+              region and helps you request an eligible counsellor. It will
+              never hide a technical failure or promise that help has been
+              contacted before the service confirms it.
             </p>
           </div>
         </section>
