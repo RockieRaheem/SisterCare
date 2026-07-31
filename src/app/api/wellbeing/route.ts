@@ -66,9 +66,42 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { data, error } = await getSupabaseAdmin()
+  const idempotencyKey = request.headers.get("idempotency-key");
+  if (
+    idempotencyKey &&
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      idempotencyKey,
+    )
+  ) {
+    return NextResponse.json(
+      { success: false, error: "Invalid idempotency key." },
+      { status: 400 },
+    );
+  }
+  const db = getSupabaseAdmin();
+  if (idempotencyKey) {
+    const { data: existing, error: existingError } = await db
+      .from("user_records")
+      .select("id,payload,created_at")
+      .eq("user_id", auth.uid)
+      .eq("idempotency_key", idempotencyKey)
+      .maybeSingle();
+    if (existingError) return unavailable();
+    if (existing) {
+      return NextResponse.json({
+        success: true,
+        data: { checkIn: serialize(existing), duplicate: true },
+      });
+    }
+  }
+  const { data, error } = await db
     .from("user_records")
-    .insert({ user_id: auth.uid, record_type: "wellbeing", payload: input })
+    .insert({
+      user_id: auth.uid,
+      record_type: "wellbeing",
+      payload: input,
+      idempotency_key: idempotencyKey || null,
+    })
     .select("id,payload,created_at")
     .single();
   if (error || !data) return unavailable();

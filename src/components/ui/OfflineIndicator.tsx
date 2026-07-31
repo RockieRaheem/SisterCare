@@ -1,14 +1,23 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useAuth } from "@/context/AuthContext";
+import {
+  listQueuedWrites,
+  OFFLINE_QUEUE_CHANGE_EVENT,
+  syncOfflineQueue,
+} from "@/lib/offlineQueue";
 
 /**
  * Offline Indicator Component
  * Shows a banner when the user loses internet connection
  */
 export default function OfflineIndicator() {
+  const { user } = useAuth();
   const [isOffline, setIsOffline] = useState(false);
   const [showBanner, setShowBanner] = useState(false);
+  const [pending, setPending] = useState(0);
+  const [conflicts, setConflicts] = useState(0);
 
   useEffect(() => {
     // Check initial state
@@ -35,8 +44,37 @@ export default function OfflineIndicator() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!user) {
+      setPending(0);
+      setConflicts(0);
+      return;
+    }
+    const refresh = async () => {
+      const entries = await listQueuedWrites(user.uid).catch(() => []);
+      setPending(entries.filter((entry) => entry.status === "pending").length);
+      setConflicts(entries.filter((entry) => entry.status === "conflict").length);
+    };
+    const synchronize = async () => {
+      const result = await syncOfflineQueue(user.uid).catch(() => null);
+      if (result) {
+        setPending(result.pending);
+        setConflicts(result.conflicts);
+        if (result.synced > 0) setShowBanner(true);
+      }
+    };
+    void refresh();
+    if (navigator.onLine) void synchronize();
+    window.addEventListener("online", synchronize);
+    window.addEventListener(OFFLINE_QUEUE_CHANGE_EVENT, refresh);
+    return () => {
+      window.removeEventListener("online", synchronize);
+      window.removeEventListener(OFFLINE_QUEUE_CHANGE_EVENT, refresh);
+    };
+  }, [user]);
+
   // Don't render if online and banner not showing
-  if (!isOffline && !showBanner) return null;
+  if (!isOffline && !showBanner && pending === 0 && conflicts === 0) return null;
 
   return (
     <div
@@ -60,9 +98,18 @@ export default function OfflineIndicator() {
       </span>
       <span>
         {isOffline
-          ? "You're offline. Some features may be limited."
-          : "You're back online!"}
+          ? `You're offline.${pending ? ` ${pending} update${pending === 1 ? "" : "s"} waiting to sync.` : ""}`
+          : conflicts
+            ? `${conflicts} offline update${conflicts === 1 ? "" : "s"} need review; nothing was overwritten.`
+            : pending
+              ? `Syncing ${pending} saved update${pending === 1 ? "" : "s"}…`
+              : "You're back online and saved updates are synchronized."}
       </span>
+      {conflicts > 0 && (
+        <a href="/settings#offline-sync" className="ml-2 underline underline-offset-2">
+          Review
+        </a>
+      )}
       {isOffline && (
         <button
           onClick={() => setShowBanner(false)}

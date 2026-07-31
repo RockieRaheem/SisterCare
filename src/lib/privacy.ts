@@ -29,6 +29,7 @@ export async function clearPrivateClientData(): Promise<void> {
 
   if ("indexedDB" in window) {
     window.indexedDB.deleteDatabase("SisterCareAudioCache");
+    window.indexedDB.deleteDatabase("SisterCareOfflineQueue");
   }
 
   if ("caches" in window) {
@@ -44,4 +45,3 @@ export async function clearPrivateClientData(): Promise<void> {
     type: "PURGE_PRIVATE_DATA",
   });
 }
-

@@ -6,6 +6,7 @@ import Header from "@/components/layout/Header";
 import Card from "@/components/ui/Card";
 import Toggle from "@/components/ui/Toggle";
 import Button from "@/components/ui/Button";
+import OfflineSyncPanel from "@/components/features/OfflineSyncPanel";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -885,6 +886,8 @@ export default function SettingsPage() {
         <h2 className="text-text-primary dark:text-white text-lg sm:text-xl md:text-[22px] font-bold leading-tight tracking-tight pb-2 sm:pb-3 pt-4 sm:pt-5 md:pt-6">
           Data & Privacy
         </h2>
+
+        <OfflineSyncPanel />
 
         <div className="space-y-3 sm:space-y-4 mb-6 sm:mb-7 md:mb-8">
           <Card>

@@ -7,6 +7,7 @@ import { AppShellSkeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/context/AuthContext";
 import { authenticatedFetch } from "@/lib/authenticatedFetch";
 import { WellbeingCheckIn } from "@/types";
+import { submitOfflineCapableWrite } from "@/lib/offlineQueue";
 
 const AREAS = [
   { key: "mood", label: "Mood", low: "Very low", high: "Very good" },
@@ -50,23 +51,37 @@ export default function WellbeingPage() {
   }, [user]);
 
   const save = async () => {
+    if (!user) return;
     setBusy(true);
     setMessage(null);
     try {
-      const response = await authenticatedFetch("/api/wellbeing", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...scores, note }),
+      const result = await submitOfflineCapableWrite({
+        userId: user.uid,
+        url: "/api/wellbeing",
+        body: { ...scores, note },
       });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error || "Could not save this check-in.");
-      const checkIn = {
-        ...payload.data.checkIn,
-        createdAt: new Date(payload.data.checkIn.createdAt),
-      } as WellbeingCheckIn;
+      const checkIn =
+        result.state === "synced"
+          ? ({
+              ...(result.payload.data as { checkIn: WellbeingCheckIn }).checkIn,
+              createdAt: new Date(
+                (result.payload.data as { checkIn: WellbeingCheckIn }).checkIn
+                  .createdAt,
+              ),
+            } as WellbeingCheckIn)
+          : ({
+              id: result.localId,
+              ...scores,
+              ...(note.trim() ? { note: note.trim() } : {}),
+              createdAt: new Date(),
+            } as WellbeingCheckIn);
       setHistory((current) => [checkIn, ...current].slice(0, 30));
       setNote("");
-      setMessage("Your private check-in was saved.");
+      setMessage(
+        result.state === "synced"
+          ? "Your private check-in was saved."
+          : "Saved on this device. SisterCare will synchronize it once you are online.",
+      );
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not save this check-in.");
     } finally {
