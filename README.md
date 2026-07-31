@@ -1,13 +1,21 @@
 # SisterCare
 
-SisterCare is a privacy-conscious health support platform for cycle tracking,
-pregnancy support, AI-guided conversations, clinically governed content, and
-live counsellor care.
+SisterCare is a private, non-judgmental support platform for girls and women
+who may not feel safe or comfortable asking sensitive questions of people
+around them. It combines private conversation, lightweight menstrual and
+emotional-wellbeing tracking, clinically governed guidance, and anonymous
+access to verified human counsellors.
+
+The product is designed around a difficult first disclosure: help a member ask
+what she could not ask elsewhere, understand an appropriate next step, and
+reach safe human support when she wants or needs it. It is not a
+fertility-first application, a social network, or a medical diagnosis system.
 
 ## Product roles
 
-- Members track health information, use the support assistant, read reviewed
-  content, and request a counsellor.
+- Members ask sensitive questions privately, optionally track menstrual and
+  emotional wellbeing, use contextual reviewed guidance, and request an
+  anonymous counsellor chat or call.
 - Counsellor applicants submit private KYC evidence and wait for an
   administrator's decision.
 - Verified counsellors control live availability, accept assigned sessions,
@@ -15,6 +23,10 @@ live counsellor care.
 - Administrators review KYC, govern counsellor capacity and safety eligibility,
   publish content, monitor crisis SLAs, handle incidents, and inspect
   privacy-safe service metrics.
+
+The complete product contract, functional acceptance criteria, compatibility
+plan, and delivery roadmap are in
+[Product Requirements](docs/PRODUCT_REQUIREMENTS.md).
 
 ## Technology
 

@@ -1,7 +1,7 @@
 {
   "name": "sistercare",
   "version": "1.0.0",
-  "description": "A Digital Support Platform for Women's Well-Being, Guidance, and Menstrual Health",
+  "description": "Private, non-judgmental menstrual and emotional support for girls and women",
   "private": true,
   "engines": {
     "node": "24.x"

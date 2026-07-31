@@ -17,15 +17,16 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "SisterCare - Women's Well-Being & Menstrual Health",
+  title: "SisterCare - Private Support Without Judgment",
   description:
-    "A Digital Support Platform for Women's Well-Being, Guidance, and Menstrual Health. Get menstrual reminders, guidance, and emotional support in a safe, private environment.",
+    "Ask sensitive questions privately, track menstrual and emotional wellbeing, and reach verified counsellor support without shame or judgment.",
   keywords: [
     "menstrual health",
-    "women health",
-    "period tracker",
+    "women's health",
+    "private support",
     "emotional support",
-    "wellness",
+    "anonymous counselling",
+    "mental wellbeing",
   ],
   manifest: "/manifest.json",
   appleWebApp: {

@@ -1,27 +1,36 @@
 # SisterCare System Overview
 
-SisterCare brings menstrual health, pregnancy support, private AI guidance,
-reviewed learning content, and live human counselling into one role-aware
-product.
+SisterCare is a private first doorway to menstrual, emotional, and sensitive
+personal support for girls and women who may not feel able to speak openly
+elsewhere. It combines non-judgmental conversation, lightweight tracking,
+contextual reviewed guidance, and anonymous access to verified human
+counsellors in one role-aware product.
+
+Pregnancy questions remain supported for safety and appropriate referral, but
+detailed fertility, pregnancy, and postpartum tracking are not the product's
+primary direction.
 
 ## Member experience
 
 Members can:
 
-- maintain cycle and pregnancy information;
-- record symptoms and preferences;
+- ask sensitive questions in a private conversation;
+- maintain menstrual and emotional-wellbeing information;
+- control what context is retained or shared with a counsellor;
 - receive complete multilingual guidance with safety triage;
-- ask the assistant to perform supported account and health updates;
+- ask the assistant to perform bounded, verified account and tracking updates;
 - keep persistent conversation history;
-- read clinically reviewed articles;
-- request and message an eligible counsellor.
+- receive contextual clinically reviewed guidance; and
+- request anonymous text or audio support from an eligible counsellor.
 
 ## Counsellor experience
 
 Counsellors have a dedicated application and work portal. KYC evidence remains
 private until administrative review. Verified professionals can control their
-availability, receive assignments only when eligible, manage live sessions,
-and submit health articles for editorial review.
+availability, receive assignments only when eligible, manage anonymous member
+sessions, escalate safeguarding concerns, and submit health knowledge for
+editorial review. A counsellor receives only the member context authorized for
+the assigned session.
 
 ## Administrator experience
 
