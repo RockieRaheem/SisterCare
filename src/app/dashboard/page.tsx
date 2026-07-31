@@ -9,6 +9,7 @@ import Footer from "@/components/layout/Footer";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import PeriodReminderBanner from "@/components/ui/PeriodReminderBanner";
+import PrivateSupportEntry from "@/components/features/PrivateSupportEntry";
 import { AppShellSkeleton } from "@/components/ui/Skeleton";
 import Link from "next/link";
 import {
@@ -355,6 +356,8 @@ export default function DashboardPage() {
       <div className="app-page flex min-h-screen flex-col">
         <Header variant="app" />
         <main className="main-content page-container flex-1 py-5 sm:py-8">
+          <PrivateSupportEntry />
+
           <div className="mb-7 flex flex-col gap-2 sm:mb-9">
             <span className="eyebrow">Pregnancy support</span>
             <h1 className="page-title text-3xl dark:text-white sm:text-4xl">
@@ -409,6 +412,8 @@ export default function DashboardPage() {
       <Header variant="app" />
 
       <main className="main-content page-container flex-1 py-5 sm:py-8">
+        <PrivateSupportEntry />
+
         {/* Period Reminder Banner */}
         {cycleInfo && (
           <div className="mb-6">
