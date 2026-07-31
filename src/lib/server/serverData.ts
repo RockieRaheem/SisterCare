@@ -5,6 +5,11 @@ import { rankCounsellors } from "../counsellorMatching";
 import { evaluateCounsellorEligibility } from "../counsellorOperations";
 import { AgentEvent, Counsellor, CounsellorSpecialty, CycleData, PregnancyData, Reminder, SymptomLog, TriageSeverity, UserProfile } from "@/types";
 import { counsellorFromDatabaseRow } from "./counsellorRecord";
+import {
+  normalizeMemberAgeBand,
+  normalizePrivacyPreferences,
+  normalizeSupportAlias,
+} from "../privacyPreferences";
 
 type Json = Record<string, unknown>;
 const admin = () => getSupabaseAdmin();
@@ -18,8 +23,11 @@ function profile(row: Json): UserProfile {
   const pregnancy = row.pregnancy_data as Json | null;
   return {
     uid: row.id as string, email: (row.email as string) || "", displayName: row.display_name as string | null,
+    supportAlias: normalizeSupportAlias(row.support_alias),
+    ageBand: normalizeMemberAgeBand(row.age_band),
     photoURL: row.photo_url as string | null, createdAt: date(row.created_at), updatedAt: date(row.updated_at),
     onboardingCompleted: Boolean(row.onboarding_completed), preferences: row.preferences as UserProfile["preferences"],
+    privacyPreferences: normalizePrivacyPreferences(row.privacy_preferences),
     registrationIntent: row.registration_intent === "counsellor" ? "counsellor" : "member",
     cycleData: cycle ? { ...(cycle as unknown as CycleData), lastPeriodDate: date(cycle.lastPeriodDate), nextPeriodDate: date(cycle.nextPeriodDate) } : null,
     pregnancyData: pregnancy ? { ...(pregnancy as unknown as PregnancyData), estimatedDueDate: pregnancy.estimatedDueDate ? date(pregnancy.estimatedDueDate) : undefined, lastMenstrualPeriodDate: pregnancy.lastMenstrualPeriodDate ? date(pregnancy.lastMenstrualPeriodDate) : undefined, conceptionDate: pregnancy.conceptionDate ? date(pregnancy.conceptionDate) : undefined, birthDate: pregnancy.birthDate ? date(pregnancy.birthDate) : undefined } : null,

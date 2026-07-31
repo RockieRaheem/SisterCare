@@ -3,6 +3,8 @@ export interface UserProfile {
   uid: string;
   email: string;
   displayName: string | null;
+  supportAlias: string;
+  ageBand: MemberAgeBand | null;
   photoURL: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -10,10 +12,30 @@ export interface UserProfile {
   cycleData: CycleData | null;
   pregnancyData: PregnancyData | null;
   preferences: UserPreferences;
+  privacyPreferences: UserPrivacyPreferences;
   /** Sign-up path only; it never grants a privileged Supabase role. */
   registrationIntent?: "member" | "counsellor";
   /** Server-controlled Supabase role; never accepted from a browser update. */
   role?: "member" | "counsellor" | "admin";
+}
+
+export type MemberAgeBand =
+  | "under_13"
+  | "13_15"
+  | "16_17"
+  | "18_24"
+  | "25_plus"
+  | "prefer_not_to_say";
+
+export interface UserPrivacyPreferences {
+  conversationRetention: "account" | "session";
+  counsellorContextSharing:
+    | "ask_each_time"
+    | "approved_summary"
+    | "never";
+  discreetNotifications: boolean;
+  notificationPreviews: boolean;
+  sharedDeviceLockMinutes: number;
 }
 
 export interface PregnancyData {

@@ -16,6 +16,12 @@ import {
   UserProfile,
 } from "@/types";
 import { calculateNextPeriod, getCurrentPhase } from "./cycle";
+import {
+  DEFAULT_PRIVACY_PREFERENCES,
+  normalizeMemberAgeBand,
+  normalizePrivacyPreferences,
+  normalizeSupportAlias,
+} from "./privacyPreferences";
 import { getSupabaseBrowserClient } from "./supabase";
 
 export { calculateNextPeriod, getCycleInfo, getCurrentPhase } from "./cycle";
@@ -90,11 +96,16 @@ function profileFromRow(row: JsonRecord): UserProfile {
     uid: row.id as string,
     email: (row.email as string) || "",
     displayName: (row.display_name as string | null) || null,
+    supportAlias: normalizeSupportAlias(row.support_alias),
+    ageBand: normalizeMemberAgeBand(row.age_band),
     photoURL: (row.photo_url as string | null) || null,
     createdAt: asDate(row.created_at),
     updatedAt: asDate(row.updated_at),
     onboardingCompleted: Boolean(row.onboarding_completed),
     preferences: { ...DEFAULT_PREFERENCES, ...((row.preferences as JsonRecord) || {}) },
+    privacyPreferences: normalizePrivacyPreferences(
+      row.privacy_preferences || DEFAULT_PRIVACY_PREFERENCES,
+    ),
     cycleData: reviveCycle((row.cycle_data as JsonRecord | null) || null),
     pregnancyData: revivePregnancy((row.pregnancy_data as JsonRecord | null) || null),
     registrationIntent: row.registration_intent === "counsellor" ? "counsellor" : "member",
@@ -130,9 +141,18 @@ export async function updateUserProfile(uid: string, updates: Partial<UserProfil
   const payload: JsonRecord = {};
   if (updates.email !== undefined) payload.email = updates.email;
   if (updates.displayName !== undefined) payload.display_name = updates.displayName;
+  if (updates.supportAlias !== undefined) {
+    payload.support_alias = normalizeSupportAlias(updates.supportAlias);
+  }
+  if (updates.ageBand !== undefined) payload.age_band = updates.ageBand;
   if (updates.photoURL !== undefined) payload.photo_url = updates.photoURL;
   if (updates.onboardingCompleted !== undefined) payload.onboarding_completed = updates.onboardingCompleted;
   if (updates.preferences !== undefined) payload.preferences = updates.preferences;
+  if (updates.privacyPreferences !== undefined) {
+    payload.privacy_preferences = normalizePrivacyPreferences(
+      updates.privacyPreferences,
+    );
+  }
   if (updates.cycleData !== undefined) payload.cycle_data = updates.cycleData ? serialiseCycle(updates.cycleData) : null;
   if (updates.pregnancyData !== undefined) payload.pregnancy_data = updates.pregnancyData ? serialisePregnancy(updates.pregnancyData) : null;
   if (updates.registrationIntent !== undefined) payload.registration_intent = updates.registrationIntent;
