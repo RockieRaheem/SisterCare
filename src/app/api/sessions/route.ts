@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
       summary:
         typeof body.summary === "string" && body.summary.trim()
           ? body.summary.trim()
-          : "User requested a counselling session",
+          : "Member requested a counselling session",
       specialty:
         typeof body.specialty === "string"
           ? (body.specialty as CounsellorSpecialty)

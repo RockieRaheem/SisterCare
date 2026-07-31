@@ -17,6 +17,7 @@ import {
 } from "../counsellorOperations";
 import { emitEvent } from "./events";
 import { openCrisisIncident } from "./incidents";
+import { sanitizeCounsellorSummary } from "../counsellorPrivacy";
 import {
   Counsellor,
   CounsellingSession,
@@ -59,7 +60,7 @@ function rowToSession(row: Row): CounsellingSession {
       typeof details.preferredLanguage === "string"
         ? details.preferredLanguage
         : undefined,
-    summary: typeof details.summary === "string" ? details.summary : "",
+    summary: sanitizeCounsellorSummary(details.summary),
     conversationId:
       typeof details.conversationId === "string"
         ? details.conversationId
@@ -379,6 +380,13 @@ export async function createSessionRequest(params: {
   preferredLanguage?: string;
   conversationId?: string;
 }): Promise<CounsellingSession> {
+  const { data: memberIdentity, error: memberIdentityError } = await db()
+    .from("profiles")
+    .select("email,display_name")
+    .eq("id", params.userId)
+    .maybeSingle();
+  check(memberIdentityError);
+
   const { data: existing, error: existingError } = await db()
     .from("counselling_sessions")
     .select("*")
@@ -402,7 +410,10 @@ export async function createSessionRequest(params: {
 
   const details: Json = {
     reason: params.reason,
-    summary: params.summary.slice(0, 500),
+    summary: sanitizeCounsellorSummary(params.summary, [
+      memberIdentity?.email,
+      memberIdentity?.display_name,
+    ]),
     crisisEscalationLevel: 0,
   };
   if (params.specialty) details.specialty = params.specialty;
