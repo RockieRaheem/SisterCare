@@ -33,16 +33,16 @@ export const en = {
   nav: {
     home: "Home",
     dashboard: "Dashboard",
-    chat: "Chat",
+    chat: "Talk",
     library: "Library",
     settings: "Settings",
-    profile: "Profile",
+    profile: "You",
     counsellors: "Counsellors",
     help: "Help",
     logout: "Logout",
     login: "Login",
     signup: "Sign Up",
-    analytics: "Analytics",
+    analytics: "Track",
   },
 
   // Auth

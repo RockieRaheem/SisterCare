@@ -4,20 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
+import { MEMBER_PRIMARY_NAVIGATION } from "@/lib/memberNavigation";
 
 export default function BottomNav() {
   const pathname = usePathname();
   const { t } = useLanguage();
   const { userProfile } = useAuth();
-
-  // Navigation items with translation keys
-  const navItems = [
-    { href: "/dashboard", icon: "home", labelKey: "home" as const },
-    { href: "/chat", icon: "chat_bubble", labelKey: "chat" as const },
-    { href: "/counsellors", icon: "support_agent", labelKey: "help" as const },
-    { href: "/library", icon: "menu_book", labelKey: "library" as const },
-    { href: "/profile", icon: "person", labelKey: "profile" as const },
-  ];
 
   // Don't show on landing, login, signup, or onboarding pages
   const hiddenPaths = [
@@ -54,22 +46,12 @@ export default function BottomNav() {
           className="flex h-[64px] items-center justify-around px-1"
           role="menubar"
         >
-          {navItems.map((item) => {
+          {MEMBER_PRIMARY_NAVIGATION.map((item) => {
             const isActive =
               pathname === item.href ||
               (item.href !== "/dashboard" && pathname.startsWith(item.href));
 
-            // Get translated label
-            const label =
-              item.labelKey === "home"
-                ? t.nav.home
-                : item.labelKey === "chat"
-                  ? t.nav.chat
-                  : item.labelKey === "help"
-                    ? t.nav.help
-                    : item.labelKey === "library"
-                      ? t.nav.library
-                      : t.nav.profile;
+            const label = t.nav[item.labelKey];
 
             return (
               <Link
