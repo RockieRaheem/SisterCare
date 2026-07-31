@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
         typeof body.conversationId === "string"
           ? body.conversationId
           : undefined,
+      explicitSummaryConsent: body.shareSummary === true,
     });
     return NextResponse.json({ success: true, data: { session } });
   } catch (error) {

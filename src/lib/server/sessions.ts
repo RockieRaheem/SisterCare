@@ -17,7 +17,14 @@ import {
 } from "../counsellorOperations";
 import { emitEvent } from "./events";
 import { openCrisisIncident } from "./incidents";
-import { sanitizeCounsellorSummary } from "../counsellorPrivacy";
+import {
+  resolveCounsellorContext,
+  sanitizeCounsellorSummary,
+} from "../counsellorPrivacy";
+import {
+  normalizePrivacyPreferences,
+  normalizeSupportAlias,
+} from "../privacyPreferences";
 import {
   Counsellor,
   CounsellingSession,
@@ -61,6 +68,15 @@ function rowToSession(row: Row): CounsellingSession {
         ? details.preferredLanguage
         : undefined,
     summary: sanitizeCounsellorSummary(details.summary),
+    participantAlias:
+      typeof details.participantAlias === "string"
+        ? details.participantAlias
+        : "SisterCare member",
+    contextScope:
+      details.contextScope === "member_approved" ||
+      details.contextScope === "safety_minimum"
+        ? details.contextScope
+        : "none",
     conversationId:
       typeof details.conversationId === "string"
         ? details.conversationId
@@ -379,10 +395,11 @@ export async function createSessionRequest(params: {
   specialty?: CounsellorSpecialty;
   preferredLanguage?: string;
   conversationId?: string;
+  explicitSummaryConsent?: boolean;
 }): Promise<CounsellingSession> {
   const { data: memberIdentity, error: memberIdentityError } = await db()
     .from("profiles")
-    .select("email,display_name")
+    .select("email,display_name,support_alias,privacy_preferences")
     .eq("id", params.userId)
     .maybeSingle();
   check(memberIdentityError);
@@ -408,18 +425,31 @@ export async function createSessionRequest(params: {
     return rowToSession(existing as Row);
   }
 
-  const details: Json = {
+  const privacy = normalizePrivacyPreferences(memberIdentity?.privacy_preferences);
+  const sharedContext = resolveCounsellorContext({
+    policy: privacy.counsellorContextSharing,
+    explicitSummaryConsent: params.explicitSummaryConsent,
     reason: params.reason,
-    summary: sanitizeCounsellorSummary(params.summary, [
+    requestedSummary: params.summary,
+    memberIdentityValues: [
       memberIdentity?.email,
       memberIdentity?.display_name,
-    ]),
+      memberIdentity?.support_alias,
+    ],
+  });
+  const details: Json = {
+    reason: params.reason,
+    summary: sharedContext.summary,
+    contextScope: sharedContext.scope,
+    participantAlias: normalizeSupportAlias(memberIdentity?.support_alias),
     crisisEscalationLevel: 0,
   };
   if (params.specialty) details.specialty = params.specialty;
   if (params.preferredLanguage)
     details.preferredLanguage = params.preferredLanguage;
-  if (params.conversationId) details.conversationId = params.conversationId;
+  if (params.conversationId && sharedContext.includeConversationReference) {
+    details.conversationId = params.conversationId;
+  }
   const { data, error } = await db()
     .from("counselling_sessions")
     .insert({

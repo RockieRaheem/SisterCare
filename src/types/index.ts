@@ -260,6 +260,8 @@ export interface CounsellingSession {
   preferredLanguage?: string;
   /** Short context shown to the counsellor before accepting (max 500 chars) */
   summary: string;
+  participantAlias?: string;
+  contextScope?: "none" | "member_approved" | "safety_minimum";
   /** Originating AI conversation, when the session came from a chat handoff */
   conversationId?: string;
   requestedAt: Date;

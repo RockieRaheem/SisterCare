@@ -5,6 +5,17 @@ const PHONE_PATTERN =
 const INTRODUCED_NAME_PATTERN =
   /\b(?:my name is|i am called|call me)\s+[\p{L}][\p{L}'-]*(?:\s+[\p{L}][\p{L}'-]*){0,3}/giu;
 
+export type CounsellorContextScope =
+  | "none"
+  | "member_approved"
+  | "safety_minimum";
+
+export interface CounsellorContextDecision {
+  summary: string;
+  scope: CounsellorContextScope;
+  includeConversationReference: boolean;
+}
+
 function escapeRegularExpression(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -36,4 +47,42 @@ export function sanitizeCounsellorSummary(
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 500);
+}
+
+export function resolveCounsellorContext(params: {
+  policy: "ask_each_time" | "approved_summary" | "never";
+  explicitSummaryConsent?: boolean;
+  reason: "user_request" | "risk_detected";
+  requestedSummary: unknown;
+  memberIdentityValues?: Array<string | null | undefined>;
+}): CounsellorContextDecision {
+  if (params.reason === "risk_detected") {
+    return {
+      summary:
+        "Urgent safety support requested after SisterCare detected a critical risk signal.",
+      scope: "safety_minimum",
+      includeConversationReference: false,
+    };
+  }
+
+  const mayShare =
+    params.policy === "approved_summary" ||
+    (params.policy === "ask_each_time" && params.explicitSummaryConsent === true);
+
+  if (!mayShare || params.policy === "never") {
+    return {
+      summary: "Member requested a counselling session without sharing chat context.",
+      scope: "none",
+      includeConversationReference: false,
+    };
+  }
+
+  return {
+    summary: sanitizeCounsellorSummary(
+      params.requestedSummary,
+      params.memberIdentityValues,
+    ),
+    scope: "member_approved",
+    includeConversationReference: false,
+  };
 }

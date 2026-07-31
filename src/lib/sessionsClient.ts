@@ -67,6 +67,7 @@ export async function listCounsellorSessions(): Promise<{
 
 export async function requestSession(params?: {
   summary?: string;
+  shareSummary?: boolean;
   specialty?: string;
   preferredLanguage?: string;
 }): Promise<CounsellingSession> {

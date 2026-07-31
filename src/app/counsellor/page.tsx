@@ -151,8 +151,23 @@ function PresenceControl({
 }
 
 function SessionContext({ session }: { session: CounsellingSession }) {
+  const contextLabel =
+    session.contextScope === "member_approved"
+      ? "Member-approved summary"
+      : session.contextScope === "safety_minimum"
+        ? "Minimum safety context"
+        : "No chat context shared";
+
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+      <span className="inline-flex items-center gap-1 font-semibold text-slate-700 dark:text-slate-300">
+        <span className="material-symbols-outlined text-sm" aria-hidden="true">person</span>
+        {session.participantAlias || "SisterCare member"}
+      </span>
+      <span className="inline-flex items-center gap-1">
+        <span className="material-symbols-outlined text-sm" aria-hidden="true">shield_lock</span>
+        {contextLabel}
+      </span>
       {session.preferredLanguage && (
         <span className="inline-flex items-center gap-1">
           <span className="material-symbols-outlined text-sm" aria-hidden="true">language</span>
