@@ -2,6 +2,7 @@
  * Push Notification Service for SisterCare
  * Handles scheduling and managing period/symptom reminders
  */
+import { buildSystemNotificationContent } from "./notificationPrivacy";
 
 // Types for scheduled notifications
 export interface ScheduledReminder {
@@ -127,12 +128,16 @@ export function showLocalNotification(
     tag?: string;
     url?: string;
     vibrate?: boolean;
+    allowSensitivePreview?: boolean;
   },
 ): void {
   if (Notification.permission !== "granted") return;
 
-  const notification = new Notification(title, {
-    body,
+  const content = buildSystemNotificationContent(title, body, {
+    allowSensitivePreview: options?.allowSensitivePreview,
+  });
+  const notification = new Notification(content.title, {
+    body: content.body,
     icon: "/icons/icon-192x192.png",
     badge: "/icons/icon-192x192.png",
     tag: options?.tag || "sistercare-reminder",

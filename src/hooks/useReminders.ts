@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { buildSystemNotificationContent } from "@/lib/notificationPrivacy";
 import { useAuth } from "@/context/AuthContext";
 import {
   getPendingReminders,
@@ -176,10 +177,12 @@ export function showBrowserNotification(
   options?: NotificationOptions,
 ): void {
   if (Notification.permission === "granted") {
-    new Notification(title, {
+    const content = buildSystemNotificationContent(title, options?.body);
+    new Notification(content.title, {
       icon: "/favicon.ico",
       badge: "/favicon.ico",
       ...options,
+      body: content.body,
     });
   }
 }

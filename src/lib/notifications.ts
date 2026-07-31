@@ -2,6 +2,10 @@
  * Notification Service for SisterCare
  * Handles browser notifications and in-app alerts for period reminders
  */
+import {
+  buildSystemNotificationContent,
+  NotificationPrivacyOptions,
+} from "./notificationPrivacy";
 
 export interface PeriodNotification {
   id: string;
@@ -49,18 +53,25 @@ export const getNotificationPermission = ():
 export const showBrowserNotification = (
   title: string,
   options?: NotificationOptions,
+  privacy?: NotificationPrivacyOptions,
 ): Notification | null => {
   if (!isNotificationSupported() || Notification.permission !== "granted") {
     return null;
   }
 
   try {
-    const notification = new Notification(title, {
+    const content = buildSystemNotificationContent(
+      title,
+      options?.body,
+      privacy,
+    );
+    const notification = new Notification(content.title, {
       icon: "/favicon.ico",
       badge: "/favicon.ico",
       tag: "sistercare-reminder",
       requireInteraction: false,
       ...options,
+      body: content.body,
     });
 
     // Auto close after 10 seconds
