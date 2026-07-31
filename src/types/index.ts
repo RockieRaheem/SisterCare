@@ -118,6 +118,7 @@ export interface ChatConversation {
   title: string;
   type: "ai_support" | "counsellor";
   status: "active" | "closed";
+  retentionMode: "account" | "session";
   createdAt: Date;
   updatedAt: Date;
   lastMessage?: string;

@@ -124,6 +124,7 @@ export function deleteLocalConversation(conversationId: string): void {
 export function createLocalConversation(
   userId: string,
   title = "New Chat",
+  retentionMode: ChatConversation["retentionMode"] = "account",
 ): ChatConversation {
   const now = new Date();
   const conv: ChatConversation = {
@@ -132,6 +133,7 @@ export function createLocalConversation(
     title,
     type: "ai_support",
     status: "active",
+    retentionMode,
     createdAt: now,
     updatedAt: now,
     lastMessage: "",

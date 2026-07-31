@@ -146,6 +146,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     try {
+      const token = await auth.currentUser?.getIdToken();
+      if (token) {
+        const response = await fetch("/api/conversations", {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) {
+          console.warn("Session-only conversations could not be removed before sign-out.");
+        }
+      }
+    } catch (error) {
+      console.warn("Could not remove session-only conversations during sign-out:", error);
+    }
+    try {
       await clearPrivateClientData();
     } catch (error) {
       console.warn("Could not clear all private client data during sign-out:", error);

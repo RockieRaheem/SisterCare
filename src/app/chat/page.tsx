@@ -103,6 +103,7 @@ function parseConversation(payload: Record<string, unknown>): ChatConversation {
     title: String(payload.title || "New Chat"),
     type: payload.type === "counsellor" ? "counsellor" : "ai_support",
     status: String(payload.status || "active"),
+    retentionMode: payload.retentionMode === "session" ? "session" : "account",
     lastMessage: String(payload.lastMessage || ""),
     messageCount: Number(payload.messageCount || 0),
     createdAt: new Date(String(payload.createdAt || Date.now())),
@@ -326,7 +327,11 @@ export default function ChatPage() {
     if (!user) return null;
 
     // Always create locally for instant reliability
-    const localConv = createLocalConversation(user.uid, "New Chat");
+    const localConv = createLocalConversation(
+      user.uid,
+      "New Chat",
+      userProfile?.privacyPreferences.conversationRetention || "account",
+    );
     setConversations((prev) => [localConv, ...prev]);
     setActiveConversationId(localConv.id);
     setMessages([]);
@@ -355,7 +360,7 @@ export default function ChatPage() {
       // mistake it for durable cross-session history.
       return localConv.id;
     }
-  }, [user]);
+  }, [user, userProfile]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -638,6 +643,18 @@ export default function ChatPage() {
     if (!user) return;
     setActionLoading("new");
     try {
+      if (activeConversation?.retentionMode === "session") {
+        if (!activeConversation.id.startsWith("local-")) {
+          await conversationRequest(
+            `/api/conversations/${encodeURIComponent(activeConversation.id)}`,
+            { method: "DELETE" },
+          );
+        }
+        deleteLocalConversation(activeConversation.id);
+        setConversations((previous) =>
+          previous.filter((conversation) => conversation.id !== activeConversation.id),
+        );
+      }
       // Follow the familiar new-chat pattern: start with a clean composer and
       // create the durable conversation only once the user sends a message.
       setActiveConversationId(null);
@@ -658,7 +675,7 @@ export default function ChatPage() {
     } finally {
       setActionLoading(null);
     }
-  }, [user]);
+  }, [activeConversation, user]);
 
   const loadConversation = useCallback(async (conversationId: string) => {
     if (!conversationId) return;
@@ -1308,6 +1325,14 @@ export default function ChatPage() {
             >
               {isBusy ? "Loading..." : conversation.title || "Untitled"}
             </span>
+            {conversation.retentionMode === "session" && (
+              <span
+                className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold text-primary"
+                title="Deleted when this private session ends"
+              >
+                Private session
+              </span>
+            )}
           </div>
           <div className="mt-0.5 flex items-center gap-2">
             <p className="truncate text-xs text-text-secondary/60 dark:text-gray-500">
