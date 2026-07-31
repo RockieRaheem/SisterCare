@@ -12,7 +12,6 @@ import { useTheme } from "@/context/ThemeContext";
 import { jsPDF } from "jspdf";
 import {
   getUserProfile,
-  updateUserPreferences,
   updateUserProfile,
   getSymptoms,
   getPendingReminders,
@@ -24,7 +23,7 @@ import {
   getNotificationPermission,
   showBrowserNotification,
 } from "@/lib/notifications";
-import { UserPreferences } from "@/types";
+import { UserPreferences, UserPrivacyPreferences } from "@/types";
 import { AppShellSkeleton } from "@/components/ui/Skeleton";
 
 export default function SettingsPage() {
@@ -45,6 +44,13 @@ export default function SettingsPage() {
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(true);
   const [reminderDays, setReminderDays] = useState(3);
+  const [supportAlias, setSupportAlias] = useState("SisterCare member");
+  const [conversationRetention, setConversationRetention] =
+    useState<UserPrivacyPreferences["conversationRetention"]>("account");
+  const [counsellorContextSharing, setCounsellorContextSharing] =
+    useState<UserPrivacyPreferences["counsellorContextSharing"]>(
+      "ask_each_time",
+    );
   const [browserNotificationStatus, setBrowserNotificationStatus] = useState<
     NotificationPermission | "unsupported"
   >("default");
@@ -76,6 +82,15 @@ export default function SettingsPage() {
         setReminderDays(profile.preferences.reminderDaysBefore ?? 3);
         setTheme(profile.preferences.theme ?? "system");
       }
+      if (profile) {
+        setSupportAlias(profile.supportAlias);
+        setConversationRetention(
+          profile.privacyPreferences.conversationRetention,
+        );
+        setCounsellorContextSharing(
+          profile.privacyPreferences.counsellorContextSharing,
+        );
+      }
     } catch (error: unknown) {
       const supabaseError = error as { code?: string; message?: string };
       console.error("Error loading settings:", error);
@@ -98,6 +113,10 @@ export default function SettingsPage() {
     setMessage(null);
 
     try {
+      if (supportAlias.trim().length < 2) {
+        throw new Error("Support alias must contain at least 2 characters.");
+      }
+
       const preferences: Partial<UserPreferences> = {
         emailNotifications,
         pushNotifications,
@@ -106,7 +125,21 @@ export default function SettingsPage() {
         language,
       };
 
-      await updateUserPreferences(user.uid, preferences);
+      const current = await getUserProfile(user.uid);
+      if (!current) throw new Error("Your account profile is unavailable.");
+
+      await updateUserProfile(user.uid, {
+        supportAlias,
+        preferences: {
+          ...current.preferences,
+          ...preferences,
+        },
+        privacyPreferences: {
+          ...current.privacyPreferences,
+          conversationRetention,
+          counsellorContextSharing,
+        },
+      });
       setMessage({ type: "success", text: "Settings saved successfully!" });
 
       // Clear message after 3 seconds
@@ -120,9 +153,11 @@ export default function SettingsPage() {
       
       setMessage({
         type: "error",
-        text: isPermissionError 
+        text: isPermissionError
           ? "Could not save to cloud. Please check your connection."
-          : "Failed to save settings. Please try again.",
+          : error instanceof Error
+            ? error.message
+            : "Failed to save settings. Please try again.",
       });
     } finally {
       setSaving(false);
@@ -745,6 +780,101 @@ export default function SettingsPage() {
         </Card>
 
         {/* Save Button */}
+        <h2 className="pb-2 pt-4 text-lg font-bold leading-tight tracking-tight text-text-primary dark:text-white sm:pb-3 sm:pt-5 sm:text-xl md:pt-6 md:text-[22px]">
+          Privacy &amp; identity
+        </h2>
+
+        <div className="mb-6 space-y-3 sm:mb-7 sm:space-y-4 md:mb-8">
+          <Card>
+            <label
+              htmlFor="support-alias"
+              className="block text-sm font-bold text-text-primary dark:text-white sm:text-base"
+            >
+              Support alias
+            </label>
+            <p className="mt-1 text-xs leading-relaxed text-text-secondary sm:text-sm">
+              This is the non-identifying name used in private support spaces.
+              It does not change your sign-in email.
+            </p>
+            <input
+              id="support-alias"
+              type="text"
+              value={supportAlias}
+              minLength={2}
+              maxLength={40}
+              autoComplete="off"
+              onChange={(event) => setSupportAlias(event.target.value)}
+              className="mt-3 h-11 w-full rounded-xl border-2 border-gray-200 bg-white px-4 text-base text-text-primary focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-gray-700 dark:bg-card-dark dark:text-white"
+            />
+            <p className="mt-1 text-right text-xs text-text-secondary">
+              {supportAlias.trim().length}/40
+            </p>
+          </Card>
+
+          <Card>
+            <label
+              htmlFor="conversation-retention"
+              className="block text-sm font-bold text-text-primary dark:text-white sm:text-base"
+            >
+              New conversation history
+            </label>
+            <p className="mt-1 text-xs leading-relaxed text-text-secondary sm:text-sm">
+              Choose whether new assistant conversations remain in your
+              account or are removed when the private session ends.
+            </p>
+            <select
+              id="conversation-retention"
+              value={conversationRetention}
+              onChange={(event) =>
+                setConversationRetention(
+                  event.target
+                    .value as UserPrivacyPreferences["conversationRetention"],
+                )
+              }
+              className="mt-3 h-11 w-full rounded-xl border-2 border-gray-200 bg-white px-4 text-base text-text-primary focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-gray-700 dark:bg-card-dark dark:text-white"
+            >
+              <option value="account">Keep in my account</option>
+              <option value="session">Remove after the private session</option>
+            </select>
+          </Card>
+
+          <Card>
+            <label
+              htmlFor="counsellor-sharing"
+              className="block text-sm font-bold text-text-primary dark:text-white sm:text-base"
+            >
+              Counsellor context sharing
+            </label>
+            <p className="mt-1 text-xs leading-relaxed text-text-secondary sm:text-sm">
+              This controls the default for summaries offered to a counsellor.
+              You can still make a different choice for an individual request.
+            </p>
+            <select
+              id="counsellor-sharing"
+              value={counsellorContextSharing}
+              onChange={(event) =>
+                setCounsellorContextSharing(
+                  event.target
+                    .value as UserPrivacyPreferences["counsellorContextSharing"],
+                )
+              }
+              className="mt-3 h-11 w-full rounded-xl border-2 border-gray-200 bg-white px-4 text-base text-text-primary focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-gray-700 dark:bg-card-dark dark:text-white"
+            >
+              <option value="ask_each_time">Ask me every time</option>
+              <option value="approved_summary">
+                Share only the summary I approve
+              </option>
+              <option value="never">Do not share conversation context</option>
+            </select>
+          </Card>
+
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs leading-relaxed text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/25 dark:text-emerald-100 sm:text-sm">
+            Device notifications stay discreet by default and do not show
+            period, symptom, mood, counsellor, or message details on the lock
+            screen.
+          </div>
+        </div>
+
         <div className="mb-6 sm:mb-7 md:mb-8">
           <Button onClick={saveSettings} disabled={saving} fullWidth>
             {saving ? "Saving..." : "Save Settings"}
