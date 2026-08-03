@@ -9,9 +9,17 @@ import {
 
 export interface PeriodNotification {
   id: string;
-  type: "period_reminder" | "period_today" | "phase_change" | "wellness_tip";
+  type:
+    | "period_reminder"
+    | "period_today"
+    | "phase_change"
+    | "wellness_tip"
+    | "counsellor_ready"
+    | "session_message"
+    | "audio_call";
   title: string;
   message: string;
+  href?: string;
   daysUntil?: number;
   timestamp: Date;
   read: boolean;
@@ -79,6 +87,13 @@ export const showBrowserNotification = (
 
     notification.onclick = () => {
       window.focus();
+      const href =
+        options?.data &&
+        typeof options.data === "object" &&
+        typeof (options.data as { href?: unknown }).href === "string"
+          ? (options.data as { href: string }).href
+          : null;
+      if (href) window.location.assign(href);
       notification.close();
     };
 
@@ -287,8 +302,12 @@ export const storeNotification = (
     const key = getNotificationsKey(uid);
     const existing = getStoredNotifications(uid);
     // Keep only last 10 notifications
-    const updated = [notification, ...existing].slice(0, 10);
+    const updated = [
+      notification,
+      ...existing.filter((item) => item.id !== notification.id),
+    ].slice(0, 10);
     localStorage.setItem(key, JSON.stringify(updated));
+    window.dispatchEvent(new Event("sistercare:notifications-changed"));
   } catch (error) {
     console.error("Error storing notification:", error);
   }

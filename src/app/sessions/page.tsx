@@ -54,8 +54,10 @@ export default function SessionsPage() {
       return;
     }
     if (user) {
-      load();
-      const interval = setInterval(load, 15000);
+      void load();
+      const interval = setInterval(() => {
+        if (document.visibilityState === "visible") void load();
+      }, 5_000);
       return () => clearInterval(interval);
     }
   }, [user, authLoading, router, load]);
@@ -65,9 +67,7 @@ export default function SessionsPage() {
     try {
       const session = await requestSession();
       await load();
-      if (session.state === "active") {
-        router.push(`/sessions/${session.id}`);
-      }
+      router.push(`/sessions/${session.id}`);
     } catch {
       setError("Couldn't request a session right now. Please try again.");
     } finally {
@@ -182,7 +182,13 @@ export default function SessionsPage() {
 
 function SessionCard({ session }: { session: CounsellingSession }) {
   const meta = SESSION_STATE_META[session.state];
-  const openable = ["active", "completed"].includes(session.state);
+  const openable = [
+    "requested",
+    "matched",
+    "accepted",
+    "active",
+    "completed",
+  ].includes(session.state);
 
   const body = (
     <div className="flex items-start justify-between gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition dark:border-gray-700 dark:bg-card-dark">
@@ -209,8 +215,9 @@ function SessionCard({ session }: { session: CounsellingSession }) {
         </p>
       </div>
       {openable && (
-        <span className="material-symbols-outlined shrink-0 self-center text-gray-400">
-          chevron_right
+        <span className="inline-flex shrink-0 items-center gap-1 self-center text-xs font-bold text-primary-dark">
+          {session.state === "active" ? "Open room" : "View status"}
+          <span className="material-symbols-outlined text-lg">chevron_right</span>
         </span>
       )}
     </div>

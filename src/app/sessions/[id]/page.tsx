@@ -29,7 +29,6 @@ export default function SessionRoomPage() {
   const router = useRouter();
 
   const [session, setSession] = useState<CounsellingSession | null>(null);
-  const [liveState, setLiveState] = useState<SessionState | null>(null);
   const [messages, setMessages] = useState<RoomMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
@@ -39,13 +38,14 @@ export default function SessionRoomPage() {
   const [feedbackSent, setFeedbackSent] = useState(false);
   const [audioBusy, setAudioBusy] = useState(false);
   const [audioJoinUrl, setAudioJoinUrl] = useState<string | null>(null);
+  const [incomingAudio, setIncomingAudio] = useState(false);
   const [audioState, setAudioState] = useState<
     "idle" | "connecting" | "active" | "failed"
   >("idle");
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const uid = auth.currentUser?.uid;
-  const state: SessionState | null = liveState || session?.state || null;
+  const state: SessionState | null = session?.state || null;
   const isSessionUser = Boolean(session && uid && session.userId === uid);
   const isCounsellor = Boolean(
     session && uid && session.counsellorId === uid,
@@ -77,10 +77,18 @@ export default function SessionRoomPage() {
     if (user) loadDetail();
   }, [user, authLoading, router, loadDetail]);
 
-  // Live session state + messages, straight from Supabase under the
-  // participant-scoped rules — no polling in the room itself.
   useEffect(() => {
-    if (!user || !session) return;
+    if (!user) return;
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") void loadDetail();
+    }, 4_000);
+    return () => window.clearInterval(interval);
+  }, [loadDetail, user]);
+
+  // Realtime is the fast path. Authenticated polling is the fallback when a
+  // browser or network blocks the realtime socket.
+  useEffect(() => {
+    if (!user) return;
 
     const supabase = getSupabaseBrowserClient();
     const loadMessages = async () => {
@@ -101,12 +109,18 @@ export default function SessionRoomPage() {
       }
     };
     void loadMessages();
+    const messagePoll = window.setInterval(() => {
+      if (document.visibilityState === "visible") void loadMessages();
+    }, 4_000);
     const channel = supabase.channel(`session-room:${sessionId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "session_messages", filter: `session_id=eq.${sessionId}` }, () => void loadMessages())
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "counselling_sessions", filter: `id=eq.${sessionId}` }, () => void loadDetail())
       .subscribe();
-    return () => { void supabase.removeChannel(channel); };
-  }, [user, session, sessionId]);
+    return () => {
+      window.clearInterval(messagePoll);
+      void supabase.removeChannel(channel);
+    };
+  }, [loadDetail, user, sessionId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -196,6 +210,7 @@ export default function SessionRoomPage() {
       }
       setAudioJoinUrl(payload.data.joinUrl);
       setAudioState("connecting");
+      setIncomingAudio(false);
     } catch (reason) {
       setAudioState("failed");
       setError(
@@ -214,6 +229,7 @@ export default function SessionRoomPage() {
     } catch {}
     setAudioJoinUrl(null);
     setAudioState("idle");
+    setIncomingAudio(false);
   }, [audioAction]);
 
   useEffect(() => {
@@ -241,7 +257,10 @@ export default function SessionRoomPage() {
   }, [audioAction, audioJoinUrl, endAudio]);
 
   useEffect(() => {
-    if (!audioJoinUrl) return;
+    if (state !== "active") {
+      setIncomingAudio(false);
+      return;
+    }
     const checkCallState = async () => {
       try {
         const response = await authenticatedFetch(`/api/sessions/${sessionId}/audio`, {
@@ -249,8 +268,19 @@ export default function SessionRoomPage() {
         });
         const payload = await response.json().catch(() => ({}));
         const callState = payload.data?.call?.state;
-        if (response.ok && (callState === "ended" || callState === "failed")) {
+        if (!response.ok || !callState) {
+          setIncomingAudio(false);
+          return;
+        }
+        if (
+          (callState === "connecting" || callState === "active") &&
+          !audioJoinUrl
+        ) {
+          setIncomingAudio(true);
+        }
+        if (callState === "ended" || callState === "failed") {
           setAudioJoinUrl(null);
+          setIncomingAudio(false);
           setAudioState(callState === "failed" ? "failed" : "idle");
           if (callState === "failed") {
             setError("The private audio connection ended. Continue safely by text.");
@@ -260,9 +290,10 @@ export default function SessionRoomPage() {
         // The embedded provider remains authoritative during brief API outages.
       }
     };
+    void checkCallState();
     const interval = window.setInterval(() => void checkCallState(), 5_000);
     return () => window.clearInterval(interval);
-  }, [audioJoinUrl, sessionId]);
+  }, [audioJoinUrl, sessionId, state]);
 
   if (error && !session) {
     return (
@@ -311,7 +342,13 @@ export default function SessionRoomPage() {
               className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
             >
               <span className="material-symbols-outlined text-base" aria-hidden="true">call</span>
-              {audioBusy ? "Preparing…" : audioState === "connecting" ? "Connecting…" : "Private audio"}
+              {audioBusy
+                ? "Preparing…"
+                : audioState === "connecting"
+                  ? "Connecting…"
+                  : incomingAudio
+                    ? "Join call"
+                    : "Start audio"}
             </button>
             {isCounsellor && (
               <button
@@ -335,6 +372,33 @@ export default function SessionRoomPage() {
         <div className="mb-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
           {error}
         </div>
+      )}
+
+      {incomingAudio && !audioJoinUrl && (
+        <section className="mb-4 flex flex-col gap-3 rounded-2xl border border-fuchsia-200 bg-fuchsia-50 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-fuchsia-800 dark:bg-fuchsia-950/20">
+          <div className="flex items-center gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-dark text-white">
+              <span className="material-symbols-outlined">call</span>
+            </span>
+            <div>
+              <p className="text-sm font-extrabold text-text-primary dark:text-white">
+                Private audio is ready
+              </p>
+              <p className="text-xs text-text-secondary">
+                The other participant opened the audio room. Recording is off.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => void startAudio()}
+            disabled={audioBusy}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary-dark px-4 text-sm font-bold text-white disabled:opacity-60"
+          >
+            <span className="material-symbols-outlined text-lg">mic</span>
+            {audioBusy ? "Preparing…" : "Join private audio"}
+          </button>
+        </section>
       )}
 
       {audioJoinUrl && (
@@ -412,7 +476,13 @@ export default function SessionRoomPage() {
 
       {/* Composer */}
       {showComposer && (
-        <div className="flex gap-2">
+        <div
+          className={`sticky z-20 -mx-2 flex gap-2 border-t border-border-light bg-bg-light/95 px-2 py-3 backdrop-blur dark:border-border-dark dark:bg-bg-dark/95 ${
+            isSessionUser
+              ? "bottom-[calc(var(--bottom-nav-height)+env(safe-area-inset-bottom,0px))] md:bottom-0"
+              : "bottom-0"
+          }`}
+        >
           <input
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
