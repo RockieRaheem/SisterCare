@@ -31,6 +31,7 @@ import {
   CounsellingSession,
   CounsellorSpecialty,
   SessionPriority,
+  SessionMessage,
   SessionState,
 } from "@/types";
 
@@ -700,6 +701,72 @@ export async function getSession(
 ): Promise<CounsellingSession | null> {
   const row = await fetchSession(sessionId);
   return row ? rowToSession(row) : null;
+}
+
+function assertSessionParticipant(
+  session: CounsellingSession,
+  uid: string,
+): "user" | "counsellor" {
+  if (session.userId === uid) return "user";
+  if (session.counsellorId === uid) return "counsellor";
+  throw new Error("Not a participant of this session");
+}
+
+export async function listSessionMessages(
+  sessionId: string,
+  uid: string,
+): Promise<SessionMessage[]> {
+  const session = await getSession(sessionId);
+  if (!session) throw new Error("Session not found");
+  assertSessionParticipant(session, uid);
+  const { data, error } = await db()
+    .from("session_messages")
+    .select("id,sender_id,sender_role,text,created_at")
+    .eq("session_id", sessionId)
+    .order("created_at", { ascending: true });
+  check(error);
+  return (data || []).map((message) => ({
+    id: message.id,
+    senderId: message.sender_id,
+    senderRole: message.sender_role,
+    text: message.text,
+    createdAt: new Date(message.created_at),
+  }));
+}
+
+export async function sendSessionMessage(
+  sessionId: string,
+  uid: string,
+  input: string,
+): Promise<SessionMessage> {
+  const text = input.trim();
+  if (!text) throw new Error("Message cannot be empty");
+  if (text.length > 2_000) throw new Error("Message is too long");
+  const session = await getSession(sessionId);
+  if (!session) throw new Error("Session not found");
+  const senderRole = assertSessionParticipant(session, uid);
+  if (session.state !== "active") {
+    throw new Error("Messages can only be sent during an active session");
+  }
+  const { data, error } = await db()
+    .from("session_messages")
+    .insert({
+      session_id: sessionId,
+      sender_id: uid,
+      sender_role: senderRole,
+      text,
+    })
+    .select("id,sender_id,sender_role,text,created_at")
+    .single();
+  check(error);
+  if (!data) throw new Error("Message was not saved");
+  return {
+    id: data.id,
+    senderId: data.sender_id,
+    senderRole: data.sender_role,
+    text: data.text,
+    createdAt: new Date(data.created_at),
+  };
 }
 
 export async function listSessionsForUser(

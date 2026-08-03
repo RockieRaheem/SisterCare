@@ -84,14 +84,21 @@ export default function SessionRoomPage() {
 
     const supabase = getSupabaseBrowserClient();
     const loadMessages = async () => {
-      const { data, error: loadError } = await supabase
-        .from("session_messages").select("*").eq("session_id", sessionId)
-        .order("created_at", { ascending: true });
-      if (loadError) return console.warn("Session message load failed:", loadError);
-      setMessages((data || []).map((message) => ({
-        id: message.id, senderId: message.sender_id, senderRole: message.sender_role,
-        text: message.text, createdAt: message.created_at ? new Date(message.created_at) : null,
-      })));
+      try {
+        const response = await authenticatedFetch(
+          `/api/sessions/${sessionId}/messages`,
+          { cache: "no-store" },
+        );
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.error || "Message history failed");
+        setMessages((payload.data.messages || []).map((message: RoomMessage & { createdAt?: string }) => ({
+          ...message,
+          createdAt: message.createdAt ? new Date(message.createdAt) : null,
+        })));
+      } catch (loadError) {
+        console.warn("Session message load failed:", loadError);
+        setError("Messages could not be refreshed. Check your connection.");
+      }
     };
     void loadMessages();
     const channel = supabase.channel(`session-room:${sessionId}`)
@@ -110,13 +117,25 @@ export default function SessionRoomPage() {
     if (!text || !uid || state !== "active") return;
     setSending(true);
     try {
-      const { error: insertError } = await getSupabaseBrowserClient().from("session_messages").insert({
-        session_id: sessionId,
-        sender_id: uid,
-        sender_role: isSessionUser ? "user" : "counsellor",
-        text,
+      const response = await authenticatedFetch(`/api/sessions/${sessionId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
       });
-      if (insertError) throw insertError;
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Message failed to send");
+      const saved = payload.data.message as RoomMessage & { createdAt?: string };
+      setMessages((current) =>
+        current.some((message) => message.id === saved.id)
+          ? current
+          : [
+              ...current,
+              {
+                ...saved,
+                createdAt: saved.createdAt ? new Date(saved.createdAt) : new Date(),
+              },
+            ],
+      );
       setDraft("");
     } catch {
       setError("Message failed to send. Check your connection.");
@@ -220,6 +239,30 @@ export default function SessionRoomPage() {
     window.addEventListener("message", receiveProviderState);
     return () => window.removeEventListener("message", receiveProviderState);
   }, [audioAction, audioJoinUrl, endAudio]);
+
+  useEffect(() => {
+    if (!audioJoinUrl) return;
+    const checkCallState = async () => {
+      try {
+        const response = await authenticatedFetch(`/api/sessions/${sessionId}/audio`, {
+          cache: "no-store",
+        });
+        const payload = await response.json().catch(() => ({}));
+        const callState = payload.data?.call?.state;
+        if (response.ok && (callState === "ended" || callState === "failed")) {
+          setAudioJoinUrl(null);
+          setAudioState(callState === "failed" ? "failed" : "idle");
+          if (callState === "failed") {
+            setError("The private audio connection ended. Continue safely by text.");
+          }
+        }
+      } catch {
+        // The embedded provider remains authoritative during brief API outages.
+      }
+    };
+    const interval = window.setInterval(() => void checkCallState(), 5_000);
+    return () => window.clearInterval(interval);
+  }, [audioJoinUrl, sessionId]);
 
   if (error && !session) {
     return (

@@ -123,9 +123,16 @@ export async function POST(
         .from("session_audio_calls")
         .update({ state: "active", started_at: existing.started_at || new Date().toISOString() })
         .eq("id", existing.id)
+        .in("state", ["connecting", "active"])
         .select("*")
-        .single();
+        .maybeSingle();
       if (error) throw error;
+      if (!data) {
+        return NextResponse.json(
+          { success: false, error: "This audio call has already ended." },
+          { status: 409 },
+        );
+      }
       return NextResponse.json({ success: true, data: { call: serialize(data) } });
     }
 
@@ -147,9 +154,16 @@ export async function POST(
               : null,
         })
         .eq("id", existing.id)
+        .in("state", ["connecting", "active"])
         .select("*")
-        .single();
+        .maybeSingle();
       if (error) throw error;
+      if (!data) {
+        return NextResponse.json({
+          success: true,
+          data: { call: serialize(existing) },
+        });
+      }
       return NextResponse.json({ success: true, data: { call: serialize(data) } });
     }
 
