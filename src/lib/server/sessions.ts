@@ -13,6 +13,7 @@ import {
 import { rankCounsellors } from "../counsellorMatching";
 import {
   evaluateCounsellorEligibility,
+  evaluateCounsellorStanding,
   evaluateCrisisEscalation,
 } from "../counsellorOperations";
 import { emitEvent } from "./events";
@@ -221,17 +222,29 @@ export async function recordHeartbeat(
   counsellorId: string,
   status: "available",
 ): Promise<{ drained: number; status: "available" | "in_session" }> {
-  await assertCounsellorOperationallyEligible(counsellorId, "normal");
   const [{ data: current, error }, activeLoad] = await Promise.all([
     db()
       .from("counsellors")
-      .select("status")
+      .select("*")
       .eq("id", counsellorId)
       .maybeSingle(),
     liveLoad(counsellorId),
   ]);
   check(error);
   if (!current) throw new Error("Verified counsellor profile required");
+  const counsellor = rowToCounsellor(current as Row);
+  const eligibility =
+    activeLoad > 0
+      ? evaluateCounsellorStanding(counsellor)
+      : evaluateCounsellorEligibility(counsellor, {
+          activeLoad: 0,
+          priority: "normal",
+        });
+  if (!eligibility.eligible) {
+    throw new Error(
+      `Counsellor is not operationally eligible: ${eligibility.reasons.join(", ")}`,
+    );
+  }
   const effectiveStatus = activeLoad > 0 ? "in_session" : status;
   const { error: updateError } = await db()
     .from("counsellors")

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   evaluateCounsellorEligibility,
+  evaluateCounsellorStanding,
   evaluateCrisisEscalation,
   isCounsellorOnShift,
 } from "@/lib/counsellorOperations";
@@ -88,6 +89,19 @@ describe("counsellor operational eligibility", () => {
         priority: "normal",
       }).eligible,
     ).toBe(true);
+  });
+
+  it("keeps verified counsellors present during active care even at capacity", () => {
+    expect(evaluateCounsellorStanding(counsellor(), now)).toEqual({
+      eligible: true,
+      reasons: [],
+    });
+    expect(
+      evaluateCounsellorStanding(
+        counsellor({ verificationStatus: "suspended" }),
+        now,
+      ).reasons,
+    ).toContain("verification_required");
   });
 
   it("evaluates overnight shifts in Kampala time", () => {

@@ -5,6 +5,23 @@ export interface CounsellorEligibility {
   reasons: string[];
 }
 
+export function evaluateCounsellorStanding(
+  counsellor: Counsellor,
+  now: Date = new Date(),
+): CounsellorEligibility {
+  const reasons: string[] = [];
+  if (!counsellor.verified || counsellor.verificationStatus !== "verified") {
+    reasons.push("verification_required");
+  }
+  if (
+    counsellor.credentialExpiresAt &&
+    counsellor.credentialExpiresAt.getTime() <= now.getTime()
+  ) {
+    reasons.push("credentials_expired");
+  }
+  return { eligible: reasons.length === 0, reasons };
+}
+
 function minutes(time: string): number | null {
   const match = /^(\d{2}):(\d{2})$/.exec(time);
   if (!match) return null;
@@ -52,17 +69,7 @@ export function evaluateCounsellorEligibility(
   },
 ): CounsellorEligibility {
   const now = options.now ?? new Date();
-  const reasons: string[] = [];
-
-  if (!counsellor.verified || counsellor.verificationStatus !== "verified") {
-    reasons.push("verification_required");
-  }
-  if (
-    counsellor.credentialExpiresAt &&
-    counsellor.credentialExpiresAt.getTime() <= now.getTime()
-  ) {
-    reasons.push("credentials_expired");
-  }
+  const reasons = [...evaluateCounsellorStanding(counsellor, now).reasons];
   if (counsellor.acceptingNewSessions !== true) {
     reasons.push("not_accepting_sessions");
   }
@@ -115,4 +122,3 @@ export function evaluateCrisisEscalation(
   );
   return due ? { level: due.level, action: due.action } : { level: currentLevel, action: "none" };
 }
-

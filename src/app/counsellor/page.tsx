@@ -292,9 +292,9 @@ export default function CounsellorPortalPage() {
 
   useEffect(() => {
     if (!isCounsellor) return;
-    if (presence === "available") {
+    if (presence !== "offline") {
       heartbeatRef.current = setInterval(() => {
-        if (presenceRef.current === "available") {
+        if (presenceRef.current !== "offline") {
           void sendPresence("available").then(setPresence).catch(() => {
             setError("Your live availability signal was interrupted. Reconnect before accepting new care.");
           });
