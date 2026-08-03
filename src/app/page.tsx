@@ -118,8 +118,14 @@ export default function Home() {
               <div className="relative rounded-2xl border border-border-light bg-white p-5 shadow-soft-lg dark:border-border-dark dark:bg-card-dark">
                 {/* Mock header */}
                 <div className="mb-4 flex items-center gap-3 border-b border-border-light pb-4 dark:border-border-dark">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-lg text-white">
-                    💜
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-dark text-white shadow-primary-sm">
+                    <span
+                      className="material-symbols-outlined text-xl"
+                      style={{ fontVariationSettings: '"FILL" 1, "wght" 600' }}
+                      aria-hidden="true"
+                    >
+                      favorite
+                    </span>
                   </div>
                   <div>
                     <p className="text-sm font-bold text-text-primary dark:text-white">
