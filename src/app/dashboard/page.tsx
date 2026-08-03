@@ -516,7 +516,7 @@ export default function DashboardPage() {
                 {countdown.isPeriodActive ? (
                   <div className="mb-6">
                     <h2 className="text-text-primary dark:text-white text-2xl font-bold mb-2">
-                      💜 {t.dashboard.takeItEasy}
+                      💗 {t.dashboard.takeItEasy}
                     </h2>
                     <p className="text-text-secondary text-base max-w-md">
                       {t.dashboard.periodDayMessage.replace(

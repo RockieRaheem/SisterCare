@@ -68,7 +68,7 @@ const CONTEXTUAL_SELF_HARM_SIGNALS = [
 
 // Crisis responses with Uganda-specific resources
 export const CRISIS_RESPONSES = {
-  familyAbuse: `I'm so sorry you're going through this. What you're describing is serious, and I want you to know that it is NOT your fault. You deserve to be safe. 💜
+  familyAbuse: `I'm so sorry you're going through this. What you're describing is serious, and I want you to know that it is NOT your fault. You deserve to be safe. 💗
 
 Immediate help is available in Uganda:
 
@@ -83,7 +83,7 @@ Please remember: You are brave for speaking up. This is not your fault. Help is 
 
 Would you like me to help you think through your options for getting help safely?`,
 
-  selfHarm: `I'm really glad you reached out. What you're feeling matters, and I'm concerned about your safety. Please know you're not alone. 💜
+  selfHarm: `I'm really glad you reached out. What you're feeling matters, and I'm concerned about your safety. Please know you're not alone. 💗
 
 Please reach out right now in Uganda:
 
@@ -94,9 +94,9 @@ Please reach out right now in Uganda:
 
 You can also reach out to a trusted person like a teacher, religious leader, counselor, or family member.
 
-Your life matters. These feelings can get better with support. There are people in Uganda who care and want to help you through this. Please don't give up. 💜`,
+Your life matters. These feelings can get better with support. There are people in Uganda who care and want to help you through this. Please don't give up. 💗`,
 
-  harassment: `I'm sorry this is happening to you. What you're describing is not okay, and it's not your fault. 💜
+  harassment: `I'm sorry this is happening to you. What you're describing is not okay, and it's not your fault. 💗
 
 Get help now in Uganda:
 
@@ -109,7 +109,7 @@ Important steps you can take: Document or screenshot any messages for evidence. 
 
 You deserve to feel safe. Would you like to talk more about what's happening?`,
 
-  danger: `Your safety is the top priority. I hear that you're scared, and I want to help. 💜
+  danger: `Your safety is the top priority. I hear that you're scared, and I want to help. 💗
 
 If you're in immediate danger in Uganda, call the police right away:
 
@@ -121,7 +121,7 @@ You can also go to a safe place like a trusted neighbor's home, church, mosque, 
 
 Can you tell me more about the situation? Is there somewhere safe you can go right now?`,
 
-  generalAbuse: `I'm really concerned about what you've shared. You don't deserve to be treated this way. 💜
+  generalAbuse: `I'm really concerned about what you've shared. You don't deserve to be treated this way. 💗
 
 Please know: This is NOT your fault. You deserve to be safe. Help is available in Uganda.
 
@@ -134,7 +134,7 @@ Resources:
 
 Would you feel comfortable sharing more about what's happening? I want to make sure you get the right help.`,
 
-  violence: `I can hear that you're going through something really difficult right now. 💜 Those feelings of anger and wanting to hurt someone can be overwhelming.
+  violence: `I can hear that you're going through something really difficult right now. 💗 Those feelings of anger and wanting to hurt someone can be overwhelming.
 
 But I care about you, and I want to help you find a safer way to deal with this. Hurting someone would have serious consequences for your life and future.
 
@@ -143,7 +143,7 @@ Please reach out to talk to someone right now:
 📞 Sauti 116 Helpline: Call 116 (toll-free, 24/7) - They can help you work through these feelings
 📞 Butabika National Referral Mental Hospital: 0414 504 379
 
-Can you tell me more about what's making you feel this way? Sometimes talking about what's hurting us can help us find better solutions. You're not alone in this. 💜`,
+Can you tell me more about what's making you feel this way? Sometimes talking about what's hurting us can help us find better solutions. You're not alone in this. 💗`,
 };
 
 export function detectCrisisType(message: string): CrisisType | null {

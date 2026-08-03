@@ -101,7 +101,7 @@ export const generatePeriodReminder = (
     return {
       id: `period-late-${Date.now()}`,
       type: "period_reminder",
-      title: "Period Check-In 💜",
+      title: "Period Check-In 💗",
       message: `${greeting}Your period was expected ${Math.abs(daysUntilPeriod)} day${Math.abs(daysUntilPeriod) !== 1 ? "s" : ""} ago. Don't worry, cycles can vary! If you've started, remember to update your tracker.`,
       daysUntil: daysUntilPeriod,
       timestamp: new Date(),

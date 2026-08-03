@@ -195,7 +195,7 @@ export const lg: TranslationKeys = {
     thinking: "Sister alowooza...",
     errorMessage: "Nsonyiwa, sisobodde kukolayo kino. Gezaako nate.",
     welcomeMessage:
-      "Nkulamusiza! Nze Sister, omukwano gwo ow'okukuyamba wano ku SisterCare. 💜 Ndi wano okukuwuliriza, okukuddamu ebibuuzo ku by'ebyobulamu by'omwezi, n'okukuwa obuwagizi. Owulira otya leero?",
+      "Nkulamusiza! Nze Sister, omukwano gwo ow'okukuyamba wano ku SisterCare. 💗 Ndi wano okukuwuliriza, okukuddamu ebibuuzo ku by'ebyobulamu by'omwezi, n'okukuwa obuwagizi. Owulira otya leero?",
     icebreakers: {
       cramps: "Nsobola ntya okukwata okulumwa kw'olubuto mu ngeri ey'obutonde?",
       mood: "Leero mpulira nti nnina okweralikirira",

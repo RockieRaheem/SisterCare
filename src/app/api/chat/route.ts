@@ -384,11 +384,11 @@ function getDirectLugandaResponse(message: string): string | null {
       m,
     )
   ) {
-    return "Nkwetegereza era nsonyiwa ku buzibu bw'oyitamu. 💜 Bw'oba olina olubuto ng'okyali ku somero, oyinza okufuna obuyambi obw'obukuumi okuva eri omusomesa gw'osiga, senior woman/mentor, oba omukozi w'eby'obulamu ku ddwaliro erikuli okumpi. Oyinza okutandika n'okukebera olubuto ku ddwaliro, oluvannyuma tukole plan ennyangu ey'okukuuma obulamu bwo n'obw'omwana.";
+    return "Nkwetegereza era nsonyiwa ku buzibu bw'oyitamu. 💗 Bw'oba olina olubuto ng'okyali ku somero, oyinza okufuna obuyambi obw'obukuumi okuva eri omusomesa gw'osiga, senior woman/mentor, oba omukozi w'eby'obulamu ku ddwaliro erikuli okumpi. Oyinza okutandika n'okukebera olubuto ku ddwaliro, oluvannyuma tukole plan ennyangu ey'okukuuma obulamu bwo n'obw'omwana.";
   }
 
   if (/(omusajja.*yanfunisiza olubuto)/i.test(m)) {
-    return "Nsonyiwa nnyo olw'ebyo by'oyiseemu. 💜 Okwogera kino kiraga obuvumu. Ka tukole mu bukebezi: singa waliwo okutisibwa oba okukozesebwa mu bubi, saba obuyambi ku Sauti 116 (free, 24/7) oba 999/112. Era oyinza okutandika n'okukebera olubuto ku ddwaliro, olonde omuntu omukulu gw'osiga, era tukuyunge ku kansala akuyambe mu ngeri etakutisizza.";
+    return "Nsonyiwa nnyo olw'ebyo by'oyiseemu. 💗 Okwogera kino kiraga obuvumu. Ka tukole mu bukebezi: singa waliwo okutisibwa oba okukozesebwa mu bubi, saba obuyambi ku Sauti 116 (free, 24/7) oba 999/112. Era oyinza okutandika n'okukebera olubuto ku ddwaliro, olonde omuntu omukulu gw'osiga, era tukuyunge ku kansala akuyambe mu ngeri etakutisizza.";
   }
 
   if (
@@ -396,13 +396,13 @@ function getDirectLugandaResponse(message: string): string | null {
       m,
     )
   ) {
-    return "Webale okwogerako - kino kizibu nnyo era oli wa muwendo. 💜 Tujja okukola mu bukebezi. Singa waliwo okutisibwa oba okukozesebwa mu bubi, nyiga obuyambi bw'amangu ku Sauti 116 (free, 24/7) oba 999/112. Era tusobola okusooka n'entambula eno: (1) kebera olubuto ku ddwaliro, (2) londa omuntu omukulu gw'osiga ayinza okubeera naawe, (3) tufune kansala akuyambe okwogera n'abazadde mu ngeri etali ya kutiisa.";
+    return "Webale okwogerako - kino kizibu nnyo era oli wa muwendo. 💗 Tujja okukola mu bukebezi. Singa waliwo okutisibwa oba okukozesebwa mu bubi, nyiga obuyambi bw'amangu ku Sauti 116 (free, 24/7) oba 999/112. Era tusobola okusooka n'entambula eno: (1) kebera olubuto ku ddwaliro, (2) londa omuntu omukulu gw'osiga ayinza okubeera naawe, (3) tufune kansala akuyambe okwogera n'abazadde mu ngeri etali ya kutiisa.";
   }
 
   if (
     /(jebale|jebala|webale|gyebale|osiibye otya|oli otya|kili kitya|hello|hi)/i.test(m)
   ) {
-    return "Gyebale ko! Ndi Sister wo era ndi wano okukuyamba. 💜 Leero oyagala twogere ku ki?";
+    return "Gyebale ko! Ndi Sister wo era ndi wano okukuyamba. 💗 Leero oyagala twogere ku ki?";
   }
 
   if (
@@ -410,13 +410,13 @@ function getDirectLugandaResponse(message: string): string | null {
       m,
     )
   ) {
-    return "Mmanyi Oluganda era nnyinza okwogera naawe bulungi. 💜 Nsonyiwa bw'otafunye ky'oyagala mangu. Nsaba ombuulire ekizibu kyo mu bigambo ebitono, nkuyambe bulungi.";
+    return "Mmanyi Oluganda era nnyinza okwogera naawe bulungi. 💗 Nsonyiwa bw'otafunye ky'oyagala mangu. Nsaba ombuulire ekizibu kyo mu bigambo ebitono, nkuyambe bulungi.";
   }
 
   if (
     /(njagala|nnyagala).*(kansala|counsellor|counselor|human help)/i.test(m)
   ) {
-    return "Kale, nsobola okukuyunga ku kansala. 💜 Bw'oyagala nnyinza okukuyamba okufuna omuntu ow'okuyamba kati. Era bw'oba olina akaseera, tusobola okusooka okwogera ku mbeera yo okwanguyiza obuyambi obutuufu.";
+    return "Kale, nsobola okukuyunga ku kansala. 💗 Bw'oyagala nnyinza okukuyamba okufuna omuntu ow'okuyamba kati. Era bw'oba olina akaseera, tusobola okusooka okwogera ku mbeera yo okwanguyiza obuyambi obutuufu.";
   }
 
   if (
@@ -433,13 +433,13 @@ function getDirectLugandaResponse(message: string): string | null {
   if (
     /(olubuto|lubuto).*(lunuma|lunuma nnyo|lunuma nyo|lumwa|lumye)/i.test(m)
   ) {
-    return "Nsonyiwa oluvannyuma lw'obulumi. 💜 Ku cramp oba obulumi bw'ekifuba ekya wansi, gezaako okussaako enkoona entangaala, okunywa amazzi, okuwummula, n'okwewala okukola ebizito. Singa bulumi bwa maanyi nnyo, laba omukugu mu by'obulamu.";
+    return "Nsonyiwa oluvannyuma lw'obulumi. 💗 Ku cramp oba obulumi bw'ekifuba ekya wansi, gezaako okussaako enkoona entangaala, okunywa amazzi, okuwummula, n'okwewala okukola ebizito. Singa bulumi bwa maanyi nnyo, laba omukugu mu by'obulamu.";
   }
 
   if (
     /(omutwe).*(gundi bubi|gunuma|gunnuma|bubi nnyo|gulumye|lumwa)/i.test(m)
   ) {
-    return "Nsonyiwa ku bulumi bw'omutwe. 💜 Gezaako okuwummula mu kifo ekisirifu, nywa amazzi, era obeere wala ku bintu ebireeta olusuku. Singa bulumi bumala ebbanga oba bweyongera, laba omukugu mu by'obulamu.";
+    return "Nsonyiwa ku bulumi bw'omutwe. 💗 Gezaako okuwummula mu kifo ekisirifu, nywa amazzi, era obeere wala ku bintu ebireeta olusuku. Singa bulumi bumala ebbanga oba bweyongera, laba omukugu mu by'obulamu.";
   }
 
   if (
@@ -447,7 +447,7 @@ function getDirectLugandaResponse(message: string): string | null {
       m,
     )
   ) {
-    return "Omuwala bw'aba ali olubuto, kirungi okumuyunga ku muntu omukulu oba omukozi w'eby'obulamu mangu. 💜 Muyambe okukebera olubuto mu kliniki, era atandike okulabirirwa mu lubuto mangu singa kisoboka.";
+    return "Omuwala bw'aba ali olubuto, kirungi okumuyunga ku muntu omukulu oba omukozi w'eby'obulamu mangu. 💗 Muyambe okukebera olubuto mu kliniki, era atandike okulabirirwa mu lubuto mangu singa kisoboka.";
   }
 
   if (
@@ -455,7 +455,7 @@ function getDirectLugandaResponse(message: string): string | null {
       m,
     )
   ) {
-    return "Ndi wano okukuyamba. 💜 Nsobola okukutegeera bulungi singa ombuulira ekikukwatako kati. Oyagala obuyambi ku bulumi, ku birowoozo, oba oyagala nnyunge ku kansala?";
+    return "Ndi wano okukuyamba. 💗 Nsobola okukutegeera bulungi singa ombuulira ekikukwatako kati. Oyagala obuyambi ku bulumi, ku birowoozo, oba oyagala nnyunge ku kansala?";
   }
 
   return null;
@@ -627,13 +627,13 @@ function fallbackLocalizedResponse(
   const lower = originalEnglishText.toLowerCase();
 
   const generic: Partial<Record<SupportedLanguageCode, string>> = {
-    lug: "Ndi wano okukuyamba. Nsaba obuuze ekibuuzo kyo nate mu ngeri ennyangu. 💜",
-    nyn: "Ndi hanu kukuhwera. Nkusaba obuuze eki orikwenda obuyambiho. 💜",
-    teo: "Arai ikesi na itungauni. Kojo akiswomuni itai. 💜",
-    luo: "An kanyiso ka akweyi. Kiyie penjo mariwore kendo. 💜",
-    ach: "An tye ka konyi. Tim ber i penya an kede lok mamek. 💜",
-    lgg: "Ma adi rika ma ni. Mi oji ri nyi bori kuza. 💜",
-    sw: "Niko hapa kukusaidia. Tafadhali uliza swali lako tena kwa urahisi. 💜",
+    lug: "Ndi wano okukuyamba. Nsaba obuuze ekibuuzo kyo nate mu ngeri ennyangu. 💗",
+    nyn: "Ndi hanu kukuhwera. Nkusaba obuuze eki orikwenda obuyambiho. 💗",
+    teo: "Arai ikesi na itungauni. Kojo akiswomuni itai. 💗",
+    luo: "An kanyiso ka akweyi. Kiyie penjo mariwore kendo. 💗",
+    ach: "An tye ka konyi. Tim ber i penya an kede lok mamek. 💗",
+    lgg: "Ma adi rika ma ni. Mi oji ri nyi bori kuza. 💗",
+    sw: "Niko hapa kukusaidia. Tafadhali uliza swali lako tena kwa urahisi. 💗",
   };
 
   const cycleSetup: Partial<Record<SupportedLanguageCode, string>> = {
@@ -647,13 +647,13 @@ function fallbackLocalizedResponse(
   };
 
   const greeting: Partial<Record<SupportedLanguageCode, string>> = {
-    lug: "Ndi Sister wo era ndi wano bulijjo okukuyamba. 💜 Oyagala twogere ku ki?",
-    nyn: "Ndi Sister wawe kandi ndi hanu kukuhwera obwire bwona. 💜 Niki eki orikwenda tugambeho?",
-    teo: "Arai Sister koni, ikesi na itungauni ijo. 💜 Ijo nu daunitete itunganakini?",
-    luo: "An Sister mari kendo an kanyiso ka akweyi. 💜 Idwaro wawinjore kuom ang'o?",
-    ach: "An aye Sister mamegi, tye ka konyi kare weng. 💜 Imito wa lok ikom ngo?",
-    lgg: "Ma Sister mi, ma adi rika ma ni nyonyo. 💜 Mi oji ni ri nyi?",
-    sw: "Mimi ni Sister wako, niko hapa kukusaidia kila wakati. 💜 Ungependa tuzungumzie nini?",
+    lug: "Ndi Sister wo era ndi wano bulijjo okukuyamba. 💗 Oyagala twogere ku ki?",
+    nyn: "Ndi Sister wawe kandi ndi hanu kukuhwera obwire bwona. 💗 Niki eki orikwenda tugambeho?",
+    teo: "Arai Sister koni, ikesi na itungauni ijo. 💗 Ijo nu daunitete itunganakini?",
+    luo: "An Sister mari kendo an kanyiso ka akweyi. 💗 Idwaro wawinjore kuom ang'o?",
+    ach: "An aye Sister mamegi, tye ka konyi kare weng. 💗 Imito wa lok ikom ngo?",
+    lgg: "Ma Sister mi, ma adi rika ma ni nyonyo. 💗 Mi oji ni ri nyi?",
+    sw: "Mimi ni Sister wako, niko hapa kukusaidia kila wakati. 💗 Ungependa tuzungumzie nini?",
   };
 
   if (
@@ -1471,7 +1471,7 @@ async function postChat(request: NextRequest) {
 
           if (requestedCounsellor || requestedCall || requestedWhatsApp) {
             const { localizedText, audio } = await localizeResponse(
-              `I've matched you with **${counsellor.name}** — ${counsellor.title}. 💜\n\nI'm opening their profile so you can review their languages, specialties, and availability first. From there, you can choose whether to call or WhatsApp them.`,
+              `I've matched you with **${counsellor.name}** — ${counsellor.title}. 💗\n\nI'm opening their profile so you can review their languages, specialties, and availability first. From there, you can request a private SisterCare session.`,
             );
 
             return NextResponse.json({
@@ -1527,7 +1527,7 @@ async function postChat(request: NextRequest) {
 
           if (requestedCounsellor) {
             const { localizedText, audio } = await localizeResponse(
-              `I wasn't able to find an immediately available counsellor right now, but I've flagged your request for urgent follow-up. 💜\n\nIn the meantime, you can reach our counsellors directly:\n\n📞 **Sauti 116 Helpline:** Call 116 (toll-free, 24/7)\n📞 **Mental Health Uganda:** 0800 110 022 (toll-free)\n\nYou can also browse available counsellors in the [Counsellors section](/counsellors) of the app to book a session directly.`,
+              `I wasn't able to find an immediately available counsellor right now, but I've flagged your request for urgent follow-up. 💗\n\nIf you need urgent support, call your configured regional emergency service. You can also browse live availability in the [Counsellors section](/counsellors) and request a private SisterCare session.`,
             );
 
             return NextResponse.json({
@@ -1562,7 +1562,7 @@ async function postChat(request: NextRequest) {
 
         if (requestedCounsellor) {
           const { localizedText, audio } = await localizeResponse(
-            `I encountered an issue connecting you to a counsellor right now. 💜 Please try these direct options:\n\n📞 **Sauti 116 Helpline:** Call 116 (toll-free, 24/7)\n💬 **WhatsApp:** You can also browse [our counsellors](/counsellors) in the app to reach them directly.`,
+            `I encountered an issue connecting you to a counsellor right now. 💗 Please browse [our counsellors](/counsellors) to see live availability and request a private SisterCare session.`,
           );
 
           return NextResponse.json({
@@ -1756,7 +1756,7 @@ async function postChat(request: NextRequest) {
       return NextResponse.json(
         {
           response:
-            "I'm a bit busy right now with lots of conversations! 💜 Please wait about 20 seconds and send your message again. I promise I'll be right with you!",
+            "I'm a bit busy right now with lots of conversations! 💗 Please wait about 20 seconds and send your message again.",
           source: "rate_limited",
           type: "agent",
           retryAfter: 20,
@@ -1774,7 +1774,7 @@ async function postChat(request: NextRequest) {
       return NextResponse.json(
         {
           response:
-            "I'm taking a bit longer than usual to respond. Please try sending your message again. 💜",
+            "I'm taking a bit longer than usual to respond. Please try sending your message again. 💗",
           source: "timeout",
           type: "agent",
           actionStatuses: [],
@@ -1786,7 +1786,7 @@ async function postChat(request: NextRequest) {
     return NextResponse.json(
       {
         response:
-          "I'm having a small technical issue right now. Please try again in a moment. If you need immediate help, call Sauti 116 (toll-free in Uganda) or visit your nearest health center. 💜",
+          "I'm having a small technical issue right now. Please try again in a moment. If you need immediate help, contact your configured regional emergency service or visit the nearest health facility. 💗",
         source: "error",
         type: "agent",
         error: errorMessage,

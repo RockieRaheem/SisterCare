@@ -202,12 +202,12 @@ export function getDaysUntilPeriod(nextPeriodDate: Date): number {
  */
 export function formatReminderMessage(daysUntil: number): string {
   if (daysUntil === 0) {
-    return "Your period may start today. Make sure you're prepared! 💜";
+    return "Your period may start today. Make sure you're prepared! 💗";
   } else if (daysUntil === 1) {
-    return "Your period is expected tomorrow. Time to get ready! 💜";
+    return "Your period is expected tomorrow. Time to get ready! 💗";
   } else if (daysUntil <= 3) {
-    return `Your period is expected in ${daysUntil} days. A gentle reminder to prepare. 💜`;
+    return `Your period is expected in ${daysUntil} days. A gentle reminder to prepare. 💗`;
   } else {
-    return `Your period is expected in ${daysUntil} days. Stay prepared and take care of yourself! 💜`;
+    return `Your period is expected in ${daysUntil} days. Stay prepared and take care of yourself! 💗`;
   }
 }

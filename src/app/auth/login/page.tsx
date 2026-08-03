@@ -150,7 +150,7 @@ export default function LoginPage() {
       <div className="animate-fade-in rounded-3xl border border-border-light bg-white p-6 shadow-soft-lg dark:border-border-dark dark:bg-card-dark sm:p-8">
         <div className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight text-text-primary dark:text-white sm:text-3xl">
-            Welcome back 💜
+            Welcome back 💗
           </h1>
           <p className="mt-1 text-sm text-text-secondary dark:text-gray-400">
             Sister missed you. Pick up right where you left off.

@@ -373,7 +373,7 @@ export default function SessionRoomPage() {
         ) : messages.length === 0 ? (
           <p className="py-10 text-center text-sm text-gray-500">
             {showComposer
-              ? "You're connected. Say hello — this space is private. 💜"
+              ? "You're connected. Say hello — this space is private. 💗"
               : "No messages in this session."}
           </p>
         ) : (
@@ -440,7 +440,7 @@ export default function SessionRoomPage() {
         <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-card-dark">
           {feedbackSent ? (
             <p className="text-center text-sm text-gray-600 dark:text-gray-300">
-              Thank you for your feedback. 💜
+              Thank you for your feedback. 💗
             </p>
           ) : (
             <>

@@ -190,7 +190,7 @@ export const en = {
     thinking: "Sister is thinking...",
     errorMessage: "Sorry, I couldn't process that. Please try again.",
     welcomeMessage:
-      "Hello! I'm Sister, your supportive companion here at SisterCare. 💜 I'm here to listen, answer your questions about menstrual health, and provide emotional support. How are you feeling today?",
+      "Hello! I'm Sister, your supportive companion here at SisterCare. 💗 I'm here to listen, answer your questions about menstrual health, and provide emotional support. How are you feeling today?",
     icebreakers: {
       cramps: "How can I manage cramps naturally?",
       mood: "I'm feeling a bit anxious today",

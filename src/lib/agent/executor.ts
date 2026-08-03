@@ -140,7 +140,7 @@ ${SISTERCARE_AGENT_CAPABILITY_MAP}
 - Don't repeat the same greeting ("Hello! I'm Sister...") in every message
 - Reference what the user JUST said
 - Keep responses concise - 2-4 sentences usually enough
-- Use 1-2 emojis max (💜, 🌸, 🌷)
+- Use 1-2 emojis max (💗, 🌸, 🌷)
 - Never shame, moralize, patronize, or call an adult member a girl
 - Do not force positivity, congratulations, or family disclosure
 
@@ -169,11 +169,11 @@ ${SISTERCARE_AGENT_CAPABILITY_MAP}
 
 ## Examples of GOOD responses:
 - User: "how many days until my period?" → "You have 12 days until your next period, which should start around March 15th. 🌸"
-- User: "my period started" → "Got it! I've updated your cycle. Your next period should be around April 2nd. How are you feeling? 💜"
-- User: "it started 32 days ago" → *(calculate: today - 32 days)* "Thanks! So your period started on [calculated date]. I've updated your cycle data. Your next period should be around [date]. How are you feeling? 💜"
+- User: "my period started" → "Got it! I've updated your cycle. Your next period should be around April 2nd. How are you feeling? 💗"
+- User: "it started 32 days ago" → *(calculate: today - 32 days)* "Thanks! So your period started on [calculated date]. I've updated your cycle data. Your next period should be around [date]. How are you feeling? 💗"
 - User: "backtrack and update" → "I understand! Has your period started? If so, how many days ago did it start? That way I can update your cycle records accurately."
 - User: "I'm pregnant" → "Congratulations. Reply with either LMP: DD/MM/YYYY or Due date: DD/MM/YYYY. I will save the date, calculate the other one, and use the record for your pregnancy support."
-- User: "I gave birth yesterday" → "Congratulations on your beautiful baby! 🎉💜 I've updated your profile to begin tracking your cycles again. How are you and the baby feeling? Remember to rest and accept help when offered."
+- User: "I gave birth yesterday" → "Congratulations on your beautiful baby! 🎉💗 I've updated your profile to begin tracking your cycles again. How are you and the baby feeling? Remember to rest and accept help when offered."
 - User: "what's my name?" → "Your name is [name from context]. How can I help you today?"
 
 ## Examples of BAD responses (NEVER DO THESE):
@@ -1355,7 +1355,7 @@ function generateFallbackResponse(
       m,
     )
   ) {
-    return `I'm really glad you reached out. What you're feeling matters, and I'm concerned about your safety. Please know you're not alone. 💜
+    return `I'm really glad you reached out. What you're feeling matters, and I'm concerned about your safety. Please know you're not alone. 💗
 
 Please reach out right now in Uganda:
 
@@ -1366,7 +1366,7 @@ Please reach out right now in Uganda:
 
 You can also reach out to a trusted person like a teacher, religious leader, counselor, or family member.
 
-Your life matters. These feelings can get better with support. There are people in Uganda who care and want to help you through this. Please don't give up. 💜`;
+Your life matters. These feelings can get better with support. There are people in Uganda who care and want to help you through this. Please don't give up. 💗`;
   }
 
   // Violence towards others
@@ -1375,7 +1375,7 @@ Your life matters. These feelings can get better with support. There are people 
       m,
     )
   ) {
-    return `I can hear that you're going through something really difficult right now. 💜 Those feelings of anger and wanting to hurt someone can be overwhelming.
+    return `I can hear that you're going through something really difficult right now. 💗 Those feelings of anger and wanting to hurt someone can be overwhelming.
 
 But I care about you, and I want to help you find a safer way to deal with this. Hurting someone would have serious consequences for your life and future.
 
@@ -1384,7 +1384,7 @@ Please reach out to talk to someone right now:
 📞 Sauti 116 Helpline: Call 116 (toll-free, 24/7) - They can help you work through these feelings
 📞 Butabika National Referral Mental Hospital: 0414 504 379
 
-Can you tell me more about what's making you feel this way? Sometimes talking about what's hurting us can help us find better solutions. You're not alone in this. 💜`;
+Can you tell me more about what's making you feel this way? Sometimes talking about what's hurting us can help us find better solutions. You're not alone in this. 💗`;
   }
 
   // Feeling bad/depressed - needs empathetic response
@@ -1395,19 +1395,19 @@ Can you tell me more about what's making you feel this way? Sometimes talking ab
     m.includes("hopeless") ||
     m.includes("worthless")
   ) {
-    return `I'm sorry you're feeling this way. 💜 Your feelings are valid, and I'm here for you.
+    return `I'm sorry you're feeling this way. 💗 Your feelings are valid, and I'm here for you.
 
 Would you like to talk about what's happening? Sometimes sharing what's on your heart can help. 
 
 If you're going through a really hard time, please remember you can also call:
 📞 Sauti 116 Helpline: 116 (free, 24/7) - They're trained to listen and help.
 
-I'm here for you. What's going on? 💜`;
+I'm here for you. What's going on? 💗`;
   }
 
   // "Be my big sis" type requests
   if (m.includes("big sis") || (m.includes("be my") && m.includes("sis"))) {
-    return `Of course I can be your big sis! 💜 I'm here to support you through anything. What's on your mind today?`;
+    return `Of course I can be your big sis! 💗 I'm here to support you through anything. What's on your mind today?`;
   }
 
   // Asking AI to choose a name
@@ -1451,9 +1451,9 @@ I'm here for you. What's going on? 💜`;
       };
       const options = names[letter] || ["Care"];
       const chosenName = options[0];
-      return `How about "${chosenName}"? 💜 It feels right for me as your supportive sister. You can call me ${chosenName} from now on!`;
+      return `How about "${chosenName}"? 💗 It feels right for me as your supportive sister. You can call me ${chosenName} from now on!`;
     }
-    return `I'd love a special name! 💜 What letter should it start with?`;
+    return `I'd love a special name! 💗 What letter should it start with?`;
   }
 
   // Positive affirmations like "that's sick", "cool", "nice"
@@ -1465,7 +1465,7 @@ I'm here for you. What's going on? 💜`;
     m.includes("thats sick") ||
     m.includes("i like")
   ) {
-    return `I'm glad you like it! 💜 How can I help you today?`;
+    return `I'm glad you like it! 💗 How can I help you today?`;
   }
 
   // Questions about their name
@@ -1475,9 +1475,9 @@ I'm here for you. What's going on? 💜`;
     m.includes("who am i")
   ) {
     if (userName) {
-      return `Your name is ${userName}. 💜 How can I help you today?`;
+      return `Your name is ${userName}. 💗 How can I help you today?`;
     }
-    return "I don't have your name saved yet. You can set it in Settings, or just tell me what you'd like me to call you! 💜";
+    return "I don't have your name saved yet. You can set it in Settings, or just tell me what you'd like me to call you! 💗";
   }
 
   // Provider outages must not turn a clear food request into a generic
@@ -1505,10 +1505,10 @@ I'm here for you. What's going on? 💜`;
         return `You have ${cycleInfo.daysUntilNextPeriod} days until your next period, which should arrive around ${nextDate}. 🌸`;
       }
       if (m.includes("phase") || m.includes("what phase")) {
-        return `You're currently in your ${cycleInfo.currentPhase} phase (day ${cycleInfo.dayInCycle} of your cycle). ${getPhaseDescription(cycleInfo.currentPhase)} 💜`;
+        return `You're currently in your ${cycleInfo.currentPhase} phase (day ${cycleInfo.dayInCycle} of your cycle). ${getPhaseDescription(cycleInfo.currentPhase)} 💗`;
       }
       if (m.includes("start") || m.includes("began") || m.includes("came")) {
-        return `Got it! I've noted that your period started. 💜 How are you feeling? Do you have any cramps or symptoms I should know about?`;
+        return `Got it! I've noted that your period started. 💗 How are you feeling? Do you have any cramps or symptoms I should know about?`;
       }
     }
     return "I'd love to help with your cycle questions! Please set up your cycle data in Settings first, or tell me when your last period started. 🌸";
@@ -1516,7 +1516,7 @@ I'm here for you. What's going on? 💜`;
 
   // Cramps and pain
   if (m.includes("cramp") || m.includes("pain") || m.includes("hurt")) {
-    return `I'm sorry you're dealing with cramps. 💜 Here are some things that can help:\n\n• Apply a hot water bottle or heating pad to your lower belly\n• Gentle stretching or walking\n• Stay hydrated\n• Rest if you need to\n\nIf the pain is severe or unusual, please see a health professional. 🌸`;
+    return `I'm sorry you're dealing with cramps. 💗 Here are some things that can help:\n\n• Apply a hot water bottle or heating pad to your lower belly\n• Gentle stretching or walking\n• Stay hydrated\n• Rest if you need to\n\nIf the pain is severe or unusual, please see a health professional. 🌸`;
   }
 
   // Emotional support
@@ -1527,17 +1527,17 @@ I'm here for you. What's going on? 💜`;
     m.includes("stressed") ||
     m.includes("depressed")
   ) {
-    return `I hear you, and your feelings are valid. 💜 I'm here for you.\n\nWould you like to:\n• Talk about what's going on?\n• Try some deep breathing together?\n• Just have someone listen?\n\nI'm here, whatever you need. 🌸`;
+    return `I hear you, and your feelings are valid. 💗 I'm here for you.\n\nWould you like to:\n• Talk about what's going on?\n• Try some deep breathing together?\n• Just have someone listen?\n\nI'm here, whatever you need. 🌸`;
   }
 
   // Mood and feelings
   if (m.includes("feel") || m.includes("mood")) {
-    return `Thank you for sharing how you're feeling. 💜 Your emotions matter. Would you like to talk more about it, or would you prefer some self-care tips?`;
+    return `Thank you for sharing how you're feeling. 💗 Your emotions matter. Would you like to talk more about it, or would you prefer some self-care tips?`;
   }
 
   // Questions about the AI's name
   if (m.includes("your name") || (m.includes("called") && m.includes("you"))) {
-    return "I'm Sister, your supportive companion here at SisterCare! But if you'd like to give me a different name, just let me know. 💜";
+    return "I'm Sister, your supportive companion here at SisterCare! But if you'd like to give me a different name, just let me know. 💗";
   }
 
   // Greetings
@@ -1547,7 +1547,7 @@ I'm here for you. What's going on? 💜`;
     )
   ) {
     const greeting = userName ? `Hey ${userName}! ` : "Hey there! ";
-    return `${greeting}Good to see you. 💜 How can I help you today?`;
+    return `${greeting}Good to see you. 💗 How can I help you today?`;
   }
 
   // How are you / feeling questions
@@ -1557,12 +1557,12 @@ I'm here for you. What's going on? 💜`;
     m.includes("wassup") ||
     m.includes("what's up")
   ) {
-    return "I'm here and ready to help! 💜 More importantly, how are YOU feeling today?";
+    return "I'm here and ready to help! 💗 More importantly, how are YOU feeling today?";
   }
 
   // Thank you responses
   if (m.includes("thank") || m.includes("thanks")) {
-    return "You're welcome! 💜 I'm always here when you need me. Is there anything else I can help with?";
+    return "You're welcome! 💗 I'm always here when you need me. Is there anything else I can help with?";
   }
 
   // "What can you do" type questions
@@ -1571,7 +1571,7 @@ I'm here for you. What's going on? 💜`;
     m.includes("help me with") ||
     m.includes("what do you do")
   ) {
-    return `I'm here to support you! 💜 I can:\n\n• Track your menstrual cycle and predict your next period\n• Log symptoms and moods\n• Answer health questions\n• Provide emotional support\n• Connect you with counsellors if needed\n\nWhat would you like help with?`;
+    return `I'm here to support you! 💗 I can:\n\n• Track your menstrual cycle and predict your next period\n• Log symptoms and moods\n• Answer health questions\n• Provide emotional support\n• Connect you with counsellors if needed\n\nWhat would you like help with?`;
   }
 
   // Local language intent hints added by the API for Luganda and similar phrases.
@@ -1581,7 +1581,7 @@ I'm here for you. What's going on? 💜`;
     m.includes("talk to a counsellor") ||
     m.includes("counselor")
   ) {
-    return `Of course - I can help connect you to a counsellor. 💜
+    return `Of course - I can help connect you to a counsellor. 💗
 
 If you'd like, I can match you with a counsellor now, or we can talk about what's going on first. If this feels urgent, tell me what's happening and I'll help right away.`;
   }
@@ -1592,7 +1592,7 @@ If you'd like, I can match you with a counsellor now, or we can talk about what'
     m.includes("period pain") ||
     m.includes("lower abdominal pain")
   ) {
-    return `I'm sorry you're in pain. 💜 For cramps or lower abdominal pain, try:
+    return `I'm sorry you're in pain. 💗 For cramps or lower abdominal pain, try:
 
 • A hot water bottle or warm compress on your lower belly
 • Gentle stretching or a short walk
@@ -1610,7 +1610,7 @@ If the pain is severe, unusual, or getting worse, please see a health profession
   }
 
   if (m.includes("a girl is pregnant") || m.includes("pregnant girl")) {
-    return `If a girl is pregnant, the next best step is to get support from a trusted adult or health worker. 💜
+    return `If a girl is pregnant, the next best step is to get support from a trusted adult or health worker. 💗
 
 Please try to confirm the pregnancy with a clinic or health professional, and encourage antenatal care as early as possible. If there is fear, pressure, or safety concern, I can also help you think through who to talk to safely.`;
   }
@@ -1620,7 +1620,7 @@ Please try to confirm the pregnancy with a clinic or health professional, and en
     m.includes("i need help") ||
     m.includes("feel very bad")
   ) {
-    return `I'm here with you. 💜 Please tell me a little more about what is happening so I can help in the right way.
+    return `I'm here with you. 💗 Please tell me a little more about what is happening so I can help in the right way.
 
 If you want, you can tell me:
 • whether it's pain, stress, or fear
@@ -1639,7 +1639,7 @@ If you want, you can tell me:
     m.includes("don't understand") ||
     m.includes("not helpful")
   ) {
-    return `I'm really sorry I'm not being helpful right now. 💜 I want to do better for you. Can you tell me specifically what you need help with? I'll try my best to give you a useful answer.`;
+    return `I'm really sorry I'm not being helpful right now. 💗 I want to do better for you. Can you tell me specifically what you need help with? I'll try my best to give you a useful answer.`;
   }
 
   // "Why don't you answer" type questions
@@ -1651,7 +1651,7 @@ If you want, you can tell me:
     m.includes("not responding") ||
     m.includes("ignoring me")
   ) {
-    return `I'm so sorry if I seemed unresponsive! 💜 I'm here now and listening. Please tell me what's on your mind - I want to help you.`;
+    return `I'm so sorry if I seemed unresponsive! 💗 I'm here now and listening. Please tell me what's on your mind - I want to help you.`;
   }
 
   // "What have I told you" type questions - acknowledge the gap
@@ -1661,7 +1661,7 @@ If you want, you can tell me:
     m.includes("just said") ||
     m.includes("already said")
   ) {
-    return `You're right, I should be paying better attention. 💜 I'm sorry. Can you please repeat what you need? I'm fully focused on helping you now.`;
+    return `You're right, I should be paying better attention. 💗 I'm sorry. Can you please repeat what you need? I'm fully focused on helping you now.`;
   }
 
   // When user says something the AI should respond to contextually
@@ -1670,14 +1670,14 @@ If you want, you can tell me:
     m.includes("respond to") ||
     m.includes("basing on")
   ) {
-    return `You're absolutely right - I should be responding to what you're actually saying! 💜 I apologize for the confusion. Please share what's on your mind, and I'll give you a proper response.`;
+    return `You're absolutely right - I should be responding to what you're actually saying! 💗 I apologize for the confusion. Please share what's on your mind, and I'll give you a proper response.`;
   }
 
   // Default helpful response - more conversational
   const defaultResponses = [
-    "I'm here to help! 💜 You can ask me about your menstrual cycle, log how you're feeling, or just chat. What's on your mind?",
-    "Hey, I'm listening! 💜 Feel free to ask me anything about your health or just share how you're feeling today.",
-    "I'm your Sister, always here for you. 💜 What would you like to talk about?",
+    "I'm here to help! 💗 You can ask me about your menstrual cycle, log how you're feeling, or just chat. What's on your mind?",
+    "Hey, I'm listening! 💗 Feel free to ask me anything about your health or just share how you're feeling today.",
+    "I'm your Sister, always here for you. 💗 What would you like to talk about?",
   ];
   return "I want to answer this properly. Please tell me a little more about what you need—your cycle, symptoms, pregnancy support, a library topic, or another task in SisterCare—and I will use the information already saved for you where it applies.";
 }
@@ -1709,7 +1709,7 @@ async function fetchWithRetry(
         clearTimeout(timeoutId);
         // Immediately throw to try next model
         throw new Error(
-          `RATE_LIMITED:I'm receiving a lot of messages right now! Please wait about 30 seconds and try again. 💜`,
+          `RATE_LIMITED:I'm receiving a lot of messages right now! Please wait about 30 seconds and try again. 💗`,
         );
       }
 

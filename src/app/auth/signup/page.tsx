@@ -198,7 +198,7 @@ export default function SignupPage() {
       <div className="animate-fade-in rounded-3xl border border-border-light bg-white p-6 shadow-soft-lg dark:border-border-dark dark:bg-card-dark sm:p-8">
         <div className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight text-text-primary dark:text-white sm:text-3xl">
-            Meet your Sister 💜
+            Meet your Sister 💗
           </h1>
           <p className="mt-1 text-sm text-text-secondary dark:text-gray-400">
             Two minutes to a space that&apos;s completely yours.

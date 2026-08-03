@@ -151,7 +151,7 @@ async function handleApiRequest(request, url) {
       return new Response(
         JSON.stringify({
           response:
-            "I'm currently offline, but I'm still here for you! 💜 Please check your internet connection and try again.",
+            "I'm currently offline, but I'm still here for you! 💗 Please check your internet connection and try again.",
           source: "offline",
           type: "agent",
         }),

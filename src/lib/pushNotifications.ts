@@ -177,7 +177,7 @@ export function schedulePeriodReminder(
 
   const messages = [
     `${greeting}Your period is expected in ${daysBefore} days. Time to prepare! 🌸`,
-    `${greeting}Heads up! Your period may arrive in ${daysBefore} days. Stock up on supplies! 💜`,
+    `${greeting}Heads up! Your period may arrive in ${daysBefore} days. Stock up on supplies! 💗`,
     `${greeting}Just a gentle reminder - your period is coming in ${daysBefore} days. Take care! ✨`,
   ];
 
@@ -208,7 +208,7 @@ export function scheduleDailyWellnessCheck(time: string = "09:00"): void {
   const delay = scheduledTime.getTime() - now.getTime();
 
   const tips = [
-    "How are you feeling today? Take a moment to log your mood and symptoms. 💜",
+    "How are you feeling today? Take a moment to log your mood and symptoms. 💗",
     "Good morning! Remember to stay hydrated and take care of yourself today. 🌸",
     "Start your day with intention. How's your energy level? Log it! ✨",
     "Your daily check-in awaits! Tracking helps you understand your body better. 📊",
