@@ -5,19 +5,20 @@ import {
 } from "../memberNavigation";
 
 describe("member primary navigation", () => {
-  it("contains the four product destinations in their intended order", () => {
+  it("contains the five product destinations in their intended order", () => {
     expect(MEMBER_PRIMARY_NAVIGATION.map(({ labelKey }) => labelKey)).toEqual([
       "home",
       "chat",
+      "counsellors",
       "analytics",
       "profile",
     ]);
   });
 
-  it("keeps secondary care and knowledge routes outside primary navigation", () => {
+  it("keeps the knowledge route outside primary navigation", () => {
     const destinations = MEMBER_PRIMARY_NAVIGATION.map(({ href }) => href);
 
-    expect(destinations).not.toContain("/counsellors");
+    expect(destinations).toContain("/counsellors");
     expect(destinations).not.toContain("/library");
   });
 
