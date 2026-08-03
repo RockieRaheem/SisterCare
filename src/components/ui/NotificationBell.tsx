@@ -97,7 +97,7 @@ export default function NotificationBell({
       case "period_reminder":
         return "text-amber-500 bg-amber-50 dark:bg-amber-900/20";
       case "phase_change":
-        return "text-purple-500 bg-purple-50 dark:bg-purple-900/20";
+        return "text-fuchsia-600 bg-fuchsia-50 dark:bg-fuchsia-950/30";
       case "wellness_tip":
         return "text-green-500 bg-green-50 dark:bg-green-900/20";
       default:

@@ -196,7 +196,7 @@ export default function Header({ variant = "landing" }: HeaderProps) {
                     flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-sm font-semibold transition-colors
                     ${
                       isActive(link.href)
-                        ? "bg-primary/[0.09] text-primary shadow-[inset_0_0_0_1px_rgba(109,53,212,0.08)]"
+                        ? "bg-primary/[0.09] text-primary-dark shadow-[inset_0_0_0_1px_rgba(255,0,255,0.10)]"
                         : "text-text-primary dark:text-white hover:bg-primary/5 hover:text-primary"
                     }
                   `}

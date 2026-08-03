@@ -344,14 +344,14 @@ export default function SessionRoomPage() {
                 <div
                   className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
                     mine
-                      ? "rounded-br-md bg-purple-600 text-white"
+                      ? "rounded-br-md bg-primary-dark text-white"
                       : "rounded-bl-md bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100"
                   }`}
                 >
                   <p className="whitespace-pre-wrap break-words">{m.text}</p>
                   {m.createdAt && (
                     <p
-                      className={`mt-1 text-[10px] ${mine ? "text-purple-200" : "text-gray-400"}`}
+                      className={`mt-1 text-[10px] ${mine ? "text-fuchsia-100" : "text-gray-400"}`}
                     >
                       {m.createdAt.toLocaleTimeString([], {
                         hour: "2-digit",
@@ -380,12 +380,12 @@ export default function SessionRoomPage() {
               }
             }}
             placeholder="Type a message…"
-            className="flex-1 rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm focus:border-purple-500 focus:outline-none dark:border-gray-600 dark:bg-card-dark dark:text-white"
+            className="flex-1 rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm focus:border-primary focus:outline-none dark:border-gray-600 dark:bg-card-dark dark:text-white"
           />
           <button
             onClick={send}
             disabled={sending || !draft.trim()}
-            className="rounded-xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-50"
+            className="rounded-xl bg-primary-dark px-5 py-3 text-sm font-semibold text-white hover:bg-primary-dark/90 disabled:opacity-50"
           >
             Send
           </button>
@@ -425,7 +425,7 @@ export default function SessionRoomPage() {
                 onChange={(e) => setFeedbackComment(e.target.value)}
                 placeholder="Anything you'd like to share? (optional)"
                 rows={2}
-                className="mb-3 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm focus:border-purple-500 focus:outline-none dark:border-gray-600 dark:bg-card-dark dark:text-white"
+                className="mb-3 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none dark:border-gray-600 dark:bg-card-dark dark:text-white"
               />
               <button
                 onClick={() =>
@@ -435,7 +435,7 @@ export default function SessionRoomPage() {
                   })
                 }
                 disabled={feedbackRating === 0}
-                className="w-full rounded-xl bg-purple-600 py-2.5 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-50"
+                className="w-full rounded-xl bg-primary-dark py-2.5 text-sm font-semibold text-white hover:bg-primary-dark/90 disabled:opacity-50"
               >
                 Submit feedback
               </button>

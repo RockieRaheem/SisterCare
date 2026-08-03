@@ -90,7 +90,7 @@ export default function CounsellorProfilePage() {
         </div>
 
         <section className="overflow-hidden rounded-3xl bg-white dark:bg-gray-900 border border-border-light dark:border-border-dark shadow-lg">
-          <div className="relative h-40 sm:h-52 bg-gradient-to-r from-primary via-purple-600 to-pink-500">
+          <div className="relative h-40 sm:h-52 bg-gradient-to-r from-primary via-fuchsia-500 to-pink-500">
             <div className="absolute inset-0 bg-black/10" />
             <div className="absolute -top-16 -right-16 w-40 h-40 rounded-full bg-white/10 blur-3xl" />
             <div className="absolute -bottom-16 -left-16 w-40 h-40 rounded-full bg-pink-500/20 blur-3xl" />
@@ -225,7 +225,7 @@ export default function CounsellorProfilePage() {
             </div>
           </div>
 
-          <aside className="bg-gradient-to-br from-primary to-purple-600 text-white rounded-2xl p-5 sm:p-6 shadow-lg">
+          <aside className="bg-gradient-to-br from-primary-dark to-fuchsia-700 text-white rounded-2xl p-5 sm:p-6 shadow-lg">
             <h2 className="text-lg sm:text-xl font-bold">Contact options</h2>
             <p className="mt-2 text-sm sm:text-base text-white/90 leading-6">
               Review the profile, then choose the best way to connect.

@@ -1823,10 +1823,10 @@ export default function ChatPage() {
                 )}
 
                 {activeSessionCard && (
-                  <div className="mb-4 animate-fade-in rounded-2xl border border-purple-200 bg-purple-50 p-4 dark:border-purple-800 dark:bg-purple-900/20">
+                  <div className="mb-4 animate-fade-in rounded-2xl border border-fuchsia-200 bg-fuchsia-50 p-4 dark:border-fuchsia-800 dark:bg-fuchsia-950/20">
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-[10px] font-semibold uppercase tracking-widest text-purple-500 dark:text-purple-300">
+                        <p className="text-[10px] font-semibold uppercase tracking-widest text-fuchsia-600 dark:text-fuchsia-300">
                           {activeSessionCard.priority === "critical"
                             ? "Priority support"
                             : "Counselling session"}
@@ -1845,7 +1845,7 @@ export default function ChatPage() {
                             ? `/sessions/${activeSessionCard.id}`
                             : "/sessions"
                         }
-                        className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-purple-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-purple-700"
+                        className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-primary-dark px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-primary-dark/90"
                       >
                         <span className="material-symbols-outlined text-base">
                           forum

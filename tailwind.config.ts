@@ -58,8 +58,8 @@ const config: Config = {
         full: "9999px",
       },
       boxShadow: {
-        "primary-sm": "0 6px 18px rgba(140, 48, 232, 0.18)",
-        "primary-lg": "0 18px 44px rgba(140, 48, 232, 0.22)",
+        "primary-sm": "0 6px 18px rgba(255, 0, 255, 0.18)",
+        "primary-lg": "0 18px 44px rgba(255, 0, 255, 0.22)",
         soft: "0 1px 2px rgba(30, 22, 42, 0.04), 0 6px 24px rgba(30, 22, 42, 0.05)",
         "soft-lg": "0 2px 4px rgba(30, 22, 42, 0.04), 0 20px 48px rgba(30, 22, 42, 0.09)",
         "inner-glow": "inset 0 1px 0 0 rgba(255, 255, 255, 0.1)",

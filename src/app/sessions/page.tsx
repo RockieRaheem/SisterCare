@@ -99,7 +99,7 @@ export default function SessionsPage() {
           <button
             onClick={handleRequest}
             disabled={requesting || live.length > 0}
-            className="rounded-xl bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-xl bg-primary-dark px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-dark/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {requesting ? "Requesting…" : "Talk to someone"}
           </button>
@@ -135,7 +135,7 @@ export default function SessionsPage() {
           </div>
         ) : sessions.length === 0 && !error ? (
           <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-10 text-center dark:border-gray-700 dark:bg-card-dark">
-            <span className="material-symbols-outlined mb-3 text-5xl text-purple-300">
+            <span className="material-symbols-outlined mb-3 text-5xl text-primary/60">
               forum
             </span>
             <h2 className="mb-1 font-semibold text-gray-900 dark:text-white">

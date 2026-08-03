@@ -326,7 +326,7 @@ export default function AnalyticsPage() {
             <div className="text-sm text-text-secondary mt-1">Days Logged</div>
           </Card>
           <Card padding="md" className="text-center">
-            <div className="text-3xl sm:text-4xl font-black text-purple-500">
+            <div className="text-3xl sm:text-4xl font-black text-primary-dark">
               {totalSymptoms}
             </div>
             <div className="text-sm text-text-secondary mt-1">
@@ -429,7 +429,7 @@ export default function AnalyticsPage() {
                 {symptomFrequency.map(([symptom, count], index) => {
                   const maxCount = symptomFrequency[0][1];
                   const percentage = (count / maxCount) * 100;
-                  const color = symptomColors[symptom] || "#8c30e8";
+                  const color = symptomColors[symptom] || "#ff00ff";
 
                   return (
                     <div key={symptom} className="flex items-center gap-3">
@@ -565,8 +565,8 @@ export default function AnalyticsPage() {
                   Cycles Tracked
                 </div>
               </div>
-              <div className="bg-gradient-to-br from-purple-50 to-white dark:from-purple-900/20 dark:to-card-dark p-4 rounded-xl text-center border border-purple-100 dark:border-purple-800/30">
-                <div className="text-2xl font-black text-purple-500">
+              <div className="bg-gradient-to-br from-fuchsia-50 to-white dark:from-fuchsia-950/20 dark:to-card-dark p-4 rounded-xl text-center border border-fuchsia-100 dark:border-fuchsia-800/30">
+                <div className="text-2xl font-black text-primary-dark dark:text-fuchsia-300">
                   {cycleStats.averageCycleLength}
                 </div>
                 <div className="text-sm text-text-secondary mt-1">

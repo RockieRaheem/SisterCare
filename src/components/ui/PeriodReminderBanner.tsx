@@ -100,7 +100,7 @@ export default function PeriodReminderBanner({
     }
     if (daysUntilPeriod <= 3) {
       return {
-        bg: "bg-gradient-to-r from-primary to-purple-600",
+        bg: "bg-gradient-to-r from-primary to-pink-500",
         icon: "event_upcoming",
         borderColor: "border-primary",
       };

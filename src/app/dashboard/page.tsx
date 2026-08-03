@@ -25,7 +25,7 @@ const phaseColors: Record<string, string> = {
   menstrual: "text-red-500",
   follicular: "text-green-500",
   ovulation: "text-amber-500",
-  luteal: "text-purple-500",
+  luteal: "text-fuchsia-600",
 };
 
 export default function DashboardPage() {

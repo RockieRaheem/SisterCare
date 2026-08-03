@@ -20,12 +20,12 @@
 /* stylelint-enable at-rule-no-unknown */
 
 :root {
-  --primary: #8c30e8;
+  --primary: #ff00ff;
   --background-light: #fcfbfa;
   --background-dark: #1b1820;
-  --color-primary: 140 48 232;
-  --color-primary-light: 168 85 247;
-  --color-primary-dark: 107 33 168;
+  --color-primary: 255 0 255;
+  --color-primary-light: 255 102 255;
+  --color-primary-dark: 184 0 184;
   --color-canvas: 252 251 250;
   --color-canvas-dark: 27 24 32;
   --color-surface: 255 255 255;
@@ -64,7 +64,7 @@ body {
 .dark body { background: rgb(var(--color-canvas-dark)); }
 
 ::selection {
-  color: white;
+  color: rgb(39 0 39);
   background: rgb(var(--color-primary));
 }
 
@@ -156,12 +156,12 @@ p {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(140, 48, 232, 0.3);
+  background: rgba(255, 0, 255, 0.3);
   border-radius: 3px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(140, 48, 232, 0.5);
+  background: rgba(255, 0, 255, 0.5);
 }
 
 /* Hide scrollbar for touch devices */
@@ -531,7 +531,7 @@ select option {
 
 select option:checked,
 select option:hover {
-  background-color: rgba(140, 48, 232, 0.1);
+  background-color: rgba(255, 0, 255, 0.1);
 }
 
 /* Screen reader only content */
@@ -579,7 +579,7 @@ select option:hover {
 /* High contrast mode improvements */
 @media (prefers-contrast: high) {
   :root {
-    --primary: #7c1bd8;
+    --primary: #ff00ff;
   }
 
   button,
@@ -793,13 +793,13 @@ select option:hover {
 
 /* Glow effect for primary elements */
 .glow-primary {
-  box-shadow: 0 0 20px rgba(140, 48, 232, 0.3);
+  box-shadow: 0 0 20px rgba(255, 0, 255, 0.3);
 }
 
 .glow-primary-intense {
   box-shadow:
-    0 0 20px rgba(140, 48, 232, 0.4),
-    0 0 40px rgba(140, 48, 232, 0.2);
+    0 0 20px rgba(255, 0, 255, 0.4),
+    0 0 40px rgba(255, 0, 255, 0.2);
 }
 
 /* Smooth modal/overlay transitions */
@@ -939,7 +939,7 @@ select option:hover {
 
 .input-premium:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(140, 48, 232, 0.15);
+  box-shadow: 0 0 0 3px rgba(255, 0, 255, 0.15);
 }
 
 /* Notification badge pulse */
@@ -989,27 +989,27 @@ select option:hover {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(140, 48, 232, 0.3);
+  background: rgba(255, 0, 255, 0.3);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(140, 48, 232, 0.5);
+  background: rgba(255, 0, 255, 0.5);
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: rgba(168, 85, 247, 0.3);
+  background: rgba(255, 102, 255, 0.3);
 }
 
 /* Improved focus states for accessibility */
 .focus-ring-primary:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(140, 48, 232, 0.4);
+  box-shadow: 0 0 0 3px rgba(255, 0, 255, 0.4);
 }
 
 /* Tap highlight for mobile */
 .tap-highlight {
-  -webkit-tap-highlight-color: rgba(140, 48, 232, 0.1);
+  -webkit-tap-highlight-color: rgba(255, 0, 255, 0.1);
 }
 
 /* Smooth state transitions */
@@ -1041,7 +1041,7 @@ select option:hover {
 
 /* Gradient text */
 .text-gradient {
-  background: linear-gradient(135deg, #8c30e8, #a855f7);
+  background: linear-gradient(135deg, #ff00ff, #ff66ff);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -1051,7 +1051,7 @@ select option:hover {
 .input-glow:focus {
   border-color: var(--primary);
   box-shadow:
-    0 0 0 3px rgba(140, 48, 232, 0.1),
+    0 0 0 3px rgba(255, 0, 255, 0.1),
     0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
@@ -1070,8 +1070,8 @@ select option:hover {
   height: 64px;
   background: linear-gradient(
     135deg,
-    rgba(140, 48, 232, 0.1),
-    rgba(168, 85, 247, 0.1)
+    rgba(255, 0, 255, 0.1),
+    rgba(255, 102, 255, 0.1)
   );
   border-radius: 50%;
   display: flex;
@@ -1194,8 +1194,8 @@ select option:hover {
 }
 
 .pill-primary {
-  background: rgba(140, 48, 232, 0.1);
-  color: #8c30e8;
+  background: rgba(255, 0, 255, 0.1);
+  color: #b800b8;
 }
 
 .pill-success {
@@ -1280,7 +1280,7 @@ select option:hover {
 
 /* Animated gradient background */
 .animated-gradient {
-  background: linear-gradient(-45deg, #8c30e8, #a855f7, #7c3aed, #6366f1);
+  background: linear-gradient(-45deg, #ff00ff, #ff66ff, #e600e6, #ff4fcf);
   background-size: 400% 400%;
   animation: gradientMove 15s ease infinite;
 }

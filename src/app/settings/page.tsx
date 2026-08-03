@@ -239,7 +239,7 @@ export default function SettingsPage() {
       // Title
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(24);
-      pdf.setTextColor(140, 48, 232); // Primary purple
+      pdf.setTextColor(255, 0, 255); // SisterCare fuchsia
       pdf.text("SisterCare", pageWidth / 2, yPos, { align: "center" });
       yPos += 10;
 
@@ -258,7 +258,7 @@ export default function SettingsPage() {
       yPos += 15;
 
       // Horizontal line
-      pdf.setDrawColor(140, 48, 232);
+      pdf.setDrawColor(255, 0, 255);
       pdf.setLineWidth(0.5);
       pdf.line(20, yPos, pageWidth - 20, yPos);
       yPos += 15;

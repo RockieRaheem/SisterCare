@@ -140,7 +140,7 @@ export const SESSION_STATE_META: Record<
   completed: {
     label: "Completed",
     badgeClass:
-      "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300",
+      "bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-950/40 dark:text-fuchsia-200",
     description: "Session ended. You can leave feedback.",
   },
   feedback_received: {
