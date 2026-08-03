@@ -268,6 +268,8 @@ export interface CounsellingSession {
   reason: "user_request" | "risk_detected";
   specialty?: CounsellorSpecialty;
   preferredLanguage?: string;
+  /** Verified counsellor explicitly selected by the member. */
+  preferredCounsellorId?: string;
   /** Short context shown to the counsellor before accepting (max 500 chars) */
   summary: string;
   participantAlias?: string;

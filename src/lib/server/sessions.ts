@@ -67,6 +67,10 @@ function rowToSession(row: Row): CounsellingSession {
       typeof details.preferredLanguage === "string"
         ? details.preferredLanguage
         : undefined,
+    preferredCounsellorId:
+      typeof details.preferredCounsellorId === "string"
+        ? details.preferredCounsellorId
+        : undefined,
     summary: sanitizeCounsellorSummary(details.summary),
     participantAlias:
       typeof details.participantAlias === "string"
@@ -336,6 +340,8 @@ export async function attemptMatch(sessionId: string): Promise<boolean> {
     .map((item) => rowToCounsellor(item as Row))
     .filter(
       (item) =>
+        (!session.preferredCounsellorId ||
+          item.id === session.preferredCounsellorId) &&
         !session.declinedBy.includes(item.id) &&
         evaluateCounsellorEligibility(item, {
           activeLoad: loads.get(item.id) || 0,
@@ -394,6 +400,7 @@ export async function createSessionRequest(params: {
   summary: string;
   specialty?: CounsellorSpecialty;
   preferredLanguage?: string;
+  preferredCounsellorId?: string;
   conversationId?: string;
   explicitSummaryConsent?: boolean;
 }): Promise<CounsellingSession> {
@@ -447,6 +454,8 @@ export async function createSessionRequest(params: {
   if (params.specialty) details.specialty = params.specialty;
   if (params.preferredLanguage)
     details.preferredLanguage = params.preferredLanguage;
+  if (params.preferredCounsellorId)
+    details.preferredCounsellorId = params.preferredCounsellorId;
   if (params.conversationId && sharedContext.includeConversationReference) {
     details.conversationId = params.conversationId;
   }

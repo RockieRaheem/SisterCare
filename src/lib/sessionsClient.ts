@@ -70,6 +70,7 @@ export async function requestSession(params?: {
   shareSummary?: boolean;
   specialty?: string;
   preferredLanguage?: string;
+  preferredCounsellorId?: string;
 }): Promise<CounsellingSession> {
   const data = await sessionsFetch<{ session: CounsellingSession }>(
     "/api/sessions",

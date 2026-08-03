@@ -12,6 +12,9 @@ import {
 } from "@/lib/server/sessions";
 import { CounsellorSpecialty } from "@/types";
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function sessionsUnavailable() {
   return NextResponse.json(
     {
@@ -50,6 +53,16 @@ export async function POST(request: NextRequest) {
   }
 
   const body = (await request.json().catch(() => null)) || {};
+  if (
+    body.preferredCounsellorId !== undefined &&
+    (typeof body.preferredCounsellorId !== "string" ||
+      !UUID_PATTERN.test(body.preferredCounsellorId))
+  ) {
+    return NextResponse.json(
+      { success: false, error: "Select a valid counsellor profile" },
+      { status: 400 },
+    );
+  }
 
   try {
     const session = await createSessionRequest({
@@ -67,6 +80,10 @@ export async function POST(request: NextRequest) {
       preferredLanguage:
         typeof body.preferredLanguage === "string"
           ? body.preferredLanguage
+          : undefined,
+      preferredCounsellorId:
+        typeof body.preferredCounsellorId === "string"
+          ? body.preferredCounsellorId
           : undefined,
       conversationId:
         typeof body.conversationId === "string"
