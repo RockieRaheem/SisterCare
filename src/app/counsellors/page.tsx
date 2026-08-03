@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import Header from "@/components/layout/Header";
 import BottomNav from "@/components/layout/BottomNav";
 import CounsellorCard from "@/components/features/CounsellorCard";
@@ -11,7 +11,7 @@ import {
   COUNSELLOR_SPECIALTIES,
   COUNSELLOR_STATUS_FILTERS,
 } from "@/lib/counsellors";
-import { auth } from "@/lib/authClient";
+import { authenticatedFetch } from "@/lib/authenticatedFetch";
 import { AppShellSkeleton } from "@/components/ui/Skeleton";
 
 export default function CounsellorsPage() {
@@ -33,6 +33,8 @@ export default function CounsellorsPage() {
   const [counsellors, setCounsellors] = useState<Counsellor[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [loadingCounsellors, setLoadingCounsellors] = useState(true);
+  const [directoryError, setDirectoryError] = useState<string | null>(null);
+  const [refreshedAt, setRefreshedAt] = useState<Date | null>(null);
   const selectedCounsellorId = searchParams.get("counsellorId");
 
   // Redirect if not authenticated
@@ -44,29 +46,45 @@ export default function CounsellorsPage() {
 
   // Server-derived availability: no directory fallback and no client-side
   // schedule inference can make a counsellor appear available.
+  const loadCounsellors = useCallback(async (showLoading = false) => {
+    if (showLoading) setLoadingCounsellors(true);
+    try {
+      const response = await authenticatedFetch("/api/counsellors", {
+        cache: "no-store",
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.success === false) {
+        throw new Error(result.error || "Counsellor availability could not be refreshed");
+      }
+      setCounsellors((result.data.counsellors || []).map((counsellor: Counsellor) => ({
+        ...counsellor,
+        createdAt: new Date(counsellor.createdAt),
+        credentialExpiresAt: counsellor.credentialExpiresAt ? new Date(counsellor.credentialExpiresAt) : undefined,
+      })));
+      setRefreshedAt(result.data.refreshedAt ? new Date(result.data.refreshedAt) : new Date());
+      setDirectoryError(null);
+    } catch (error) {
+      setDirectoryError(error instanceof Error ? error.message : "Counsellor availability could not be refreshed");
+    } finally {
+      setLoadingCounsellors(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!user) return;
-    const loadCounsellors = async () => {
-      try {
-        const token = await auth.currentUser?.getIdToken();
-        const response = await fetch("/api/counsellors", {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const result = await response.json();
-        if (!response.ok || result.success === false) throw new Error(result.error);
-        setCounsellors((result.data.counsellors || []).map((counsellor: Counsellor) => ({
-          ...counsellor,
-          createdAt: new Date(counsellor.createdAt),
-          credentialExpiresAt: counsellor.credentialExpiresAt ? new Date(counsellor.credentialExpiresAt) : undefined,
-        })));
-      } catch {
-        setCounsellors([]);
-      } finally {
-        setLoadingCounsellors(false);
-      }
+    void loadCounsellors(true);
+    const refresh = window.setInterval(() => {
+      if (document.visibilityState === "visible") void loadCounsellors();
+    }, 15_000);
+    const refreshOnFocus = () => {
+      if (document.visibilityState === "visible") void loadCounsellors();
     };
-    loadCounsellors();
-  }, [user]);
+    document.addEventListener("visibilitychange", refreshOnFocus);
+    return () => {
+      window.clearInterval(refresh);
+      document.removeEventListener("visibilitychange", refreshOnFocus);
+    };
+  }, [loadCounsellors, user]);
 
   // Filter and sort counsellors
   const filteredCounsellors = useMemo(() => {
@@ -126,31 +144,7 @@ export default function CounsellorsPage() {
     }
   }, [selectedCounsellorId, filteredCounsellors]);
 
-  const handleWhatsAppClick = (counsellor: Counsellor) => {
-    const message = encodeURIComponent(
-      `Hi ${counsellor.name}, I found you on SisterCare and would like to schedule a consultation.`,
-    );
-    window.open(
-      `https://wa.me/${counsellor.whatsappNumber.replace("+", "")}?text=${message}`,
-      "_blank",
-    );
-  };
-
-  const handleCallClick = (counsellor: Counsellor) => {
-    window.open(`tel:${counsellor.phoneNumber}`, "_self");
-  };
-
-  const handleOpenWhatsApp = (counsellor: Counsellor) => {
-    const message = encodeURIComponent(
-      `Hi ${counsellor.name}, I was matched with you on SisterCare and would like to chat about my health concern.`,
-    );
-    window.open(
-      `https://wa.me/${counsellor.whatsappNumber.replace("+", "")}?text=${message}`,
-      "_blank",
-    );
-  };
-
-  if (loading) {
+  if (loading || (user && loadingCounsellors && counsellors.length === 0)) {
     return <AppShellSkeleton variant="list" />;
   }
 
@@ -175,7 +169,8 @@ export default function CounsellorsPage() {
             </div>
             <p className="text-white/90 max-w-2xl mb-4 sm:mb-6 text-sm sm:text-base">
               Find a verified professional by specialty, language and current
-              availability. Your session request stays inside SisterCare.
+              availability. Messages, calls and personal details stay inside
+              SisterCare.
             </p>
 
             {/* Stats */}
@@ -204,6 +199,23 @@ export default function CounsellorsPage() {
             </div>
           </div>
         </div>
+
+        {directoryError && (
+          <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+            <p>
+              <strong>Live status is temporarily unavailable.</strong>{" "}
+              {directoryError}
+            </p>
+            <button
+              type="button"
+              onClick={() => void loadCounsellors(true)}
+              className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-amber-900 px-4 font-bold text-white dark:bg-amber-200 dark:text-amber-950"
+            >
+              <span className="material-symbols-outlined text-lg">refresh</span>
+              Try again
+            </button>
+          </div>
+        )}
 
         {/* Search and Filter Bar */}
         <div className="surface mb-6 p-3 sm:p-4">
@@ -356,13 +368,20 @@ export default function CounsellorsPage() {
 
         {/* Results count */}
         <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6">
-          <p className="text-text-secondary text-sm">
-            Showing{" "}
-            <span className="font-semibold text-text-primary dark:text-white">
-              {filteredCounsellors.length}
-            </span>{" "}
-            counsellor{filteredCounsellors.length !== 1 ? "s" : ""}
-          </p>
+          <div>
+            <p className="text-text-secondary text-sm">
+              Showing{" "}
+              <span className="font-semibold text-text-primary dark:text-white">
+                {filteredCounsellors.length}
+              </span>{" "}
+              counsellor{filteredCounsellors.length !== 1 ? "s" : ""}
+            </p>
+            {refreshedAt && (
+              <p className="mt-1 text-[11px] text-text-secondary">
+                Live status updated {refreshedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </p>
+            )}
+          </div>
           {(selectedSpecialty !== "all" ||
             selectedStatus !== "all" ||
             searchQuery) && (
@@ -397,11 +416,7 @@ export default function CounsellorsPage() {
                     : undefined
                 }
               >
-                <CounsellorCard
-                  counsellor={counsellor}
-                  onWhatsAppClick={handleOpenWhatsApp}
-                  onCallClick={handleCallClick}
-                />
+                <CounsellorCard counsellor={counsellor} />
               </div>
             ))}
           </div>
@@ -489,7 +504,8 @@ export default function CounsellorsPage() {
               <p className="text-text-secondary text-xs sm:text-sm">
                 Each counsellor card shows their current status: Available
                 (green), In Session (amber), or Offline (gray). You can only
-                contact counsellors who are currently available.
+                request counsellors who are currently available. Status
+                refreshes automatically while this page is open.
               </p>
             </div>
 

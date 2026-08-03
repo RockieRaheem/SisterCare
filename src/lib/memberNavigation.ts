@@ -10,6 +10,11 @@ export const MEMBER_PRIMARY_NAVIGATION = [
     labelKey: "chat",
   },
   {
+    href: "/counsellors",
+    icon: "support_agent",
+    labelKey: "counsellors",
+  },
+  {
     href: "/analytics",
     icon: "monitoring",
     labelKey: "analytics",

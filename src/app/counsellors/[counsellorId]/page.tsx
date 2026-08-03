@@ -7,22 +7,24 @@ import { useParams, useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
 import BottomNav from "@/components/layout/BottomNav";
 import { useAuth } from "@/context/AuthContext";
-import { auth } from "@/lib/authClient";
-import { Counsellor, CounsellorStatus } from "@/types";
+import { authenticatedFetch } from "@/lib/authenticatedFetch";
+import { requestSession } from "@/lib/sessionsClient";
+import { Counsellor } from "@/types";
 
 export default function CounsellorProfilePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const params = useParams<{ counsellorId: string }>();
   const [counsellor, setCounsellor] = useState<Counsellor | null>(null);
+  const [requesting, setRequesting] = useState(false);
+  const [requestError, setRequestError] = useState<string | null>(null);
   const canContact = counsellor?.status === "available";
 
   useEffect(() => {
     const loadDirectoryProfile = async () => {
       try {
-        const token = await auth.currentUser?.getIdToken();
-        const response = await fetch("/api/counsellors", { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-        const result = await response.json();
+        const response = await authenticatedFetch("/api/counsellors", { cache: "no-store" });
+        const result = await response.json().catch(() => ({}));
         if (!response.ok || result.success === false) return;
         const found = result.data.counsellors?.find((item: Counsellor) => item.id === params.counsellorId);
         if (found) setCounsellor({ ...found, createdAt: new Date(found.createdAt), credentialExpiresAt: found.credentialExpiresAt ? new Date(found.credentialExpiresAt) : undefined });
@@ -38,6 +40,30 @@ export default function CounsellorProfilePage() {
       router.push("/auth/login");
     }
   }, [loading, router, user]);
+
+  const requestPrivateSession = async () => {
+    if (!counsellor || counsellor.status !== "available") return;
+    setRequesting(true);
+    setRequestError(null);
+    try {
+      const session = await requestSession({
+        preferredCounsellorId: counsellor.id,
+        preferredLanguage: counsellor.languages[0],
+        summary: "Member requested this counsellor from the verified directory",
+        shareSummary: false,
+      });
+      router.push(`/sessions/${session.id}`);
+    } catch (error) {
+      const status = (error as { status?: number }).status;
+      setRequestError(
+        status === 409
+          ? "This counsellor was just assigned to someone else. Choose another available counsellor."
+          : "Your private request could not be started. Please refresh and try again.",
+      );
+    } finally {
+      setRequesting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -226,46 +252,54 @@ export default function CounsellorProfilePage() {
           </div>
 
           <aside className="bg-gradient-to-br from-primary-dark to-fuchsia-700 text-white rounded-2xl p-5 sm:p-6 shadow-lg">
-            <h2 className="text-lg sm:text-xl font-bold">Contact options</h2>
+            <h2 className="text-lg sm:text-xl font-bold">Private support</h2>
             <p className="mt-2 text-sm sm:text-base text-white/90 leading-6">
-              Review the profile, then choose the best way to connect.
+              Request a confidential SisterCare room. Your phone number and
+              identity are not shared with the counsellor.
             </p>
 
-            <div className="mt-5 space-y-3">
-              <a
-                href={`tel:${counsellor.phoneNumber.replace(/[^+\d]/g, "")}`}
-                aria-disabled={!canContact}
-                onClick={(event) => { if (!canContact) event.preventDefault(); }}
-                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white text-primary font-semibold shadow-sm"
-              >
-                <span className="material-symbols-outlined text-lg">call</span>
-                Call counsellor
-              </a>
-              <a
-                href={`https://wa.me/${counsellor.whatsappNumber.replace(/[^\d]/g, "")}`}
-                aria-disabled={!canContact}
-                onClick={(event) => { if (!canContact) event.preventDefault(); }}
-                target="_blank"
-                rel="noreferrer"
-                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/10 border border-white/30 text-white font-semibold"
-              >
-                <span className="material-symbols-outlined text-lg">chat</span>
-                WhatsApp counsellor
-              </a>
-            </div>
-
             <div className="mt-5 rounded-xl bg-white/10 p-4 text-sm leading-6 text-white/90">
-              <p className="font-semibold text-white">Direct details</p>
-              <p className="mt-2">Phone: {counsellor.phoneNumber}</p>
-              <p>WhatsApp: {counsellor.whatsappNumber}</p>
+              <p className="font-semibold text-white">Inside your care room</p>
+              <ul className="mt-2 space-y-2">
+                <li className="flex gap-2">
+                  <span className="material-symbols-outlined text-lg">chat</span>
+                  Private in-app messages
+                </li>
+                <li className="flex gap-2">
+                  <span className="material-symbols-outlined text-lg">call</span>
+                  Anonymous audio when both sides connect
+                </li>
+                <li className="flex gap-2">
+                  <span className="material-symbols-outlined text-lg">shield</span>
+                  Only you and the assigned counsellor can enter
+                </li>
+              </ul>
             </div>
 
             {canContact ? (
-              <p className="mt-4 text-xs text-white/80">
-                Sister matched you to this counsellor based on your request and
-                language preference.
+              <button
+                type="button"
+                onClick={() => void requestPrivateSession()}
+                disabled={requesting}
+                className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 font-bold text-primary-dark shadow-sm transition hover:bg-fuchsia-50 disabled:cursor-wait disabled:opacity-70"
+              >
+                <span className="material-symbols-outlined text-lg">
+                  {requesting ? "progress_activity" : "lock_open"}
+                </span>
+                {requesting ? "Creating private room…" : "Request this counsellor"}
+              </button>
+            ) : (
+              <div className="mt-5 rounded-xl border border-white/20 bg-black/10 p-3 text-sm text-white/90">
+                {counsellor.status === "in_session"
+                  ? "This counsellor is helping someone now and cannot receive another request."
+                  : "This counsellor is offline and cannot receive a request yet."}
+              </div>
+            )}
+            {requestError && (
+              <p role="alert" className="mt-3 rounded-xl bg-white p-3 text-sm font-semibold text-red-700">
+                {requestError}
               </p>
-            ) : <p className="mt-4 text-xs text-white/80">This counsellor is not currently available for a new assignment.</p>}
+            )}
           </aside>
         </section>
       </main>
