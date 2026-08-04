@@ -405,23 +405,6 @@ export default function ChatPage() {
     [user],
   );
 
-  const toggleVoiceInput = useCallback(() => {
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setError("Voice input not supported on this device");
-      return;
-    }
-
-    if (isListening) {
-      if (recordingRef.current && recordingRef.current.state !== "inactive") {
-        recordingRef.current.stop();
-      }
-      setIsListening(false);
-    } else {
-      setInputValue("");
-      startVoiceRecording();
-    }
-  }, [isListening]);
-
   const startVoiceRecording = useCallback(async () => {
     try {
       audioChunksRef.current = [];
@@ -479,6 +462,23 @@ export default function ChatPage() {
       setIsListening(false);
     }
   }, [userLanguage]);
+
+  const toggleVoiceInput = useCallback(() => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError("Voice input not supported on this device");
+      return;
+    }
+
+    if (isListening) {
+      if (recordingRef.current && recordingRef.current.state !== "inactive") {
+        recordingRef.current.stop();
+      }
+      setIsListening(false);
+    } else {
+      setInputValue("");
+      void startVoiceRecording();
+    }
+  }, [isListening, startVoiceRecording]);
 
   useEffect(() => {
     conversationsRef.current = conversations;
@@ -1105,13 +1105,13 @@ export default function ChatPage() {
             query.set("article", String(data.clientAction.articleId));
           }
           const destination = `${data.clientAction.href}${query.size ? `?${query.toString()}` : ""}`;
-          window.location.assign(destination);
+          router.push(destination);
           return;
         }
 
         if (data.clientAction?.type === "sign_out") {
           await signOut();
-          window.location.replace("/auth/login");
+          router.replace("/auth/login");
           return;
         }
 
