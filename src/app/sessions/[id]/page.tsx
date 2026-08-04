@@ -8,6 +8,7 @@ import { auth } from "@/lib/authClient";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 import { authenticatedFetch } from "@/lib/authenticatedFetch";
 import { CounsellingSession, SessionState } from "@/types";
+import DailyAudioCall from "@/components/features/DailyAudioCall";
 import {
   getSessionDetail,
   transitionSession,
@@ -37,10 +38,13 @@ export default function SessionRoomPage() {
   const [feedbackComment, setFeedbackComment] = useState("");
   const [feedbackSent, setFeedbackSent] = useState(false);
   const [audioBusy, setAudioBusy] = useState(false);
-  const [audioJoinUrl, setAudioJoinUrl] = useState<string | null>(null);
+  const [audioAccess, setAudioAccess] = useState<{
+    roomUrl: string;
+    token: string;
+  } | null>(null);
   const [incomingAudio, setIncomingAudio] = useState(false);
   const [audioState, setAudioState] = useState<
-    "idle" | "connecting" | "active" | "failed"
+    "idle" | "connecting" | "active" | "disconnected" | "failed"
   >("idle");
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
@@ -171,7 +175,10 @@ export default function SessionRoomPage() {
   };
 
   const audioAction = useCallback(
-    async (action: "connected" | "end" | "fail", extra?: Record<string, unknown>) => {
+    async (
+      action: "connected" | "leave" | "end" | "fail",
+      extra?: Record<string, unknown>,
+    ) => {
       const response = await authenticatedFetch(`/api/sessions/${sessionId}/audio`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -208,7 +215,16 @@ export default function SessionRoomPage() {
             "Audio could not connect. Continue safely in this text conversation.",
         );
       }
-      setAudioJoinUrl(payload.data.joinUrl);
+      if (
+        typeof payload.data?.roomUrl !== "string" ||
+        typeof payload.data?.token !== "string"
+      ) {
+        throw new Error("Daily returned incomplete private call access.");
+      }
+      setAudioAccess({
+        roomUrl: payload.data.roomUrl,
+        token: payload.data.token,
+      });
       setAudioState("connecting");
       setIncomingAudio(false);
     } catch (reason) {
@@ -223,42 +239,52 @@ export default function SessionRoomPage() {
     }
   };
 
-  const endAudio = useCallback(async () => {
+  const leaveAudio = useCallback(async () => {
     try {
-      await audioAction("end");
+      await audioAction("leave");
     } catch {}
-    setAudioJoinUrl(null);
-    setAudioState("idle");
+    setAudioAccess(null);
+    setAudioState("disconnected");
     setIncomingAudio(false);
   }, [audioAction]);
 
-  useEffect(() => {
-    if (!audioJoinUrl) return;
-    const trustedOrigin = new URL(audioJoinUrl).origin;
-    const receiveProviderState = (event: MessageEvent) => {
-      if (event.origin !== trustedOrigin || !event.data || typeof event.data !== "object") return;
-      if (event.data.type === "sistercare.audio.connected") {
-        setAudioState("active");
-        void audioAction("connected").catch(() => {
-          setAudioState("failed");
-          setError("Audio state could not be verified. Continue by text.");
-        });
-      }
-      if (event.data.type === "sistercare.audio.ended") void endAudio();
-      if (event.data.type === "sistercare.audio.failed") {
+  const audioConnected = useCallback(() => {
+    void audioAction("connected")
+      .then((payload) => {
+        setAudioState(
+          payload.data?.call?.state === "active" ? "active" : "connecting",
+        );
+      })
+      .catch(() => {
         setAudioState("failed");
-        setAudioJoinUrl(null);
-        setError("The audio connection ended unexpectedly. Continue by text here.");
-        void audioAction("fail", { failureCode: "provider_connection_failed" }).catch(() => {});
-      }
-    };
-    window.addEventListener("message", receiveProviderState);
-    return () => window.removeEventListener("message", receiveProviderState);
-  }, [audioAction, audioJoinUrl, endAudio]);
+        setError("Audio state could not be verified. Continue by text.");
+      });
+  }, [audioAction]);
+
+  const audioDisconnected = useCallback(() => {
+    setAudioAccess(null);
+    setAudioState("disconnected");
+    setIncomingAudio(false);
+    void audioAction("leave").catch(() => undefined);
+  }, [audioAction]);
+
+  const audioFailed = useCallback(
+    (failureCode: string) => {
+      setAudioAccess(null);
+      setAudioState("failed");
+      setIncomingAudio(false);
+      setError(
+        "The audio connection ended unexpectedly. You can reconnect or continue by text.",
+      );
+      void audioAction("fail", { failureCode }).catch(() => undefined);
+    },
+    [audioAction],
+  );
 
   useEffect(() => {
     if (state !== "active") {
       setIncomingAudio(false);
+      setAudioAccess(null);
       return;
     }
     const checkCallState = async () => {
@@ -267,19 +293,28 @@ export default function SessionRoomPage() {
           cache: "no-store",
         });
         const payload = await response.json().catch(() => ({}));
-        const callState = payload.data?.call?.state;
+        const call = payload.data?.call;
+        const callState = call?.state;
         if (!response.ok || !callState) {
           setIncomingAudio(false);
           return;
         }
+        setIncomingAudio(
+          call.otherParticipantConnected === true && !audioAccess,
+        );
         if (
-          (callState === "connecting" || callState === "active") &&
-          !audioJoinUrl
+          callState === "disconnected" &&
+          call.otherParticipantConnected !== true
         ) {
-          setIncomingAudio(true);
+          setAudioState("disconnected");
         }
-        if (callState === "ended" || callState === "failed") {
-          setAudioJoinUrl(null);
+        if (
+          callState === "ended" ||
+          callState === "failed" ||
+          callState === "cancelled" ||
+          callState === "expired"
+        ) {
+          setAudioAccess(null);
           setIncomingAudio(false);
           setAudioState(callState === "failed" ? "failed" : "idle");
           if (callState === "failed") {
@@ -293,7 +328,7 @@ export default function SessionRoomPage() {
     void checkCallState();
     const interval = window.setInterval(() => void checkCallState(), 5_000);
     return () => window.clearInterval(interval);
-  }, [audioJoinUrl, sessionId, state]);
+  }, [audioAccess, sessionId, state]);
 
   if (error && !session) {
     return (
@@ -347,7 +382,7 @@ export default function SessionRoomPage() {
             <button
               type="button"
               onClick={startAudio}
-              disabled={audioBusy || Boolean(audioJoinUrl)}
+              disabled={audioBusy || Boolean(audioAccess)}
               className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
             >
               <span className="material-symbols-outlined text-base" aria-hidden="true">call</span>
@@ -357,7 +392,9 @@ export default function SessionRoomPage() {
                   ? "Connecting…"
                   : incomingAudio
                     ? "Join call"
-                    : "Start audio"}
+                    : audioState === "disconnected"
+                      ? "Reconnect"
+                      : "Join private call"}
             </button>
             {isCounsellor && (
               <button
@@ -383,7 +420,7 @@ export default function SessionRoomPage() {
         </div>
       )}
 
-      {incomingAudio && !audioJoinUrl && (
+      {incomingAudio && !audioAccess && (
         <section className="mb-4 flex flex-col gap-3 rounded-2xl border border-fuchsia-200 bg-fuchsia-50 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-fuchsia-800 dark:bg-fuchsia-950/20">
           <div className="flex items-center gap-3">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-dark text-white">
@@ -410,29 +447,33 @@ export default function SessionRoomPage() {
         </section>
       )}
 
-      {audioJoinUrl && (
+      {audioAccess && (
         <section className="mb-4 overflow-hidden rounded-2xl border border-primary/20 bg-slate-950 text-white">
           <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
             <div>
               <p className="text-sm font-bold">
-                {audioState === "active" ? "Private audio connected" : "Connecting private audio"}
+                {audioState === "active"
+                  ? "Private audio connected"
+                  : audioState === "disconnected"
+                    ? "The other participant disconnected"
+                    : "Connecting private audio"}
               </p>
               <p className="text-xs text-white/65">Audio only · phone numbers hidden · recording off</p>
             </div>
             <button
               type="button"
-              onClick={() => void endAudio()}
+              onClick={() => void leaveAudio()}
               className="min-h-10 rounded-xl bg-red-600 px-4 text-xs font-bold text-white"
             >
-              End call
+              Leave call
             </button>
           </div>
-          <iframe
-            src={audioJoinUrl}
-            title="Private SisterCare audio session"
-            allow="microphone"
-            className="h-56 w-full border-0 bg-slate-950"
-            referrerPolicy="no-referrer"
+          <DailyAudioCall
+            roomUrl={audioAccess.roomUrl}
+            token={audioAccess.token}
+            onConnected={audioConnected}
+            onDisconnected={audioDisconnected}
+            onFailure={audioFailed}
           />
         </section>
       )}

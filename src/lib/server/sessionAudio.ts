@@ -170,7 +170,26 @@ export async function markSessionAudioConnected(
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error("This audio call has already ended");
-  return data as Row;
+  const updated = data as Row;
+  if (
+    isConnected(updated, "member") &&
+    isConnected(updated, "counsellor") &&
+    updated.state !== "active"
+  ) {
+    const { data: active, error: activeError } = await db()
+      .from("session_audio_calls")
+      .update({
+        state: "active",
+        started_at: updated.started_at || nowIso(),
+      })
+      .eq("id", updated.id)
+      .in("state", ["connecting", "disconnected", "ready"])
+      .select("*")
+      .maybeSingle();
+    if (activeError) throw new Error(activeError.message);
+    if (active) return active as Row;
+  }
+  return updated;
 }
 
 export async function markSessionAudioDisconnected(
