@@ -24,6 +24,8 @@ describe("session transitions", () => {
     expect(canTransition("matched", "requested")).toBe(true);
     expect(canTransition("active", "escalated")).toBe(true);
     expect(canTransition("requested", "expired")).toBe(true);
+    expect(canTransition("requested", "cancelled")).toBe(true);
+    expect(canTransition("matched", "cancelled")).toBe(true);
   });
 
   it("rejects skipping states and reviving terminal states", () => {
@@ -51,6 +53,7 @@ describe("session transitions", () => {
       "feedback_received",
       "expired",
       "escalated",
+      "cancelled",
     ];
     for (const s of states) {
       expect(SESSION_TRANSITIONS[s]).toBeDefined();

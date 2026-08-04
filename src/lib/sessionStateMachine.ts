@@ -14,20 +14,22 @@
 import { CounsellingSession, SessionState } from "@/types";
 
 export const SESSION_TRANSITIONS: Record<SessionState, SessionState[]> = {
-  requested: ["matched", "expired"],
-  matched: ["accepted", "requested"],
+  requested: ["matched", "expired", "cancelled"],
+  matched: ["accepted", "requested", "cancelled"],
   accepted: ["active"],
   active: ["completed", "escalated"],
   completed: ["feedback_received"],
   feedback_received: [],
   expired: [],
   escalated: [],
+  cancelled: [],
 };
 
 export const TERMINAL_STATES: SessionState[] = [
   "feedback_received",
   "expired",
   "escalated",
+  "cancelled",
 ];
 
 /** A matched session the counsellor hasn't accepted within this window is

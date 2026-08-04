@@ -10,6 +10,7 @@ export type DomainEventType =
   | "session.completed"
   | "session.expired"
   | "session.escalated"
+  | "session.cancelled"
   | "session.rematch_timeout"
   | "feedback.received"
   | "crisis.detected"

@@ -90,7 +90,13 @@ export async function getSessionDetail(
 
 export async function transitionSession(
   id: string,
-  action: "accept" | "decline" | "end" | "escalate" | "feedback",
+  action:
+    | "accept"
+    | "decline"
+    | "cancel"
+    | "end"
+    | "escalate"
+    | "feedback",
   extra?: { rating?: number; comment?: string },
 ): Promise<void> {
   await sessionsFetch(`/api/sessions/${id}/transition`, {
@@ -160,5 +166,11 @@ export const SESSION_STATE_META: Record<
     label: "Escalated",
     badgeClass: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300",
     description: "This session was escalated to emergency support.",
+  },
+  cancelled: {
+    label: "Cancelled",
+    badgeClass:
+      "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+    description: "You cancelled this request.",
   },
 };

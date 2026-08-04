@@ -159,7 +159,7 @@ export default function SessionRoomPage() {
   };
 
   const doTransition = async (
-    action: "end" | "escalate" | "feedback",
+    action: "cancel" | "end" | "escalate" | "feedback",
     extra?: { rating?: number; comment?: string },
   ) => {
     try {
@@ -333,6 +333,15 @@ export default function SessionRoomPage() {
             {meta.label}
           </span>
         </div>
+        {isSessionUser && (state === "requested" || state === "matched") && (
+          <button
+            type="button"
+            onClick={() => doTransition("cancel")}
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+          >
+            Cancel request
+          </button>
+        )}
         {state === "active" && (
           <div className="flex gap-2">
             <button

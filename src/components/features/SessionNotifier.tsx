@@ -39,7 +39,10 @@ export default function SessionNotifier() {
       const sessions = await listMySessions();
       const notified = readNotified(user.uid);
       const newlyReady = sessions.find(
-        (session) => session.state === "active" && !notified.has(session.id),
+        (session) =>
+          session.state === "active" &&
+          session.audioReady === true &&
+          !notified.has(session.id),
       );
       if (!newlyReady) return;
       notified.add(newlyReady.id);

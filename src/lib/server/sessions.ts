@@ -27,6 +27,10 @@ import {
   normalizeSupportAlias,
 } from "../privacyPreferences";
 import {
+  ensureSessionAudioRoom,
+  finishSessionAudio,
+} from "./sessionAudio";
+import {
   Counsellor,
   CounsellingSession,
   CounsellorSpecialty,
@@ -119,6 +123,7 @@ function rowToSession(row: Row): CounsellingSession {
         : 0,
     emergencyFallbackRequired: details.emergencyFallbackRequired === true,
     incidentRequired: details.incidentRequired === true,
+    audioReady: details.audioReady === true,
   };
 }
 
@@ -530,6 +535,10 @@ export async function acceptSession(
     assertTransition(session.state, "accepted");
   }
   assertTransition("accepted", "active");
+  const audioCall = await ensureSessionAudioRoom({
+    sessionId,
+    initiatedBy: counsellorId,
+  });
   const acceptedAt = new Date();
   const timeToHumanSeconds = Math.max(
     0,
@@ -546,6 +555,11 @@ export async function acceptSession(
       accepted_at: acceptedAt.toISOString(),
       active_at: acceptedAt.toISOString(),
       time_to_human_seconds: timeToHumanSeconds,
+      details: {
+        ...detailsOf(row),
+        audioReady: true,
+        audioExpiresAt: audioCall.room_expires_at,
+      },
       updated_at: acceptedAt.toISOString(),
     })
     .eq("id", sessionId)
@@ -553,7 +567,10 @@ export async function acceptSession(
     .select("*")
     .maybeSingle();
   check(error);
-  if (!data) throw new Error("Session changed before it could be accepted");
+  if (!data) {
+    await finishSessionAudio(sessionId, "cancelled").catch(() => undefined);
+    throw new Error("Session changed before it could be accepted");
+  }
   await setCounsellorInSession(counsellorId);
   await emitEvent("session.accepted", {
     sessionId,
@@ -596,6 +613,44 @@ export async function declineSession(
   await attemptMatch(sessionId);
 }
 
+export async function cancelSession(
+  sessionId: string,
+  userId: string,
+): Promise<void> {
+  const row = await fetchSession(sessionId);
+  if (!row) throw new Error("Session not found");
+  const session = rowToSession(row);
+  if (session.userId !== userId) {
+    throw new Error("Only the member who requested this session can cancel it");
+  }
+  assertTransition(session.state, "cancelled");
+  const { data, error } = await db()
+    .from("counselling_sessions")
+    .update({
+      state: "cancelled",
+      completed_at: nowIso(),
+      details: { ...detailsOf(row), endedBy: "user" },
+      updated_at: nowIso(),
+    })
+    .eq("id", sessionId)
+    .eq("user_id", userId)
+    .eq("state", session.state)
+    .select("id")
+    .maybeSingle();
+  check(error);
+  if (!data) throw new Error("Session changed before it could be cancelled");
+  await finishSessionAudio(sessionId, "cancelled").catch(() => undefined);
+  await emitEvent("session.cancelled", {
+    sessionId,
+    userId,
+    counsellorId: session.counsellorId,
+  });
+  if (session.counsellorId) {
+    await refreshCounsellorAvailability(session.counsellorId);
+    await drainQueue();
+  }
+}
+
 export async function endSession(
   sessionId: string,
   byUid: string,
@@ -628,6 +683,7 @@ export async function endSession(
     userId: session.userId,
     endedBy: details.endedBy,
   });
+  await finishSessionAudio(sessionId, "ended").catch(() => undefined);
   if (session.counsellorId)
     await refreshCounsellorAvailability(session.counsellorId);
 }

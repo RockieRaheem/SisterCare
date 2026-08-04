@@ -6,13 +6,20 @@ import {
 } from "@/lib/serverAuth";
 import {
   acceptSession,
+  cancelSession,
   declineSession,
   endSession,
   escalateSession,
   submitFeedback,
 } from "@/lib/server/sessions";
 
-type TransitionAction = "accept" | "decline" | "end" | "escalate" | "feedback";
+type TransitionAction =
+  | "accept"
+  | "decline"
+  | "cancel"
+  | "end"
+  | "escalate"
+  | "feedback";
 
 /**
  * POST /api/sessions/:id/transition
@@ -75,6 +82,9 @@ export async function POST(
       case "decline":
         await declineSession(id, auth.uid);
         return NextResponse.json({ success: true });
+      case "cancel":
+        await cancelSession(id, auth.uid);
+        return NextResponse.json({ success: true });
       case "end":
         await endSession(id, auth.uid);
         return NextResponse.json({ success: true });
@@ -94,9 +104,13 @@ export async function POST(
     const message = error instanceof Error ? error.message : "Failed";
     const status = message.startsWith("Invalid session transition")
       ? 409
+      : message.includes("private audio") ||
+          message.includes("audio service credentials")
+        ? 503
       : message.includes("not assigned") ||
           message.includes("participant") ||
-          message.includes("can leave feedback")
+          message.includes("can leave feedback") ||
+          message.includes("Only the member")
         ? 403
         : message.includes("not found")
           ? 404

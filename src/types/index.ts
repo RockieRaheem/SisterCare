@@ -254,7 +254,8 @@ export type SessionState =
   | "completed" // ended by either party
   | "feedback_received" // user rated the session (terminal)
   | "expired" // no match within the request TTL (terminal)
-  | "escalated"; // counsellor flagged an emergency (terminal)
+  | "escalated" // counsellor flagged an emergency (terminal)
+  | "cancelled"; // member withdrew before the session started (terminal)
 
 export type SessionPriority = "normal" | "critical";
 
@@ -292,6 +293,8 @@ export interface CounsellingSession {
   crisisEscalationLevel?: number;
   emergencyFallbackRequired?: boolean;
   incidentRequired?: boolean;
+  /** A private Daily room was prepared before the counsellor activated care. */
+  audioReady?: boolean;
 }
 
 export interface SessionMessage {
