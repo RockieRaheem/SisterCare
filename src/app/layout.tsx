@@ -81,6 +81,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className="">
       <head>
+        {/* The icon font is shared by every App Router page from this root layout. */}
+        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL@20..48,100..700,0..1&display=swap"
           rel="stylesheet"
