@@ -281,6 +281,16 @@ export default function SessionRoomPage() {
     [audioAction],
   );
 
+  const peerAudioConnected = useCallback(() => {
+    setAudioState("active");
+    setIncomingAudio(false);
+  }, []);
+
+  const peerAudioDisconnected = useCallback(() => {
+    setAudioState("disconnected");
+    setIncomingAudio(false);
+  }, []);
+
   useEffect(() => {
     if (state !== "active") {
       setIncomingAudio(false);
@@ -473,6 +483,8 @@ export default function SessionRoomPage() {
             token={audioAccess.token}
             onConnected={audioConnected}
             onDisconnected={audioDisconnected}
+            onPeerConnected={peerAudioConnected}
+            onPeerDisconnected={peerAudioDisconnected}
             onFailure={audioFailed}
           />
         </section>

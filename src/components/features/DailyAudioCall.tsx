@@ -8,6 +8,8 @@ interface DailyAudioCallProps {
   token: string;
   onConnected: () => void;
   onDisconnected: () => void;
+  onPeerConnected: () => void;
+  onPeerDisconnected: () => void;
   onFailure: (code: string) => void;
 }
 
@@ -16,18 +18,34 @@ export default function DailyAudioCall({
   token,
   onConnected,
   onDisconnected,
+  onPeerConnected,
+  onPeerDisconnected,
   onFailure,
 }: DailyAudioCallProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const callbacksRef = useRef({
     onConnected,
     onDisconnected,
+    onPeerConnected,
+    onPeerDisconnected,
     onFailure,
   });
 
   useEffect(() => {
-    callbacksRef.current = { onConnected, onDisconnected, onFailure };
-  }, [onConnected, onDisconnected, onFailure]);
+    callbacksRef.current = {
+      onConnected,
+      onDisconnected,
+      onPeerConnected,
+      onPeerDisconnected,
+      onFailure,
+    };
+  }, [
+    onConnected,
+    onDisconnected,
+    onPeerConnected,
+    onPeerDisconnected,
+    onFailure,
+  ]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -78,6 +96,14 @@ export default function DailyAudioCall({
           .on("left-meeting", () => {
             if (disposed) return;
             reportDeparture();
+          })
+          .on("participant-joined", () => {
+            if (disposed) return;
+            callbacksRef.current.onPeerConnected();
+          })
+          .on("participant-left", () => {
+            if (disposed) return;
+            callbacksRef.current.onPeerDisconnected();
           })
           .on("error", () => {
             if (disposed) return;
