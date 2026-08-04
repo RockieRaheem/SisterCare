@@ -9,7 +9,7 @@ const nextConfig = {
       {
         key: "Permissions-Policy",
         value:
-          "camera=(), geolocation=(), payment=(), usb=(), microphone=(self)",
+          'camera=(), geolocation=(), payment=(), usb=(), microphone=(self "https://*.daily.co")',
       },
       {
         key: "Strict-Transport-Security",
