@@ -37,6 +37,7 @@ describe("fail-closed API security configuration", () => {
       "CRON_SECRET must contain at least 32 characters",
       "TELEMETRY_HASH_SALT must contain at least 32 characters",
       "At least one AI provider API key is required in production",
+      "DAILY_API_KEY and DAILY_DOMAIN are required for private counselling audio",
     ]);
   });
 
@@ -50,6 +51,8 @@ describe("fail-closed API security configuration", () => {
         CRON_SECRET: "a".repeat(32),
         TELEMETRY_HASH_SALT: "b".repeat(32),
         GROQ_API_KEY: "groq-test-key",
+        DAILY_API_KEY: "daily-test-key",
+        DAILY_DOMAIN: "raheemlabs.daily.co",
         ALLOW_UNAUTHENTICATED_DEV: "false",
       }),
     ).toEqual([]);

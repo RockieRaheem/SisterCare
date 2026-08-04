@@ -23,6 +23,7 @@ export function validateProductionSecurityConfig(env: NodeJS.ProcessEnv = proces
   if (!env.CRON_SECRET || env.CRON_SECRET.length < 32) errors.push("CRON_SECRET must contain at least 32 characters");
   if (!env.TELEMETRY_HASH_SALT || env.TELEMETRY_HASH_SALT.length < 32) errors.push("TELEMETRY_HASH_SALT must contain at least 32 characters");
   if (!env.GEMINI_API_KEY && !env.GROQ_API_KEY) errors.push("At least one AI provider API key is required in production");
+  if (!env.DAILY_API_KEY || !env.DAILY_DOMAIN) errors.push("DAILY_API_KEY and DAILY_DOMAIN are required for private counselling audio");
   if (env.ALLOW_UNAUTHENTICATED_DEV === "true") errors.push("ALLOW_UNAUTHENTICATED_DEV cannot be enabled in production");
   return errors;
 }
