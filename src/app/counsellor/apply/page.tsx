@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import CounsellorShell from "@/components/counsellor/CounsellorShell";
@@ -238,11 +239,44 @@ export default function CounsellorApplicationPage() {
         {reviewStatus === "rejected" && <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100"><p className="font-bold">Revise and resubmit your application</p><p className="mt-1 text-sm leading-6">{savedApplication?.reviewNote || "Review the previous details, correct the issue, and submit again for a new administrator review."}</p><div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => savedApplication && setForm(draftFromApplication(savedApplication))} className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-amber-900 shadow-sm dark:bg-gray-900 dark:text-amber-100">Restore previous details</button><button type="button" onClick={() => { setForm(emptyDraft()); setPhotoPreview(""); setStatus("A fresh application form is ready."); }} className="rounded-xl border border-amber-300 px-4 py-2 text-sm font-semibold text-amber-900 dark:border-amber-800 dark:text-amber-100">Start afresh</button></div></section>}
         <section className="rounded-2xl border border-dashed border-primary/35 bg-primary/5 p-4">
           <div className="flex flex-wrap items-center gap-4">
-            {photoPreview ? <img src={photoPreview} alt="Professional profile preview" className="h-16 w-16 rounded-2xl object-cover" /> : <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/15 text-primary"><span className="material-symbols-outlined">add_a_photo</span></div>}
+            {photoPreview ? <Image src={photoPreview} alt="Professional profile preview" width={64} height={64} unoptimized className="h-16 w-16 rounded-2xl object-cover" /> : <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/15 text-primary"><span className="material-symbols-outlined">add_a_photo</span></div>}
             <div className="min-w-0 flex-1">
-              <label className="block text-sm font-semibold text-gray-800 dark:text-white">Professional profile photo
-                <input type="file" accept="image/*" capture="user" onChange={(event) => uploadPhoto(event.target.files?.[0])} className="mt-2 block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:font-semibold file:text-white dark:text-gray-300" />
-              </label>
+              <p className="text-sm font-semibold text-gray-800 dark:text-white">
+                Professional profile photo
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white shadow-primary-sm transition hover:bg-primary-dark focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
+                  <span className="material-symbols-outlined text-xl" aria-hidden="true">
+                    photo_library
+                  </span>
+                  Choose existing photo
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(event) => {
+                      void uploadPhoto(event.target.files?.[0]);
+                      event.currentTarget.value = "";
+                    }}
+                    className="sr-only"
+                  />
+                </label>
+                <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-primary/30 bg-white px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary/5 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 dark:bg-card-dark">
+                  <span className="material-symbols-outlined text-xl" aria-hidden="true">
+                    photo_camera
+                  </span>
+                  Take a new photo
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    capture="user"
+                    onChange={(event) => {
+                      void uploadPhoto(event.target.files?.[0]);
+                      event.currentTarget.value = "";
+                    }}
+                    className="sr-only"
+                  />
+                </label>
+              </div>
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{form.photoURL && !photoPreview ? "Your previously uploaded profile photo is retained. Choose another file only if you want to replace it." : "Use a clear headshot. JPG, PNG, or WebP up to 5 MB. This is shown on your verified profile; it is separate from your private KYC documents."}</p>
             </div>
           </div>
