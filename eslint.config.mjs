@@ -14,6 +14,7 @@ export default defineConfig([
     ".next/**",
     "out/**",
     "build/**",
+    "coverage/**",
     "next-env.d.ts",
     "public/sw.js",
   ]),
