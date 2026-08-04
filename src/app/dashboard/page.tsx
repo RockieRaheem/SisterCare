@@ -742,8 +742,11 @@ export default function DashboardPage() {
                     <p className="text-amber-700 dark:text-amber-400 text-sm mb-4">
                       {t.dashboard.completeProfileDesc}
                     </p>
-                    <Link href="/onboarding?mode=edit">
-                      <Button>{t.dashboard.completeSetup}</Button>
+                    <Link
+                      href="/onboarding?mode=edit"
+                      className="inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-5 text-sm font-semibold text-white shadow-primary-sm transition-colors hover:bg-primary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                    >
+                      {t.dashboard.completeSetup}
                     </Link>
                   </div>
                 </div>

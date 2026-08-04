@@ -1,12 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
   buildOnboardingProfileUpdate,
+  isOnboardingEditMode,
   periodReminderPayload,
 } from "../onboarding";
 
 const now = new Date("2026-07-30T10:00:00.000Z");
 
 describe("onboarding persistence", () => {
+  it("recognizes an explicit dashboard setup-resume request", () => {
+    expect(isOnboardingEditMode("edit")).toBe(true);
+    expect(isOnboardingEditMode(null)).toBe(false);
+    expect(isOnboardingEditMode("complete")).toBe(false);
+  });
+
   it("persists skip as a completed onboarding state", () => {
     expect(buildOnboardingProfileUpdate({ mode: "skip" }, now)).toEqual({
       onboarding_completed: true,

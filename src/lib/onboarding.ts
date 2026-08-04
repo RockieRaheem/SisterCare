@@ -11,6 +11,10 @@ export type OnboardingRequest =
       reminderDays: number;
     };
 
+export function isOnboardingEditMode(mode: string | null): boolean {
+  return mode === "edit";
+}
+
 export function buildOnboardingProfileUpdate(
   input: OnboardingRequest,
   now = new Date(),

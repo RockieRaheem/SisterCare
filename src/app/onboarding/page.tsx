@@ -1,19 +1,21 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { auth } from "@/lib/authClient";
 import { authenticatedFetch } from "@/lib/authenticatedFetch";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { calculateNextPeriod } from "@/lib/dataClient";
+import { isOnboardingEditMode } from "@/lib/onboarding";
 
 type OnboardingStep = "welcome" | "name" | "cycle" | "reminders" | "complete";
 
 export default function OnboardingPage() {
   const { user, loading, userProfile, refreshProfile } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [currentStep, setCurrentStep] = useState<OnboardingStep>("welcome");
   const [saving, setSaving] = useState(false);
@@ -28,9 +30,9 @@ export default function OnboardingPage() {
 
   const [skipping, setSkipping] = useState(false);
   const completionStartedRef = useRef(false);
-  const editingExistingProfile =
-    typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).get("mode") === "edit";
+  const editingExistingProfile = isOnboardingEditMode(
+    searchParams.get("mode"),
+  );
 
   useEffect(() => {
     if (!loading && !user) {
