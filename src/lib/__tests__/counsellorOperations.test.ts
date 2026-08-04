@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  describeCounsellorEligibilityFailure,
   evaluateCounsellorEligibility,
   evaluateCounsellorStanding,
   evaluateCrisisEscalation,
@@ -117,6 +118,29 @@ describe("counsellor operational eligibility", () => {
         new Date("2026-07-27T20:00:00.000Z"),
       ),
     ).toBe(true);
+  });
+});
+
+describe("availability failure guidance", () => {
+  it("distinguishes verification, expiry and shift restrictions", () => {
+    expect(
+      describeCounsellorEligibilityFailure(["verification_required"]),
+    ).toContain("verified counsellor record");
+    expect(
+      describeCounsellorEligibilityFailure(["credentials_expired"]),
+    ).toContain("credential has expired");
+    expect(describeCounsellorEligibilityFailure(["off_shift"])).toContain(
+      "outside the shift hours",
+    );
+  });
+
+  it("prioritizes verification when more than one restriction exists", () => {
+    expect(
+      describeCounsellorEligibilityFailure([
+        "off_shift",
+        "verification_required",
+      ]),
+    ).toContain("verified counsellor record");
   });
 });
 

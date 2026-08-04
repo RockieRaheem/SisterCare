@@ -58,7 +58,7 @@ export async function listCounsellorSessions(): Promise<{
   const data = await sessionsFetch<{
     assigned: CounsellingSession[];
     openCritical: CounsellingSession[];
-  }>("/api/sessions");
+  }>("/api/sessions?workspace=counsellor");
   return {
     assigned: data.assigned.map(reviveSession),
     openCritical: data.openCritical.map(reviveSession),

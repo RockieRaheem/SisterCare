@@ -12,6 +12,7 @@ import {
 } from "../sessionStateMachine";
 import { rankCounsellors } from "../counsellorMatching";
 import {
+  CounsellorEligibilityError,
   evaluateCounsellorEligibility,
   evaluateCounsellorStanding,
   evaluateCrisisEscalation,
@@ -218,9 +219,7 @@ async function assertCounsellorOperationallyEligible(
     { activeLoad, priority },
   );
   if (!eligibility.eligible) {
-    throw new Error(
-      `Counsellor is not operationally eligible: ${eligibility.reasons.join(", ")}`,
-    );
+    throw new CounsellorEligibilityError(eligibility.reasons);
   }
 }
 
@@ -247,9 +246,7 @@ export async function recordHeartbeat(
           priority: "normal",
         });
   if (!eligibility.eligible) {
-    throw new Error(
-      `Counsellor is not operationally eligible: ${eligibility.reasons.join(", ")}`,
-    );
+    throw new CounsellorEligibilityError(eligibility.reasons);
   }
   const effectiveStatus = activeLoad > 0 ? "in_session" : status;
   const { error: updateError } = await db()

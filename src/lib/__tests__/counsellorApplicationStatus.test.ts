@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   resolveApplicationReviewAttempt,
   resolveApplicationSubmissionStatus,
+  resolveCounsellorAccessRole,
   resolveCounsellorPortalState,
 } from "../counsellorApplicationStatus";
 
@@ -19,6 +20,45 @@ describe("counsellor portal state", () => {
     expect(resolveCounsellorPortalState("counsellor", "verified")).toBe("workspace");
     expect(resolveCounsellorPortalState("admin", null)).toBe("workspace");
     expect(resolveCounsellorPortalState("member", null)).toBe("not_applied");
+  });
+});
+
+describe("verified counsellor access recovery", () => {
+  it("repairs a delayed profile role from two verified KYC records", () => {
+    expect(
+      resolveCounsellorAccessRole({
+        profileRole: "member",
+        applicationStatus: "verified",
+        directoryVerificationStatus: "verified",
+      }),
+    ).toBe("counsellor");
+  });
+
+  it("keeps incomplete or rejected records outside the workspace", () => {
+    expect(
+      resolveCounsellorAccessRole({
+        profileRole: "member",
+        applicationStatus: "pending",
+        directoryVerificationStatus: "verified",
+      }),
+    ).toBe("member");
+    expect(
+      resolveCounsellorAccessRole({
+        profileRole: "member",
+        applicationStatus: "verified",
+        directoryVerificationStatus: "pending",
+      }),
+    ).toBe("member");
+  });
+
+  it("requires a verified directory even when a profile role is stale", () => {
+    expect(
+      resolveCounsellorAccessRole({
+        profileRole: "counsellor",
+        applicationStatus: "verified",
+        directoryVerificationStatus: "suspended",
+      }),
+    ).toBe("member");
   });
 });
 

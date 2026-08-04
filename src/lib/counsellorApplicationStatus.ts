@@ -2,6 +2,26 @@ export type CounsellorApplicationStatus = "pending" | "verified" | "rejected";
 export type CounsellorPortalState = "workspace" | "not_applied" | CounsellorApplicationStatus;
 export type CounsellorReviewDecision = "approve" | "reject";
 export type CounsellorReviewAttempt = "proceed" | "already_applied" | "conflict";
+export type CounsellorAccessRole = "member" | "counsellor" | "admin";
+
+export function resolveCounsellorAccessRole(input: {
+  profileRole?: string | null;
+  applicationStatus?: string | null;
+  directoryVerificationStatus?: string | null;
+}): CounsellorAccessRole {
+  if (input.profileRole === "admin") return "admin";
+  const verifiedDirectory =
+    input.directoryVerificationStatus === "verified";
+  const verifiedApplication = input.applicationStatus === "verified";
+
+  if (
+    verifiedDirectory &&
+    (input.profileRole === "counsellor" || verifiedApplication)
+  ) {
+    return "counsellor";
+  }
+  return "member";
+}
 
 /** Resolve the professional workspace without confusing an applicant with an unauthorised member. */
 export function resolveCounsellorPortalState(

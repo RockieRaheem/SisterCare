@@ -5,6 +5,37 @@ export interface CounsellorEligibility {
   reasons: string[];
 }
 
+export class CounsellorEligibilityError extends Error {
+  constructor(public readonly reasons: string[]) {
+    super(`Counsellor is not operationally eligible: ${reasons.join(", ")}`);
+    this.name = "CounsellorEligibilityError";
+  }
+}
+
+export function describeCounsellorEligibilityFailure(
+  reasons: string[],
+): string {
+  if (reasons.includes("verification_required")) {
+    return "Your verified counsellor record is not active. Refresh your application status or contact an administrator.";
+  }
+  if (reasons.includes("credentials_expired")) {
+    return "Your professional credential has expired. Submit an updated credential before going available.";
+  }
+  if (reasons.includes("not_accepting_sessions")) {
+    return "New sessions are disabled for your account. Ask an administrator to enable accepting sessions.";
+  }
+  if (reasons.includes("off_shift")) {
+    return "You are outside the shift hours configured for your account. Ask an administrator to update your schedule if you are on duty.";
+  }
+  if (reasons.includes("at_capacity")) {
+    return "You are already at your active-session capacity.";
+  }
+  if (reasons.includes("crisis_training_required")) {
+    return "Crisis sessions require current crisis-response training.";
+  }
+  return "Your account is not currently eligible to receive sessions.";
+}
+
 export function evaluateCounsellorStanding(
   counsellor: Counsellor,
   now: Date = new Date(),

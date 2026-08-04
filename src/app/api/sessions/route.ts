@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   authenticateRequest,
+  authorizeCounsellor,
   getAuthorizationFailure,
   isAuthEnforced,
   hasRole,
@@ -124,7 +125,30 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    if (hasRole(auth, "counsellor") || hasRole(auth, "admin")) {
+    const professionalWorkspace =
+      request.nextUrl.searchParams.get("workspace") === "counsellor";
+    if (
+      professionalWorkspace ||
+      hasRole(auth, "counsellor") ||
+      hasRole(auth, "admin")
+    ) {
+      const access = await authorizeCounsellor(auth);
+      if (access.status === "unavailable") {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "Counsellor verification is temporarily unavailable. Please retry.",
+          },
+          { status: 503 },
+        );
+      }
+      if (access.status !== "authorized") {
+        return NextResponse.json(
+          { success: false, error: "Verified counsellor access required" },
+          { status: 403 },
+        );
+      }
       const data = await listSessionsForCounsellor(auth.uid);
       return NextResponse.json({ success: true, data });
     }

@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   authenticateRequest,
+  authorizeCounsellor,
   getAuthorizationFailure,
   isAuthEnforced,
-  hasRole,
 } from "@/lib/serverAuth";
 import { recordHeartbeat, setOffline } from "@/lib/server/sessions";
+import {
+  CounsellorEligibilityError,
+  describeCounsellorEligibilityFailure,
+} from "@/lib/counsellorOperations";
 
 /**
  * POST /api/presence — counsellor presence heartbeat.
@@ -42,9 +46,24 @@ export async function POST(request: NextRequest) {
       { status: 401 },
     );
   }
-  if (!hasRole(auth, "counsellor") && !hasRole(auth, "admin")) {
+  const counsellorAccess = await authorizeCounsellor(auth);
+  if (counsellorAccess.status === "unavailable") {
     return NextResponse.json(
-      { success: false, error: "Counsellor role required" },
+      {
+        success: false,
+        error:
+          "Counsellor verification is temporarily unavailable. Please retry.",
+      },
+      { status: 503 },
+    );
+  }
+  if (counsellorAccess.status !== "authorized") {
+    return NextResponse.json(
+      {
+        success: false,
+        error:
+          "Verified counsellor access required. Refresh your application status before going available.",
+      },
       { status: 403 },
     );
   }
@@ -71,15 +90,17 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Presence update failed";
-    const ineligible = message.startsWith(
-      "Counsellor is not operationally eligible",
-    ) || message.includes("profile required");
+    const ineligible =
+      error instanceof CounsellorEligibilityError ||
+      message.includes("profile required");
     if (!ineligible) console.error("Presence update failed:", error);
     return NextResponse.json(
       {
         success: false,
         error: ineligible
-          ? "Your account is not currently eligible to receive sessions"
+          ? error instanceof CounsellorEligibilityError
+            ? describeCounsellorEligibilityFailure(error.reasons)
+            : "Your verified counsellor profile is still being prepared. Refresh and try again."
           : "Presence update failed",
       },
       { status: ineligible ? 403 : 500 },

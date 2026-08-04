@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   authenticateRequest,
+  authorizeCounsellor,
   isAuthEnforced,
-  hasRole,
 } from "@/lib/serverAuth";
 import {
   acceptSession,
@@ -62,15 +62,24 @@ export async function POST(
     "decline",
     "escalate",
   ];
-  if (
-    counsellorActions.includes(action) &&
-    !hasRole(auth, "counsellor") &&
-    !hasRole(auth, "admin")
-  ) {
-    return NextResponse.json(
-      { success: false, error: "Counsellor role required" },
-      { status: 403 },
-    );
+  if (counsellorActions.includes(action)) {
+    const access = await authorizeCounsellor(auth);
+    if (access.status === "unavailable") {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Counsellor verification is temporarily unavailable. Please retry.",
+        },
+        { status: 503 },
+      );
+    }
+    if (access.status !== "authorized") {
+      return NextResponse.json(
+        { success: false, error: "Verified counsellor access required" },
+        { status: 403 },
+      );
+    }
   }
 
   try {

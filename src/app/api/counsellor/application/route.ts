@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateRequest, isAuthEnforced } from "@/lib/serverAuth";
+import {
+  authenticateRequest,
+  authorizeCounsellor,
+  isAuthEnforced,
+} from "@/lib/serverAuth";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { CounsellorSpecialty } from "@/types";
 import { resolveApplicationSubmissionStatus } from "@/lib/counsellorApplicationStatus";
@@ -51,7 +55,31 @@ export async function GET(request: NextRequest) {
   if (!isAuthEnforced()) return NextResponse.json({ success: false, error: "Counsellor registration is unavailable" }, { status: 503 });
   const auth = await authenticateRequest(request);
   if (auth.status !== "verified") return NextResponse.json({ success: false, error: "Authentication required" }, { status: 401 });
+  const access = await authorizeCounsellor(auth);
+  if (access.status === "unavailable") {
+    return NextResponse.json(
+      { success: false, error: "Counsellor verification is temporarily unavailable" },
+      { status: 503 },
+    );
+  }
   const { data, error } = await getSupabaseAdmin().from("counsellor_applications").select("status, application, submitted_at, reviewed_at, review_note").eq("counsellor_id", auth.uid).maybeSingle();
   if (error) return NextResponse.json({ success: false, error: "Could not load the application" }, { status: 503 });
-  return NextResponse.json({ success: true, data: { application: data ? { status: data.status, ...(data.application as object), submittedAt: data.submitted_at, reviewedAt: data.reviewed_at, reviewNote: data.review_note } : null } });
+  return NextResponse.json({
+    success: true,
+    data: {
+      account: {
+        role:
+          access.status === "authorized" ? access.role : "member",
+        workspaceAccess: access.status === "authorized",
+        repaired: access.status === "authorized" && access.repaired,
+      },
+      application: data ? {
+        status: data.status,
+        ...(data.application as object),
+        submittedAt: data.submitted_at,
+        reviewedAt: data.reviewed_at,
+        reviewNote: data.review_note,
+      } : null,
+    },
+  });
 }

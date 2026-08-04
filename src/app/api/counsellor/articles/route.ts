@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateRequest, hasRole, isAuthEnforced } from "@/lib/serverAuth";
+import {
+  authenticateRequest,
+  authorizeCounsellor,
+  hasRole,
+  isAuthEnforced,
+} from "@/lib/serverAuth";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 const CATEGORIES = ["comfort", "emotional", "medical", "nutrition"] as const;
@@ -17,7 +22,14 @@ const text = (value: unknown, maximum: number) =>
 export async function POST(request: NextRequest) {
   if (!isAuthEnforced()) return NextResponse.json({ success: false, error: "Article publishing is unavailable" }, { status: 503 });
   const auth = await authenticateRequest(request);
-  if (auth.status !== "verified" || (!hasRole(auth, "counsellor") && !hasRole(auth, "admin"))) {
+  if (auth.status !== "verified") {
+    return NextResponse.json({ success: false, error: "Authentication required" }, { status: 401 });
+  }
+  const access = await authorizeCounsellor(auth);
+  if (access.status === "unavailable") {
+    return NextResponse.json({ success: false, error: "Counsellor verification is temporarily unavailable" }, { status: 503 });
+  }
+  if (access.status !== "authorized") {
     return NextResponse.json({ success: false, error: "Verified counsellor access required" }, { status: 403 });
   }
   const body = await request.json().catch(() => null) as Record<string, unknown> | null;
@@ -64,7 +76,14 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   if (!isAuthEnforced()) return NextResponse.json({ success: false, error: "Article publishing is unavailable" }, { status: 503 });
   const auth = await authenticateRequest(request);
-  if (auth.status !== "verified" || (!hasRole(auth, "counsellor") && !hasRole(auth, "admin"))) {
+  if (auth.status !== "verified") {
+    return NextResponse.json({ success: false, error: "Authentication required" }, { status: 401 });
+  }
+  const access = await authorizeCounsellor(auth);
+  if (access.status === "unavailable") {
+    return NextResponse.json({ success: false, error: "Counsellor verification is temporarily unavailable" }, { status: 503 });
+  }
+  if (access.status !== "authorized") {
     return NextResponse.json({ success: false, error: "Verified counsellor access required" }, { status: 403 });
   }
   const { data, error } = await getSupabaseAdmin().from("library_articles").select("*").eq("author_id", auth.uid).order("updated_at", { ascending: false });

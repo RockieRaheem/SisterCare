@@ -18,7 +18,7 @@ import {
   type CounsellorApplicationStatus,
   resolveCounsellorPortalState,
 } from "@/lib/counsellorApplicationStatus";
-import { getSupabaseBrowserClient } from "@/lib/supabase";
+import { readApiResponse } from "@/lib/apiResponse";
 import { type CounsellingSession } from "@/types";
 import {
   listCounsellorSessions,
@@ -34,9 +34,9 @@ const REFRESH_MS = 8_000;
 type PresenceStatus = "available" | "in_session" | "offline";
 type ApplicationReview = {
   status: CounsellorApplicationStatus;
-  submitted_at: string;
-  reviewed_at: string | null;
-  review_note: string | null;
+  submittedAt: string;
+  reviewedAt: string | null;
+  reviewNote: string | null;
 };
 
 function timeAgo(date?: Date): string {
@@ -208,19 +208,22 @@ export default function CounsellorPortalPage() {
   const refreshAccess = useCallback(async () => {
     if (!user) return;
     try {
-      const supabase = getSupabaseBrowserClient();
-      const [profileResult, applicationResult] = await Promise.all([
-        supabase.from("profiles").select("role").eq("id", user.uid).maybeSingle(),
-        supabase
-          .from("counsellor_applications")
-          .select("status, submitted_at, reviewed_at, review_note")
-          .eq("counsellor_id", user.uid)
-          .maybeSingle(),
-      ]);
-      if (profileResult.error) throw profileResult.error;
-      if (applicationResult.error) throw applicationResult.error;
-      setRole(profileResult.data?.role || "member");
-      setApplication((applicationResult.data as ApplicationReview | null) || null);
+      const response = await authenticatedFetch(
+        "/api/counsellor/application",
+      );
+      const result = await readApiResponse<{
+        success: boolean;
+        error?: string;
+        data?: {
+          account: { role: string; workspaceAccess: boolean };
+          application: ApplicationReview | null;
+        };
+      }>(response);
+      if (!response.ok || !result.success || !result.data) {
+        throw new Error(result.error || "Could not verify counsellor access");
+      }
+      setRole(result.data.account.role);
+      setApplication(result.data.application);
       setAccessError(null);
     } catch {
       setAccessError("We could not verify your counsellor application status. Check your connection and try again.");
@@ -735,7 +738,7 @@ function ApplicationStatePanel({
           <StatusBadge tone="warning">Review in progress</StatusBadge>
           <h2 className="mt-4 text-xl font-extrabold text-slate-950 dark:text-white">Your application is awaiting approval</h2>
           <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-600 dark:text-slate-300">Operations is verifying your professional identity and credentials. You cannot receive member sessions until approval is complete.</p>
-          {application?.submitted_at && <p className="mt-4 text-xs text-slate-500">Submitted {new Date(application.submitted_at).toLocaleString()}</p>}
+          {application?.submittedAt && <p className="mt-4 text-xs text-slate-500">Submitted {new Date(application.submittedAt).toLocaleString()}</p>}
           <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
             <button type="button" onClick={onRefresh} className="min-h-11 rounded-xl bg-primary px-5 text-sm font-bold text-white">Check status</button>
             <Link href="/counsellor/apply" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 px-5 text-sm font-bold text-slate-700 dark:border-slate-700 dark:text-slate-200">View application</Link>
@@ -770,8 +773,8 @@ function ApplicationStatePanel({
           </span>
           <StatusBadge tone="danger">Changes required</StatusBadge>
           <h2 className="mt-4 text-xl font-extrabold text-slate-950 dark:text-white">Your application was not approved</h2>
-          <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-600 dark:text-slate-300">{application?.review_note || "The submitted credentials could not be verified. Correct the application and submit it for another review."}</p>
-          {application?.reviewed_at && <p className="mt-4 text-xs text-slate-500">Reviewed {new Date(application.reviewed_at).toLocaleString()}</p>}
+          <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-600 dark:text-slate-300">{application?.reviewNote || "The submitted credentials could not be verified. Correct the application and submit it for another review."}</p>
+          {application?.reviewedAt && <p className="mt-4 text-xs text-slate-500">Reviewed {new Date(application.reviewedAt).toLocaleString()}</p>}
           <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
             <Link href="/counsellor/apply?mode=revise" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-bold text-white">Edit and resubmit</Link>
             <Link href="/counsellor/apply?mode=fresh" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 px-5 text-sm font-bold text-slate-700 dark:border-slate-700 dark:text-slate-200">Start afresh</Link>

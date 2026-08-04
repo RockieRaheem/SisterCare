@@ -4,6 +4,7 @@ import {
   SupabaseVerificationUnavailableError,
   verifySupabaseAccessToken,
 } from "./supabaseAdmin";
+import { resolveCounsellorAccessRole } from "./counsellorApplicationStatus";
 
 export type UserRole = "user" | "counsellor" | "admin";
 export const USER_ROLES: UserRole[] = ["user", "counsellor", "admin"];
@@ -37,6 +38,71 @@ export async function setUserRole(uid: string, role: UserRole) {
 export async function getUidByEmail(email: string) { const { data, error } = await getSupabaseAdmin().from("profiles").select("id").eq("email", email.trim().toLowerCase()).maybeSingle(); if (error) throw new Error(error.message); return data?.id || null; }
 export async function deleteAuthUser(uid: string) { const { error } = await getSupabaseAdmin().auth.admin.deleteUser(uid); if (error) throw new Error(error.message); }
 export function hasRole(auth: AuthResult, role: UserRole) { return auth.status === "verified" && auth.token.role === role; }
+
+export type CounsellorAuthorization =
+  | { status: "authorized"; role: "counsellor" | "admin"; repaired: boolean }
+  | { status: "denied" }
+  | { status: "unavailable" };
+
+/**
+ * Verify professional access from the admin-reviewed directory records. This
+ * also repairs the narrow case where KYC approval completed but the profile
+ * role update was delayed or lost.
+ */
+export async function authorizeCounsellor(
+  auth: AuthResult,
+): Promise<CounsellorAuthorization> {
+  if (auth.status !== "verified") return { status: "denied" };
+  if (hasRole(auth, "admin")) {
+    return { status: "authorized", role: "admin", repaired: false };
+  }
+
+  try {
+    const db = getSupabaseAdmin();
+    const [directoryResult, applicationResult] = await Promise.all([
+      db
+        .from("counsellors")
+        .select("verification_status")
+        .eq("id", auth.uid)
+        .maybeSingle(),
+      db
+        .from("counsellor_applications")
+        .select("status")
+        .eq("counsellor_id", auth.uid)
+        .maybeSingle(),
+    ]);
+    if (directoryResult.error || applicationResult.error) {
+      return { status: "unavailable" };
+    }
+
+    const accessRole = resolveCounsellorAccessRole({
+      profileRole: auth.token.role,
+      applicationStatus: applicationResult.data?.status,
+      directoryVerificationStatus:
+        directoryResult.data?.verification_status,
+    });
+    if (accessRole !== "counsellor") return { status: "denied" };
+
+    if (!hasRole(auth, "counsellor")) {
+      const { error } = await db
+        .from("profiles")
+        .update({
+          role: "counsellor",
+          registration_intent: "counsellor",
+        })
+        .eq("id", auth.uid)
+        .eq("role", "member");
+      if (error) return { status: "unavailable" };
+      auth.token.role = "counsellor";
+      return { status: "authorized", role: "counsellor", repaired: true };
+    }
+
+    return { status: "authorized", role: "counsellor", repaired: false };
+  } catch (error) {
+    console.warn("Counsellor authorization lookup failed:", error);
+    return { status: "unavailable" };
+  }
+}
 export function getAuthorizationFailure(
   auth: AuthResult,
   role?: UserRole,
