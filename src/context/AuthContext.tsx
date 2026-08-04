@@ -5,6 +5,7 @@ import {
   useContext,
   useState,
   useEffect,
+  useCallback,
   ReactNode,
 } from "react";
 import { auth } from "@/lib/authClient";
@@ -42,7 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profileLoading, setProfileLoading] = useState(false);
 
   // Load the Postgres profile after the Supabase session has been verified.
-  const loadUserProfile = async (
+  const loadUserProfile = useCallback(async (
     uid: string,
     email: string,
     displayName: string | null,
@@ -92,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setProfileLoading(false);
     }
-  };
+  }, []);
 
   // Refresh profile data
   const refreshProfile = async () => {
@@ -134,7 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     return () => unsubscribe();
-  }, []);
+  }, [loadUserProfile]);
 
   const signIn = async (email: string, password: string) => {
     await auth.signInWithEmailAndPassword(email, password);

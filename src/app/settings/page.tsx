@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
 import Card from "@/components/ui/Card";
@@ -63,16 +63,7 @@ export default function SettingsPage() {
     }
   }, [user, authLoading, router]);
 
-  // Load user preferences
-  useEffect(() => {
-    if (user) {
-      loadSettings();
-    }
-    // Check browser notification status
-    setBrowserNotificationStatus(getNotificationPermission());
-  }, [user]);
-
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -105,7 +96,15 @@ export default function SettingsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, setTheme]);
+
+  // Load user preferences and the current browser permission state.
+  useEffect(() => {
+    if (user) {
+      void loadSettings();
+    }
+    setBrowserNotificationStatus(getNotificationPermission());
+  }, [user, loadSettings]);
 
   const saveSettings = async () => {
     if (!user) return;

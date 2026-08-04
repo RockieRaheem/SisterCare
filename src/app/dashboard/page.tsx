@@ -152,13 +152,6 @@ export default function DashboardPage() {
     } catch {}
   };
 
-  // Load dashboard data only AFTER onboarding is verified
-  useEffect(() => {
-    if (user && !authLoading && onboardingChecked) {
-      loadDashboardData();
-    }
-  }, [user, authLoading, onboardingChecked]);
-
   const loadDashboardData = useCallback(async () => {
     if (!user) return;
 
@@ -210,6 +203,13 @@ export default function DashboardPage() {
       setLoading(false);
     }
   }, [user, authProfile]);
+
+  // Load dashboard data only after onboarding is verified.
+  useEffect(() => {
+    if (user && !authLoading && onboardingChecked) {
+      void loadDashboardData();
+    }
+  }, [user, authLoading, onboardingChecked, loadDashboardData]);
 
   const handleMoodSelect = async (mood: MoodType) => {
     if (moodLogging) return;
