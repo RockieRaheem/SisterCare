@@ -342,8 +342,12 @@ export default function CounsellorPortalPage() {
       await transitionSession(sessionId, action);
       await refresh();
       if (action === "accept") router.push(`/sessions/${sessionId}`);
-    } catch {
-      setError("This request changed before the action completed. The care desk has been refreshed.");
+    } catch (actionError) {
+      setError(
+        actionError instanceof Error
+          ? actionError.message
+          : "This request changed before the action completed.",
+      );
       await refresh();
     } finally {
       setBusyAction(null);

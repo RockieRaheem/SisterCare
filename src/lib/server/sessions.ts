@@ -320,6 +320,31 @@ async function refreshCounsellorAvailability(counsellorId: string) {
   check(updateError);
 }
 
+export async function prepareSessionAudioForAcceptance(
+  sessionId: string,
+  counsellorId: string,
+): Promise<
+  | { audioReady: true; audioExpiresAt: unknown }
+  | { audioReady: false; audioUnavailableAt: string }
+> {
+  try {
+    const audioCall = await ensureSessionAudioRoom({
+      sessionId,
+      initiatedBy: counsellorId,
+    });
+    return {
+      audioReady: true,
+      audioExpiresAt: audioCall.room_expires_at,
+    };
+  } catch (error) {
+    console.warn("Private audio preparation failed during acceptance:", error);
+    return {
+      audioReady: false,
+      audioUnavailableAt: nowIso(),
+    };
+  }
+}
+
 export async function attemptMatch(sessionId: string): Promise<boolean> {
   const row = await fetchSession(sessionId);
   if (!row) return false;
@@ -504,6 +529,12 @@ export async function acceptSession(
   const row = await fetchSession(sessionId);
   if (!row) throw new Error("Session not found");
   const session = rowToSession(row);
+  if (session.state === "active") {
+    if (session.counsellorId !== counsellorId) {
+      throw new Error("Session is not assigned to this counsellor");
+    }
+    return session;
+  }
   await assertCounsellorOperationallyEligible(
     counsellorId,
     session.priority,
@@ -532,10 +563,10 @@ export async function acceptSession(
     assertTransition(session.state, "accepted");
   }
   assertTransition("accepted", "active");
-  const audioCall = await ensureSessionAudioRoom({
+  const audio = await prepareSessionAudioForAcceptance(
     sessionId,
-    initiatedBy: counsellorId,
-  });
+    counsellorId,
+  );
   const acceptedAt = new Date();
   const timeToHumanSeconds = Math.max(
     0,
@@ -554,8 +585,7 @@ export async function acceptSession(
       time_to_human_seconds: timeToHumanSeconds,
       details: {
         ...detailsOf(row),
-        audioReady: true,
-        audioExpiresAt: audioCall.room_expires_at,
+        ...audio,
       },
       updated_at: acceptedAt.toISOString(),
     })
@@ -565,7 +595,9 @@ export async function acceptSession(
     .maybeSingle();
   check(error);
   if (!data) {
-    await finishSessionAudio(sessionId, "cancelled").catch(() => undefined);
+    if (audio.audioReady) {
+      await finishSessionAudio(sessionId, "cancelled").catch(() => undefined);
+    }
     throw new Error("Session changed before it could be accepted");
   }
   await setCounsellorInSession(counsellorId);

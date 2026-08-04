@@ -12,6 +12,10 @@ import {
   escalateSession,
   submitFeedback,
 } from "@/lib/server/sessions";
+import {
+  CounsellorEligibilityError,
+  describeCounsellorEligibilityFailure,
+} from "@/lib/counsellorOperations";
 
 type TransitionAction =
   | "accept"
@@ -110,8 +114,17 @@ export async function POST(
         );
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed";
-    const status = message.startsWith("Invalid session transition")
+    const message =
+      error instanceof CounsellorEligibilityError
+        ? describeCounsellorEligibilityFailure(error.reasons)
+        : error instanceof Error
+          ? error.message
+          : "Failed";
+    const status = error instanceof CounsellorEligibilityError
+      ? 403
+      : message.startsWith("Invalid session transition") ||
+          message.includes("must be signed in") ||
+          message.includes("changed before")
       ? 409
       : message.includes("private audio") ||
           message.includes("audio service credentials")

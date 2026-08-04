@@ -115,6 +115,13 @@ export async function sendPresence(
   return data.status || status;
 }
 
+/** Text care is the availability boundary; private audio can be retried later. */
+export function isSessionReadyForMember(
+  session: Pick<CounsellingSession, "state">,
+): boolean {
+  return session.state === "active";
+}
+
 /** Display metadata per state, shared by the list, room, and portal UIs. */
 export const SESSION_STATE_META: Record<
   SessionState,

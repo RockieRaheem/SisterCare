@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { listMySessions } from "@/lib/sessionsClient";
+import {
+  isSessionReadyForMember,
+  listMySessions,
+} from "@/lib/sessionsClient";
 import {
   showBrowserNotification,
   storeNotification,
@@ -40,8 +43,7 @@ export default function SessionNotifier() {
       const notified = readNotified(user.uid);
       const newlyReady = sessions.find(
         (session) =>
-          session.state === "active" &&
-          session.audioReady === true &&
+          isSessionReadyForMember(session) &&
           !notified.has(session.id),
       );
       if (!newlyReady) return;
