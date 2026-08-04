@@ -7,6 +7,7 @@ import BottomNav from "@/components/layout/BottomNav";
 import OfflineIndicator from "@/components/ui/OfflineIndicator";
 import WorkspaceBoundary from "@/components/auth/WorkspaceBoundary";
 import SessionNotifier from "@/components/features/SessionNotifier";
+import InstallAppPrompt from "@/components/features/InstallAppPrompt";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -116,9 +117,15 @@ export default function RootLayout({
                     })
                     .catch(function(error) {
                       console.log('[PWA] Service Worker registration failed:', error);
-                    });
+                  });
                 });
               }
+
+              // Capture the one-time native install event before React hydrates.
+              window.addEventListener('beforeinstallprompt', function(event) {
+                event.preventDefault();
+                window.__sisterCareInstallPrompt = event;
+              });
             `,
           }}
         />
@@ -146,6 +153,7 @@ export default function RootLayout({
             <LanguageProvider>
               <OfflineIndicator />
               <SessionNotifier />
+              <InstallAppPrompt />
               <div className="flex flex-col min-h-screen">
                 <main id="main-content" tabIndex={-1}>
                   <WorkspaceBoundary>{children}</WorkspaceBoundary>
