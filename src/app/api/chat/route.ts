@@ -54,6 +54,16 @@ import {
   runChatPreflightPipeline,
 } from "@/lib/chatPipeline";
 import {
+  getPregnancyDetailsFromLmp,
+  getPregnancyDueDateFromMessages,
+  getPregnancyLmpFromMessages,
+  hasPregnancyConfirmation,
+  inferClientAction,
+  isConfirmedPregnancyIntent,
+  isPregnancyActivationRequest,
+  isPregnancyRecordQuestion,
+} from "@/lib/chatPipeline/intent";
+import {
   AgentActionStatus,
   TriageSeverity,
 } from "@/types";
@@ -61,180 +71,6 @@ import {
 // Supabase Admin requires the full Node.js runtime. Keep this explicit so a
 // deployment configuration change cannot move authenticated chat to Edge.
 export const runtime = "nodejs";
-
-type AppRoute =
-  | "/dashboard"
-  | "/library"
-  | "/counsellors"
-  | "/sessions"
-  | "/profile"
-  | "/settings";
-
-type ClientAction =
-  | {
-      type: "navigate";
-      href: AppRoute;
-      search?: string;
-      articleId?: number;
-    }
-  | { type: "sign_out" };
-
-function inferClientAction(message: string): ClientAction | null {
-  const normalized = message.toLowerCase();
-  if (/\b(log\s+me\s+out|sign\s+me\s+out|logout\s+me|sign\s+out\s+now|log\s+out\s+now)\b/.test(normalized)) {
-    return { type: "sign_out" };
-  }
-
-  // A request to find reading material is actionable even when the user does
-  // not literally say "open the library". Open the relevant article rather
-  // than merely claiming that it was found.
-  if (
-    /\b(food|foods|nutrition|diet|meal|meals|what\s+to\s+eat)\b/.test(
-      normalized,
-    ) &&
-    /\b(article|articles|book|library|read|find|show)\b/.test(normalized)
-  ) {
-    return {
-      type: "navigate",
-      href: "/library",
-      search: "foods",
-      articleId: 6,
-    };
-  }
-
-  if (!/\b(open|go to|take me|navigate|redirect|show me)\b/.test(normalized)) {
-    return null;
-  }
-
-  const destinations: Array<[RegExp, AppRoute]> = [
-    [/\b(library|health library|resources)\b/, "/library"],
-    [/\b(counsellors?|human support|therapists?)\b/, "/counsellors"],
-    [/\b(sessions?|appointments?)\b/, "/sessions"],
-    [/\b(profile|my details)\b/, "/profile"],
-    [/\b(settings?|preferences)\b/, "/settings"],
-    [/\b(dashboard|home)\b/, "/dashboard"],
-  ];
-
-  for (const [pattern, href] of destinations) {
-    if (pattern.test(normalized)) return { type: "navigate", href };
-  }
-  return null;
-}
-
-function isConfirmedPregnancyIntent(message: string): boolean {
-  const normalized = message.toLowerCase();
-  return /\b(i(?:\s+am|'m)\s+(?:about\s+)?(?:\d+\s*(?:day|week|month)s?\s+)?pregnant|i\s+have\s+a\s+positive\s+pregnancy\s+test|pregnancy\s+test\s+is\s+positive|i\s+(?:checked|tested|confirmed)(?:\s+today)?\s+(?:and\s+)?(?:that\s+)?i(?:\s+am|'m)\s+pregnant|ndi\s+(?:o)?lubuto|nfunye\s+(?:o)?lubuto)\b/.test(
-    normalized,
-  );
-}
-
-function isPregnancyActivationRequest(message: string): boolean {
-  const normalized = message.toLowerCase();
-  return /\b(switch|set|update|change|move)\b[\s\S]{0,70}\b(pregnan(?:t|cy)|pregnancy\s+mode)\b|\bnot\s+(?:in|on)\s+(?:my\s+)?(?:period|menstruation)\b/.test(
-    normalized,
-  );
-}
-
-function hasPregnancyConfirmation(
-  message: string,
-  history: Array<{ role: string; content: string }>,
-): boolean {
-  if (isConfirmedPregnancyIntent(message)) return true;
-  return history.some(
-    (entry) =>
-      entry.role === "user" && isConfirmedPregnancyIntent(entry.content),
-  );
-}
-
-/**
- * Pregnancy dates are interpreted day-first (DD/MM/YYYY), matching the
- * product's displayed date convention. A duration such as "pregnant 30 days"
- * is also enough to derive an LMP without making a user repeat themselves.
- */
-function getPregnancyLmpFromMessages(
-  messages: string[],
-): Date | null {
-  for (const message of [...messages].reverse()) {
-    const dateMatch = message.match(
-      /\b(\d{1,2})[\/-](\d{1,2})[\/-]((?:19|20)\d{2})\b/,
-    );
-    if (dateMatch) {
-      const day = Number(dateMatch[1]);
-      const month = Number(dateMatch[2]);
-      const year = Number(dateMatch[3]);
-      const candidate = new Date(year, month - 1, day);
-      if (
-        candidate.getFullYear() === year &&
-        candidate.getMonth() === month - 1 &&
-        candidate.getDate() === day
-      ) {
-        return candidate;
-      }
-    }
-
-    const duration = message.match(
-      /\b(?:pregnant|pregnancy)\D{0,18}(\d{1,3})\s*days?\b|\b(\d{1,3})\s*days?\s+pregnant\b/i,
-    );
-    const days = Number(duration?.[1] || duration?.[2]);
-    if (Number.isInteger(days) && days >= 14 && days <= 294) {
-      const candidate = new Date();
-      candidate.setDate(candidate.getDate() - days);
-      return candidate;
-    }
-
-    if (/\b(?:one|1)\s+month(?:\s+)?pregnant\b|\bpregnant\s+(?:for\s+)?(?:one|1)\s+month\b/i.test(message)) {
-      const candidate = new Date();
-      candidate.setDate(candidate.getDate() - 30);
-      return candidate;
-    }
-  }
-  return null;
-}
-
-function getPregnancyDueDateFromMessages(messages: string[]): Date | null {
-  for (const message of [...messages].reverse()) {
-    const dateMatch = message.match(
-      /(?:(?:estimated\s+)?due\s+date|\bedd\b)[\s\S]{0,30}?(\d{1,2})[\/-](\d{1,2})[\/-]((?:19|20)\d{2})/i,
-    );
-    const day = Number(dateMatch?.[1]);
-    const month = Number(dateMatch?.[2]);
-    const year = Number(dateMatch?.[3]);
-    if (day && month && year) {
-      const candidate = new Date(year, month - 1, day);
-      if (
-        candidate.getFullYear() === year &&
-        candidate.getMonth() === month - 1 &&
-        candidate.getDate() === day
-      ) {
-        return candidate;
-      }
-    }
-  }
-  return null;
-}
-
-function getPregnancyDetailsFromLmp(lastPeriodDate: Date): {
-  daysPregnant: number;
-  weeksPregnant: number;
-  estimatedDueDate: Date;
-  trimester: "first" | "second" | "third";
-} {
-  const daysPregnant = Math.floor(
-    (Date.now() - lastPeriodDate.getTime()) / (1000 * 60 * 60 * 24),
-  );
-  const weeksPregnant = Math.floor(daysPregnant / 7);
-  const estimatedDueDate = new Date(lastPeriodDate);
-  estimatedDueDate.setDate(estimatedDueDate.getDate() + 280);
-  const trimester =
-    weeksPregnant <= 13 ? "first" : weeksPregnant <= 27 ? "second" : "third";
-  return { daysPregnant, weeksPregnant, estimatedDueDate, trimester };
-}
-
-function isPregnancyRecordQuestion(message: string): boolean {
-  return /\b(due\s*date|estimated\s*due|last\s*(?:menstrual\s*)?period|lmp|how\s+(?:many\s+)?weeks|pregnancy\s+(?:details|record|information))\b/i.test(
-    message,
-  );
-}
 
 /**
  * SisterCare AI Agent API Route
@@ -248,15 +84,6 @@ function isPregnancyRecordQuestion(message: string): boolean {
  * The agent goes beyond text generation to actually help users
  * manage their menstrual health through intelligent actions.
  */
-
-function toPhoneHref(phoneNumber: string): string {
-  return `tel:${phoneNumber.replace(/[^+\d]/g, "")}`;
-}
-
-function toWhatsAppHref(phoneNumber: string): string {
-  const digits = phoneNumber.replace(/[^\d]/g, "");
-  return `https://wa.me/${digits}`;
-}
 
 function normalizeLanguageName(language?: string): string | undefined {
   if (!language) return undefined;
