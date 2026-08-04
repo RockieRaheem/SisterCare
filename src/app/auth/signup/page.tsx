@@ -8,6 +8,7 @@ import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import AuthShell from "@/components/layout/AuthShell";
 import { resolveSignedInWorkspace } from "@/lib/workspaceClient";
+import { auth } from "@/lib/authClient";
 
 // Email validation regex
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -74,6 +75,7 @@ export default function SignupPage() {
     confirmPassword?: string;
   }>({});
   const [loading, setLoading] = useState(false);
+  const [accountCreated, setAccountCreated] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -134,13 +136,26 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
+      if (accountCreated) {
+        router.replace(await resolveSignedInWorkspace(registrationIntent));
+        return;
+      }
       const result = await signUp(email.trim().toLowerCase(), password, registrationIntent);
       if (result.emailConfirmationRequired) {
         setNotice("Check your email to confirm your account, then sign in to continue with SisterCare.");
         return;
       }
+      setAccountCreated(true);
       router.replace(await resolveSignedInWorkspace(registrationIntent));
     } catch (err: unknown) {
+      if (accountCreated || auth.currentUser) {
+        setAccountCreated(true);
+        setNotice("Your account was created successfully.");
+        setError(
+          "Your workspace is taking longer than expected to open. Select Continue to retry without creating another account.",
+        );
+        return;
+      }
       const errorCode = (err as { code?: string })?.code || "";
       setError(getSignupErrorMessage(errorCode, (err as { message?: string })?.message));
     } finally {
@@ -402,7 +417,11 @@ export default function SignupPage() {
                 Creating account...
               </span>
             ) : (
-              registrationIntent === "counsellor" ? "Create counsellor application" : "Create My Safe Space"
+              accountCreated
+                ? "Continue to SisterCare"
+                : registrationIntent === "counsellor"
+                  ? "Create counsellor application"
+                  : "Create My Safe Space"
             )}
           </Button>
         </form>
