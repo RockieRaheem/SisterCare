@@ -74,8 +74,8 @@ export const showBrowserNotification = (
       privacy,
     );
     const notification = new Notification(content.title, {
-      icon: "/favicon.ico",
-      badge: "/favicon.ico",
+      icon: "/icons/sistercare-pink-v3-192x192.png",
+      badge: "/icons/sistercare-pink-v3-192x192.png",
       tag: "sistercare-reminder",
       requireInteraction: false,
       ...options,
@@ -237,7 +237,7 @@ export const checkAndNotify = async (
       // Show browser notification
       showBrowserNotification(notification.title, {
         body: notification.message,
-        icon: "/favicon.ico",
+        icon: "/icons/sistercare-pink-v3-192x192.png",
       });
     }
 

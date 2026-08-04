@@ -1,9 +1,9 @@
 /**
- * SisterCare Service Worker v2
+ * SisterCare Service Worker v3
  * Enhanced offline support, caching strategies, and push notifications
  */
 
-const CACHE_VERSION = "v2";
+const CACHE_VERSION = "v3-pink-brand";
 const STATIC_CACHE = `sistercare-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `sistercare-dynamic-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";
@@ -12,11 +12,13 @@ const OFFLINE_URL = "/offline.html";
 const STATIC_ASSETS = [
   "/",
   "/offline.html",
-  "/manifest.json",
-  "/favicon.ico",
-  "/icons/icon-192x192.png",
-  "/icons/icon-512x512.png",
-  "/icons/icon.svg",
+  "/manifest.json?v=pink-v3",
+  "/icons/sistercare-pink-v3-favicon.png",
+  "/icons/sistercare-pink-v3-192x192.png",
+  "/icons/sistercare-pink-v3-512x512.png",
+  "/icons/sistercare-pink-v3-maskable-192x192.png",
+  "/icons/sistercare-pink-v3-maskable-512x512.png",
+  "/icons/sistercare-pink-v3.svg",
 ];
 
 const PUBLIC_NAVIGATION_PATHS = new Set([
@@ -270,8 +272,8 @@ self.addEventListener("push", (event) => {
 
   const options = {
     body: data.body,
-    icon: "/icons/icon-192x192.png",
-    badge: "/icons/icon-192x192.png",
+    icon: "/icons/sistercare-pink-v3-192x192.png",
+    badge: "/icons/sistercare-pink-v3-192x192.png",
     vibrate: [100, 50, 100],
     tag: data.tag || "sistercare-notification",
     renotify: true,
@@ -281,7 +283,11 @@ self.addEventListener("push", (event) => {
       type: data.type || "general",
     },
     actions: [
-      { action: "open", title: "Open", icon: "/icons/icon-192x192.png" },
+      {
+        action: "open",
+        title: "Open",
+        icon: "/icons/sistercare-pink-v3-192x192.png",
+      },
       { action: "dismiss", title: "Dismiss" },
     ],
   };

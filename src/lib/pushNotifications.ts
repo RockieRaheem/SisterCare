@@ -138,8 +138,8 @@ export function showLocalNotification(
   });
   const notification = new Notification(content.title, {
     body: content.body,
-    icon: "/icons/icon-192x192.png",
-    badge: "/icons/icon-192x192.png",
+    icon: "/icons/sistercare-pink-v3-192x192.png",
+    badge: "/icons/sistercare-pink-v3-192x192.png",
     tag: options?.tag || "sistercare-reminder",
     requireInteraction: false,
     silent: !options?.vibrate,

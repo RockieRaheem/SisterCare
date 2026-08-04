@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="SisterCare">
+  <defs>
+    <linearGradient id="brand" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff00ff" />
+      <stop offset="1" stop-color="#c800c8" />
+    </linearGradient>
+    <linearGradient id="heart" x1="214" y1="215" x2="298" y2="315" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff00ff" />
+      <stop offset="1" stop-color="#c000c0" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#brand)" />
+  <circle cx="416" cy="86" r="86" fill="#fff" opacity=".10" />
+  <circle cx="82" cy="430" r="108" fill="#fff" opacity=".08" />
+  <path fill="#fff" d="M156 144h200c40 0 72 32 72 72v86c0 40-32 72-72 72h-57l-55 49c-12 11-31 2-31-14v-35h-57c-40 0-72-32-72-72v-86c0-40 32-72 72-72Z" />
+  <path fill="url(#heart)" d="M256 320c-7 0-13-2-18-7-43-39-72-67-72-103 0-30 24-54 54-54 17 0 30 8 40 20 9-12 23-20 40-20 30 0 54 24 54 54 0 36-30 64-72 103-5 5-12 7-18 7h-8Z" transform="translate(0 25)" />
+  <circle cx="365" cy="187" r="11" fill="#ff8cff" />
+</svg>

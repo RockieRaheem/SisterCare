@@ -59,7 +59,7 @@ export default function CounsellorCard({
           <div className="relative">
             <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-3 sm:border-4 border-white dark:border-bg-dark overflow-hidden bg-gray-200">
               <Image
-                src={counsellor.photoURL || "/icons/icon.svg"}
+                src={counsellor.photoURL || "/icons/sistercare-pink-v3.svg"}
                 alt={counsellor.name}
                 width={96}
                 height={96}

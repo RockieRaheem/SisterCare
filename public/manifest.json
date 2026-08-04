@@ -1,6 +1,7 @@
 {
   "name": "SisterCare",
   "short_name": "SisterCare",
+  "id": "/",
   "description": "A Digital Support Platform for Women's Well-Being, Guidance, and Menstrual Health",
   "start_url": "/dashboard",
   "display": "standalone",
@@ -12,22 +13,34 @@
   "categories": ["health", "lifestyle", "medical"],
   "icons": [
     {
-      "src": "/icons/icon.svg",
+      "src": "/icons/sistercare-pink-v3.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-192x192.png",
+      "src": "/icons/sistercare-pink-v3-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "maskable any"
+      "purpose": "any"
     },
     {
-      "src": "/icons/icon-512x512.png",
+      "src": "/icons/sistercare-pink-v3-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "maskable any"
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/sistercare-pink-v3-maskable-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/sistercare-pink-v3-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "shortcuts": [

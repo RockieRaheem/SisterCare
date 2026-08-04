@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     "anonymous counselling",
     "mental wellbeing",
   ],
-  manifest: "/manifest.json",
+  manifest: "/manifest.json?v=pink-v3",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -40,12 +40,34 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icons/icon-512x512.png", sizes: "512x512", type: "image/png" },
+      {
+        url: "/icons/sistercare-pink-v3.svg",
+        sizes: "any",
+        type: "image/svg+xml",
+      },
+      {
+        url: "/icons/sistercare-pink-v3-favicon.png",
+        sizes: "32x32",
+        type: "image/png",
+      },
+      {
+        url: "/icons/sistercare-pink-v3-192x192.png",
+        sizes: "192x192",
+        type: "image/png",
+      },
+      {
+        url: "/icons/sistercare-pink-v3-512x512.png",
+        sizes: "512x512",
+        type: "image/png",
+      },
     ],
+    shortcut: "/icons/sistercare-pink-v3-favicon.png",
     apple: [
-      { url: "/icons/icon-152x152.png", sizes: "152x152", type: "image/png" },
-      { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      {
+        url: "/icons/sistercare-pink-v3-180x180.png",
+        sizes: "180x180",
+        type: "image/png",
+      },
     ],
   },
 };
@@ -88,7 +110,7 @@ export default function RootLayout({
               // Register Service Worker for PWA
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js')
+                  navigator.serviceWorker.register('/sw.js?v=pink-v3')
                     .then(function(registration) {
                       console.log('[PWA] Service Worker registered:', registration.scope);
                     })

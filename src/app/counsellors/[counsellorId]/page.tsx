@@ -127,7 +127,9 @@ export default function CounsellorProfilePage() {
               <div className="relative shrink-0">
                 <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-3xl overflow-hidden border-4 border-white dark:border-gray-900 shadow-xl bg-gray-200">
                   <Image
-                    src={counsellor.photoURL || "/icons/icon.svg"}
+                    src={
+                      counsellor.photoURL || "/icons/sistercare-pink-v3.svg"
+                    }
                     alt={counsellor.name}
                     width={160}
                     height={160}

@@ -179,8 +179,8 @@ export function showBrowserNotification(
   if (Notification.permission === "granted") {
     const content = buildSystemNotificationContent(title, options?.body);
     new Notification(content.title, {
-      icon: "/favicon.ico",
-      badge: "/favicon.ico",
+      icon: "/icons/sistercare-pink-v3-192x192.png",
+      badge: "/icons/sistercare-pink-v3-192x192.png",
       ...options,
       body: content.body,
     });
