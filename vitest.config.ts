@@ -20,6 +20,12 @@ export default defineConfig({
         "src/types/**",
         "src/lib/i18n/translations/**",
       ],
+      thresholds: {
+        statements: 13,
+        branches: 13,
+        functions: 11,
+        lines: 14,
+      },
     },
   },
 });
