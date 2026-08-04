@@ -90,5 +90,7 @@ npm.cmd run test:safety
 - `src/lib/clinicalGovernance.ts` — clinical release controls
 - `supabase/migrations` — schema, RLS, grants, and server-only functions
 
-See [Developer Guide](docs/DEVELOPER_GUIDE.md) and
-[Architecture](docs/ARCHITECTURE_V2.md) for operational detail.
+See [Product Requirements](docs/PRODUCT_REQUIREMENTS.md) for the product
+contract and [Production Readiness Audit](docs/PRODUCTION_READINESS_AUDIT.md)
+for architecture, verification evidence, launch blockers, and the remaining
+hardening plan.
