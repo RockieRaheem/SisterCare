@@ -37,17 +37,19 @@ export default function LoginPage() {
   const router = useRouter();
   const routingRef = useRef(false);
 
-  const routeToWorkspace = useCallback(async () => {
+  const routeToWorkspace = useCallback(async (
+    requestedIntent?: "member" | "counsellor",
+  ) => {
     if (routingRef.current) return;
     routingRef.current = true;
     try {
-      const destination = await resolveSignedInWorkspace(loginIntent);
+      const destination = await resolveSignedInWorkspace(requestedIntent);
       router.replace(destination);
     } catch (routeError) {
       routingRef.current = false;
       throw routeError;
     }
-  }, [loginIntent, router]);
+  }, [router]);
 
   useEffect(() => {
     if (
@@ -99,7 +101,7 @@ export default function LoginPage() {
 
     try {
       await signIn(email.trim().toLowerCase(), password);
-      await routeToWorkspace();
+      await routeToWorkspace(loginIntent);
     } catch (err: unknown) {
       // Extract Supabase error code
       const errorCode = (err as { code?: string })?.code || "";
@@ -115,7 +117,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await signInWithGoogle(loginIntent);
+      await signInWithGoogle();
     } catch (err: unknown) {
       const errorCode = (err as { code?: string })?.code || "";
       if (errorCode === "auth/popup-closed-by-user") {
@@ -219,8 +221,8 @@ export default function LoginPage() {
               </label>
             </div>
             <p className="mt-2 px-1 text-xs leading-5 text-text-secondary">
-              Your verified account role always takes priority. Choosing
-              counsellor can resume or begin KYC, but cannot grant professional
+              Your registered account type always takes priority. Choosing
+              Counsellor cannot convert a member account or grant professional
               access.
             </p>
           </fieldset>

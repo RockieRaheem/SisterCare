@@ -186,7 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUserProfile(null);
   };
 
-  const signInWithGoogle = async (registrationIntent: "member" | "counsellor" = "member") => {
+  const signInWithGoogle = async (registrationIntent?: "member" | "counsellor") => {
     await auth.signInWithGoogle(registrationIntent);
   };
 

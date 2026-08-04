@@ -83,11 +83,34 @@ describe("registration intent integrity", () => {
     ).toBe("counsellor");
   });
 
-  it("lets a member begin KYC without granting a privileged role", () => {
+  it("does not let a counsellor login convert a member account", () => {
     expect(
       resolveRegistrationIntent({
         role: "member",
         requestedIntent: "counsellor",
+      }),
+    ).toBe("member");
+  });
+
+  it("repairs an accidentally changed unsubmitted account as member", () => {
+    expect(
+      resolveRegistrationIntent({
+        role: "member",
+        storedIntent: "counsellor",
+        metadataIntent: "counsellor",
+        requestedIntent: "member",
+        hasCounsellorApplication: false,
+      }),
+    ).toBe("member");
+  });
+
+  it("never lets a login choice erase an existing KYC application", () => {
+    expect(
+      resolveRegistrationIntent({
+        role: "member",
+        storedIntent: "counsellor",
+        requestedIntent: "member",
+        hasCounsellorApplication: true,
       }),
     ).toBe("counsellor");
   });

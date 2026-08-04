@@ -69,10 +69,13 @@ export function resolveRegistrationIntent(input: {
   if (input.role === "admin") {
     return input.storedIntent === "counsellor" ? "counsellor" : "member";
   }
+  if (input.hasCounsellorApplication) return "counsellor";
+  // Login choice is not registration. A counsellor login must never convert
+  // an existing member account. An explicit Member choice may safely repair
+  // an old, accidentally changed intent only while no KYC application exists.
+  if (input.requestedIntent === "member") return "member";
   return input.storedIntent === "counsellor" ||
-    input.metadataIntent === "counsellor" ||
-    input.hasCounsellorApplication ||
-    input.requestedIntent === "counsellor"
+    input.metadataIntent === "counsellor"
     ? "counsellor"
     : "member";
 }

@@ -105,13 +105,12 @@ async function resolveWorkspace(request: NextRequest) {
 
   if (
     existingRole === "member" &&
-    registrationIntent === "counsellor" &&
-    metadataIntent !== "counsellor"
+    metadataIntent !== registrationIntent
   ) {
     await client.auth.admin.updateUserById(auth.uid, {
       user_metadata: {
         ...identity.user_metadata,
-        registration_intent: "counsellor",
+        registration_intent: registrationIntent,
       },
     });
   }

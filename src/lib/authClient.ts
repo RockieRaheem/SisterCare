@@ -81,6 +81,9 @@ class SupabaseAuthFacade {
   }
 
   async signInWithEmailAndPassword(email: string, password: string) {
+    // A login is never a registration event. Clear any abandoned OAuth
+    // signup intent before the authenticated profile listener runs.
+    window.localStorage.removeItem("sistercare-registration-intent");
     const { data, error } = await getSupabaseBrowserClient().auth.signInWithPassword({ email, password });
     if (error) throw error;
     await this.notify(data.session);
@@ -97,8 +100,15 @@ class SupabaseAuthFacade {
     return { emailConfirmationRequired: Boolean(data.user && !data.session) };
   }
 
-  async signInWithGoogle(registrationIntent: "member" | "counsellor") {
-    window.localStorage.setItem("sistercare-registration-intent", registrationIntent);
+  async signInWithGoogle(registrationIntent?: "member" | "counsellor") {
+    if (registrationIntent) {
+      window.localStorage.setItem(
+        "sistercare-registration-intent",
+        registrationIntent,
+      );
+    } else {
+      window.localStorage.removeItem("sistercare-registration-intent");
+    }
     const { error } = await getSupabaseBrowserClient().auth.signInWithOAuth({
       provider: "google",
       options: {
