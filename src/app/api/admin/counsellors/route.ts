@@ -68,7 +68,14 @@ async function getCounsellors(request: NextRequest) {
       submittedAt: row.submitted_at,
     };
   });
-  return NextResponse.json({ success: true, data: { counsellors, applications } });
+  return NextResponse.json(
+    { success: true, data: { counsellors, applications } },
+    {
+      headers: {
+        "Cache-Control": "private, no-store, max-age=0",
+      },
+    },
+  );
 }
 
 export const GET = withApiObservability(

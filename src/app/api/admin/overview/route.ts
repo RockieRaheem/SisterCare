@@ -30,29 +30,36 @@ async function getOverview(request: NextRequest) {
   fail(liveSessions.error);
   fail(incidents.error);
   const sessions = liveSessions.data || [];
-  return NextResponse.json({
-    success: true,
-    data: {
-      counts: {
-        members: members.count || 0,
-        counsellors: directory.length,
-        available: directory.filter((item) => item.status === "available").length,
-        inSession: directory.filter((item) => item.status === "in_session").length,
-        pendingKyc: applications.data?.length || 0,
-        liveSessions: sessions.length,
-        waiting: sessions.filter((item) => ["requested", "matched"].includes(item.state)).length,
-        openIncidents: incidents.count || 0,
+  return NextResponse.json(
+    {
+      success: true,
+      data: {
+        counts: {
+          members: members.count || 0,
+          counsellors: directory.length,
+          available: directory.filter((item) => item.status === "available").length,
+          inSession: directory.filter((item) => item.status === "in_session").length,
+          pendingKyc: applications.data?.length || 0,
+          liveSessions: sessions.length,
+          waiting: sessions.filter((item) => ["requested", "matched"].includes(item.state)).length,
+          openIncidents: incidents.count || 0,
+        },
+        applications: (applications.data || []).map((row) => {
+          const value = row.application as { profile?: { name?: string; title?: string } };
+          return {
+            id: row.counsellor_id,
+            name: value.profile?.name || "Unnamed applicant",
+            title: value.profile?.title || "Counsellor",
+          };
+        }),
       },
-      applications: (applications.data || []).map((row) => {
-        const value = row.application as { profile?: { name?: string; title?: string } };
-        return {
-          id: row.counsellor_id,
-          name: value.profile?.name || "Unnamed applicant",
-          title: value.profile?.title || "Counsellor",
-        };
-      }),
     },
-  });
+    {
+      headers: {
+        "Cache-Control": "private, no-store, max-age=0",
+      },
+    },
+  );
 }
 
 export const GET = withApiObservability("admin_overview_get", getOverview);

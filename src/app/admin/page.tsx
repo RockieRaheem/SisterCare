@@ -52,6 +52,7 @@ const workspaces = [
   { href: "/admin/operations", icon: "monitoring", title: "Service health", description: "Review reliability signals and request outcomes.", tone: "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300" },
   { href: "/admin/articles", icon: "edit_note", title: "Clinical review", description: "Review professional content before member publication.", tone: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" },
 ] as const;
+const LIVE_REFRESH_MS = 5_000;
 
 function timeLabel(value: Date | null) {
   if (!value) return "Not synchronized";
@@ -96,8 +97,17 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     if (!isAdmin) return;
     void load();
-    const interval = setInterval(() => void load(true), 30_000);
-    return () => clearInterval(interval);
+    const refreshVisible = () => {
+      if (document.visibilityState === "visible") void load(true);
+    };
+    const interval = window.setInterval(refreshVisible, LIVE_REFRESH_MS);
+    window.addEventListener("focus", refreshVisible);
+    document.addEventListener("visibilitychange", refreshVisible);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshVisible);
+      document.removeEventListener("visibilitychange", refreshVisible);
+    };
   }, [isAdmin, load]);
 
   const assignRole = async (event: FormEvent) => {
