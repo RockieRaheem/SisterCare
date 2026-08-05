@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   acceptSession: vi.fn(),
   authorizeCounsellor: vi.fn(),
   authenticateRequest: vi.fn(),
+  cancelSession: vi.fn(),
   declineSession: vi.fn(),
 }));
 
@@ -16,7 +17,7 @@ vi.mock("../serverAuth", () => ({
 
 vi.mock("../server/sessions", () => ({
   acceptSession: mocks.acceptSession,
-  cancelSession: vi.fn(),
+  cancelSession: mocks.cancelSession,
   declineSession: mocks.declineSession,
   endSession: vi.fn(),
   escalateSession: vi.fn(),
@@ -46,6 +47,7 @@ describe("POST /api/sessions/:id/transition", () => {
     mocks.acceptSession.mockReset();
     mocks.authorizeCounsellor.mockReset();
     mocks.authenticateRequest.mockReset();
+    mocks.cancelSession.mockReset();
     mocks.declineSession.mockReset();
     mocks.authenticateRequest.mockResolvedValue({
       status: "verified",
@@ -127,5 +129,20 @@ describe("POST /api/sessions/:id/transition", () => {
     await expect(response.json()).resolves.toMatchObject({
       error: "Session changed before it could be declined",
     });
+  });
+
+  it("lets the requesting member cancel a waiting session", async () => {
+    mocks.authenticateRequest.mockResolvedValue({
+      status: "verified",
+      uid: "member-1",
+      token: { uid: "member-1", role: "member" },
+    });
+    mocks.cancelSession.mockResolvedValue(undefined);
+
+    const response = await POST(request("cancel"), context);
+
+    expect(response.status).toBe(200);
+    expect(mocks.cancelSession).toHaveBeenCalledWith("session-1", "member-1");
+    await expect(response.json()).resolves.toMatchObject({ success: true });
   });
 });

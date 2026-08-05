@@ -55,6 +55,19 @@ const check = (error: { message?: string } | null) => {
 const detailsOf = (row: Row): Json =>
   row.details && typeof row.details === "object" ? (row.details as Json) : {};
 
+export function normalizeStoredSessionState(
+  value: unknown,
+  details: Json,
+): SessionState {
+  if (
+    value === "expired" &&
+    details.terminationReason === "member_cancelled"
+  ) {
+    return "cancelled";
+  }
+  return value as SessionState;
+}
+
 function rowToSession(row: Row): CounsellingSession {
   const details = detailsOf(row);
   return {
@@ -65,7 +78,7 @@ function rowToSession(row: Row): CounsellingSession {
       typeof details.counsellorName === "string"
         ? details.counsellorName
         : undefined,
-    state: row.state as SessionState,
+    state: normalizeStoredSessionState(row.state, details),
     priority: (row.priority as SessionPriority) || "normal",
     reason:
       details.reason === "risk_detected" ? "risk_detected" : "user_request",
@@ -439,6 +452,26 @@ export async function drainQueue(): Promise<{ matched: number }> {
   return { matched };
 }
 
+export function buildQueuedRequestDetails(
+  current: Json,
+  params: {
+    preferredCounsellorId?: string;
+    preferredLanguage?: string;
+    specialty?: CounsellorSpecialty;
+  },
+): Json {
+  return {
+    ...current,
+    ...(params.preferredCounsellorId
+      ? { preferredCounsellorId: params.preferredCounsellorId }
+      : {}),
+    ...(params.preferredLanguage
+      ? { preferredLanguage: params.preferredLanguage }
+      : {}),
+    ...(params.specialty ? { specialty: params.specialty } : {}),
+  };
+}
+
 export async function createSessionRequest(params: {
   userId: string;
   reason: "user_request" | "risk_detected";
@@ -467,11 +500,45 @@ export async function createSessionRequest(params: {
     .maybeSingle();
   check(existingError);
   if (existing) {
-    if (params.priority === "critical" && existing.priority !== "critical") {
+    const existingSession = rowToSession(existing as Row);
+    if (existingSession.state === "requested") {
+      const details = buildQueuedRequestDetails(detailsOf(existing as Row), {
+        preferredCounsellorId: params.preferredCounsellorId,
+        preferredLanguage: params.preferredLanguage,
+        specialty: params.specialty,
+      });
+      const { data: refreshed, error } = await db()
+        .from("counselling_sessions")
+        .update({
+          priority:
+            params.priority === "critical"
+              ? "critical"
+              : existingSession.priority,
+          details,
+          updated_at: nowIso(),
+        })
+        .eq("id", existingSession.id)
+        .eq("state", "requested")
+        .select("*")
+        .maybeSingle();
+      check(error);
+      if (!refreshed) {
+        return (await getSession(existingSession.id)) || existingSession;
+      }
+      await attemptMatch(existingSession.id);
+      return (
+        (await getSession(existingSession.id)) ||
+        rowToSession(refreshed as Row)
+      );
+    }
+    if (
+      params.priority === "critical" &&
+      existingSession.priority !== "critical"
+    ) {
       const { error } = await db()
         .from("counselling_sessions")
         .update({ priority: "critical", updated_at: nowIso() })
-        .eq("id", existing.id);
+        .eq("id", existingSession.id);
       check(error);
       existing.priority = "critical";
     }
@@ -687,21 +754,34 @@ export async function cancelSession(
     throw new Error("Only the member who requested this session can cancel it");
   }
   assertTransition(session.state, "cancelled");
-  const { data, error } = await db()
-    .from("counselling_sessions")
-    .update({
-      state: "cancelled",
-      completed_at: nowIso(),
-      details: { ...detailsOf(row), endedBy: "user" },
-      updated_at: nowIso(),
-    })
-    .eq("id", sessionId)
-    .eq("user_id", userId)
-    .eq("state", session.state)
-    .select("id")
-    .maybeSingle();
-  check(error);
-  if (!data) throw new Error("Session changed before it could be cancelled");
+  const completedAt = nowIso();
+  const details = {
+    ...detailsOf(row),
+    endedBy: "user",
+    terminationReason: "member_cancelled",
+  };
+  const updateCancellation = (storedState: "cancelled" | "expired") =>
+    db()
+      .from("counselling_sessions")
+      .update({
+        state: storedState,
+        completed_at: completedAt,
+        details,
+        updated_at: completedAt,
+      })
+      .eq("id", sessionId)
+      .eq("user_id", userId)
+      .eq("state", session.state)
+      .select("id")
+      .maybeSingle();
+  let result = await updateCancellation("cancelled");
+  if (isLegacyCancellationConstraintError(result.error)) {
+    result = await updateCancellation("expired");
+  }
+  check(result.error);
+  if (!result.data) {
+    throw new Error("Session changed before it could be cancelled");
+  }
   await finishSessionAudio(sessionId, "cancelled").catch(() => undefined);
   await emitEvent("session.cancelled", {
     sessionId,
@@ -712,6 +792,16 @@ export async function cancelSession(
     await refreshCounsellorAvailability(session.counsellorId);
     await drainQueue();
   }
+}
+
+export function isLegacyCancellationConstraintError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const value = error as { code?: unknown; message?: unknown };
+  return (
+    value.code === "23514" &&
+    typeof value.message === "string" &&
+    value.message.includes("counselling_sessions_state_check")
+  );
 }
 
 export async function endSession(

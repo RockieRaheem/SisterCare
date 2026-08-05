@@ -170,8 +170,12 @@ export default function SessionRoomPage() {
     try {
       await transitionSession(sessionId, action, extra);
       await loadDetail();
-    } catch {
-      setError("Action failed. Please try again.");
+    } catch (transitionError) {
+      setError(
+        transitionError instanceof Error
+          ? transitionError.message
+          : "Action failed. Please try again.",
+      );
     }
   };
 
