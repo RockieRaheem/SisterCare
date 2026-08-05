@@ -31,6 +31,7 @@ import {
   ensureSessionAudioRoom,
   finishSessionAudio,
 } from "./sessionAudio";
+import { refreshCounsellorPublicRating } from "./counsellorRatings";
 import {
   Counsellor,
   CounsellingSession,
@@ -911,6 +912,9 @@ export async function submitFeedback(
     .eq("id", sessionId)
     .eq("state", session.state);
   check(error);
+  if (session.counsellorId) {
+    await refreshCounsellorPublicRating(session.counsellorId);
+  }
   await emitEvent("feedback.received", {
     sessionId,
     counsellorId: session.counsellorId,
