@@ -4,25 +4,22 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
 import { useAuth } from "@/context/AuthContext";
-import { auth } from "@/lib/authClient";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 import { authenticatedFetch } from "@/lib/authenticatedFetch";
 import { CounsellingSession, SessionState } from "@/types";
 import DailyAudioCall from "@/components/features/DailyAudioCall";
+import {
+  mergeSessionMessages,
+  messageFromRealtimeRow,
+  reviveSessionMessage,
+  SessionRoomMessage,
+} from "@/lib/sessionMessaging";
 import {
   getSessionStatusDescription,
   getSessionDetail,
   transitionSession,
   SESSION_STATE_META,
 } from "@/lib/sessionsClient";
-
-interface RoomMessage {
-  id: string;
-  senderId: string;
-  senderRole: "user" | "counsellor";
-  text: string;
-  createdAt: Date | null;
-}
 
 export default function SessionRoomPage() {
   const params = useParams<{ id: string }>();
@@ -31,7 +28,7 @@ export default function SessionRoomPage() {
   const router = useRouter();
 
   const [session, setSession] = useState<CounsellingSession | null>(null);
-  const [messages, setMessages] = useState<RoomMessage[]>([]);
+  const [messages, setMessages] = useState<SessionRoomMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,9 +44,12 @@ export default function SessionRoomPage() {
   const [audioState, setAudioState] = useState<
     "idle" | "connecting" | "active" | "disconnected" | "failed"
   >("idle");
+  const [messageSync, setMessageSync] = useState<
+    "connecting" | "live" | "fallback"
+  >("connecting");
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
-  const uid = auth.currentUser?.uid;
+  const uid = user?.uid;
   const state: SessionState | null = session?.state || null;
   const isSessionUser = Boolean(session && uid && session.userId === uid);
   const isCounsellor = Boolean(
@@ -104,10 +104,9 @@ export default function SessionRoomPage() {
         );
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(payload.error || "Message history failed");
-        setMessages((payload.data.messages || []).map((message: RoomMessage & { createdAt?: string }) => ({
-          ...message,
-          createdAt: message.createdAt ? new Date(message.createdAt) : null,
-        })));
+        setMessages(
+          (payload.data.messages || []).map(reviveSessionMessage),
+        );
       } catch (loadError) {
         console.warn("Session message load failed:", loadError);
         setError("Messages could not be refreshed. Check your connection.");
@@ -116,11 +115,34 @@ export default function SessionRoomPage() {
     void loadMessages();
     const messagePoll = window.setInterval(() => {
       if (document.visibilityState === "visible") void loadMessages();
-    }, 4_000);
+    }, 2_500);
     const channel = supabase.channel(`session-room:${sessionId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "session_messages", filter: `session_id=eq.${sessionId}` }, () => void loadMessages())
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "session_messages",
+          filter: `session_id=eq.${sessionId}`,
+        },
+        (payload) => {
+          const incoming = messageFromRealtimeRow(
+            payload.new as Record<string, unknown>,
+          );
+          if (incoming) {
+            setMessages((current) =>
+              mergeSessionMessages(current, [incoming]),
+            );
+          } else {
+            void loadMessages();
+          }
+        },
+      )
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "counselling_sessions", filter: `id=eq.${sessionId}` }, () => void loadDetail())
-      .subscribe();
+      .subscribe((status) => {
+        setMessageSync(status === "SUBSCRIBED" ? "live" : "fallback");
+        if (status === "SUBSCRIBED") void loadMessages();
+      });
     return () => {
       window.clearInterval(messagePoll);
       void supabase.removeChannel(channel);
@@ -143,17 +165,9 @@ export default function SessionRoomPage() {
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "Message failed to send");
-      const saved = payload.data.message as RoomMessage & { createdAt?: string };
+      const saved = reviveSessionMessage(payload.data.message);
       setMessages((current) =>
-        current.some((message) => message.id === saved.id)
-          ? current
-          : [
-              ...current,
-              {
-                ...saved,
-                createdAt: saved.createdAt ? new Date(saved.createdAt) : new Date(),
-              },
-            ],
+        mergeSessionMessages(current, [saved]),
       );
       setDraft("");
     } catch {
@@ -519,6 +533,22 @@ export default function SessionRoomPage() {
 
       {/* Messages */}
       <div className="mb-4 min-h-[40vh] space-y-3 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-card-dark">
+        {state === "active" && (
+          <div className="flex justify-end">
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${
+                  messageSync === "live"
+                    ? "bg-emerald-500"
+                    : "animate-pulse bg-amber-500"
+                }`}
+              />
+              {messageSync === "live"
+                ? "Messages update live"
+                : "Reconnecting · messages still refresh automatically"}
+            </span>
+          </div>
+        )}
         {state === "matched" || state === "requested" ? (
           <p className="py-10 text-center text-sm text-gray-500">
             {getSessionStatusDescription(session)}

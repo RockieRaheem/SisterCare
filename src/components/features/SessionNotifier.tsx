@@ -6,14 +6,20 @@ import { useAuth } from "@/context/AuthContext";
 import {
   getSessionDeclineNotice,
   isSessionReadyForMember,
+  listCounsellorSessions,
   listMySessions,
 } from "@/lib/sessionsClient";
+import { authenticatedFetch } from "@/lib/authenticatedFetch";
+import { getSupabaseBrowserClient } from "@/lib/supabase";
+import { messageFromRealtimeRow } from "@/lib/sessionMessaging";
 import {
   showBrowserNotification,
   storeNotification,
 } from "@/lib/notifications";
 
 const notifiedKey = (uid: string) => `sistercare_ready_sessions_${uid}`;
+const notifiedMessageKey = (uid: string) =>
+  `sistercare_session_messages_${uid}`;
 
 function readNotified(uid: string): Set<string> {
   try {
@@ -24,19 +30,33 @@ function readNotified(uid: string): Set<string> {
   }
 }
 
+function readNotifiedMessages(uid: string): Set<string> {
+  try {
+    const stored = localStorage.getItem(notifiedMessageKey(uid));
+    return new Set(stored ? (JSON.parse(stored) as string[]) : []);
+  } catch {
+    return new Set();
+  }
+}
+
 export default function SessionNotifier() {
   const { user, userProfile } = useAuth();
   const [sessionUpdate, setSessionUpdate] = useState<{
     id: string;
-    kind: "ready" | "declined";
+    kind: "ready" | "declined" | "message";
     counsellorName?: string;
     message: string;
   } | null>(null);
   const checkingRef = useRef(false);
+  const checkingMessagesRef = useRef(false);
+  const activeSessionIdsRef = useRef(new Set<string>());
   const isMember =
     userProfile?.role !== "admin" &&
     userProfile?.role !== "counsellor" &&
     userProfile?.registrationIntent !== "counsellor";
+  const isCounsellor =
+    userProfile?.role === "counsellor" ||
+    userProfile?.registrationIntent === "counsellor";
 
   const check = useCallback(async () => {
     if (!user?.uid || !isMember || checkingRef.current) return;
@@ -123,6 +143,152 @@ export default function SessionNotifier() {
     };
   }, [check, isMember, user?.uid]);
 
+  const notifyIncomingMessage = useCallback(
+    (params: { id: string; sessionId: string; senderId: string }) => {
+      if (!user?.uid || params.senderId === user.uid) return;
+      const notified = readNotifiedMessages(user.uid);
+      if (notified.has(params.id)) return;
+      notified.add(params.id);
+      localStorage.setItem(
+        notifiedMessageKey(user.uid),
+        JSON.stringify([...notified].slice(-500)),
+      );
+      const href = `/sessions/${params.sessionId}`;
+      if (
+        document.visibilityState === "visible" &&
+        window.location.pathname === href
+      ) {
+        return;
+      }
+      const title = "New private message";
+      const message = isCounsellor
+        ? "A member sent a message in your private care room."
+        : "Your counsellor replied in your private support room.";
+      storeNotification(
+        {
+          id: `session-message-${params.id}`,
+          type: "session_message",
+          title,
+          message,
+          href,
+          timestamp: new Date(),
+          read: false,
+        },
+        user.uid,
+      );
+      showBrowserNotification(title, {
+        body: "Open SisterCare to view the private message.",
+        tag: `session-message-${params.id}`,
+        data: { href },
+      });
+      setSessionUpdate({
+        id: params.sessionId,
+        kind: "message",
+        message,
+      });
+    },
+    [isCounsellor, user?.uid],
+  );
+
+  useEffect(() => {
+    if (
+      !user?.uid ||
+      !userProfile ||
+      userProfile.role === "admin" ||
+      (!isMember && !isCounsellor)
+    ) {
+      return;
+    }
+    const uid = user.uid;
+    const checkMessages = async () => {
+      if (checkingMessagesRef.current) return;
+      checkingMessagesRef.current = true;
+      try {
+        const sessions = isCounsellor
+          ? (await listCounsellorSessions()).assigned
+          : await listMySessions();
+        const active = sessions.filter((session) => session.state === "active");
+        activeSessionIdsRef.current = new Set(
+          active.map((session) => session.id),
+        );
+        for (const session of active) {
+          const response = await authenticatedFetch(
+            `/api/sessions/${session.id}/messages`,
+            { cache: "no-store" },
+          );
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok) continue;
+          const incoming = (payload.data?.messages || [])
+            .filter(
+              (message: { id?: unknown; senderId?: unknown }) =>
+                typeof message.id === "string" &&
+                typeof message.senderId === "string" &&
+                message.senderId !== uid,
+            )
+            .at(-1) as
+            | { id: string; senderId: string }
+            | undefined;
+          if (incoming) {
+            notifyIncomingMessage({
+              id: incoming.id,
+              sessionId: session.id,
+              senderId: incoming.senderId,
+            });
+          }
+        }
+      } catch {
+        // The room-level authenticated poll remains the final fallback.
+      } finally {
+        checkingMessagesRef.current = false;
+      }
+    };
+
+    void checkMessages();
+    const interval = window.setInterval(() => void checkMessages(), 4_000);
+    const channel = getSupabaseBrowserClient()
+      .channel(`session-message-notifier:${uid}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "session_messages",
+        },
+        (payload) => {
+          const message = messageFromRealtimeRow(
+            payload.new as Record<string, unknown>,
+          );
+          const sessionId =
+            typeof payload.new.session_id === "string"
+              ? payload.new.session_id
+              : null;
+          if (
+            message &&
+            sessionId &&
+            activeSessionIdsRef.current.has(sessionId)
+          ) {
+            notifyIncomingMessage({
+              id: message.id,
+              sessionId,
+              senderId: message.senderId,
+            });
+          }
+        },
+      )
+      .subscribe();
+    return () => {
+      window.clearInterval(interval);
+      void getSupabaseBrowserClient().removeChannel(channel);
+      activeSessionIdsRef.current = new Set();
+    };
+  }, [
+    isCounsellor,
+    isMember,
+    notifyIncomingMessage,
+    user?.uid,
+    userProfile,
+  ]);
+
   if (!sessionUpdate) return null;
 
   return (
@@ -137,7 +303,9 @@ export default function SessionNotifier() {
         <p className="text-sm font-extrabold text-text-primary dark:text-white">
           {sessionUpdate.kind === "ready"
             ? "Your counsellor is ready"
-            : "Counsellor request update"}
+            : sessionUpdate.kind === "message"
+              ? "New private message"
+              : "Counsellor request update"}
         </p>
         <p className="line-clamp-2 text-xs text-text-secondary">
           {sessionUpdate.kind === "ready" && sessionUpdate.counsellorName
@@ -150,7 +318,11 @@ export default function SessionNotifier() {
         onClick={() => setSessionUpdate(null)}
         className="inline-flex min-h-10 shrink-0 items-center rounded-xl bg-primary-dark px-3 text-xs font-bold text-white"
       >
-        {sessionUpdate.kind === "ready" ? "Open room" : "View update"}
+        {sessionUpdate.kind === "ready"
+          ? "Open room"
+          : sessionUpdate.kind === "message"
+            ? "Open conversation"
+            : "View update"}
       </Link>
       <button
         type="button"
