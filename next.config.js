@@ -60,6 +60,11 @@ const nextConfig = {
         protocol: "https",
         hostname: "media.istockphoto.com",
       },
+      {
+        protocol: "https",
+        hostname: "**.supabase.co",
+        pathname: "/storage/v1/object/sign/**",
+      },
     ],
   },
 };

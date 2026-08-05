@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest, isAuthEnforced } from "@/lib/serverAuth";
 import { getLiveCounsellors } from "@/lib/server/serverData";
+import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import { resolveCounsellorPhotoUrl } from "@/lib/server/counsellorPhotos";
 
 /** Authenticated member directory. Availability is calculated server-side. */
 export async function GET(request: NextRequest) {
@@ -8,13 +10,24 @@ export async function GET(request: NextRequest) {
   const auth = await authenticateRequest(request);
   if (auth.status !== "verified") return NextResponse.json({ success: false, error: "Authentication required" }, { status: 401 });
   try {
-    const counsellors = (await getLiveCounsellors())
-      .filter((counsellor) => counsellor.verified && counsellor.verificationStatus === "verified")
-      .map((counsellor) => ({
+    const verified = (await getLiveCounsellors()).filter(
+      (counsellor) =>
+        counsellor.verified &&
+        counsellor.verificationStatus === "verified",
+    );
+    const db = getSupabaseAdmin();
+    const counsellors = await Promise.all(
+      verified.map(async (counsellor) => ({
         ...counsellor,
+        photoURL: await resolveCounsellorPhotoUrl(
+          db,
+          counsellor.id,
+          counsellor.photoURL,
+        ),
         phoneNumber: "",
         whatsappNumber: "",
-      }));
+      })),
+    );
     return NextResponse.json(
       { success: true, data: { counsellors, refreshedAt: new Date().toISOString() } },
       { headers: { "Cache-Control": "private, no-store, max-age=0" } },

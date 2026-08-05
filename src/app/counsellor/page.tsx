@@ -432,6 +432,10 @@ export default function CounsellorPortalPage() {
         description="Manage your live availability, respond to assigned care and continue active conversations from one focused workspace."
         actions={
           <>
+            <Link href="/counsellor/profile" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 transition hover:border-primary/30 hover:text-primary dark:border-slate-700 dark:bg-[#1b1922] dark:text-slate-200">
+              <span className="material-symbols-outlined text-xl" aria-hidden="true">badge</span>
+              Edit profile
+            </Link>
             <Link href="/counsellor/articles" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 transition hover:border-primary/30 hover:text-primary dark:border-slate-700 dark:bg-[#1b1922] dark:text-slate-200">
               <span className="material-symbols-outlined text-xl" aria-hidden="true">edit_note</span>
               Write article

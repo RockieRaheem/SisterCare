@@ -4,6 +4,7 @@ import OperationsShell, {
 
 const links: readonly OperationsNavItem[] = [
   { href: "/counsellor", label: "Care desk", description: "Requests and live sessions", icon: "support_agent" },
+  { href: "/counsellor/profile", label: "Public profile", description: "Identity and practice details", icon: "badge" },
   { href: "/counsellor/articles", label: "Knowledge studio", description: "Draft clinical articles", icon: "edit_note" },
   { href: "/counsellor/support", label: "Operations support", description: "Account and service help", icon: "contact_support" },
 ];
