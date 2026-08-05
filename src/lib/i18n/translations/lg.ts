@@ -112,8 +112,9 @@ export const lg: TranslationKeys = {
     updateCycleData: "Kyusa ebikwata ku mwezi",
     needSupport: "Oyetaaga obuyambi?",
     supportMessage:
-      "AI yaffe ey'obuyambi erabika 24/7 okukuddamu ebibuuzo ku byobulamu by'omwezi, embeera ey'omwoyo, n'ebirala.",
-    startChatting: "Tandika okwogera",
+      "Yogera ne Sister mu kyama ekiseera kyonna, oba olonde omuwabuzi akakasiddwa bw'oba oyagala obuyambi bw'omuntu.",
+    startChatting: "Tandika okwogera mu kyama",
+    chooseCounsellor: "Londa omuwabuzi",
     checkingProfile: "Tukebera ebikukwatako...",
     loadingDashboard: "Tukozesa olukalala lwo...",
     tryAgain: "Ddamu ogezeko",

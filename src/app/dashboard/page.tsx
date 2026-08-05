@@ -9,7 +9,6 @@ import Footer from "@/components/layout/Footer";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import PeriodReminderBanner from "@/components/ui/PeriodReminderBanner";
-import PrivateSupportEntry from "@/components/features/PrivateSupportEntry";
 import { AppShellSkeleton } from "@/components/ui/Skeleton";
 import Link from "next/link";
 import {
@@ -356,8 +355,6 @@ export default function DashboardPage() {
       <div className="app-page flex min-h-screen flex-col">
         <Header variant="app" />
         <main className="main-content page-container flex-1 py-5 sm:py-8">
-          <PrivateSupportEntry />
-
           <div className="mb-7 flex flex-col gap-2 sm:mb-9">
             <span className="eyebrow">Pregnancy support</span>
             <h1 className="page-title text-3xl dark:text-white sm:text-4xl">
@@ -399,6 +396,15 @@ export default function DashboardPage() {
               <Link href="/chat" className="mt-6 block">
                 <Button fullWidth icon="chat_bubble">Talk to Sister</Button>
               </Link>
+              <Link
+                href="/counsellors"
+                className="mt-2 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary/20 px-4 py-2.5 text-sm font-bold text-primary transition-colors hover:bg-primary/5"
+              >
+                <span className="material-symbols-outlined text-lg" aria-hidden="true">
+                  support_agent
+                </span>
+                {t.dashboard.chooseCounsellor}
+              </Link>
             </Card>
           </div>
         </main>
@@ -412,8 +418,6 @@ export default function DashboardPage() {
       <Header variant="app" />
 
       <main className="main-content page-container flex-1 py-5 sm:py-8">
-        <PrivateSupportEntry />
-
         {/* Period Reminder Banner */}
         {cycleInfo && (
           <div className="mb-6">
@@ -837,22 +841,43 @@ export default function DashboardPage() {
             </Card>
 
             {/* Support Card */}
-            <div className="bg-primary p-6 rounded-2xl text-white shadow-primary-lg">
-              <div className="flex items-center gap-2 mb-3">
+            <section
+              aria-labelledby="dashboard-support-heading"
+              className="rounded-2xl bg-primary p-5 text-white shadow-primary-lg sm:p-6"
+            >
+              <div className="mb-3 flex items-center gap-2">
                 <span className="material-symbols-outlined">support_agent</span>
-                <span className="font-bold uppercase text-xs tracking-widest">
+                <h2
+                  id="dashboard-support-heading"
+                  className="text-xs font-bold uppercase tracking-widest"
+                >
                   {t.dashboard.needSupport}
-                </span>
+                </h2>
               </div>
-              <p className="text-sm mb-4 opacity-90">
+              <p className="mb-5 text-sm leading-6 text-white/90">
                 {t.dashboard.supportMessage}
               </p>
-              <Link href="/chat">
-                <button className="w-full bg-white text-primary py-2 rounded-lg font-bold text-sm hover:bg-white/90 transition-colors">
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                <Link
+                  href="/chat"
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-bold text-primary transition-colors hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary"
+                >
+                  <span className="material-symbols-outlined text-lg" aria-hidden="true">
+                    chat_bubble
+                  </span>
                   {t.dashboard.startChatting}
-                </button>
-              </Link>
-            </div>
+                </Link>
+                <Link
+                  href="/counsellors"
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-white/35 bg-white/10 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary"
+                >
+                  <span className="material-symbols-outlined text-lg" aria-hidden="true">
+                    groups
+                  </span>
+                  {t.dashboard.chooseCounsellor}
+                </Link>
+              </div>
+            </section>
           </div>
         </div>
       </main>

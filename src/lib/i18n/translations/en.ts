@@ -106,8 +106,9 @@ export const en = {
     updateCycleData: "Update Cycle Data",
     needSupport: "Need Support?",
     supportMessage:
-      "Our AI support is available 24/7 to answer your questions about menstrual health, emotional well-being, and more.",
-    startChatting: "Start Chatting",
+      "Ask Sister privately at any time, or choose a verified counsellor when you want human support.",
+    startChatting: "Start private chat",
+    chooseCounsellor: "Choose a counsellor",
     checkingProfile: "Checking your profile...",
     loadingDashboard: "Loading your dashboard...",
     tryAgain: "Try Again",
