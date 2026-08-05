@@ -460,16 +460,26 @@ export function buildQueuedRequestDetails(
     specialty?: CounsellorSpecialty;
   },
 ): Json {
-  return {
-    ...current,
-    ...(params.preferredCounsellorId
-      ? { preferredCounsellorId: params.preferredCounsellorId }
-      : {}),
-    ...(params.preferredLanguage
-      ? { preferredLanguage: params.preferredLanguage }
-      : {}),
-    ...(params.specialty ? { specialty: params.specialty } : {}),
-  };
+  const details = { ...current };
+  if (params.preferredCounsellorId) {
+    details.preferredCounsellorId = params.preferredCounsellorId;
+    delete details.lastDeclinedAt;
+    delete details.preferredCounsellorDeclined;
+  }
+  if (params.preferredLanguage) {
+    details.preferredLanguage = params.preferredLanguage;
+  }
+  if (params.specialty) details.specialty = params.specialty;
+  return details;
+}
+
+export function reconcileDeclinedCounsellors(
+  declinedBy: string[],
+  preferredCounsellorId?: string,
+): string[] {
+  return preferredCounsellorId
+    ? declinedBy.filter((id) => id !== preferredCounsellorId)
+    : declinedBy;
 }
 
 export async function createSessionRequest(params: {
@@ -515,6 +525,10 @@ export async function createSessionRequest(params: {
               ? "critical"
               : existingSession.priority,
           details,
+          declined_by: reconcileDeclinedCounsellors(
+            existingSession.declinedBy,
+            params.preferredCounsellorId,
+          ),
           updated_at: nowIso(),
         })
         .eq("id", existingSession.id)
