@@ -33,4 +33,14 @@ describe("member counsellor discovery UI contracts", () => {
     expect(profile).toContain("overflow-x-clip");
     expect(profile).toContain("break-words");
   });
+
+  it("keeps a prominent request action available on mobile", () => {
+    expect(profile).toContain("Request private session");
+    expect(profile).toContain("fixed inset-x-3");
+    expect(profile).toContain("RequestCounsellorButton");
+  });
+
+  it("uses a high-contrast verified badge", () => {
+    expect(profile).toMatch(/bg-primary[^"]*text-white/);
+  });
 });

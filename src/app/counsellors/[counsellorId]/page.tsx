@@ -141,7 +141,7 @@ export default function CounsellorProfilePage() {
 
               <div className="flex-1 min-w-0 pt-2 sm:pt-4">
                 <div className="flex flex-wrap items-center gap-2 mb-2">
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-white shadow-primary-sm">
                     <span className="material-symbols-outlined text-sm">
                       verified
                     </span>
@@ -207,6 +207,18 @@ export default function CounsellorProfilePage() {
                       {language}
                     </span>
                   ))}
+                </div>
+
+                <div className="mt-5 hidden max-w-md md:block">
+                  {canContact ? (
+                    <RequestCounsellorButton
+                      requesting={requesting}
+                      onRequest={() => void requestPrivateSession()}
+                    />
+                  ) : (
+                    <AvailabilityNotice status={counsellor.status} />
+                  )}
+                  {requestError && <RequestError message={requestError} />}
                 </div>
               </div>
             </div>
@@ -276,34 +288,79 @@ export default function CounsellorProfilePage() {
               </ul>
             </div>
 
-            {canContact ? (
-              <button
-                type="button"
-                onClick={() => void requestPrivateSession()}
-                disabled={requesting}
-                className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 font-bold text-primary-dark shadow-sm transition hover:bg-fuchsia-50 disabled:cursor-wait disabled:opacity-70"
-              >
-                <span className="material-symbols-outlined text-lg">
-                  {requesting ? "progress_activity" : "lock_open"}
-                </span>
-                {requesting ? "Creating private room…" : "Request this counsellor"}
-              </button>
-            ) : (
-              <div className="mt-5 rounded-xl border border-white/20 bg-black/10 p-3 text-sm text-white/90">
-                {counsellor.status === "in_session"
-                  ? "This counsellor is helping someone now and cannot receive another request."
-                  : "This counsellor is offline and cannot receive a request yet."}
-              </div>
-            )}
-            {requestError && (
-              <p role="alert" className="mt-3 rounded-xl bg-white p-3 text-sm font-semibold text-red-700">
-                {requestError}
-              </p>
-            )}
+            <div className="mt-5 md:hidden">
+              {!canContact && (
+                <AvailabilityNotice status={counsellor.status} inverse />
+              )}
+              {requestError && <RequestError message={requestError} />}
+            </div>
           </aside>
         </section>
       </main>
 
+      {canContact && (
+        <div className="fixed inset-x-3 bottom-[calc(var(--bottom-nav-height)+env(safe-area-inset-bottom,0px)+0.5rem)] z-40 md:hidden">
+          <RequestCounsellorButton
+            requesting={requesting}
+            onRequest={() => void requestPrivateSession()}
+          />
+        </div>
+      )}
     </div>
+  );
+}
+
+function RequestCounsellorButton({
+  requesting,
+  onRequest,
+}: {
+  requesting: boolean;
+  onRequest: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onRequest}
+      disabled={requesting}
+      className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-extrabold text-white shadow-lg shadow-primary/25 transition hover:bg-primary-dark disabled:cursor-wait disabled:opacity-70"
+    >
+      <span className="material-symbols-outlined text-xl" aria-hidden="true">
+        {requesting ? "progress_activity" : "lock_open"}
+      </span>
+      {requesting ? "Creating private room…" : "Request private session"}
+    </button>
+  );
+}
+
+function AvailabilityNotice({
+  status,
+  inverse = false,
+}: {
+  status: Counsellor["status"];
+  inverse?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-xl border p-3 text-sm ${
+        inverse
+          ? "border-white/20 bg-black/10 text-white/90"
+          : "border-border-light bg-background-light text-text-secondary dark:border-border-dark dark:bg-background-dark"
+      }`}
+    >
+      {status === "in_session"
+        ? "This counsellor is helping someone now and cannot receive another request."
+        : "This counsellor is offline and cannot receive a request yet."}
+    </div>
+  );
+}
+
+function RequestError({ message }: { message: string }) {
+  return (
+    <p
+      role="alert"
+      className="mt-3 rounded-xl border border-red-200 bg-white p-3 text-sm font-semibold text-red-700"
+    >
+      {message}
+    </p>
   );
 }

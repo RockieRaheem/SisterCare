@@ -45,11 +45,11 @@ export default function CounsellorCard({
       <div className="relative h-20 bg-gradient-to-r from-primary/15 via-primary/10 to-pink-100 dark:to-pink-950/20 sm:h-24">
         {/* Verified badge */}
         {counsellor.verified && (
-          <div className="absolute top-2 sm:top-3 right-2 sm:right-3 bg-white/90 dark:bg-gray-800/90 rounded-full px-1.5 sm:px-2 py-0.5 sm:py-1 flex items-center gap-0.5 sm:gap-1">
-            <span className="material-symbols-outlined text-blue-500 text-xs sm:text-sm">
+          <div className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-primary px-2 py-1 text-white shadow-primary-sm sm:right-3 sm:top-3">
+            <span className="material-symbols-outlined text-xs text-white sm:text-sm">
               verified
             </span>
-            <span className="text-[10px] sm:text-xs font-medium text-blue-600 dark:text-blue-400">
+            <span className="text-[10px] font-bold text-white sm:text-xs">
               Verified
             </span>
           </div>
