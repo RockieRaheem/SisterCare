@@ -8,6 +8,7 @@ import BottomNav from "@/components/layout/BottomNav";
 import { useAuth } from "@/context/AuthContext";
 import { CounsellingSession } from "@/types";
 import {
+  getSessionStatusDescription,
   listMySessions,
   requestSession,
   SESSION_STATE_META,
@@ -211,7 +212,7 @@ function SessionCard({ session }: { session: CounsellingSession }) {
             : "Counselling session"}
         </p>
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          {meta.description} · {timeAgo(session.requestedAt)}
+          {getSessionStatusDescription(session)} · {timeAgo(session.requestedAt)}
         </p>
       </div>
       {openable && (

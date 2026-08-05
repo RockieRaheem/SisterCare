@@ -10,6 +10,7 @@ import { authenticatedFetch } from "@/lib/authenticatedFetch";
 import { CounsellingSession, SessionState } from "@/types";
 import DailyAudioCall from "@/components/features/DailyAudioCall";
 import {
+  getSessionStatusDescription,
   getSessionDetail,
   transitionSession,
   SESSION_STATE_META,
@@ -424,6 +425,28 @@ export default function SessionRoomPage() {
         )}
       </div>
 
+      {isSessionUser &&
+        session.lastDeclinedAt &&
+        (state === "requested" || state === "matched") && (
+          <div
+            role="status"
+            className="mb-4 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100"
+          >
+            <span
+              className="material-symbols-outlined mt-0.5 text-xl"
+              aria-hidden="true"
+            >
+              person_search
+            </span>
+            <div>
+              <p className="text-sm font-bold">Counsellor request update</p>
+              <p className="mt-0.5 text-sm">
+                {getSessionStatusDescription(session)}
+              </p>
+            </div>
+          </div>
+        )}
+
       {error && (
         <div className="mb-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
           {error}
@@ -494,7 +517,7 @@ export default function SessionRoomPage() {
       <div className="mb-4 min-h-[40vh] space-y-3 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-card-dark">
         {state === "matched" || state === "requested" ? (
           <p className="py-10 text-center text-sm text-gray-500">
-            {meta.description}
+            {getSessionStatusDescription(session)}
           </p>
         ) : messages.length === 0 ? (
           <p className="py-10 text-center text-sm text-gray-500">

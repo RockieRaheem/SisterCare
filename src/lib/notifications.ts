@@ -15,6 +15,7 @@ export interface PeriodNotification {
     | "phase_change"
     | "wellness_tip"
     | "counsellor_ready"
+    | "counsellor_update"
     | "session_message"
     | "audio_call";
   title: string;

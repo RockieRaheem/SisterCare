@@ -118,6 +118,11 @@ function rowToSession(row: Row): CounsellingSession {
     declinedBy: Array.isArray(row.declined_by)
       ? row.declined_by.map(String)
       : [],
+    lastDeclinedAt: date(details.lastDeclinedAt),
+    declineCount:
+      typeof details.declineCount === "number" ? details.declineCount : 0,
+    preferredCounsellorDeclined:
+      details.preferredCounsellorDeclined === true,
     crisisEscalationLevel:
       typeof details.crisisEscalationLevel === "number"
         ? details.crisisEscalationLevel
@@ -622,9 +627,12 @@ export async function declineSession(
     throw new Error("Session is not assigned to this counsellor");
   }
   assertTransition(session.state, "requested");
-  const details = detailsOf(row);
-  delete details.counsellorName;
-  const { error } = await db()
+  const declinedAt = new Date();
+  const details = buildDeclinedSessionDetails(detailsOf(row), {
+    counsellorId,
+    declinedAt,
+  });
+  const { data, error } = await db()
     .from("counselling_sessions")
     .update({
       state: "requested",
@@ -632,14 +640,40 @@ export async function declineSession(
       matched_at: null,
       declined_by: [...new Set([...session.declinedBy, counsellorId])],
       details,
-      updated_at: nowIso(),
+      updated_at: declinedAt.toISOString(),
     })
     .eq("id", sessionId)
-    .eq("counsellor_id", counsellorId);
+    .eq("counsellor_id", counsellorId)
+    .eq("state", session.state)
+    .select("id")
+    .maybeSingle();
   check(error);
+  if (!data) {
+    throw new Error("Session changed before it could be declined");
+  }
   await emitEvent("session.declined", { sessionId, counsellorId });
   await refreshCounsellorAvailability(counsellorId);
   await attemptMatch(sessionId);
+}
+
+export function buildDeclinedSessionDetails(
+  current: Json,
+  params: { counsellorId: string; declinedAt: Date },
+): Json {
+  const details = { ...current };
+  delete details.counsellorName;
+  const preferredCounsellorDeclined =
+    details.preferredCounsellorId === params.counsellorId;
+  if (preferredCounsellorDeclined) {
+    delete details.preferredCounsellorId;
+  }
+  return {
+    ...details,
+    lastDeclinedAt: params.declinedAt.toISOString(),
+    declineCount:
+      (typeof details.declineCount === "number" ? details.declineCount : 0) + 1,
+    preferredCounsellorDeclined,
+  };
 }
 
 export async function cancelSession(

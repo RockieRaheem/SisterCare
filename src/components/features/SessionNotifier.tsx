@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import {
+  getSessionDeclineNotice,
   isSessionReadyForMember,
   listMySessions,
 } from "@/lib/sessionsClient";
@@ -25,9 +26,11 @@ function readNotified(uid: string): Set<string> {
 
 export default function SessionNotifier() {
   const { user, userProfile } = useAuth();
-  const [readySession, setReadySession] = useState<{
+  const [sessionUpdate, setSessionUpdate] = useState<{
     id: string;
+    kind: "ready" | "declined";
     counsellorName?: string;
+    message: string;
   } | null>(null);
   const checkingRef = useRef(false);
   const isMember =
@@ -46,18 +49,38 @@ export default function SessionNotifier() {
           isSessionReadyForMember(session) &&
           !notified.has(session.id),
       );
-      if (!newlyReady) return;
-      notified.add(newlyReady.id);
+      const newlyDeclined = newlyReady
+        ? null
+        : sessions
+            .map((session) => ({
+              session,
+              notice: getSessionDeclineNotice(session),
+            }))
+            .find(({ notice }) => notice && !notified.has(notice.key));
+      const notificationKey =
+        newlyReady?.id || newlyDeclined?.notice?.key;
+      if (!notificationKey) return;
+      notified.add(notificationKey);
       localStorage.setItem(notifiedKey(user.uid), JSON.stringify([...notified]));
-      const href = `/sessions/${newlyReady.id}`;
-      const title = "Your counsellor is ready";
-      const message = newlyReady.counsellorName
-        ? `${newlyReady.counsellorName} accepted your request. Open your private room to talk.`
-        : "Your counsellor accepted your request. Open your private room to talk.";
+      const targetSession = newlyReady || newlyDeclined?.session;
+      if (!targetSession) return;
+      const href = `/sessions/${targetSession.id}`;
+      const title = newlyReady
+        ? "Your counsellor is ready"
+        : newlyDeclined?.notice?.title || "Counsellor request update";
+      const message = newlyReady
+        ? newlyReady.counsellorName
+          ? `${newlyReady.counsellorName} accepted your request. Open your private room to talk.`
+          : "Your counsellor accepted your request. Open your private room to talk."
+        : newlyDeclined?.notice?.message ||
+          "SisterCare is finding another available counsellor.";
+      const notificationId = newlyReady
+        ? `session-ready-${targetSession.id}`
+        : `session-declined-${notificationKey}`;
       storeNotification(
         {
-          id: `session-ready-${newlyReady.id}`,
-          type: "counsellor_ready",
+          id: notificationId,
+          type: newlyReady ? "counsellor_ready" : "counsellor_update",
           title,
           message,
           href,
@@ -68,12 +91,14 @@ export default function SessionNotifier() {
       );
       showBrowserNotification(title, {
         body: message,
-        tag: `session-ready-${newlyReady.id}`,
+        tag: notificationId,
         data: { href },
       });
-      setReadySession({
-        id: newlyReady.id,
-        counsellorName: newlyReady.counsellorName,
+      setSessionUpdate({
+        id: targetSession.id,
+        kind: newlyReady ? "ready" : "declined",
+        counsellorName: newlyReady?.counsellorName,
+        message,
       });
     } catch {
       // Page-level session screens retain their own visible retry state.
@@ -98,7 +123,7 @@ export default function SessionNotifier() {
     };
   }, [check, isMember, user?.uid]);
 
-  if (!readySession) return null;
+  if (!sessionUpdate) return null;
 
   return (
     <aside
@@ -110,24 +135,26 @@ export default function SessionNotifier() {
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-extrabold text-text-primary dark:text-white">
-          Your counsellor is ready
+          {sessionUpdate.kind === "ready"
+            ? "Your counsellor is ready"
+            : "Counsellor request update"}
         </p>
-        <p className="truncate text-xs text-text-secondary">
-          {readySession.counsellorName
-            ? `${readySession.counsellorName} accepted your request.`
-            : "Your private room is now open."}
+        <p className="line-clamp-2 text-xs text-text-secondary">
+          {sessionUpdate.kind === "ready" && sessionUpdate.counsellorName
+            ? `${sessionUpdate.counsellorName} accepted your request.`
+            : sessionUpdate.message}
         </p>
       </div>
       <Link
-        href={`/sessions/${readySession.id}`}
-        onClick={() => setReadySession(null)}
+        href={`/sessions/${sessionUpdate.id}`}
+        onClick={() => setSessionUpdate(null)}
         className="inline-flex min-h-10 shrink-0 items-center rounded-xl bg-primary-dark px-3 text-xs font-bold text-white"
       >
-        Open room
+        {sessionUpdate.kind === "ready" ? "Open room" : "View update"}
       </Link>
       <button
         type="button"
-        onClick={() => setReadySession(null)}
+        onClick={() => setSessionUpdate(null)}
         aria-label="Dismiss"
         className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-text-secondary hover:bg-gray-100 dark:hover:bg-gray-800"
       >

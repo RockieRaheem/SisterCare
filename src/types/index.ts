@@ -290,6 +290,10 @@ export interface CounsellingSession {
   matchAttempts: number;
   /** Counsellor uids who declined or timed out — excluded from rematching */
   declinedBy: string[];
+  /** Last time an assigned counsellor released the request for rematching. */
+  lastDeclinedAt?: Date;
+  declineCount?: number;
+  preferredCounsellorDeclined?: boolean;
   crisisEscalationLevel?: number;
   emergencyFallbackRequired?: boolean;
   incidentRequired?: boolean;

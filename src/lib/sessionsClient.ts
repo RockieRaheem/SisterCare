@@ -41,6 +41,7 @@ export function reviveSession(raw: CounsellingSession): CounsellingSession {
     acceptedAt: dateField(raw.acceptedAt),
     activeAt: dateField(raw.activeAt),
     completedAt: dateField(raw.completedAt),
+    lastDeclinedAt: dateField(raw.lastDeclinedAt),
   };
 }
 
@@ -120,6 +121,38 @@ export function isSessionReadyForMember(
   session: Pick<CounsellingSession, "state">,
 ): boolean {
   return session.state === "active";
+}
+
+export function getSessionDeclineNotice(
+  session: CounsellingSession,
+): { key: string; title: string; message: string } | null {
+  if (
+    !session.lastDeclinedAt ||
+    !["requested", "matched"].includes(session.state)
+  ) {
+    return null;
+  }
+  return {
+    key: `declined:${session.id}:${session.lastDeclinedAt.toISOString()}`,
+    title: "Counsellor request update",
+    message: session.preferredCounsellorDeclined
+      ? "The counsellor you selected could not take this request. SisterCare is finding another available counsellor."
+      : "The assigned counsellor could not take this request. SisterCare is finding another available counsellor.",
+  };
+}
+
+export function getSessionStatusDescription(
+  session: CounsellingSession,
+): string {
+  if (session.lastDeclinedAt && session.state === "requested") {
+    return session.preferredCounsellorDeclined
+      ? "The counsellor you selected was unavailable. We’re finding another available counsellor."
+      : "The previous counsellor was unavailable. We’re finding another available counsellor.";
+  }
+  if (session.lastDeclinedAt && session.state === "matched") {
+    return "Another verified counsellor has been matched and is reviewing your request.";
+  }
+  return SESSION_STATE_META[session.state].description;
 }
 
 /** Display metadata per state, shared by the list, room, and portal UIs. */

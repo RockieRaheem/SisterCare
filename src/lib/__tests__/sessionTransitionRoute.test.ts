@@ -102,4 +102,30 @@ describe("POST /api/sessions/:id/transition", () => {
       error: "Counsellor must be signed in to accept a session",
     });
   });
+
+  it("releases a declined request for rematching", async () => {
+    mocks.declineSession.mockResolvedValue(undefined);
+
+    const response = await POST(request("decline"), context);
+
+    expect(response.status).toBe(200);
+    expect(mocks.declineSession).toHaveBeenCalledWith(
+      "session-1",
+      "counsellor-1",
+    );
+    await expect(response.json()).resolves.toMatchObject({ success: true });
+  });
+
+  it("returns a conflict if a decline races another session action", async () => {
+    mocks.declineSession.mockRejectedValue(
+      new Error("Session changed before it could be declined"),
+    );
+
+    const response = await POST(request("decline"), context);
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      error: "Session changed before it could be declined",
+    });
+  });
 });
