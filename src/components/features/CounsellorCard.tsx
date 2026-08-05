@@ -40,7 +40,7 @@ export default function CounsellorCard({
   const isAvailable = counsellor.status === "available";
 
   return (
-    <article className="overflow-hidden rounded-[22px] border border-border-light bg-white shadow-soft transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-soft-lg active:scale-[0.99] dark:border-border-dark dark:bg-card-dark">
+    <article className="min-w-0 overflow-hidden rounded-[22px] border border-border-light bg-white shadow-soft transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-soft-lg active:scale-[0.99] dark:border-border-dark dark:bg-card-dark">
       {/* Header with gradient */}
       <div className="relative h-20 bg-gradient-to-r from-primary/15 via-primary/10 to-pink-100 dark:to-pink-950/20 sm:h-24">
         {/* Verified badge */}
@@ -78,7 +78,7 @@ export default function CounsellorCard({
       <div className="pt-12 sm:pt-14 px-4 sm:px-6 pb-4 sm:pb-6">
         {/* Name and title */}
         <div className="mb-2 sm:mb-3">
-          <h3 className="text-base sm:text-lg font-bold text-text-primary dark:text-white">
+          <h3 className="break-words text-lg font-bold text-text-primary dark:text-white">
             {counsellor.name}
           </h3>
           <p className="text-xs sm:text-sm text-text-secondary">
@@ -148,13 +148,13 @@ export default function CounsellorCard({
         </div>
 
         {/* Languages */}
-        <div className="flex items-center gap-2 mb-4 text-sm text-text-secondary">
+        <div className="mb-4 flex min-w-0 items-start gap-2 text-sm text-text-secondary">
           <span className="material-symbols-outlined text-lg">translate</span>
-          <span>{counsellor.languages.join(", ")}</span>
+          <span className="min-w-0 break-words">{counsellor.languages.join(", ")}</span>
         </div>
 
         {/* Available hours */}
-        <div className="flex items-center gap-2 mb-5 text-sm text-text-secondary">
+        <div className="mb-5 flex min-w-0 items-start gap-2 text-sm text-text-secondary">
           <span className="material-symbols-outlined text-lg">schedule</span>
           <span>
             {counsellor.availableHours.start} - {counsellor.availableHours.end}

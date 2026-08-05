@@ -5,7 +5,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
-import BottomNav from "@/components/layout/BottomNav";
 import { useAuth } from "@/context/AuthContext";
 import { authenticatedFetch } from "@/lib/authenticatedFetch";
 import { requestSession } from "@/lib/sessionsClient";
@@ -93,20 +92,19 @@ export default function CounsellorProfilePage() {
             </Link>
           </div>
         </main>
-        <BottomNav />
       </div>
     );
   }
 
   return (
-    <div className="app-page">
+    <div className="app-page overflow-x-clip">
       <Header variant="app" />
 
-      <main className="main-content page-container py-5 sm:py-7">
+      <main className="main-content page-container min-w-0 py-5 sm:py-7">
         <div className="mb-4 sm:mb-6">
           <Link
             href="/counsellors"
-            className="inline-flex items-center gap-2 text-sm sm:text-base text-primary font-medium hover:underline"
+            className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-primary hover:underline sm:text-base"
           >
             <span className="material-symbols-outlined text-lg">
               arrow_back
@@ -122,7 +120,7 @@ export default function CounsellorProfilePage() {
             <div className="absolute -bottom-16 -left-16 w-40 h-40 rounded-full bg-pink-500/20 blur-3xl" />
           </div>
 
-          <div className="px-5 sm:px-7 pb-6 sm:pb-8 -mt-16 sm:-mt-20 relative">
+          <div className="relative -mt-16 px-4 pb-6 sm:-mt-20 sm:px-7 sm:pb-8">
             <div className="flex flex-col md:flex-row gap-5 sm:gap-6 items-start">
               <div className="relative shrink-0">
                 <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-3xl overflow-hidden border-4 border-white dark:border-gray-900 shadow-xl bg-gray-200">
@@ -160,7 +158,7 @@ export default function CounsellorProfilePage() {
                   </span>
                 </div>
 
-                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-text-primary dark:text-white">
+                <h1 className="break-words text-2xl font-bold text-text-primary dark:text-white sm:text-3xl md:text-4xl">
                   {counsellor.name}
                 </h1>
                 <p className="mt-1 text-base sm:text-lg text-text-secondary">
@@ -306,7 +304,6 @@ export default function CounsellorProfilePage() {
         </section>
       </main>
 
-      <BottomNav />
     </div>
   );
 }
