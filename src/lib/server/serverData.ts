@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from "../supabaseAdmin";
 import { calculateNextPeriod, getCurrentPhase } from "../cycle";
 import { rankCounsellors } from "../counsellorMatching";
 import { evaluateCounsellorEligibility } from "../counsellorOperations";
-import { AgentEvent, Counsellor, CounsellorSpecialty, CycleData, PregnancyData, Reminder, SymptomLog, TriageSeverity, UserProfile } from "@/types";
+import { AgentEvent, Counsellor, CounsellorSpecialty, CounsellorStatus, CycleData, PregnancyData, Reminder, SymptomLog, TriageSeverity, UserProfile } from "@/types";
 import { counsellorFromDatabaseRow } from "./counsellorRecord";
 import {
   normalizeMemberAgeBand,
@@ -55,7 +55,49 @@ export async function setActiveCounsellorOnConversation(params: { conversationId
 export async function getActiveCounsellorForConversation(conversationId: string) { const { data, error } = await admin().from("conversations").select("active_counsellor_id").eq("id", conversationId).maybeSingle(); check(error); if (!data?.active_counsellor_id) return null; const { data: row, error: rowError } = await admin().from("counsellors").select("*").eq("id", data.active_counsellor_id).maybeSingle(); check(rowError); if (!row) return null; const value = counsellorFromDatabaseRow(row as Json); return { id: value.id, name: value.name, title: value.title, languages: value.languages, specializations: value.specializations, phoneNumber: value.phoneNumber, whatsappNumber: value.whatsappNumber }; }
 
 export async function getCounsellors(): Promise<Counsellor[]> { const { data, error } = await admin().from("counsellors").select("*"); check(error); return (data || []).map((row) => counsellorFromDatabaseRow(row as Json)).sort((a, b) => b.rating - a.rating); }
-export async function getLiveCounsellors(): Promise<Counsellor[]> { const [staff, sessions] = await Promise.all([getCounsellors(), admin().from("counselling_sessions").select("counsellor_id").in("state", ["matched", "accepted", "active"])]); check(sessions.error); const assigned = new Set((sessions.data || []).map((row) => row.counsellor_id).filter(Boolean)); const cutoff = Date.now() - 120000; return staff.map((item) => { const heartbeat = (item as Counsellor & { lastHeartbeat?: Date }).lastHeartbeat; const operational = evaluateCounsellorEligibility(item, { activeLoad: assigned.has(item.id) ? 1 : 0, priority: "normal" }).eligible; return { ...item, status: assigned.has(item.id) ? "in_session" : operational && heartbeat && heartbeat.getTime() >= cutoff ? "available" : "offline" }; }); }
+export function deriveLiveCounsellorStatus(
+  item: Counsellor & { lastHeartbeat?: Date },
+  assigned: boolean,
+  now = Date.now(),
+): CounsellorStatus {
+  if (assigned) return "in_session";
+  const heartbeatFresh =
+    item.lastHeartbeat &&
+    item.lastHeartbeat.getTime() >= now - 120_000;
+  const operational = evaluateCounsellorEligibility(item, {
+    activeLoad: 0,
+    priority: "normal",
+    now: new Date(now),
+  }).eligible;
+  return item.status === "available" && operational && heartbeatFresh
+    ? "available"
+    : "offline";
+}
+
+export async function getLiveCounsellors(): Promise<Counsellor[]> {
+  const [staff, sessions] = await Promise.all([
+    getCounsellors(),
+    admin()
+      .from("counselling_sessions")
+      .select("counsellor_id")
+      .in("state", ["matched", "accepted", "active"]),
+  ]);
+  check(sessions.error);
+  const assigned = new Set(
+    (sessions.data || [])
+      .map((row) => row.counsellor_id)
+      .filter(Boolean),
+  );
+  const now = Date.now();
+  return staff.map((item) => ({
+    ...item,
+    status: deriveLiveCounsellorStatus(
+      item as Counsellor & { lastHeartbeat?: Date },
+      assigned.has(item.id),
+      now,
+    ),
+  }));
+}
 async function loads() { const { data, error } = await admin().from("counselling_sessions").select("counsellor_id").in("state", ["matched", "accepted", "active"]); check(error); return (data || []).reduce((map, row) => { if (row.counsellor_id) map.set(row.counsellor_id, (map.get(row.counsellor_id) || 0) + 1); return map; }, new Map<string, number>()); }
 export async function routeCounsellor(params: { specialty?: CounsellorSpecialty; preferredLanguage?: string }): Promise<Counsellor | null> { let list = (await getLiveCounsellors()).filter((item) => item.status === "available" && (!params.specialty || item.specializations.includes(params.specialty))); if (params.preferredLanguage) { const matching = list.filter((item) => item.languages.some((language) => language.toLowerCase() === params.preferredLanguage?.toLowerCase())); if (matching.length) list = matching; } return rankCounsellors(list, params, await loads()); }
 export async function batchUpdateCounsellorAvailability() { const values = await getLiveCounsellors(); await Promise.all(values.map((item) => admin().from("counsellors").update({ status: item.status }).eq("id", item.id))); return { updated: values.length, errors: 0 }; }

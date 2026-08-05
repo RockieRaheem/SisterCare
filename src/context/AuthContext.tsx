@@ -13,6 +13,7 @@ import { getUserProfile, updateUserProfile } from "@/lib/dataClient";
 import { clearPrivateClientData } from "@/lib/privacy";
 import { UserProfile as FullUserProfile } from "@/types";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
+import { markCounsellorOfflineBeforeSignOut } from "@/lib/presenceClient";
 
 interface UserProfile {
   uid: string;
@@ -146,6 +147,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    const presenceCleared = await markCounsellorOfflineBeforeSignOut(
+      userProfile?.role,
+    );
+    if (!presenceCleared) {
+      console.warn("Could not confirm counsellor offline status before sign-out.");
+    }
     try {
       const token = await auth.currentUser?.getIdToken();
       if (token) {
