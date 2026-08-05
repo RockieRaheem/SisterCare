@@ -8,6 +8,7 @@ const REQUIRED_TABLES = [
   "counsellors",
   "counsellor_applications",
   "counselling_sessions",
+  "session_audio_calls",
   "library_articles",
   "audit_events",
   "incidents",
@@ -52,7 +53,13 @@ export async function getMaintenanceReadiness(now = Date.now()): Promise<boolean
 export async function getDatabaseReadiness(): Promise<boolean> {
   try {
     const client = getSupabaseAdmin();
-    const [tables, sessionColumns, articleColumns, matchingFunction] =
+    const [
+      tables,
+      sessionColumns,
+      audioColumns,
+      articleColumns,
+      matchingFunction,
+    ] =
       await Promise.all([
         Promise.all(
           REQUIRED_TABLES.map((table) =>
@@ -63,6 +70,12 @@ export async function getDatabaseReadiness(): Promise<boolean> {
           .from("counselling_sessions")
           .select(
             "matched_at,accepted_at,active_at,completed_at,time_to_human_seconds,match_attempts,declined_by",
+            { head: true },
+          ),
+        client
+          .from("session_audio_calls")
+          .select(
+            "room_expires_at,member_joined_at,member_left_at,counsellor_joined_at,counsellor_left_at",
             { head: true },
           ),
         client
@@ -80,6 +93,7 @@ export async function getDatabaseReadiness(): Promise<boolean> {
     const checks = [
       ...tables,
       sessionColumns,
+      audioColumns,
       articleColumns,
       matchingFunction,
     ];

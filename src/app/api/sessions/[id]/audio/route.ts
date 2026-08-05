@@ -8,6 +8,7 @@ import {
   markSessionAudioConnected,
   markSessionAudioDisconnected,
   serializeSessionAudioCall,
+  SessionAudioStorageError,
 } from "@/lib/server/sessionAudio";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
@@ -169,13 +170,16 @@ export async function POST(
     const message =
       error instanceof DailyProviderUnavailableError
         ? error.message
+        : error instanceof SessionAudioStorageError
+          ? error.message
         : error instanceof Error &&
             (error.message.includes("already ended") ||
               error.message.includes("No audio call"))
           ? error.message
           : "The private audio connection could not be prepared.";
     const status =
-      error instanceof DailyProviderUnavailableError
+      error instanceof DailyProviderUnavailableError ||
+      error instanceof SessionAudioStorageError
         ? 503
         : message.includes("already ended")
           ? 409
@@ -183,8 +187,14 @@ export async function POST(
             ? 404
             : 500;
     if (status === 500) console.error("Private audio request failed:", error);
+    const code =
+      error instanceof DailyProviderUnavailableError
+        ? error.code
+        : error instanceof SessionAudioStorageError
+          ? error.code
+          : undefined;
     return privateJson(
-      { success: false, error: message, fallback: "text" },
+      { success: false, error: message, code, fallback: "text" },
       { status },
     );
   }

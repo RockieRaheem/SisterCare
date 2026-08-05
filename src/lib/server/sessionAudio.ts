@@ -18,6 +18,21 @@ type AudioCallState =
 type ParticipantRole = "member" | "counsellor";
 type Row = Record<string, unknown>;
 
+export class SessionAudioStorageError extends Error {
+  constructor(
+    public readonly code:
+      | "audio_schema_missing"
+      | "audio_storage_unavailable",
+  ) {
+    super(
+      code === "audio_schema_missing"
+        ? "Private audio storage requires the latest database migration."
+        : "Private audio state is temporarily unavailable.",
+    );
+    this.name = "SessionAudioStorageError";
+  }
+}
+
 const LIVE_CALL_STATES: AudioCallState[] = [
   "ready",
   "connecting",
@@ -27,6 +42,26 @@ const LIVE_CALL_STATES: AudioCallState[] = [
 
 const db = () => getSupabaseAdmin();
 const nowIso = () => new Date().toISOString();
+
+export function classifyAudioStorageError(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return new SessionAudioStorageError("audio_storage_unavailable");
+  }
+  const value = error as { code?: unknown; message?: unknown };
+  const message =
+    typeof value.message === "string" ? value.message.toLowerCase() : "";
+  const schemaMissing =
+    value.code === "42P01" ||
+    value.code === "42703" ||
+    message.includes("session_audio_calls") &&
+      (message.includes("does not exist") ||
+        message.includes("schema cache") ||
+        message.includes("column")) ||
+    message.includes("session_audio_calls_state_check");
+  return new SessionAudioStorageError(
+    schemaMissing ? "audio_schema_missing" : "audio_storage_unavailable",
+  );
+}
 
 function asDate(value: unknown): Date | null {
   if (!value) return null;
@@ -65,7 +100,7 @@ async function readAudioCall(sessionId: string): Promise<Row | null> {
     .select("*")
     .eq("session_id", sessionId)
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) throw classifyAudioStorageError(error);
   return data as Row | null;
 }
 
@@ -114,7 +149,8 @@ export async function ensureSessionAudioRoom(params: {
     .single();
   if (error || !data) {
     await deletePrivateDailyRoom(room.roomName).catch(() => undefined);
-    throw new Error(error?.message || "Private audio state was not created");
+    if (error) throw classifyAudioStorageError(error);
+    throw new SessionAudioStorageError("audio_storage_unavailable");
   }
   return data as Row;
 }
@@ -168,7 +204,7 @@ export async function markSessionAudioConnected(
     .in("state", LIVE_CALL_STATES)
     .select("*")
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) throw classifyAudioStorageError(error);
   if (!data) throw new Error("This audio call has already ended");
   const updated = data as Row;
   if (
@@ -186,7 +222,7 @@ export async function markSessionAudioConnected(
       .in("state", ["connecting", "disconnected", "ready"])
       .select("*")
       .maybeSingle();
-    if (activeError) throw new Error(activeError.message);
+    if (activeError) throw classifyAudioStorageError(activeError);
     if (active) return active as Row;
   }
   return updated;
@@ -213,7 +249,7 @@ export async function markSessionAudioDisconnected(
     .in("state", LIVE_CALL_STATES)
     .select("*")
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) throw classifyAudioStorageError(error);
   return (data || existing) as Row;
 }
 
@@ -237,7 +273,7 @@ export async function finishSessionAudio(
     })
     .eq("id", existing.id)
     .in("state", LIVE_CALL_STATES);
-  if (error) throw new Error(error.message);
+  if (error) throw classifyAudioStorageError(error);
   if (existing.provider_room_id) {
     await deletePrivateDailyRoom(String(existing.provider_room_id)).catch(
       () => undefined,
