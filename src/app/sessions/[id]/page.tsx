@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
+import CounsellorShell from "@/components/counsellor/CounsellorShell";
 import { useAuth } from "@/context/AuthContext";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 import { authenticatedFetch } from "@/lib/authenticatedFetch";
@@ -24,7 +25,7 @@ import {
 export default function SessionRoomPage() {
   const params = useParams<{ id: string }>();
   const sessionId = params.id;
-  const { user, loading: authLoading } = useAuth();
+  const { user, userProfile, loading: authLoading } = useAuth();
   const router = useRouter();
 
   const [session, setSession] = useState<CounsellingSession | null>(null);
@@ -55,6 +56,10 @@ export default function SessionRoomPage() {
   const isCounsellor = Boolean(
     session && uid && session.counsellorId === uid,
   );
+  const usesProfessionalWorkspace =
+    userProfile?.role === "counsellor" ||
+    userProfile?.registrationIntent === "counsellor" ||
+    isCounsellor;
 
   const loadDetail = useCallback(async () => {
     try {
@@ -361,18 +366,18 @@ export default function SessionRoomPage() {
 
   if (error && !session) {
     return (
-      <Shell>
+      <SessionShell professional={usesProfessionalWorkspace}>
         <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center dark:border-gray-700 dark:bg-card-dark">
           <p className="text-gray-700 dark:text-gray-300">{error}</p>
         </div>
-      </Shell>
+      </SessionShell>
     );
   }
   if (!session || !state) {
     return (
-      <Shell>
+      <SessionShell professional={usesProfessionalWorkspace}>
         <div className="py-16 text-center text-gray-400">Loading session…</div>
-      </Shell>
+      </SessionShell>
     );
   }
 
@@ -382,7 +387,7 @@ export default function SessionRoomPage() {
     isSessionUser && (state === "completed" || state === "feedback_received");
 
   return (
-    <Shell>
+    <SessionShell professional={usesProfessionalWorkspace}>
       {/* Session header */}
       <div className="mb-4 flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-card-dark">
         <div>
@@ -675,15 +680,31 @@ export default function SessionRoomPage() {
           )}
         </div>
       )}
-    </Shell>
+    </SessionShell>
   );
 }
 
-function Shell({ children }: { children: React.ReactNode }) {
+function SessionShell({
+  children,
+  professional,
+}: {
+  children: React.ReactNode;
+  professional: boolean;
+}) {
+  if (professional) {
+    return (
+      <CounsellorShell>
+        <div className="mx-auto w-full max-w-4xl min-w-0">{children}</div>
+      </CounsellorShell>
+    );
+  }
+
   return (
     <div className="app-page">
       <Header variant="app" />
-      <main className="main-content mx-auto w-full max-w-3xl px-4 pt-7 sm:px-6">{children}</main>
+      <main className="main-content mx-auto w-full max-w-3xl min-w-0 overflow-x-clip px-4 pt-7 sm:px-6">
+        {children}
+      </main>
     </div>
   );
 }
