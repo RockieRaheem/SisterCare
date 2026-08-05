@@ -17,6 +17,8 @@ describe("Daily private audio boundary", () => {
     vi.unstubAllGlobals();
     delete process.env.DAILY_API_KEY;
     delete process.env.DAILY_DOMAIN;
+    delete process.env.AUDIO_PROVIDER_SECRET;
+    delete process.env.AUDIO_PROVIDER_ALLOWED_HOST;
   });
 
   it("normalizes only a safe HTTPS Daily host configuration", () => {
@@ -24,6 +26,9 @@ describe("Daily private audio boundary", () => {
       "raheemlabs.daily.co",
     );
     expect(normalizeDailyDomain("https://raheemlabs.daily.co")).toBe(
+      "raheemlabs.daily.co",
+    );
+    expect(normalizeDailyDomain("raheemlabs")).toBe(
       "raheemlabs.daily.co",
     );
     expect(() =>
@@ -45,7 +50,7 @@ describe("Daily private audio boundary", () => {
         "raheemlabs.daily.co",
         "private-room",
       ),
-    ).toThrow("untrusted");
+    ).toThrow("does not match");
   });
 
   it("creates an expiring private two-person audio-only room", async () => {
@@ -83,6 +88,39 @@ describe("Daily private audio boundary", () => {
     });
     expect(request.properties.permissions.canSend).toEqual(["audio"]);
     expect(request.properties).not.toHaveProperty("enable_recording");
+  });
+
+  it("supports the original SisterCare audio environment names", async () => {
+    delete process.env.DAILY_API_KEY;
+    delete process.env.DAILY_DOMAIN;
+    process.env.AUDIO_PROVIDER_SECRET = "daily-server-secret";
+    process.env.AUDIO_PROVIDER_ALLOWED_HOST = "raheemlabs";
+    const roomName = dailyRoomName("session-legacy", "daily-server-secret");
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response("{}", {
+            status: 404,
+            headers: { "Content-Type": "application/json" },
+          }),
+        )
+        .mockResolvedValueOnce(
+          Response.json({
+            name: roomName,
+            url: `https://raheemlabs.daily.co/${roomName}`,
+            config: { exp: 1_800_005_400 },
+          }),
+        ),
+    );
+
+    await expect(
+      createPrivateDailyRoom({
+        sessionId: "session-legacy",
+        now: new Date(1_800_000_000_000),
+      }),
+    ).resolves.toMatchObject({ roomName });
   });
 
   it("creates distinct short-lived audio-only participant tokens", async () => {

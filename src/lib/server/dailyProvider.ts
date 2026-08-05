@@ -15,7 +15,22 @@ interface DailyTokenResponse {
   token?: unknown;
 }
 
-export class DailyProviderUnavailableError extends Error {}
+export class DailyProviderUnavailableError extends Error {
+  constructor(
+    message: string,
+    public readonly code:
+      | "configuration_missing"
+      | "configuration_invalid"
+      | "provider_unreachable"
+      | "credentials_rejected"
+      | "room_rejected"
+      | "room_response_invalid"
+      | "token_rejected" = "provider_unreachable",
+  ) {
+    super(message);
+    this.name = "DailyProviderUnavailableError";
+  }
+}
 
 function opaqueId(scope: string, value: string, secret: string): string {
   return createHmac("sha256", secret)
@@ -26,8 +41,14 @@ function opaqueId(scope: string, value: string, secret: string): string {
 
 export function normalizeDailyDomain(value: string): string {
   const trimmed = value.trim();
+  const normalized =
+    !trimmed.includes("://") &&
+    !trimmed.includes(".") &&
+    /^[a-z0-9-]+$/i.test(trimmed)
+      ? `${trimmed}.daily.co`
+      : trimmed;
   const parsed = new URL(
-    trimmed.includes("://") ? trimmed : `https://${trimmed}`,
+    normalized.includes("://") ? normalized : `https://${normalized}`,
   );
   if (
     parsed.protocol !== "https:" ||
@@ -39,17 +60,23 @@ export function normalizeDailyDomain(value: string): string {
   ) {
     throw new DailyProviderUnavailableError(
       "The Daily domain configuration is invalid.",
+      "configuration_invalid",
     );
   }
   return parsed.hostname.toLowerCase();
 }
 
 function getDailyConfig() {
-  const apiKey = process.env.DAILY_API_KEY?.trim();
-  const domainValue = process.env.DAILY_DOMAIN?.trim();
+  const apiKey =
+    process.env.DAILY_API_KEY?.trim() ||
+    process.env.AUDIO_PROVIDER_SECRET?.trim();
+  const domainValue =
+    process.env.DAILY_DOMAIN?.trim() ||
+    process.env.AUDIO_PROVIDER_ALLOWED_HOST?.trim();
   if (!apiKey || !domainValue) {
     throw new DailyProviderUnavailableError(
       "Private audio is not configured yet. Continue by text or try again later.",
+      "configuration_missing",
     );
   }
   return {
@@ -68,7 +95,10 @@ export function validateDailyRoomUrl(
   expectedRoomName: string,
 ): string {
   if (typeof value !== "string") {
-    throw new Error("Daily returned no room URL");
+    throw new DailyProviderUnavailableError(
+      "The private audio provider returned an incomplete room.",
+      "room_response_invalid",
+    );
   }
   const url = new URL(value);
   const roomName = decodeURIComponent(url.pathname.replace(/^\/+|\/+$/g, ""));
@@ -79,7 +109,10 @@ export function validateDailyRoomUrl(
     url.username ||
     url.password
   ) {
-    throw new Error("Daily returned an untrusted room URL");
+    throw new DailyProviderUnavailableError(
+      "The configured Daily domain does not match the room provider.",
+      "configuration_invalid",
+    );
   }
   url.search = "";
   url.hash = "";
@@ -107,6 +140,7 @@ async function dailyRequest<T>(
   } catch {
     throw new DailyProviderUnavailableError(
       "The private audio service could not be reached. Continue by text or try again.",
+      "provider_unreachable",
     );
   }
   const payload = (await response.json().catch(() => null)) as T | null;
@@ -115,6 +149,11 @@ async function dailyRequest<T>(
       response.status === 401 || response.status === 403
         ? "The private audio service credentials were rejected."
         : "The private audio room could not be prepared. Continue by text or try again.",
+      response.status === 401 || response.status === 403
+        ? "credentials_rejected"
+        : path === "/meeting-tokens"
+          ? "token_rejected"
+          : "room_rejected",
     );
   }
   return { response, payload };
@@ -200,6 +239,7 @@ export async function createPrivateDailyRoom(params: {
   if (!created.payload) {
     throw new DailyProviderUnavailableError(
       "The private audio room could not be prepared.",
+      "room_response_invalid",
     );
   }
   return {
@@ -221,6 +261,7 @@ export async function createPrivateDailyJoin(params: {
   if (roomExpirySeconds <= nowSeconds + 30) {
     throw new DailyProviderUnavailableError(
       "This private audio room has expired. Please prepare a new call.",
+      "room_rejected",
     );
   }
   const participantKey = `sc_${opaqueId(
@@ -263,6 +304,7 @@ export async function createPrivateDailyJoin(params: {
   if (typeof created.payload?.token !== "string" || !created.payload.token) {
     throw new DailyProviderUnavailableError(
       "The private audio access pass could not be prepared.",
+      "token_rejected",
     );
   }
   return {

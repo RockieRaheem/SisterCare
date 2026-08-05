@@ -57,4 +57,21 @@ describe("fail-closed API security configuration", () => {
       }),
     ).toEqual([]);
   });
+
+  it("accepts the original Daily audio environment aliases", () => {
+    expect(
+      validateProductionSecurityConfig({
+        NODE_ENV: "production",
+        NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_example",
+        SUPABASE_SECRET_KEY: "sb_secret_example",
+        CRON_SECRET: "a".repeat(32),
+        TELEMETRY_HASH_SALT: "b".repeat(32),
+        GROQ_API_KEY: "groq-test-key",
+        AUDIO_PROVIDER_SECRET: "daily-test-key",
+        AUDIO_PROVIDER_ALLOWED_HOST: "raheemlabs.daily.co",
+        ALLOW_UNAUTHENTICATED_DEV: "false",
+      }),
+    ).toEqual([]);
+  });
 });
