@@ -48,7 +48,7 @@ export default function SessionRoomPage() {
   const [messageSync, setMessageSync] = useState<
     "connecting" | "live" | "fallback"
   >("connecting");
-  const bottomRef = useRef<HTMLDivElement | null>(null);
+  const messagesViewportRef = useRef<HTMLDivElement | null>(null);
 
   const uid = user?.uid;
   const state: SessionState | null = session?.state || null;
@@ -155,7 +155,12 @@ export default function SessionRoomPage() {
   }, [loadDetail, user, sessionId]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const viewport = messagesViewportRef.current;
+    if (!viewport) return;
+    viewport.scrollTo({
+      top: viewport.scrollHeight,
+      behavior: messages.length > 1 ? "smooth" : "auto",
+    });
   }, [messages.length]);
 
   const send = async () => {
@@ -389,8 +394,8 @@ export default function SessionRoomPage() {
   return (
     <SessionShell professional={usesProfessionalWorkspace}>
       {/* Session header */}
-      <div className="mb-4 flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-card-dark">
-        <div>
+      <div className="mb-4 flex min-w-0 flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-card-dark sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <p className="font-semibold text-gray-900 dark:text-white">
             {isSessionUser
               ? session.counsellorName || "Your counsellor"
@@ -412,12 +417,12 @@ export default function SessionRoomPage() {
           </button>
         )}
         {state === "active" && (
-          <div className="flex gap-2">
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
             <button
               type="button"
               onClick={startAudio}
               disabled={audioBusy || Boolean(audioAccess)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+              className="col-span-2 inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-white disabled:opacity-50 sm:col-span-1"
             >
               <span className="material-symbols-outlined text-base" aria-hidden="true">call</span>
               {audioBusy
@@ -433,14 +438,14 @@ export default function SessionRoomPage() {
             {isCounsellor && (
               <button
                 onClick={() => doTransition("escalate")}
-                className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-900/30"
+                className="min-h-11 rounded-xl border border-red-300 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-900/30"
               >
                 Escalate
               </button>
             )}
             <button
               onClick={() => doTransition("end")}
-              className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+              className="min-h-11 rounded-xl border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
             >
               End session
             </button>
@@ -537,7 +542,13 @@ export default function SessionRoomPage() {
       )}
 
       {/* Messages */}
-      <div className="mb-4 min-h-[40vh] space-y-3 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-card-dark">
+      <div
+        ref={messagesViewportRef}
+        className={`h-[clamp(16rem,44dvh,36rem)] min-w-0 space-y-3 overflow-y-auto overscroll-contain border border-gray-200 bg-white p-3 [scrollbar-gutter:stable] dark:border-gray-700 dark:bg-card-dark sm:p-4 ${
+          showComposer ? "mb-0 rounded-t-2xl" : "mb-4 rounded-2xl"
+        }`}
+        aria-live="polite"
+      >
         {state === "active" && (
           <div className="flex justify-end">
             <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-gray-500 dark:text-gray-400">
@@ -573,7 +584,7 @@ export default function SessionRoomPage() {
                 className={`flex ${mine ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
+                  className={`max-w-[88%] min-w-0 rounded-2xl px-4 py-2.5 text-sm sm:max-w-[80%] ${
                     mine
                       ? "rounded-br-md bg-primary-dark text-white"
                       : "rounded-bl-md bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100"
@@ -595,13 +606,12 @@ export default function SessionRoomPage() {
             );
           })
         )}
-        <div ref={bottomRef} />
       </div>
 
       {/* Composer */}
       {showComposer && (
         <div
-          className={`sticky z-20 -mx-2 flex gap-2 border-t border-border-light bg-bg-light/95 px-2 py-3 backdrop-blur dark:border-border-dark dark:bg-bg-dark/95 ${
+          className={`sticky z-20 flex min-w-0 gap-2 rounded-b-2xl border border-t-0 border-border-light bg-bg-light/95 p-2.5 shadow-[0_12px_28px_rgba(15,23,42,0.08)] backdrop-blur dark:border-border-dark dark:bg-bg-dark/95 sm:p-3 ${
             isSessionUser
               ? "bottom-[calc(var(--bottom-nav-height)+env(safe-area-inset-bottom,0px))] md:bottom-0"
               : "bottom-0"
@@ -610,6 +620,8 @@ export default function SessionRoomPage() {
           <input
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
+            autoComplete="off"
+            enterKeyHint="send"
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -617,12 +629,12 @@ export default function SessionRoomPage() {
               }
             }}
             placeholder="Type a message…"
-            className="flex-1 rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm focus:border-primary focus:outline-none dark:border-gray-600 dark:bg-card-dark dark:text-white"
+            className="min-w-0 flex-1 rounded-xl border border-gray-300 bg-white px-3 py-3 text-base focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-gray-600 dark:bg-card-dark dark:text-white sm:px-4"
           />
           <button
             onClick={send}
             disabled={sending || !draft.trim()}
-            className="rounded-xl bg-primary-dark px-5 py-3 text-sm font-semibold text-white hover:bg-primary-dark/90 disabled:opacity-50"
+            className="min-h-12 shrink-0 rounded-xl bg-primary-dark px-4 py-3 text-sm font-semibold text-white hover:bg-primary-dark/90 disabled:opacity-50 sm:px-5"
           >
             Send
           </button>
@@ -662,7 +674,7 @@ export default function SessionRoomPage() {
                 onChange={(e) => setFeedbackComment(e.target.value)}
                 placeholder="Anything you'd like to share? (optional)"
                 rows={2}
-                className="mb-3 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none dark:border-gray-600 dark:bg-card-dark dark:text-white"
+                className="mb-3 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-base focus:border-primary focus:outline-none dark:border-gray-600 dark:bg-card-dark dark:text-white"
               />
               <button
                 onClick={() =>
