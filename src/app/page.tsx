@@ -144,12 +144,13 @@ export default function Home() {
                 {/* Mock conversation */}
                 <div className="space-y-3">
                   <div className="ml-auto max-w-[85%] rounded-2xl rounded-br-md bg-user-bubble px-4 py-2.5 text-sm text-text-primary">
-                    Sister, nfunye obulumi mu lubuto...
+                    Something happened and I feel hurt and overwhelmed. I
+                    don&apos;t know who to tell.
                   </div>
                   <div className="max-w-[85%] rounded-2xl rounded-bl-md bg-primary/5 px-4 py-2.5 text-sm text-text-primary dark:bg-primary/15 dark:text-gray-200">
-                    Nkuwulira. I&apos;m sorry you&apos;re hurting. How severe
-                    is the pain, and do you have heavy bleeding, faintness, or
-                    vomiting? We can work out a safe next step together.
+                    You do not have to explain everything at once. Share only
+                    what feels safe. Are you safe right now, and would you like
+                    me to listen or help you decide what to do next?
                   </div>
                   {/* Cycle insight card */}
                   <div className="flex items-center gap-3 rounded-xl border border-primary/15 bg-primary/5 p-3 dark:bg-primary/10">
@@ -160,10 +161,10 @@ export default function Home() {
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-semibold text-text-primary dark:text-white">
-                        Period expected in 2 days
+                        Next period estimate
                       </p>
                       <p className="text-2xs text-text-secondary dark:text-gray-400">
-                        Reminder set · Luteal phase, day 26 of 28
+                        2 days · 14 hours · 32 minutes
                       </p>
                     </div>
                   </div>
