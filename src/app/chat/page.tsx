@@ -35,6 +35,13 @@ import {
 } from "@/lib/sunbird";
 import { authenticatedFetch } from "@/lib/authenticatedFetch";
 import { AppShellSkeleton } from "@/components/ui/Skeleton";
+import {
+  MAX_VOICE_RECORDING_SECONDS,
+  selectRecordingFormat,
+  validateVoiceRecording,
+  voiceCaptureConstraints,
+  voiceFileName,
+} from "@/lib/speechCapture";
 
 interface Message {
   id: string;
@@ -293,6 +300,8 @@ export default function ChatPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isListening, setIsListening] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [speechSupported, setSpeechSupported] = useState(false);
   const [agentActionStatuses, setAgentActionStatuses] = useState<AgentActionStatus[]>([]);
   const [counsellorProfile, setCounsellorProfile] = useState<ChatApiResponse["counsellorProfile"] | null>(null);
@@ -317,6 +326,8 @@ export default function ChatPage() {
   const recordingRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+  const recordingStartedAtRef = useRef<number>(0);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isFreshChat =
     activeConversationId !== null && activeConversationId === freshChatId;
   const activeConversation = conversations.find(
@@ -409,22 +420,54 @@ export default function ChatPage() {
     try {
       audioChunksRef.current = [];
       setIsListening(true);
+      setRecordingSeconds(0);
       setError(null);
 
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia(
+        voiceCaptureConstraints(),
+      );
       streamRef.current = stream;
 
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: "audio/webm",
-      });
+      const format = selectRecordingFormat(
+        typeof MediaRecorder.isTypeSupported === "function"
+          ? MediaRecorder.isTypeSupported.bind(MediaRecorder)
+          : undefined,
+      );
+      const mediaRecorder = format.mimeType
+        ? new MediaRecorder(stream, { mimeType: format.mimeType })
+        : new MediaRecorder(stream);
       recordingRef.current = mediaRecorder;
+      recordingStartedAtRef.current = Date.now();
+      recordingTimerRef.current = setInterval(() => {
+        const elapsed = Math.floor(
+          (Date.now() - recordingStartedAtRef.current) / 1000,
+        );
+        setRecordingSeconds(elapsed);
+        if (
+          elapsed >= MAX_VOICE_RECORDING_SECONDS &&
+          recordingRef.current?.state === "recording"
+        ) {
+          recordingRef.current.stop();
+          setIsListening(false);
+        }
+      }, 250);
 
       mediaRecorder.ondataavailable = (event) => {
-        audioChunksRef.current.push(event.data);
+        if (event.data.size > 0) audioChunksRef.current.push(event.data);
       };
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        if (recordingTimerRef.current) {
+          clearInterval(recordingTimerRef.current);
+          recordingTimerRef.current = null;
+        }
+        setIsListening(false);
+        const durationMs = Date.now() - recordingStartedAtRef.current;
+        const recordedMimeType =
+          mediaRecorder.mimeType || format.mimeType || "audio/webm";
+        const audioBlob = new Blob(audioChunksRef.current, {
+          type: recordedMimeType,
+        });
         audioChunksRef.current = [];
 
         if (streamRef.current) {
@@ -433,9 +476,18 @@ export default function ChatPage() {
         }
 
         setError(null);
+        const validationError = validateVoiceRecording({
+          bytes: audioBlob.size,
+          durationMs,
+        });
+        if (validationError) {
+          setError(validationError);
+          return;
+        }
+        setIsTranscribing(true);
         try {
           const form = new FormData();
-          form.append("audio", audioBlob, "sistercare-voice.webm");
+          form.append("audio", audioBlob, voiceFileName(format));
           form.append("language", userLanguage);
           const response = await authenticatedFetch("/api/language/transcribe", {
             method: "POST",
@@ -446,19 +498,35 @@ export default function ChatPage() {
             throw new Error(result?.error || "Voice transcription failed");
           }
           setInputValue(result.data.transcript);
-        } catch {
-          setError("Speech-to-text conversion failed. Please try again or type your message.");
+          requestAnimationFrame(() => inputRef.current?.focus());
+        } catch (transcriptionError) {
+          setError(
+            transcriptionError instanceof Error
+              ? transcriptionError.message
+              : "Speech-to-text conversion failed. Please try again or type your message.",
+          );
+        } finally {
+          setIsTranscribing(false);
         }
       };
 
       mediaRecorder.onerror = () => {
+        if (recordingTimerRef.current) {
+          clearInterval(recordingTimerRef.current);
+          recordingTimerRef.current = null;
+        }
         setError("Recording failed. Please try again.");
         setIsListening(false);
       };
 
-      mediaRecorder.start();
-    } catch {
-      setError("Unable to access microphone. Please check permissions.");
+      mediaRecorder.start(1_000);
+    } catch (recordingError) {
+      const message =
+        recordingError instanceof DOMException &&
+        recordingError.name === "NotAllowedError"
+          ? "Microphone access was blocked. Allow microphone access in your browser settings and try again."
+          : "Unable to access the microphone on this device.";
+      setError(message);
       setIsListening(false);
     }
   }, [userLanguage]);
@@ -479,6 +547,17 @@ export default function ChatPage() {
       void startVoiceRecording();
     }
   }, [isListening, startVoiceRecording]);
+
+  useEffect(
+    () => () => {
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      if (recordingRef.current?.state === "recording") {
+        recordingRef.current.stop();
+      }
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+    },
+    [],
+  );
 
   useEffect(() => {
     conversationsRef.current = conversations;
@@ -2094,8 +2173,14 @@ export default function ChatPage() {
                     value={inputValue}
                     onChange={handleInputChange}
                     onKeyDown={handleKeyDown}
-                    placeholder={isListening ? "Listening..." : "Message Sister..."}
-                    disabled={isTyping || isListening}
+                    placeholder={
+                      isListening
+                        ? `Listening… ${recordingSeconds}s`
+                        : isTranscribing
+                          ? "Turning your voice into text…"
+                          : "Message Sister..."
+                    }
+                    disabled={isTyping || isListening || isTranscribing}
                     rows={1}
                     className="max-h-[112px] flex-1 resize-none border-none bg-transparent px-1 py-2.5 text-base leading-6 text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-0 dark:text-white sm:max-h-[160px] sm:px-2 sm:text-sm"
                   />
@@ -2103,15 +2188,27 @@ export default function ChatPage() {
                     <button
                       type="button"
                       onClick={toggleVoiceInput}
-                      disabled={isTyping}
+                      disabled={isTyping || isTranscribing}
                       className={`touch-target shrink-0 rounded-xl p-2.5 transition-all sm:p-2.5 ${
                         isListening
                           ? "animate-pulse bg-red-500 text-white shadow-md"
                           : "text-text-secondary hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/10"
                       }`}
-                      title={isListening ? "Stop listening" : "Voice input"}
+                      title={
+                        isListening
+                          ? "Stop recording"
+                          : isTranscribing
+                            ? "Transcribing voice"
+                            : "Record voice message"
+                      }
                     >
-                      <span className="material-symbols-outlined text-lg">{isListening ? "mic_off" : "mic"}</span>
+                      <span className="material-symbols-outlined text-lg">
+                        {isTranscribing
+                          ? "hourglass_top"
+                          : isListening
+                            ? "stop_circle"
+                            : "mic"}
+                      </span>
                     </button>
                   )}
                   <button

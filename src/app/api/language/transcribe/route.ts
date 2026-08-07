@@ -5,9 +5,19 @@ import {
   SUPPORTED_LANGUAGES,
   SupportedLanguageCode,
 } from "@/lib/sunbird";
+import { MAX_VOICE_UPLOAD_BYTES } from "@/lib/speechCapture";
 
 export const runtime = "nodejs";
-const MAX_AUDIO_BYTES = 15 * 1024 * 1024;
+const ALLOWED_AUDIO_TYPES = new Set([
+  "audio/webm",
+  "audio/mp4",
+  "audio/m4a",
+  "audio/x-m4a",
+  "audio/ogg",
+  "audio/wav",
+  "audio/x-wav",
+  "audio/mpeg",
+]);
 
 export async function POST(request: NextRequest) {
   const auth = await authenticateRequest(request);
@@ -28,10 +38,20 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
-  if (audio.size > MAX_AUDIO_BYTES) {
+  if (audio.size > MAX_VOICE_UPLOAD_BYTES) {
     return NextResponse.json(
-      { success: false, error: "The recording is too large. Keep it under 15 MB." },
+      {
+        success: false,
+        error: "The recording is too large. Keep voice messages under one minute.",
+      },
       { status: 413 },
+    );
+  }
+  const contentType = audio.type.split(";")[0].toLowerCase();
+  if (contentType && !ALLOWED_AUDIO_TYPES.has(contentType)) {
+    return NextResponse.json(
+      { success: false, error: "This audio format is not supported." },
+      { status: 415 },
     );
   }
   if (!(languageValue in SUPPORTED_LANGUAGES)) {
@@ -46,7 +66,14 @@ export async function POST(request: NextRequest) {
       audio,
       languageValue as SupportedLanguageCode,
     );
-    return NextResponse.json({ success: true, data: result });
+    return NextResponse.json(
+      { success: true, data: result },
+      {
+        headers: {
+          "Cache-Control": "no-store, private",
+        },
+      },
+    );
   } catch (error) {
     console.error("Sunbird speech transcription failed:", error);
     return NextResponse.json(

@@ -125,8 +125,9 @@ export async function speechToText(
   const formData = new FormData();
   formData.append("audio", audioFile);
   formData.append("language", languageCode);
+  formData.append("platform", "modal");
 
-  const response = await sunbirdRequest("/stt", {
+  const response = await sunbirdRequest("/audio/transcriptions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey()}`,
