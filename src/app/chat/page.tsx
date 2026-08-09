@@ -43,6 +43,11 @@ import {
   voiceCaptureConstraints,
   voiceFileName,
 } from "@/lib/speechCapture";
+import {
+  readVoiceRepliesPreference,
+  speechLocale,
+  VOICE_REPLIES_STORAGE_KEY,
+} from "@/lib/voicePlayback";
 
 interface Message {
   id: string;
@@ -53,6 +58,7 @@ interface Message {
   audio?: {
     url: string;
     durationSeconds: number;
+    language?: SupportedLanguageCode;
   };
   animate?: boolean;
 }
@@ -83,6 +89,7 @@ interface ChatApiResponse {
     url: string;
     durationSeconds: number;
     mimeType: string;
+    language?: SupportedLanguageCode;
   };
   translationApplied?: boolean;
   counsellorProfile?: {
@@ -319,8 +326,10 @@ export default function ChatPage() {
   const [userLanguage, setUserLanguage] = useState<SupportedLanguageCode>("eng");
   const languageInitializedForUserRef = useRef<string | null>(null);
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+  const [preparingAudioId, setPreparingAudioId] = useState<string | null>(null);
+  const [voiceRepliesEnabled, setVoiceRepliesEnabled] = useState(false);
+  const [voicePlaybackError, setVoicePlaybackError] = useState<string | null>(null);
   const [freshChatId, setFreshChatId] = useState<string | null>(null);
-  const [audioElements, setAudioElements] = useState<Record<string, HTMLAudioElement>>({});
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -338,6 +347,9 @@ export default function ChatPage() {
   const streamRef = useRef<MediaStream | null>(null);
   const recordingStartedAtRef = useRef<number>(0);
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const audioElementsRef = useRef<Map<string, HTMLAudioElement>>(new Map());
+  const voiceRepliesEnabledRef = useRef(false);
+  const playbackRequestRef = useRef(0);
   const isFreshChat =
     activeConversationId !== null && activeConversationId === freshChatId;
   const activeConversation = conversations.find(
@@ -426,6 +438,129 @@ export default function ChatPage() {
     },
     [user],
   );
+
+  useEffect(() => {
+    const enabled = readVoiceRepliesPreference(
+      typeof window !== "undefined" ? window.localStorage : undefined,
+    );
+    voiceRepliesEnabledRef.current = enabled;
+    setVoiceRepliesEnabled(enabled);
+  }, []);
+
+  const stopAllSpokenAudio = useCallback(() => {
+    playbackRequestRef.current += 1;
+    audioElementsRef.current.forEach((audio) => {
+      audio.pause();
+      audio.currentTime = 0;
+    });
+    audioElementsRef.current.clear();
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+    setPlayingAudioId(null);
+    setPreparingAudioId(null);
+  }, []);
+
+  const playMessageAudio = useCallback(async (message: Message) => {
+    if (playingAudioId === message.id) {
+      const current = audioElementsRef.current.get(message.id);
+      current?.pause();
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+      setPlayingAudioId(null);
+      return;
+    }
+
+    stopAllSpokenAudio();
+    const playbackRequest = ++playbackRequestRef.current;
+    setPreparingAudioId(message.id);
+    setVoicePlaybackError(null);
+
+    try {
+      let audioUrl = message.audio?.url;
+      if (!audioUrl) {
+        const response = await authenticatedFetch("/api/language/speak", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: message.text,
+            language: message.language || userLanguage,
+          }),
+        });
+        const result = await response.json().catch(() => null);
+        if (!response.ok || !result?.data?.url) {
+          throw new Error(result?.error || "Spoken reply unavailable");
+        }
+        audioUrl = result.data.url;
+      }
+
+      if (playbackRequest !== playbackRequestRef.current) return;
+
+      const audio = new Audio(audioUrl);
+      audio.preload = "auto";
+      audio.onended = () => setPlayingAudioId(null);
+      audio.onerror = () => {
+        setPlayingAudioId(null);
+        setVoicePlaybackError(
+          "This spoken reply could not be played. The written response is still available.",
+        );
+      };
+      audioElementsRef.current.set(message.id, audio);
+      await audio.play();
+      if (playbackRequest !== playbackRequestRef.current) {
+        audio.pause();
+        return;
+      }
+      setPlayingAudioId(message.id);
+    } catch (playbackError) {
+      if (playbackRequest !== playbackRequestRef.current) return;
+      const canUseDeviceVoice =
+        (message.language || userLanguage) === "eng" &&
+        typeof window !== "undefined" &&
+        "speechSynthesis" in window;
+      if (canUseDeviceVoice) {
+        const utterance = new SpeechSynthesisUtterance(message.text);
+        utterance.lang = speechLocale(message.language || userLanguage);
+        utterance.rate = 0.95;
+        utterance.onend = () => setPlayingAudioId(null);
+        utterance.onerror = () => setPlayingAudioId(null);
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(utterance);
+        setPlayingAudioId(message.id);
+      } else {
+        setVoicePlaybackError(
+          playbackError instanceof Error
+            ? playbackError.message
+            : "Spoken reply unavailable. The written response is still available.",
+        );
+      }
+    } finally {
+      if (playbackRequest === playbackRequestRef.current) {
+        setPreparingAudioId(null);
+      }
+    }
+  }, [playingAudioId, stopAllSpokenAudio, userLanguage]);
+
+  const toggleVoiceReplies = useCallback(() => {
+    const enabled = !voiceRepliesEnabledRef.current;
+    voiceRepliesEnabledRef.current = enabled;
+    setVoiceRepliesEnabled(enabled);
+    try {
+      window.localStorage.setItem(
+        VOICE_REPLIES_STORAGE_KEY,
+        enabled ? "true" : "false",
+      );
+    } catch {}
+    if (!enabled) {
+      stopAllSpokenAudio();
+      return;
+    }
+    const latestReply = [...messages]
+      .reverse()
+      .find((message) => message.sender === "sister");
+    if (latestReply) void playMessageAudio(latestReply);
+  }, [messages, playMessageAudio, stopAllSpokenAudio]);
 
   const startVoiceRecording = useCallback(async () => {
     try {
@@ -571,6 +706,21 @@ export default function ChatPage() {
     },
     [],
   );
+
+  useEffect(() => {
+    const audioElements = audioElementsRef.current;
+    return () => {
+      audioElements.forEach((audio) => audio.pause());
+      audioElements.clear();
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    stopAllSpokenAudio();
+  }, [activeConversationId, stopAllSpokenAudio]);
 
   useEffect(() => {
     conversationsRef.current = conversations;
@@ -791,6 +941,7 @@ export default function ChatPage() {
           sender: (msg.sender === "user" ? "user" : "sister") as Message["sender"],
           text: msg.content,
           timestamp: msg.timestamp,
+          language: normalizeSupportedLanguageCode(msg.metadata?.language),
         }));
 
       if (cleaned.length > 0) {
@@ -810,6 +961,9 @@ export default function ChatPage() {
             sender: (msg.sender === "user" ? "user" : "sister") as Message["sender"],
             text: String(msg.content),
             timestamp: new Date(String(msg.timestamp)),
+            language: normalizeSupportedLanguageCode(
+              (msg.metadata as Record<string, unknown> | undefined)?.language as string | undefined,
+            ),
           }));
         if (supabaseCleaned.length > 0) {
           setMessages(supabaseCleaned);
@@ -821,6 +975,7 @@ export default function ChatPage() {
               content: msg.text,
               timestamp: msg.timestamp,
               read: true,
+              metadata: { language: msg.language || "eng" },
             });
           });
         }
@@ -840,6 +995,7 @@ export default function ChatPage() {
                 sender: (msg.sender === "user" ? "user" : "sister") as Message["sender"],
                 text: msg.content,
                 timestamp: msg.timestamp,
+                language: normalizeSupportedLanguageCode(msg.metadata?.language),
               })),
           );
         }
@@ -1031,6 +1187,7 @@ export default function ChatPage() {
   const sendMessage = useCallback(
     async (text: string) => {
       if (!text.trim() || !user) return;
+      stopAllSpokenAudio();
 
       let currentConversationId = activeConversationId;
       if (!currentConversationId) {
@@ -1220,12 +1377,21 @@ export default function ChatPage() {
             timestamp: new Date(),
             language: data.language || "eng",
             audio: data.audio
-              ? { url: data.audio.url, durationSeconds: data.audio.durationSeconds }
+              ? {
+                  url: data.audio.url,
+                  durationSeconds: data.audio.durationSeconds,
+                  language: normalizeSupportedLanguageCode(
+                    data.audio.language || data.language,
+                  ),
+                }
               : undefined,
             animate: true,
           };
 
           setMessages((prev) => [...prev, sisterMessage]);
+          if (voiceRepliesEnabledRef.current) {
+            void playMessageAudio(sisterMessage);
+          }
 
           // Save AI response locally
           saveLocalMessage(currentConversationId, {
@@ -1235,6 +1401,7 @@ export default function ChatPage() {
             content: data.response,
             timestamp: sisterMessage.timestamp,
             read: true,
+            metadata: { language: sisterMessage.language || "eng" },
           });
 
           touchLocalConversation(currentConversationId, data.response);
@@ -1244,7 +1411,14 @@ export default function ChatPage() {
           try {
             await conversationRequest(
               `/api/conversations/${encodeURIComponent(currentConversationId)}`,
-              { method: "POST", body: JSON.stringify({ sender: "ai", content: data.response }) },
+              {
+                method: "POST",
+                body: JSON.stringify({
+                  sender: "ai",
+                  content: data.response,
+                  language: sisterMessage.language || "eng",
+                }),
+              },
             );
           } catch {}
 
@@ -1280,7 +1454,7 @@ export default function ChatPage() {
         setIsTyping(false);
       }
     },
-    [user, activeConversationId, messages, createFreshConversation, generateTitleFromMessage, userProfile, userLanguage, router, signOut],
+    [user, activeConversationId, messages, createFreshConversation, generateTitleFromMessage, userProfile, userLanguage, router, signOut, playMessageAudio, stopAllSpokenAudio],
   );
 
   const isOverLimit = inputValue.length > MAX_MESSAGE_LENGTH;
@@ -1865,19 +2039,42 @@ export default function ChatPage() {
                 </div>
               )}
             </div>
-            <button
-              onClick={handleNewChat}
-              className="flex h-6 items-center gap-1 rounded-lg px-1.5 text-[10px] font-medium text-text-secondary transition-colors hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06]"
-            >
-              <span className="material-symbols-outlined text-xs">add</span>
-              New
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={toggleVoiceReplies}
+                aria-pressed={voiceRepliesEnabled}
+                aria-label={voiceRepliesEnabled ? "Turn automatic spoken replies off" : "Turn automatic spoken replies on"}
+                title={voiceRepliesEnabled ? "Voice replies on" : "Voice replies off"}
+                className={`flex h-8 items-center gap-1.5 rounded-lg px-2 text-[10px] font-semibold transition-colors ${
+                  voiceRepliesEnabled
+                    ? "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary-light"
+                    : "text-text-secondary hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06]"
+                }`}
+              >
+                <span className="material-symbols-outlined text-sm" aria-hidden="true">
+                  {voiceRepliesEnabled ? "volume_up" : "volume_off"}
+                </span>
+                <span className="hidden sm:inline">Voice {voiceRepliesEnabled ? "on" : "off"}</span>
+              </button>
+              <button
+                onClick={handleNewChat}
+                className="flex h-8 items-center gap-1 rounded-lg px-1.5 text-[10px] font-medium text-text-secondary transition-colors hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06]"
+              >
+                <span className="material-symbols-outlined text-xs">add</span>
+                New
+              </button>
+            </div>
           </div>
 
           <div className="relative min-h-0 flex-1 overflow-hidden">
             <div
               ref={messagesContainerRef}
               onScroll={handleMessagesScroll}
+              role="log"
+              aria-live="polite"
+              aria-relevant="additions text"
+              aria-label="Conversation with Sister"
               className="h-full overflow-y-auto overscroll-contain"
             >
               <div className="mx-auto max-w-3xl px-4 pb-6 pt-5 sm:px-6 sm:pt-8">
@@ -1890,6 +2087,16 @@ export default function ChatPage() {
                       className="rounded-lg p-0.5 text-red-500 transition-colors hover:bg-red-100 dark:text-red-300 dark:hover:bg-red-900/40"
                     >
                       <span className="material-symbols-outlined text-base">close</span>
+                    </button>
+                  </div>
+                )}
+
+                {voicePlaybackError && (
+                  <div className="mb-4 flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-200" role="status">
+                    <span className="material-symbols-outlined text-base" aria-hidden="true">volume_off</span>
+                    <span className="flex-1">{voicePlaybackError}</span>
+                    <button type="button" onClick={() => setVoicePlaybackError(null)} aria-label="Dismiss voice playback message">
+                      <span className="material-symbols-outlined text-base" aria-hidden="true">close</span>
                     </button>
                   </div>
                 )}
@@ -2069,31 +2276,37 @@ export default function ChatPage() {
                                 </p>
                               </div>
 
-                              {message.audio && (
-                                <div className="mt-2 flex items-center gap-2">
-                                  <button
-                                    onClick={() => {
-                                      const audio = audioElements[message.id];
-                                      if (audio) {
-                                        if (playingAudioId === message.id) {
-                                          audio.pause();
-                                          setPlayingAudioId(null);
-                                        } else {
-                                          Object.values(audioElements).forEach((a) => a.pause());
-                                          audio.play();
-                                          setPlayingAudioId(message.id);
-                                        }
-                                      }
-                                    }}
-                                    className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/20 dark:bg-primary/20 dark:text-primary-light"
-                                  >
-                                    <span className="material-symbols-outlined text-sm">
-                                      {playingAudioId === message.id ? "pause_circle" : "play_circle"}
+                              <div className="mt-2 flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => void playMessageAudio(message)}
+                                  disabled={preparingAudioId === message.id}
+                                  aria-label={
+                                    playingAudioId === message.id
+                                      ? "Pause Sister's spoken response"
+                                      : "Listen to Sister's response"
+                                  }
+                                  className="flex min-h-9 items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/20 disabled:cursor-wait disabled:opacity-60 dark:bg-primary/20 dark:text-primary-light"
+                                >
+                                  <span className="material-symbols-outlined text-sm" aria-hidden="true">
+                                    {preparingAudioId === message.id
+                                      ? "progress_activity"
+                                      : playingAudioId === message.id
+                                        ? "pause_circle"
+                                        : "volume_up"}
+                                  </span>
+                                  {preparingAudioId === message.id
+                                    ? "Preparing voice"
+                                    : playingAudioId === message.id
+                                      ? "Pause"
+                                      : "Listen"}
+                                  {message.audio && message.audio.durationSeconds > 0 && (
+                                    <span className="opacity-60" aria-hidden="true">
+                                      {message.audio.durationSeconds.toFixed(0)}s
                                     </span>
-                                    {message.audio.durationSeconds.toFixed(0)}s
-                                  </button>
-                                </div>
-                              )}
+                                  )}
+                                </button>
+                              </div>
 
                               {message.language && message.language !== "eng" && (
                                 <div className="mt-1.5 flex items-center gap-1.5">

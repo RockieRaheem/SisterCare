@@ -179,6 +179,10 @@ export function loadLocalMessages(conversationId: string): ChatMessage[] {
       content: String(m.content || ""),
       timestamp: new Date(String(m.timestamp)),
       read: Boolean(m.read),
+      metadata:
+        m.metadata && typeof m.metadata === "object"
+          ? (m.metadata as ChatMessage["metadata"])
+          : undefined,
     };
   });
 }

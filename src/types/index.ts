@@ -109,6 +109,7 @@ export interface ChatMessage {
   metadata?: {
     sentiment?: string;
     topics?: string[];
+    language?: string;
   };
 }
 
