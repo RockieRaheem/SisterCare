@@ -32,6 +32,7 @@ import { AgentActionStatus, ChatConversation, UserProfile, ChatMessage } from "@
 import {
   SUPPORTED_LANGUAGES,
   SupportedLanguageCode,
+  getSunbirdVoices,
   normalizeSupportedLanguageCode,
 } from "@/lib/sunbird";
 import { authenticatedFetch } from "@/lib/authenticatedFetch";
@@ -45,8 +46,12 @@ import {
 } from "@/lib/speechCapture";
 import {
   readVoiceRepliesPreference,
+  readVoiceSelections,
+  selectedVoiceForLanguage,
   speechLocale,
   VOICE_REPLIES_STORAGE_KEY,
+  VOICE_SELECTIONS_STORAGE_KEY,
+  VoiceSelections,
 } from "@/lib/voicePlayback";
 
 interface Message {
@@ -328,6 +333,7 @@ export default function ChatPage() {
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const [preparingAudioId, setPreparingAudioId] = useState<string | null>(null);
   const [voiceRepliesEnabled, setVoiceRepliesEnabled] = useState(false);
+  const [voiceSelections, setVoiceSelections] = useState<VoiceSelections>({});
   const [voicePlaybackError, setVoicePlaybackError] = useState<string | null>(null);
   const [freshChatId, setFreshChatId] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -445,6 +451,11 @@ export default function ChatPage() {
     );
     voiceRepliesEnabledRef.current = enabled;
     setVoiceRepliesEnabled(enabled);
+    setVoiceSelections(
+      readVoiceSelections(
+        typeof window !== "undefined" ? window.localStorage : undefined,
+      ),
+    );
   }, []);
 
   const stopAllSpokenAudio = useCallback(() => {
@@ -478,22 +489,25 @@ export default function ChatPage() {
     setVoicePlaybackError(null);
 
     try {
-      let audioUrl = message.audio?.url;
-      if (!audioUrl) {
-        const response = await authenticatedFetch("/api/language/speak", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            text: message.text,
-            language: message.language || userLanguage,
-          }),
-        });
-        const result = await response.json().catch(() => null);
-        if (!response.ok || !result?.data?.url) {
-          throw new Error(result?.error || "Spoken reply unavailable");
-        }
-        audioUrl = result.data.url;
+      const language = normalizeSupportedLanguageCode(
+        message.language || userLanguage,
+      );
+      const voice = selectedVoiceForLanguage(language, voiceSelections);
+      if (!voice) {
+        throw new Error(
+          `${SUPPORTED_LANGUAGES[language].name} does not currently have an available Sunbird voice.`,
+        );
       }
+      const response = await authenticatedFetch("/api/language/speak", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: message.text, language, voice }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.data?.url) {
+        throw new Error(result?.error || "Spoken reply unavailable");
+      }
+      const audioUrl = result.data.url;
 
       if (playbackRequest !== playbackRequestRef.current) return;
 
@@ -540,7 +554,7 @@ export default function ChatPage() {
         setPreparingAudioId(null);
       }
     }
-  }, [playingAudioId, stopAllSpokenAudio, userLanguage]);
+  }, [playingAudioId, stopAllSpokenAudio, userLanguage, voiceSelections]);
 
   const toggleVoiceReplies = useCallback(() => {
     const enabled = !voiceRepliesEnabledRef.current;
@@ -561,6 +575,21 @@ export default function ChatPage() {
       .find((message) => message.sender === "sister");
     if (latestReply) void playMessageAudio(latestReply);
   }, [messages, playMessageAudio, stopAllSpokenAudio]);
+
+  const changeSpokenVoice = useCallback((voice: string) => {
+    const available = getSunbirdVoices(userLanguage);
+    if (!available.some((option) => option.id === voice)) return;
+    const next = { ...voiceSelections, [userLanguage]: voice };
+    setVoiceSelections(next);
+    stopAllSpokenAudio();
+    setVoicePlaybackError(null);
+    try {
+      window.localStorage.setItem(
+        VOICE_SELECTIONS_STORAGE_KEY,
+        JSON.stringify(next),
+      );
+    } catch {}
+  }, [stopAllSpokenAudio, userLanguage, voiceSelections]);
 
   const startVoiceRecording = useCallback(async () => {
     try {
@@ -2057,6 +2086,29 @@ export default function ChatPage() {
                 </span>
                 <span className="hidden sm:inline">Voice {voiceRepliesEnabled ? "on" : "off"}</span>
               </button>
+              <label className="sr-only" htmlFor="sister-voice-select">
+                Choose Sister&apos;s speaking voice
+              </label>
+              <select
+                id="sister-voice-select"
+                value={selectedVoiceForLanguage(userLanguage, voiceSelections) || ""}
+                onChange={(event) => changeSpokenVoice(event.target.value)}
+                disabled={getSunbirdVoices(userLanguage).length === 0}
+                title={
+                  getSunbirdVoices(userLanguage).length
+                    ? `Speaking voice for ${SUPPORTED_LANGUAGES[userLanguage].name}`
+                    : `No ${SUPPORTED_LANGUAGES[userLanguage].name} voice is currently available`
+                }
+                className="h-8 max-w-[7.5rem] rounded-lg border border-black/[0.06] bg-white px-1.5 text-[10px] font-medium text-text-secondary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-300 sm:max-w-[10rem]"
+              >
+                {getSunbirdVoices(userLanguage).length === 0 ? (
+                  <option value="">Voice unavailable</option>
+                ) : (
+                  getSunbirdVoices(userLanguage).map((voice) => (
+                    <option key={voice.id} value={voice.id}>{voice.label}</option>
+                  ))
+                )}
+              </select>
               <button
                 onClick={handleNewChat}
                 className="flex h-8 items-center gap-1 rounded-lg px-1.5 text-[10px] font-medium text-text-secondary transition-colors hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06]"

@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   readVoiceRepliesPreference,
+  readVoiceSelections,
+  selectedVoiceForLanguage,
   speechLocale,
   VOICE_REPLIES_STORAGE_KEY,
+  VOICE_SELECTIONS_STORAGE_KEY,
 } from "../voicePlayback";
 
 describe("voice reply accessibility preferences", () => {
@@ -17,5 +20,16 @@ describe("voice reply accessibility preferences", () => {
     expect(readVoiceRepliesPreference({
       getItem: (key) => key === VOICE_REPLIES_STORAGE_KEY ? "true" : null,
     })).toBe(true);
+  });
+
+  it("keeps an explicit voice stable for each language", () => {
+    const selections = readVoiceSelections({
+      getItem: (key) => key === VOICE_SELECTIONS_STORAGE_KEY
+        ? JSON.stringify({ lug: "waxal_lug_0006", eng: "not-a-real-voice" })
+        : null,
+    });
+    expect(selectedVoiceForLanguage("lug", selections)).toBe("waxal_lug_0006");
+    expect(selectedVoiceForLanguage("eng", selections)).toBe("salt_eng_0001");
+    expect(selectedVoiceForLanguage("lgg", selections)).toBeUndefined();
   });
 });
