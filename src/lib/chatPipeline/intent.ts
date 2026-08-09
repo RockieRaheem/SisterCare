@@ -39,7 +39,11 @@ export function inferClientAction(message: string): ClientAction | null {
     };
   }
 
-  if (!/\b(open|go to|take me|navigate|redirect|show me)\b/.test(normalized)) {
+  if (
+    !/\b(open|go to|take me|navigate|redirect|show(?: me)?)\b/.test(
+      normalized,
+    )
+  ) {
     return null;
   }
 
@@ -55,6 +59,23 @@ export function inferClientAction(message: string): ClientAction | null {
     if (pattern.test(normalized)) return { type: "navigate", href };
   }
   return null;
+}
+
+/**
+ * Local-language commands are translated before deterministic product actions
+ * are selected. Check the meaning first, while retaining the original turn as
+ * a safe fallback for English and legacy clients.
+ */
+export function inferClientActionFromMeaning(input: {
+  originalMessage: string;
+  englishMeaning?: string;
+}): ClientAction | null {
+  const translated = input.englishMeaning?.trim();
+  if (translated) {
+    const translatedAction = inferClientAction(translated);
+    if (translatedAction) return translatedAction;
+  }
+  return inferClientAction(input.originalMessage);
 }
 
 export function isConfirmedPregnancyIntent(message: string): boolean {

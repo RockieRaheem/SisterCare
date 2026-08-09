@@ -5,6 +5,7 @@ import {
   getPregnancyLmpFromMessages,
   hasPregnancyConfirmation,
   inferClientAction,
+  inferClientActionFromMeaning,
   isPregnancyActivationRequest,
   isPregnancyRecordQuestion,
 } from "../chatPipeline/intent";
@@ -31,6 +32,31 @@ describe("deterministic chat actions", () => {
       type: "navigate",
       href: "/sessions",
     });
+  });
+
+  it.each([
+    ["Luganda", "Ggulawo library", "Open the library", "/library"],
+    ["Acholi", "Local navigation command", "Open my dashboard", "/dashboard"],
+    ["Lugbara", "Local navigation command", "Show my profile", "/profile"],
+    ["Runyankole", "Local navigation command", "Go to counsellors", "/counsellors"],
+    ["Ateso", "Local navigation command", "Open my sessions", "/sessions"],
+    ["Swahili", "Fungua mipangilio", "Open settings", "/settings"],
+  ])(
+    "navigates from the translated meaning of a %s command",
+    (_language, originalMessage, englishMeaning, href) => {
+      expect(
+        inferClientActionFromMeaning({ originalMessage, englishMeaning }),
+      ).toEqual({ type: "navigate", href });
+    },
+  );
+
+  it("signs out from a translated local-language command", () => {
+    expect(
+      inferClientActionFromMeaning({
+        originalMessage: "Local sign-out command",
+        englishMeaning: "Please sign me out now",
+      }),
+    ).toEqual({ type: "sign_out" });
   });
 });
 

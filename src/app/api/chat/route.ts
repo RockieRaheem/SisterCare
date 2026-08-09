@@ -59,7 +59,7 @@ import {
   getPregnancyDueDateFromMessages,
   getPregnancyLmpFromMessages,
   hasPregnancyConfirmation,
-  inferClientAction,
+  inferClientActionFromMeaning,
   isConfirmedPregnancyIntent,
   isPregnancyActivationRequest,
   isPregnancyRecordQuestion,
@@ -697,7 +697,7 @@ async function postChat(request: NextRequest) {
       });
     }
 
-    const confirmedPregnancy = hasPregnancyConfirmation(
+    let confirmedPregnancy = hasPregnancyConfirmation(
       trimmedMessage,
       effectiveConversationHistory,
     );
@@ -707,15 +707,15 @@ async function postChat(request: NextRequest) {
         .map((entry) => entry.content),
       trimmedMessage,
     ];
-    const pregnancyDueDateFromConversation =
+    let pregnancyDueDateFromConversation =
       getPregnancyDueDateFromMessages(pregnancyMessages);
-    const pregnancyLmpFromConversation = pregnancyDueDateFromConversation
+    let pregnancyLmpFromConversation = pregnancyDueDateFromConversation
       ? new Date(
           pregnancyDueDateFromConversation.getTime() -
             280 * 24 * 60 * 60 * 1000,
         )
       : getPregnancyLmpFromMessages(pregnancyMessages);
-    const shouldActivatePregnancy =
+    let shouldActivatePregnancy =
       confirmedPregnancy &&
       (isConfirmedPregnancyIntent(trimmedMessage) ||
         isPregnancyActivationRequest(trimmedMessage) ||
@@ -764,6 +764,30 @@ async function postChat(request: NextRequest) {
       }
     }
 
+    // Product actions and structured health updates must use the meaning of a
+    // local-language turn, not only its original surface words.
+    if (messageForAgent !== trimmedMessage) {
+      const meaningMessages = [...pregnancyMessages, messageForAgent];
+      confirmedPregnancy =
+        confirmedPregnancy ||
+        hasPregnancyConfirmation(messageForAgent, effectiveConversationHistory);
+      pregnancyDueDateFromConversation =
+        pregnancyDueDateFromConversation ||
+        getPregnancyDueDateFromMessages(meaningMessages);
+      pregnancyLmpFromConversation = pregnancyDueDateFromConversation
+        ? new Date(
+            pregnancyDueDateFromConversation.getTime() -
+              280 * 24 * 60 * 60 * 1000,
+          )
+        : pregnancyLmpFromConversation ||
+          getPregnancyLmpFromMessages(meaningMessages);
+      shouldActivatePregnancy =
+        confirmedPregnancy &&
+        (isConfirmedPregnancyIntent(messageForAgent) ||
+          isPregnancyActivationRequest(messageForAgent) ||
+          pregnancyLmpFromConversation !== null);
+    }
+
     // Safety net: the crisis/triage regexes are English-only, so a message
     // written in Luganda or Swahili would sail past them. Re-assess severity
     // on the translated text and keep whichever result is more severe.
@@ -801,7 +825,10 @@ async function postChat(request: NextRequest) {
       state: "done",
     });
 
-    const requestedClientAction = inferClientAction(trimmedMessage);
+    const requestedClientAction = inferClientActionFromMeaning({
+      originalMessage: trimmedMessage,
+      englishMeaning: messageForAgent,
+    });
     if (requestedClientAction) {
       const isSignOut = requestedClientAction.type === "sign_out";
       const destinationLabel = isSignOut
@@ -845,12 +872,12 @@ async function postChat(request: NextRequest) {
     // fight with the agent's own tool call — those are now left to the agent.
     const impliesStartingNow =
       /\b(i got my period|got my periods|my period is here|period (started|has started|came|began|arrived))\b/i.test(
-        trimmedMessage,
-      ) && !/\b(ago|back|last week|update|backtrack)\b/i.test(trimmedMessage);
+        messageForAgent,
+      ) && !/\b(ago|back|last week|update|backtrack)\b/i.test(messageForAgent);
     const parsedStartDate =
       userId && cycleData && !shouldActivatePregnancy
         ? derivePeriodStartDate(
-            trimmedMessage,
+            messageForAgent,
             effectiveConversationHistory,
           ) || (impliesStartingNow ? new Date() : null)
         : null;
@@ -981,7 +1008,10 @@ async function postChat(request: NextRequest) {
     // These facts are stored on the authenticated profile, not inferred from
     // the language model. Answering them here makes the record reliably
     // available in every future chat and proves exactly what SisterCare has.
-    if (userProfile?.pregnancyData?.isPregnant && isPregnancyRecordQuestion(trimmedMessage)) {
+    if (
+      userProfile?.pregnancyData?.isPregnant &&
+      isPregnancyRecordQuestion(messageForAgent)
+    ) {
       const recordedLmp = userProfile.pregnancyData.lastMenstrualPeriodDate;
       const recordedDueDate = userProfile.pregnancyData.estimatedDueDate;
       const lmpText = recordedLmp
@@ -1009,7 +1039,7 @@ async function postChat(request: NextRequest) {
     }
 
     const handoffPolicy = evaluateHandoffPolicy({
-      message: trimmedMessage,
+      message: messageForAgent,
       severity: triage.severity,
       languageCode: userLanguage,
     });
@@ -1040,7 +1070,8 @@ async function postChat(request: NextRequest) {
           audio = {
             url: tts.audioUrl,
             durationSeconds: tts.durationSeconds,
-            mimeType: "audio/mpeg",
+            mimeType:
+              tts.format === "wav" ? "audio/wav" : `audio/${tts.format}`,
           };
         } catch (ttsError) {
           console.warn(
@@ -1410,7 +1441,7 @@ async function postChat(request: NextRequest) {
         "\n\nI am concerned by what you shared. I can connect you to a professional counsellor right now. Reply: 'Connect me to a counsellor'.";
     }
 
-    const requestPolicy = assessAgentRequestPolicy(trimmedMessage);
+    const requestPolicy = assessAgentRequestPolicy(messageForAgent);
     if (requestPolicy.kind === "blocked_action") {
       const { localizedText, audio } = await localizeResponse(
         requestPolicy.warning,
