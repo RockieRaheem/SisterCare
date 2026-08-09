@@ -310,6 +310,7 @@ export default function ChatPage() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [voiceTranscriptReady, setVoiceTranscriptReady] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [speechSupported, setSpeechSupported] = useState(false);
   const [agentActionStatuses, setAgentActionStatuses] = useState<AgentActionStatus[]>([]);
@@ -499,6 +500,7 @@ export default function ChatPage() {
           const form = new FormData();
           form.append("audio", audioBlob, voiceFileName(format));
           form.append("language", userLanguage);
+          form.append("durationMs", String(durationMs));
           const response = await authenticatedFetch("/api/language/transcribe", {
             method: "POST",
             body: form,
@@ -508,6 +510,7 @@ export default function ChatPage() {
             throw new Error(result?.error || "Voice transcription failed");
           }
           setInputValue(result.data.transcript);
+          setVoiceTranscriptReady(true);
           requestAnimationFrame(() => inputRef.current?.focus());
         } catch (transcriptionError) {
           setError(
@@ -696,12 +699,14 @@ export default function ChatPage() {
     // appear when the user intentionally starts another.
     if (!activeConversationId) {
       setInputValue("");
+      setVoiceTranscriptReady(false);
       if (inputRef.current) inputRef.current.style.height = "auto";
       return;
     }
     const key = `sistercare-chat-draft-${activeConversationId}`;
     const existingDraft = window.localStorage.getItem(key) || "";
     setInputValue(existingDraft);
+    setVoiceTranscriptReady(false);
     if (inputRef.current) {
       inputRef.current.style.height = "auto";
       if (window.innerWidth >= 1024) {
@@ -718,6 +723,7 @@ export default function ChatPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputValue(e.target.value);
+    setVoiceTranscriptReady(false);
     if (inputRef.current) {
       inputRef.current.style.height = "auto";
       inputRef.current.style.height =
@@ -750,6 +756,7 @@ export default function ChatPage() {
       setMessages([]);
       setFreshChatId(null);
       setInputValue("");
+      setVoiceTranscriptReady(false);
       if (typeof window !== "undefined") {
         window.localStorage.removeItem("sistercare-chat-draft-global");
       }
@@ -1075,6 +1082,7 @@ export default function ChatPage() {
         } catch {}
       }
       setInputValue("");
+      setVoiceTranscriptReady(false);
       if (typeof window !== "undefined") {
         window.localStorage.removeItem(`sistercare-chat-draft-${currentConversationId}`);
       }
@@ -2230,6 +2238,13 @@ export default function ChatPage() {
                   </button>
                 </div>
               </form>
+
+              {voiceTranscriptReady && (
+                <div className="mt-2 flex items-center gap-2 rounded-xl bg-primary/5 px-3 py-2 text-xs text-text-secondary dark:bg-primary/10 dark:text-gray-300" role="status">
+                  <span className="material-symbols-outlined text-base text-primary" aria-hidden="true">fact_check</span>
+                  <span>Review what Sister heard, edit anything needed, then send.</span>
+                </div>
+              )}
 
               <div className="mt-2 flex items-center justify-between gap-2 px-1">
                 <p className="text-[9px] text-text-secondary/50 dark:text-gray-500 sm:text-[10px]">
