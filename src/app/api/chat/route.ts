@@ -421,6 +421,48 @@ async function translateWithGemini(
   return completeTranslation;
 }
 
+async function translateWithGroq(
+  apiKey: string,
+  text: string,
+  targetLanguage: string,
+): Promise<string> {
+  const response = await fetch(
+    `${process.env.GROQ_BASE_URL || "https://api.groq.com/openai/v1"}/chat/completions`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: process.env.GROQ_MODEL || "openai/gpt-oss-120b",
+        messages: [
+          {
+            role: "user",
+            content: buildTranslationPrompt(text, targetLanguage),
+          },
+        ],
+        temperature: 0.1,
+        max_completion_tokens: 1536,
+      }),
+    },
+  );
+  if (!response.ok) {
+    throw new Error(`Groq translation failed: ${response.status}`);
+  }
+  const data = await response.json();
+  const translated = data?.choices?.[0]?.message?.content;
+  if (!translated || typeof translated !== "string") {
+    throw new Error("Groq translation returned empty output");
+  }
+  const completeTranslation = translated.trim();
+  assertCompleteResponse(
+    completeTranslation,
+    data?.choices?.[0]?.finish_reason,
+  );
+  return completeTranslation;
+}
+
 function isProbablyEnglishText(text: string): boolean {
   const normalized = text.trim().toLowerCase();
   if (!normalized) return false;
@@ -505,6 +547,17 @@ async function localizeResponseText(
         console.warn("Gemini response localization fallback failed:", geminiError);
       }
     }
+    if (!localizedText && process.env.GROQ_API_KEY) {
+      try {
+        localizedText = await translateWithGroq(
+          process.env.GROQ_API_KEY,
+          englishText,
+          SUPPORTED_LANGUAGES[language]?.name || language,
+        );
+      } catch (groqError) {
+        console.warn("Groq response localization fallback failed:", groqError);
+      }
+    }
   }
 
   if (
@@ -513,7 +566,9 @@ async function localizeResponseText(
     (isProbablyEnglishText(localizedText) &&
       localizedText.trim() === englishText.trim())
   ) {
-    return fallbackLocalizedResponse(englishText, language);
+    // Preserve every safety instruction when translation providers are down.
+    // A complete English answer is safer than a short invented local reply.
+    return englishText;
   }
   return localizedText;
 }
@@ -1057,6 +1112,7 @@ async function postChat(request: NextRequest) {
         userLanguage,
         apiKey,
       );
+      const wasLocalized = localizedText.trim() !== text.trim();
 
       let audio:
         | { url: string; durationSeconds: number; mimeType: string }
@@ -1064,7 +1120,7 @@ async function postChat(request: NextRequest) {
       // Voice output exists for users more comfortable hearing their own
       // language — for English it adds seconds of latency and burns Sunbird
       // quota on every message for little value, so skip it.
-      if (userLanguage !== "eng") {
+      if (userLanguage !== "eng" && wasLocalized) {
         try {
           const tts = await textToSpeechCached(localizedText, userLanguage, 0.7);
           audio = {
