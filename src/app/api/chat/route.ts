@@ -20,11 +20,14 @@ import { getCycleInfo, calculateNextPeriod } from "@/lib/cycle";
 import {
   translateText,
   detectLanguage,
-  textToSpeechCached,
   SUPPORTED_LANGUAGES,
   SupportedLanguageCode,
   normalizeSupportedLanguageCode,
 } from "@/lib/sunbird";
+import {
+  resolveSpokenLanguage,
+  synthesizeSpokenResponse,
+} from "@/lib/spokenResponse";
 import {
   assessConversationSafety,
   assessTriageSeverity,
@@ -573,6 +576,32 @@ async function localizeResponseText(
   return localizedText;
 }
 
+async function prepareSpokenAgentResponse(
+  englishText: string,
+  language: SupportedLanguageCode,
+  geminiApiKey: string,
+) {
+  const localizedText = await localizeResponseText(
+    englishText,
+    language,
+    geminiApiKey,
+  );
+  let audio;
+  try {
+    audio = await synthesizeSpokenResponse(
+      localizedText,
+      resolveSpokenLanguage({
+        requestedLanguage: language,
+        englishText,
+        localizedText,
+      }),
+    );
+  } catch (error) {
+    console.warn("TTS generation failed, continuing with text:", error);
+  }
+  return { localizedText, audio };
+}
+
 /**
  * POST /api/chat
  *
@@ -727,13 +756,14 @@ async function postChat(request: NextRequest) {
     messageForAgent = addLanguageIntentHint(messageForAgent, userLanguage);
 
     if (isLanguageSwitchIntent(trimmedMessage) && inMessageLanguage) {
-      const confirmation = await localizeResponseText(
+      const { localizedText: confirmation, audio } = await prepareSpokenAgentResponse(
         "Okay, I will use your requested language. What would you like help with?",
         userLanguage,
         apiKey,
       );
       return NextResponse.json({
         response: confirmation,
+        audio,
         language: userLanguage,
         languageName: SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
         translationApplied: userLanguage !== "eng",
@@ -891,13 +921,14 @@ async function postChat(request: NextRequest) {
         : requestedClientAction.articleId === 6
           ? "Opening Foods That Help During Your Period in the library"
           : `Opening ${requestedClientAction.href.slice(1).replace(/-/g, " ")}`;
-      const actionResponse = await localizeResponseText(
+      const { localizedText: actionResponse, audio } = await prepareSpokenAgentResponse(
         isSignOut ? "Signing you out securely now." : `${destinationLabel}.`,
         userLanguage,
         apiKey,
       );
       return NextResponse.json({
         response: actionResponse,
+        audio,
         language: userLanguage,
         languageName: SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
         source: "agent_action",
@@ -1026,13 +1057,14 @@ async function postChat(request: NextRequest) {
             "en-US",
             { month: "long", day: "numeric", year: "numeric" },
           );
-          const pregnancyResponse = await localizeResponseText(
+          const { localizedText: pregnancyResponse, audio } = await prepareSpokenAgentResponse(
             `I've switched your profile to pregnancy support using the last period date already recorded in SisterCare: ${formattedLmp}. Your estimated due date is ${formattedDueDate}; this is about ${pregnancy.weeksPregnant} weeks pregnant and in the ${pregnancy.trimester} trimester. Please arrange antenatal care, and tell me if that recorded date is not the first day of the period before this pregnancy.`,
             userLanguage,
             apiKey,
           );
           return NextResponse.json({
             response: pregnancyResponse,
+            audio,
             language: userLanguage,
             languageName: SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
             source: "agent_action",
@@ -1075,13 +1107,14 @@ async function postChat(request: NextRequest) {
       const dueText = recordedDueDate
         ? new Date(recordedDueDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
         : "not recorded yet";
-      const pregnancyRecordResponse = await localizeResponseText(
+      const { localizedText: pregnancyRecordResponse, audio } = await prepareSpokenAgentResponse(
         `Your pregnancy record in SisterCare has your last menstrual period as ${lmpText} and your estimated due date as ${dueText}. You are currently recorded as ${userProfile.pregnancyData.weeksPregnant ?? "an unconfirmed number of"} weeks pregnant in the ${userProfile.pregnancyData.trimester || "unconfirmed"} trimester.`,
         userLanguage,
         apiKey,
       );
       return NextResponse.json({
         response: pregnancyRecordResponse,
+        audio,
         language: userLanguage,
         languageName: SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
         source: "system_record",
@@ -1107,37 +1140,7 @@ async function postChat(request: NextRequest) {
     } = handoffPolicy;
 
     const localizeResponse = async (text: string) => {
-      const localizedText = await localizeResponseText(
-        text,
-        userLanguage,
-        apiKey,
-      );
-      const wasLocalized = localizedText.trim() !== text.trim();
-
-      let audio:
-        | { url: string; durationSeconds: number; mimeType: string }
-        | undefined;
-      // Voice output exists for users more comfortable hearing their own
-      // language — for English it adds seconds of latency and burns Sunbird
-      // quota on every message for little value, so skip it.
-      if (userLanguage !== "eng" && wasLocalized) {
-        try {
-          const tts = await textToSpeechCached(localizedText, userLanguage, 0.7);
-          audio = {
-            url: tts.audioUrl,
-            durationSeconds: tts.durationSeconds,
-            mimeType:
-              tts.format === "wav" ? "audio/wav" : `audio/${tts.format}`,
-          };
-        } catch (ttsError) {
-          console.warn(
-            "TTS generation failed, continuing without audio:",
-            ttsError,
-          );
-        }
-      }
-
-      return { localizedText, audio };
+      return prepareSpokenAgentResponse(text, userLanguage, apiKey);
     };
 
     const agentMessage =
