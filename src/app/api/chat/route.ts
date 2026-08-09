@@ -23,6 +23,7 @@ import {
   textToSpeechCached,
   SUPPORTED_LANGUAGES,
   SupportedLanguageCode,
+  normalizeSupportedLanguageCode,
 } from "@/lib/sunbird";
 import {
   assessConversationSafety,
@@ -96,23 +97,7 @@ function normalizeLanguageName(language?: string): string | undefined {
 }
 
 function toSupportedLanguageCode(language?: string): SupportedLanguageCode {
-  if (!language) return "eng";
-
-  const lower = language.trim().toLowerCase();
-  if (!lower) return "eng";
-  if (lower in SUPPORTED_LANGUAGES) {
-    return lower as SupportedLanguageCode;
-  }
-  if (lower === "english" || lower === "en") return "eng";
-  if (lower === "luganda" || lower === "lg") return "lug";
-  if (lower === "runyankole" || lower === "nyankole" || lower === "nyn")
-    return "nyn";
-  if (lower === "ateso" || lower === "teo") return "teo";
-  if (lower === "acholi" || lower === "ach") return "ach";
-  if (lower === "lugbara" || lower === "lgg") return "lgg";
-  if (lower === "swahili" || lower === "sw") return "sw";
-  if (lower === "luo") return "luo";
-  return "eng";
+  return normalizeSupportedLanguageCode(language);
 }
 
 function inferRequestedLanguage(message: string): string | undefined {
@@ -121,10 +106,10 @@ function inferRequestedLanguage(message: string): string | undefined {
     [/ateso/, "Ateso"],
     [/runyankole|nyankole|ankole/, "Runyankole"],
     [/luganda|ganda/, "Luganda"],
+    [/acholi|leb acoli/, "Acholi"],
+    [/lugbara|lugbarati/, "Lugbara"],
     [/english/, "English"],
-    [/swahili/, "Swahili"],
-    [/lusoga/, "Lusoga"],
-    [/luo/, "Luo"],
+    [/swahili|kiswahili/, "Swahili"],
   ];
 
   for (const [pattern, language] of languageMap) {
@@ -303,10 +288,9 @@ function getLanguageSwitchConfirmation(
     lug: "Kale, tugenda kwogera mu Luganda. Ndi wano okukuyamba ku by'obulamu bwo. Onyagala twogere ku ki?",
     nyn: "Ni sawa, twaza kugamba omu Runyankole. Ndi hanu kukuhwera. Niki eki orikwenda tugambeho?",
     teo: "Erai, itetemuni ka Ateso. Arai ikesi na itungauni. Ijo nu daunitete itunganakini?",
-    luo: "Ber ahinya, wabiro wuoyo e dholuo. An kanyiso ka akweyi. Idwaro wawinjore kuom ang'o?",
     ach: "Ber, wabedo kawacho i leb Acholi. An tye ka konyi. Imito wa lok ikom ngo?",
     lgg: "Yoo, mi adri ti Lugbara. Ma adi rika ma ni. Mi oji ni ri nyi?",
-    sw: "Sawa, tutaongea kwa Kiswahili. Niko hapa kukusaidia. Ungependa tuzungumzie nini?",
+    swa: "Sawa, tutaongea kwa Kiswahili. Niko hapa kukusaidia. Ungependa tuzungumzie nini?",
   };
 
   return responses[language] || null;
@@ -457,30 +441,27 @@ function fallbackLocalizedResponse(
     lug: "Ndi wano okukuyamba. Nsaba obuuze ekibuuzo kyo nate mu ngeri ennyangu. 💗",
     nyn: "Ndi hanu kukuhwera. Nkusaba obuuze eki orikwenda obuyambiho. 💗",
     teo: "Arai ikesi na itungauni. Kojo akiswomuni itai. 💗",
-    luo: "An kanyiso ka akweyi. Kiyie penjo mariwore kendo. 💗",
     ach: "An tye ka konyi. Tim ber i penya an kede lok mamek. 💗",
     lgg: "Ma adi rika ma ni. Mi oji ri nyi bori kuza. 💗",
-    sw: "Niko hapa kukusaidia. Tafadhali uliza swali lako tena kwa urahisi. 💗",
+    swa: "Niko hapa kukusaidia. Tafadhali uliza swali lako tena kwa urahisi. 💗",
   };
 
   const cycleSetup: Partial<Record<SupportedLanguageCode, string>> = {
     lug: "Nnyinza okukuyamba ku cycle yo. Sooka otegeke cycle data yo mu Settings, oba mpiteko olunaku period yo lwe yasooka okutandika. 🌸",
     nyn: "Ninyenda kukuhwera aha cycle yawe. Banza oteekateekye cycle data omu Settings, nari ombuurire olunaku orwatandikireho periods. 🌸",
     teo: "Arai etunganan ka cycle noi. Kobuni akitogogong Settings ka cycle data, arai ijo neni amori na itojokinit periods. 🌸",
-    luo: "Anyalo konyi kuom cycle mari. Chak keto data mar cycle e Settings kata nyisa chieng' mane period maru ochakore. 🌸",
     ach: "An twero konyi ikom cycle mamegi. Bed i keto cycle data i Settings onyo waci an nino ma period mamegi ocako. 🌸",
     lgg: "Ma adi rika ma cycle mi. Soko mi dria cycle data ri Settings, ma mi pa ma ndrini ma period mi oco. 🌸",
-    sw: "Ninaweza kukusaidia kuhusu mzunguko wako. Tafadhali weka data ya mzunguko kwenye Settings au niambie tarehe ambayo hedhi yako ilianza. 🌸",
+    swa: "Ninaweza kukusaidia kuhusu mzunguko wako. Tafadhali weka data ya mzunguko kwenye Settings au niambie tarehe ambayo hedhi yako ilianza. 🌸",
   };
 
   const greeting: Partial<Record<SupportedLanguageCode, string>> = {
     lug: "Ndi Sister wo era ndi wano bulijjo okukuyamba. 💗 Oyagala twogere ku ki?",
     nyn: "Ndi Sister wawe kandi ndi hanu kukuhwera obwire bwona. 💗 Niki eki orikwenda tugambeho?",
     teo: "Arai Sister koni, ikesi na itungauni ijo. 💗 Ijo nu daunitete itunganakini?",
-    luo: "An Sister mari kendo an kanyiso ka akweyi. 💗 Idwaro wawinjore kuom ang'o?",
     ach: "An aye Sister mamegi, tye ka konyi kare weng. 💗 Imito wa lok ikom ngo?",
     lgg: "Ma Sister mi, ma adi rika ma ni nyonyo. 💗 Mi oji ni ri nyi?",
-    sw: "Mimi ni Sister wako, niko hapa kukusaidia kila wakati. 💗 Ungependa tuzungumzie nini?",
+    swa: "Mimi ni Sister wako, niko hapa kukusaidia kila wakati. 💗 Ungependa tuzungumzie nini?",
   };
 
   if (

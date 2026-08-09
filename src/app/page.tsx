@@ -11,7 +11,6 @@ const LANGUAGES = [
   "Acholi",
   "Ateso",
   "Lugbara",
-  "Luo",
   "English",
 ];
 

@@ -60,57 +60,97 @@ async function errorDetail(response: Response): Promise<string> {
 
 // Language code mapping
 export const SUPPORTED_LANGUAGES = {
+  eng: {
+    code: "eng",
+    name: "English",
+    nativeName: "English",
+    region: "Uganda and international",
+    ttsVoice: "salt_eng_0001",
+  },
   lug: {
     code: "lug",
     name: "Luganda",
+    nativeName: "Oluganda",
     region: "Central Uganda",
-    ttsSpeakerId: 248,
-  },
-  nyn: {
-    code: "nyn",
-    name: "Runyankole",
-    region: "Southwest Uganda",
-    ttsSpeakerId: 243,
-  },
-  teo: {
-    code: "teo",
-    name: "Ateso",
-    region: "Eastern Uganda",
-    ttsSpeakerId: 242,
+    ttsVoice: "luganda_female",
   },
   ach: {
     code: "ach",
     name: "Acholi",
+    nativeName: "Leb Acoli",
     region: "Northern Uganda",
-    ttsSpeakerId: 241,
+    ttsVoice: "acholi_female",
   },
   lgg: {
     code: "lgg",
     name: "Lugbara",
+    nativeName: "Lugbarati",
     region: "West Nile Uganda",
-    ttsSpeakerId: 245,
+    ttsVoice: "lugbara_female",
   },
-  eng: {
-    code: "eng",
-    name: "English",
-    region: "International",
-    ttsSpeakerId: 248,
+  nyn: {
+    code: "nyn",
+    name: "Runyankole",
+    nativeName: "Runyankore",
+    region: "Southwest Uganda",
+    ttsVoice: "runyankore_female",
   },
-  sw: { code: "sw", name: "Swahili", region: "Regional", ttsSpeakerId: 246 },
-  luo: {
-    code: "luo",
-    name: "Luo",
-    region: "Western Uganda",
-    ttsSpeakerId: 247,
+  teo: {
+    code: "teo",
+    name: "Ateso",
+    nativeName: "Ateso",
+    region: "Eastern Uganda",
+    ttsVoice: "ateso_female",
   },
-};
+  swa: {
+    code: "swa",
+    name: "Swahili",
+    nativeName: "Kiswahili",
+    region: "East Africa",
+    ttsVoice: "swahili_male",
+  },
+} as const;
 
 export type SupportedLanguageCode = keyof typeof SUPPORTED_LANGUAGES;
+
+const LANGUAGE_ALIASES: Record<string, SupportedLanguageCode> = {
+  en: "eng",
+  eng: "eng",
+  english: "eng",
+  "english (uganda)": "eng",
+  lg: "lug",
+  lug: "lug",
+  luganda: "lug",
+  oluganda: "lug",
+  ach: "ach",
+  acholi: "ach",
+  "leb acoli": "ach",
+  lgg: "lgg",
+  lugbara: "lgg",
+  lugbarati: "lgg",
+  nyn: "nyn",
+  runyankole: "nyn",
+  runyankore: "nyn",
+  nyankole: "nyn",
+  teo: "teo",
+  ateso: "teo",
+  sw: "swa",
+  swa: "swa",
+  swahili: "swa",
+  kiswahili: "swa",
+};
+
+export function normalizeSupportedLanguageCode(
+  value?: string | null,
+): SupportedLanguageCode {
+  const normalized = value?.trim().toLocaleLowerCase();
+  return (normalized && LANGUAGE_ALIASES[normalized]) || "eng";
+}
 
 /**
  * Speech-to-Text: Convert audio to text in user's local language
  * @param audioFile - Audio file or blob
- * @param languageCode - Language code (lug, nyn, teo, ach, lgg, eng, sw)
+ * @param languageCode - Canonical Sunbird language code
  * @returns Transcribed text and metadata
  */
 export async function speechToText(
@@ -144,7 +184,9 @@ export async function speechToText(
   return {
     transcript:
       data.output?.text || data.audio_transcription || data.text || "",
-    language: data.output?.language || data.language || languageCode,
+    language: normalizeSupportedLanguageCode(
+      data.output?.language || data.language || languageCode,
+    ),
     wasAudioTrimmed: data.was_audio_trimmed || false,
     originalDurationMinutes: data.original_duration_minutes || null,
   };
@@ -175,9 +217,9 @@ export async function detectLanguage(text: string): Promise<{
   const data = await response.json();
 
   return {
-    language: (data.output?.language ||
-      data.language ||
-      "eng") as SupportedLanguageCode,
+    language: normalizeSupportedLanguageCode(
+      data.output?.language || data.language || "eng",
+    ),
     confidence: data.confidence || 0.9,
   };
 }
@@ -300,7 +342,7 @@ export function parseSunbirdTranslation(
 export async function textToSpeech(
   text: string,
   languageCode: SupportedLanguageCode = "lug",
-  temperature = 0.7,
+  _temperature = 0.7,
 ): Promise<{
   audioUrl: string;
   durationSeconds: number;
@@ -313,7 +355,7 @@ export async function textToSpeech(
     throw new Error(`Unsupported language: ${languageCode}`);
   }
 
-  const response = await sunbirdRequest("/tts", {
+  const response = await sunbirdRequest("/audio/speech", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey()}`,
@@ -321,9 +363,9 @@ export async function textToSpeech(
     },
     body: JSON.stringify({
       text,
-      speaker_id: language.ttsSpeakerId,
-      temperature: Math.min(Math.max(temperature, 0), 2),
-      max_new_audio_tokens: 2000,
+      model: "spark-tts",
+      voice: language.ttsVoice,
+      response_mode: "url",
     }),
   });
 
@@ -334,11 +376,12 @@ export async function textToSpeech(
   const data = await response.json();
 
   return {
-    audioUrl: data.output?.audio_url || "",
-    durationSeconds: data.output?.duration_seconds || 0,
-    blobPath: data.output?.blob || "",
-    sampleRate: data.output?.sample_rate || 16000,
-    format: data.output?.format || "mp3",
+    audioUrl: data.audio_url || data.output?.audio_url || "",
+    durationSeconds:
+      data.duration_seconds || data.output?.duration_seconds || 0,
+    blobPath: data.gcs_object || data.output?.blob || "",
+    sampleRate: data.sample_rate || data.output?.sample_rate || 24000,
+    format: data.format || data.output?.format || "wav",
   };
 }
 
@@ -414,13 +457,7 @@ export async function summarizeText(text: string): Promise<{
  * Convert language name to code (e.g., "Luganda" -> "lug")
  */
 export function languageNameToCode(name: string): SupportedLanguageCode {
-  const lower = name.toLowerCase();
-  for (const [code, lang] of Object.entries(SUPPORTED_LANGUAGES)) {
-    if (lang.name.toLowerCase() === lower) {
-      return code as SupportedLanguageCode;
-    }
-  }
-  return "eng"; // Default to English
+  return normalizeSupportedLanguageCode(name);
 }
 
 /**

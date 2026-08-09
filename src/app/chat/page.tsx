@@ -32,6 +32,7 @@ import { AgentActionStatus, ChatConversation, UserProfile, ChatMessage } from "@
 import {
   SUPPORTED_LANGUAGES,
   SupportedLanguageCode,
+  normalizeSupportedLanguageCode,
 } from "@/lib/sunbird";
 import { authenticatedFetch } from "@/lib/authenticatedFetch";
 import { AppShellSkeleton } from "@/components/ui/Skeleton";
@@ -100,7 +101,15 @@ interface ChatApiResponse {
   };
 }
 
-const CHAT_LANGUAGE_OPTIONS: SupportedLanguageCode[] = ["eng", "lug"];
+const CHAT_LANGUAGE_OPTIONS: SupportedLanguageCode[] = [
+  "eng",
+  "lug",
+  "ach",
+  "lgg",
+  "nyn",
+  "teo",
+  "swa",
+];
 const MAX_MESSAGE_LENGTH = 2000;
 
 function parseConversation(payload: Record<string, unknown>): ChatConversation {
@@ -394,8 +403,9 @@ export default function ChatPage() {
       userProfile?.preferences?.language &&
       languageInitializedForUserRef.current !== user.uid
     ) {
-      const preferred =
-        userProfile.preferences.language.toLowerCase() === "lg" ? "lug" : "eng";
+      const preferred = normalizeSupportedLanguageCode(
+        userProfile.preferences.language,
+      );
       setUserLanguage(preferred);
       languageInitializedForUserRef.current = user.uid;
     }
@@ -407,7 +417,7 @@ export default function ChatPage() {
       if (!user) return;
       languageInitializedForUserRef.current = user.uid;
       void updateUserPreferences(user.uid, {
-        language: language === "lug" ? "lg" : "en",
+        language,
       }).catch((languageError) => {
         console.warn("Could not persist reply language:", languageError);
         setError("Your reply language changed for this chat, but could not be saved to your profile.");
