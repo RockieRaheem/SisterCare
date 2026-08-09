@@ -26,6 +26,15 @@ import {
 } from "@/lib/notifications";
 import { UserPreferences, UserPrivacyPreferences } from "@/types";
 import { AppShellSkeleton } from "@/components/ui/Skeleton";
+import {
+  normalizeSupportedLanguageCode,
+  SUPPORTED_LANGUAGES,
+  SupportedLanguageCode,
+} from "@/lib/sunbird";
+
+const SUPPORT_LANGUAGE_CODES = Object.keys(
+  SUPPORTED_LANGUAGES,
+) as SupportedLanguageCode[];
 
 export default function SettingsPage() {
   const { user, loading: authLoading, signOut, deleteAccount } = useAuth();
@@ -55,6 +64,8 @@ export default function SettingsPage() {
   const [browserNotificationStatus, setBrowserNotificationStatus] = useState<
     NotificationPermission | "unsupported"
   >("default");
+  const [supportLanguage, setSupportLanguage] =
+    useState<SupportedLanguageCode>("eng");
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -73,6 +84,9 @@ export default function SettingsPage() {
         setPushNotifications(profile.preferences.pushNotifications ?? true);
         setReminderDays(profile.preferences.reminderDaysBefore ?? 3);
         setTheme(profile.preferences.theme ?? "system");
+        setSupportLanguage(
+          normalizeSupportedLanguageCode(profile.preferences.language),
+        );
       }
       if (profile) {
         setSupportAlias(profile.supportAlias);
@@ -122,7 +136,7 @@ export default function SettingsPage() {
         pushNotifications,
         reminderDaysBefore: reminderDays,
         theme,
-        language,
+        language: supportLanguage,
       };
 
       const current = await getUserProfile(user.uid);
@@ -773,9 +787,39 @@ export default function SettingsPage() {
             </div>
             <p className="text-text-secondary text-xs mt-1">
               {language === "lg"
-                ? "Oluganda luzze kukozesebwa mu app yonna"
-                : "Change the language used throughout the app"}
+                ? "Kino kikyusa olulimi lwa menu ne buttons."
+                : "Choose the language used for menus and buttons."}
             </p>
+
+            <div className="my-2 border-t border-border-light dark:border-border-dark" />
+            <p className="text-sm font-bold text-text-primary dark:text-white">
+              Voice and Sister language
+            </p>
+            <p className="text-xs leading-relaxed text-text-secondary dark:text-gray-400">
+              Sister listens, replies, and follows spoken or typed navigation requests in this language. You can change it again beside the chat box.
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {SUPPORT_LANGUAGE_CODES.map((code) => {
+                const option = SUPPORTED_LANGUAGES[code];
+                const selected = supportLanguage === code;
+                return (
+                  <button
+                    type="button"
+                    key={code}
+                    onClick={() => setSupportLanguage(code)}
+                    aria-pressed={selected}
+                    className={`rounded-xl border px-3 py-2.5 text-left transition-colors ${
+                      selected
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border-light text-text-primary hover:border-primary/40 dark:border-border-dark dark:text-white"
+                    }`}
+                  >
+                    <span className="block text-sm font-bold">{option.nativeName}</span>
+                    <span className="block text-xs opacity-70">{option.name}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </Card>
 

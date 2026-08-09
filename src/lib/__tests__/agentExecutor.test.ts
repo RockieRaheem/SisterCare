@@ -157,4 +157,39 @@ describe("agent provider and tool loop", () => {
       }),
     );
   });
+
+  it("persists any supported Sister voice language selected in conversation", async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        groqResponse({
+          role: "assistant",
+          content: null,
+          tool_calls: [
+            {
+              id: "tool-language",
+              type: "function",
+              function: {
+                name: "update_user_profile",
+                arguments: JSON.stringify({ language: "teo" }),
+              },
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        groqResponse({
+          role: "assistant",
+          content: "Your Sister language is now Ateso.",
+        }),
+      );
+    vi.stubGlobal("fetch", fetch);
+
+    await executeAgent("", "Use Ateso from now on", context("member-ateso"));
+
+    expect(mocks.updateAgentManagedProfile).toHaveBeenCalledWith(
+      "member-ateso",
+      expect.objectContaining({ language: "teo" }),
+    );
+  });
 });

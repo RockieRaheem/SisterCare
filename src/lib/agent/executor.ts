@@ -38,6 +38,10 @@ import { bindToolArgumentsToVerifiedUser } from "./toolAuthorization";
 import { emitEvent } from "../server/events";
 import { assertCompleteResponse } from "./responseIntegrity";
 import { isToolAllowedByClinicalPolicy } from "./requestPolicy";
+import {
+  normalizeSupportedLanguageCode,
+  SUPPORTED_LANGUAGES,
+} from "../sunbird";
 
 // Types for agent execution
 interface ToolCall {
@@ -727,8 +731,10 @@ async function executeTool(
               ? args.displayName
               : undefined,
           language:
-            args.language === "en" || args.language === "lg"
-              ? args.language
+            typeof args.language === "string" &&
+            (args.language.trim().toLowerCase() in SUPPORTED_LANGUAGES ||
+              ["en", "lg", "sw"].includes(args.language.trim().toLowerCase()))
+              ? normalizeSupportedLanguageCode(args.language)
               : undefined,
           reminderDaysBefore:
             typeof args.reminderDaysBefore === "number"

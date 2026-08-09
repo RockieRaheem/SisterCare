@@ -402,7 +402,11 @@ export const AGENT_TOOLS = [
       type: "object",
       properties: {
         displayName: { type: "string", description: "Preferred display name" },
-        language: { type: "string", enum: ["en", "lg"] },
+        language: {
+          type: "string",
+          enum: ["eng", "lug", "ach", "lgg", "nyn", "teo", "swa"],
+          description: "Canonical Sister voice and reply language code",
+        },
         reminderDaysBefore: { type: "integer", minimum: 0, maximum: 14 },
         emailNotifications: { type: "boolean" },
         pushNotifications: { type: "boolean" },

@@ -2173,18 +2173,18 @@ export default function ChatPage() {
             <div className="mx-auto max-w-3xl px-3 pt-2.5 sm:px-4 sm:py-3">
               <form onSubmit={handleSubmit} className="relative">
                 <div className="flex items-end gap-1.5 rounded-2xl border border-black/[0.08] bg-white p-1.5 shadow-sm transition-all focus-within:border-primary/40 focus-within:shadow-md dark:border-white/10 dark:bg-white/[0.05] sm:gap-2 sm:p-2">
-                  <div className="relative shrink-0">
+                  <div className="shrink-0">
                     <select
                       value={userLanguage}
                       onChange={(e) => changeReplyLanguage(e.target.value as SupportedLanguageCode)}
-                      title="Reply language"
-                      className="h-9 w-9 cursor-pointer appearance-none rounded-xl bg-transparent text-center text-xs text-text-secondary transition-colors hover:bg-black/[0.04] focus:outline-none focus:ring-1 focus:ring-primary/40 dark:text-gray-400 dark:hover:bg-white/10 sm:h-10 sm:w-10"
+                      title="Voice and reply language"
+                      aria-label="Voice and reply language"
+                      className="h-9 max-w-[5.5rem] cursor-pointer rounded-xl border-0 bg-black/[0.03] px-1.5 text-[10px] font-semibold text-text-secondary transition-colors hover:bg-black/[0.06] focus:outline-none focus:ring-1 focus:ring-primary/40 dark:bg-white/[0.06] dark:text-gray-300 dark:hover:bg-white/10 sm:h-10 sm:max-w-[7rem] sm:px-2 sm:text-xs"
                     >
                       {CHAT_LANGUAGE_OPTIONS.map((code) => (
-                        <option key={code} value={code}>{SUPPORTED_LANGUAGES[code].name}</option>
+                        <option key={code} value={code}>{SUPPORTED_LANGUAGES[code].nativeName}</option>
                       ))}
                     </select>
-                    <span className="material-symbols-outlined pointer-events-none absolute inset-0 flex items-center justify-center text-lg text-text-secondary dark:text-gray-400">language</span>
                   </div>
                   <textarea
                     ref={inputRef}
