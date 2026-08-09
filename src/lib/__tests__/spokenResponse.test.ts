@@ -25,6 +25,7 @@ describe("spoken agent responses", () => {
       blobPath: "reply.wav",
       sampleRate: 24_000,
       format: "wav",
+      voice: "salt_eng_0001",
     });
 
     await expect(
@@ -34,8 +35,9 @@ describe("spoken agent responses", () => {
       durationSeconds: 4.2,
       mimeType: "audio/wav",
       language: "eng",
+      voice: "salt_eng_0001",
     });
-    expect(synthesize).toHaveBeenCalledWith("I am listening.", "eng", 0.7);
+    expect(synthesize).toHaveBeenCalledWith("I am listening.", "eng", 0.7, undefined);
   });
 
   it("does not expose unusable provider output", async () => {
@@ -45,6 +47,7 @@ describe("spoken agent responses", () => {
       blobPath: "",
       sampleRate: 24_000,
       format: "wav",
+      voice: "salt_eng_0001",
     });
     await expect(
       synthesizeSpokenResponse("Hello", "eng", synthesize),

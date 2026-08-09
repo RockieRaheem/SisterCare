@@ -25,10 +25,6 @@ import {
   normalizeSupportedLanguageCode,
 } from "@/lib/sunbird";
 import {
-  resolveSpokenLanguage,
-  synthesizeSpokenResponse,
-} from "@/lib/spokenResponse";
-import {
   assessConversationSafety,
   assessTriageSeverity,
 } from "@/lib/safety";
@@ -586,20 +582,9 @@ async function prepareSpokenAgentResponse(
     language,
     geminiApiKey,
   );
-  let audio;
-  try {
-    audio = await synthesizeSpokenResponse(
-      localizedText,
-      resolveSpokenLanguage({
-        requestedLanguage: language,
-        englishText,
-        localizedText,
-      }),
-    );
-  } catch (error) {
-    console.warn("TTS generation failed, continuing with text:", error);
-  }
-  return { localizedText, audio };
+  // Speech is generated on demand by /api/language/speak so the member's
+  // explicitly selected voice is stable and chat text is never delayed by TTS.
+  return { localizedText, audio: undefined };
 }
 
 /**

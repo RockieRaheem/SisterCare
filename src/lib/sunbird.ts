@@ -65,53 +65,117 @@ export const SUPPORTED_LANGUAGES = {
     name: "English",
     nativeName: "English",
     region: "Uganda and international",
-    ttsVoice: "salt_eng_0001",
   },
   lug: {
     code: "lug",
     name: "Luganda",
     nativeName: "Oluganda",
     region: "Central Uganda",
-    ttsVoice: "luganda_female",
   },
   ach: {
     code: "ach",
     name: "Acholi",
     nativeName: "Leb Acoli",
     region: "Northern Uganda",
-    ttsVoice: "acholi_female",
   },
   lgg: {
     code: "lgg",
     name: "Lugbara",
     nativeName: "Lugbarati",
     region: "West Nile Uganda",
-    ttsVoice: "lugbara_female",
   },
   nyn: {
     code: "nyn",
     name: "Runyankole",
     nativeName: "Runyankore",
     region: "Southwest Uganda",
-    ttsVoice: "runyankore_female",
   },
   teo: {
     code: "teo",
     name: "Ateso",
     nativeName: "Ateso",
     region: "Eastern Uganda",
-    ttsVoice: "ateso_female",
   },
   swa: {
     code: "swa",
     name: "Swahili",
     nativeName: "Kiswahili",
     region: "East Africa",
-    ttsVoice: "swahili_male",
   },
 } as const;
 
 export type SupportedLanguageCode = keyof typeof SUPPORTED_LANGUAGES;
+
+export interface SunbirdVoiceOption {
+  id: string;
+  label: string;
+}
+
+/** Current Orpheus catalog tags published by Sunbird. */
+export const SUNBIRD_VOICE_CATALOG: Record<
+  SupportedLanguageCode,
+  readonly SunbirdVoiceOption[]
+> = {
+  eng: [
+    { id: "salt_eng_0001", label: "English voice 1" },
+    { id: "salt_eng_0002", label: "English voice 2" },
+    { id: "salt_eng_0003", label: "English voice 3" },
+  ],
+  lug: [
+    { id: "salt_lug_0001", label: "Luganda voice 1" },
+    { id: "waxal_lug_0002", label: "Luganda voice 2" },
+    { id: "waxal_lug_0003", label: "Luganda voice 3" },
+    { id: "waxal_lug_0004", label: "Luganda voice 4" },
+    { id: "waxal_lug_0005", label: "Luganda voice 5" },
+    { id: "waxal_lug_0006", label: "Luganda voice 6" },
+    { id: "waxal_lug_0007", label: "Luganda voice 7" },
+    { id: "waxal_lug_0008", label: "Luganda voice 8" },
+  ],
+  ach: [
+    { id: "salt_ach_0001", label: "Acholi voice 1" },
+    { id: "waxal_ach_0001", label: "Acholi voice 2" },
+    { id: "waxal_ach_0005", label: "Acholi voice 3" },
+    { id: "waxal_ach_0006", label: "Acholi voice 4" },
+    { id: "waxal_ach_0008", label: "Acholi voice 5" },
+  ],
+  // Sunbird documents Lugbara in the model training mix but currently
+  // exposes no selectable Lugbara speaker ID.
+  lgg: [],
+  nyn: [
+    { id: "salt_nyn_0001", label: "Runyankole voice 1" },
+    { id: "waxal_nyn_0003", label: "Runyankole voice 2" },
+    { id: "waxal_nyn_0004", label: "Runyankole voice 3" },
+    { id: "waxal_nyn_0007", label: "Runyankole voice 4" },
+    { id: "waxal_nyn_0008", label: "Runyankole voice 5" },
+  ],
+  teo: [{ id: "salt_teo_0001", label: "Ateso voice 1" }],
+  swa: [
+    { id: "waxal_swa_0006", label: "Swahili voice 1" },
+    { id: "waxal_swa_0007", label: "Swahili voice 2" },
+  ],
+};
+
+export class SpeechVoiceUnavailableError extends Error {
+  constructor(language: SupportedLanguageCode) {
+    super(`Sunbird does not currently expose a ${SUPPORTED_LANGUAGES[language].name} voice.`);
+    this.name = "SpeechVoiceUnavailableError";
+  }
+}
+
+export function getSunbirdVoices(
+  language: SupportedLanguageCode,
+): readonly SunbirdVoiceOption[] {
+  return SUNBIRD_VOICE_CATALOG[language];
+}
+
+export function resolveSunbirdVoice(
+  language: SupportedLanguageCode,
+  requestedVoice?: string | null,
+): SunbirdVoiceOption {
+  const voices = getSunbirdVoices(language);
+  if (!voices.length) throw new SpeechVoiceUnavailableError(language);
+  return voices.find((voice) => voice.id === requestedVoice) || voices[0];
+}
 
 const LANGUAGE_ALIASES: Record<string, SupportedLanguageCode> = {
   en: "eng",
@@ -156,6 +220,7 @@ export function normalizeSupportedLanguageCode(
 export async function speechToText(
   audioFile: File | Blob,
   languageCode: SupportedLanguageCode = "lug",
+  fetcher: typeof fetch = fetch,
 ): Promise<{
   transcript: string;
   language: string;
@@ -165,7 +230,6 @@ export async function speechToText(
   const formData = new FormData();
   formData.append("audio", audioFile);
   formData.append("language", languageCode);
-  formData.append("platform", "modal");
 
   const response = await sunbirdRequest("/audio/transcriptions", {
     method: "POST",
@@ -173,7 +237,7 @@ export async function speechToText(
       Authorization: `Bearer ${apiKey()}`,
     },
     body: formData,
-  });
+  }, fetcher);
 
   if (!response.ok) {
     throw new Error(`STT failed: ${await errorDetail(response)}`);
@@ -343,17 +407,20 @@ export async function textToSpeech(
   text: string,
   languageCode: SupportedLanguageCode = "lug",
   _temperature = 0.7,
+  voiceId?: string,
+  fetcher: typeof fetch = fetch,
 ): Promise<{
   audioUrl: string;
   durationSeconds: number;
   blobPath: string;
   sampleRate: number;
   format: string;
+  voice: string;
 }> {
-  const language = SUPPORTED_LANGUAGES[languageCode];
-  if (!language) {
+  if (!SUPPORTED_LANGUAGES[languageCode]) {
     throw new Error(`Unsupported language: ${languageCode}`);
   }
+  const voice = resolveSunbirdVoice(languageCode, voiceId);
 
   const response = await sunbirdRequest("/audio/speech", {
     method: "POST",
@@ -363,11 +430,11 @@ export async function textToSpeech(
     },
     body: JSON.stringify({
       text,
-      model: "spark-tts",
-      voice: language.ttsVoice,
+      voice: voice.id,
+      language: languageCode,
       response_mode: "url",
     }),
-  });
+  }, fetcher);
 
   if (!response.ok) {
     throw new Error(`TTS failed: ${await errorDetail(response)}`);
@@ -382,6 +449,7 @@ export async function textToSpeech(
     blobPath: data.gcs_object || data.output?.blob || "",
     sampleRate: data.sample_rate || data.output?.sample_rate || 24000,
     format: data.format || data.output?.format || "wav",
+    voice: data.voice || voice.id,
   };
 }
 
@@ -398,8 +466,10 @@ export async function textToSpeechCached(
   text: string,
   languageCode: SupportedLanguageCode = "lug",
   temperature = 0.7,
+  voiceId?: string,
 ): Promise<TtsResult> {
-  const key = `${languageCode}|${text}`;
+  const voice = resolveSunbirdVoice(languageCode, voiceId);
+  const key = `${languageCode}|${voice.id}|${text}`;
   const now = Date.now();
 
   const cached = ttsMemo.get(key);
@@ -407,7 +477,7 @@ export async function textToSpeechCached(
     return cached.result;
   }
 
-  const result = await textToSpeech(text, languageCode, temperature);
+  const result = await textToSpeech(text, languageCode, temperature, voice.id);
 
   if (result.audioUrl) {
     if (ttsMemo.size >= TTS_MEMO_MAX_ENTRIES) {

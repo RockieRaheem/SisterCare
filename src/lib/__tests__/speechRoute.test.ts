@@ -39,6 +39,7 @@ describe("spoken response route", () => {
       durationSeconds: 3,
       mimeType: "audio/wav",
       language: "eng",
+      voice: "salt_eng_0001",
     });
   });
 
@@ -46,7 +47,46 @@ describe("spoken response route", () => {
     const response = await POST(request({ text: "I am listening.", language: "eng" }));
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store, private");
-    expect(mocks.synthesize).toHaveBeenCalledWith("I am listening.", "eng");
+    expect(mocks.synthesize).toHaveBeenCalledWith(
+      "I am listening.",
+      "eng",
+      undefined,
+      "salt_eng_0001",
+    );
+  });
+
+  it("honours a valid user-selected voice", async () => {
+    const response = await POST(request({
+      text: "Oli otya?",
+      language: "lug",
+      voice: "waxal_lug_0006",
+    }));
+    expect(response.status).toBe(200);
+    expect(mocks.synthesize).toHaveBeenCalledWith(
+      "Oli otya?",
+      "lug",
+      undefined,
+      "waxal_lug_0006",
+    );
+  });
+
+  it("reports a language whose provider has no selectable voice", async () => {
+    const response = await POST(request({ text: "Hello", language: "lgg" }));
+    expect(response.status).toBe(422);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "VOICE_NOT_AVAILABLE",
+    });
+  });
+
+  it("identifies an invalid provider token without exposing credentials", async () => {
+    mocks.synthesize.mockRejectedValue(
+      new Error("TTS failed: Could not validate credentials"),
+    );
+    const response = await POST(request({ text: "Hello", language: "eng" }));
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "SPEECH_PROVIDER_AUTH_INVALID",
+    });
   });
 
   it("rejects unsupported speech languages", async () => {

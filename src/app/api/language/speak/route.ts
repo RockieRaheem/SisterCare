@@ -4,6 +4,8 @@ import { consumeRateLimit } from "@/lib/server/rateLimit";
 import { authenticateRequest, getAuthorizationFailure } from "@/lib/serverAuth";
 import {
   normalizeSupportedLanguageCode,
+  resolveSunbirdVoice,
+  SpeechVoiceUnavailableError,
   SUPPORTED_LANGUAGES,
 } from "@/lib/sunbird";
 import { synthesizeSpokenResponse } from "@/lib/spokenResponse";
@@ -41,6 +43,8 @@ async function postSpeech(request: NextRequest) {
   const rawLanguage =
     typeof body?.language === "string" ? body.language.trim().toLowerCase() : "eng";
   const language = normalizeSupportedLanguageCode(rawLanguage);
+  const requestedVoice =
+    typeof body?.voice === "string" ? body.voice.trim() : undefined;
 
   if (!text) {
     return NextResponse.json(
@@ -62,7 +66,19 @@ async function postSpeech(request: NextRequest) {
   }
 
   try {
-    const audio = await synthesizeSpokenResponse(text, language);
+    const voice = resolveSunbirdVoice(language, requestedVoice);
+    if (requestedVoice && voice.id !== requestedVoice) {
+      return NextResponse.json(
+        { success: false, error: "The selected voice is not available for this language." },
+        { status: 400 },
+      );
+    }
+    const audio = await synthesizeSpokenResponse(
+      text,
+      language,
+      undefined,
+      voice.id,
+    );
     if (!audio) throw new Error("Speech provider returned no audio URL");
     logOperationalEvent("info", "voice.response_created", {
       userId: auth.status === "verified" ? auth.uid : "development",
@@ -74,6 +90,31 @@ async function postSpeech(request: NextRequest) {
       { headers: { "Cache-Control": "no-store, private" } },
     );
   } catch (error) {
+    if (error instanceof SpeechVoiceUnavailableError) {
+      return NextResponse.json(
+        {
+          success: false,
+          code: "VOICE_NOT_AVAILABLE",
+          error: error.message,
+        },
+        { status: 422 },
+      );
+    }
+    const detail = error instanceof Error ? error.message : "";
+    if (/could not validate credentials|unauthori[sz]ed|http 401/i.test(detail)) {
+      logOperationalEvent("error", "voice.provider_authentication_failed", {
+        language,
+        errorType: error instanceof Error ? error.name : "unknown",
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          code: "SPEECH_PROVIDER_AUTH_INVALID",
+          error: "Spoken replies need a service configuration update. The written response is still available.",
+        },
+        { status: 503 },
+      );
+    }
     logOperationalEvent("error", "voice.response_failed", {
       userId: auth.status === "verified" ? auth.uid : "development",
       language,
