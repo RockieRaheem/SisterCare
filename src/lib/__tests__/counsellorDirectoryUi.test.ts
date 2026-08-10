@@ -35,9 +35,15 @@ describe("member counsellor discovery UI contracts", () => {
   });
 
   it("keeps a prominent request action available on mobile", () => {
-    expect(profile).toContain("Request private session");
+    expect(profile).toContain("Chat or call privately");
     expect(profile).toContain("fixed inset-x-3");
     expect(profile).toContain("RequestCounsellorButton");
+  });
+
+  it("does not report a missing counsellor while the profile is loading", () => {
+    expect(profile).toContain('profileState === "loading"');
+    expect(profile).toContain("CounsellorProfileSkeleton");
+    expect(profile).toContain('profileState === "not_found"');
   });
 
   it("uses a high-contrast verified badge", () => {

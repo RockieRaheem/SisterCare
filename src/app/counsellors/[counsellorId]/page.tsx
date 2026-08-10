@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/context/AuthContext";
 import { authenticatedFetch } from "@/lib/authenticatedFetch";
 import { requestSession } from "@/lib/sessionsClient";
@@ -15,24 +16,39 @@ export default function CounsellorProfilePage() {
   const router = useRouter();
   const params = useParams<{ counsellorId: string }>();
   const [counsellor, setCounsellor] = useState<Counsellor | null>(null);
+  const [profileState, setProfileState] = useState<"loading" | "ready" | "not_found" | "error">("loading");
+  const [reloadKey, setReloadKey] = useState(0);
   const [requesting, setRequesting] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
   const canContact = counsellor?.status === "available";
 
   useEffect(() => {
+    let cancelled = false;
+
     const loadDirectoryProfile = async () => {
+      setProfileState("loading");
+      setCounsellor(null);
       try {
         const response = await authenticatedFetch("/api/counsellors", { cache: "no-store" });
         const result = await response.json().catch(() => ({}));
-        if (!response.ok || result.success === false) return;
+        if (!response.ok || result.success === false) throw new Error("Profile request failed");
         const found = result.data.counsellors?.find((item: Counsellor) => item.id === params.counsellorId);
-        if (found) setCounsellor({ ...found, createdAt: new Date(found.createdAt), credentialExpiresAt: found.credentialExpiresAt ? new Date(found.credentialExpiresAt) : undefined });
+        if (cancelled) return;
+        if (!found) {
+          setProfileState("not_found");
+          return;
+        }
+        setCounsellor({ ...found, createdAt: new Date(found.createdAt), credentialExpiresAt: found.credentialExpiresAt ? new Date(found.credentialExpiresAt) : undefined });
+        setProfileState("ready");
       } catch {
-        setCounsellor(null);
+        if (!cancelled) setProfileState("error");
       }
     };
     if (user && params.counsellorId) loadDirectoryProfile();
-  }, [params.counsellorId, user]);
+    return () => {
+      cancelled = true;
+    };
+  }, [params.counsellorId, reloadKey, user]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -64,35 +80,29 @@ export default function CounsellorProfilePage() {
     }
   };
 
-  if (loading) {
+  if (loading || !user || profileState === "loading") {
+    return <CounsellorProfileSkeleton />;
+  }
+
+  if (profileState === "error") {
     return (
-      <div className="min-h-screen bg-bg-light dark:bg-bg-dark flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary" />
-      </div>
+      <ProfileStateMessage
+        icon="wifi_off"
+        title="We couldn't load this profile"
+        message="Your connection may have been interrupted. Your counsellor request has not been changed."
+        actionLabel="Try again"
+        onAction={() => setReloadKey((value) => value + 1)}
+      />
     );
   }
 
-  if (!counsellor) {
+  if (profileState === "not_found" || !counsellor) {
     return (
-      <div className="min-h-screen bg-bg-light dark:bg-bg-dark">
-        <Header variant="app" />
-        <main className="max-w-3xl mx-auto px-4 py-10 sm:py-14">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 sm:p-8 border border-border-light dark:border-border-dark text-center shadow-sm">
-            <p className="text-lg sm:text-xl font-semibold text-text-primary dark:text-white">
-              Counsellor not found
-            </p>
-            <p className="mt-2 text-sm sm:text-base text-text-secondary">
-              The profile you opened is not available right now.
-            </p>
-            <Link
-              href="/counsellors"
-              className="inline-flex items-center justify-center mt-5 px-4 py-2.5 rounded-xl bg-primary text-white font-semibold"
-            >
-              Back to counsellors
-            </Link>
-          </div>
-        </main>
-      </div>
+      <ProfileStateMessage
+        icon="person_off"
+        title="Counsellor not found"
+        message="The verified profile you opened is no longer available in the directory."
+      />
     );
   }
 
@@ -100,7 +110,7 @@ export default function CounsellorProfilePage() {
     <div className="app-page overflow-x-clip">
       <Header variant="app" />
 
-      <main className="main-content page-container min-w-0 py-5 sm:py-7">
+      <main className="main-content page-container min-w-0 pb-36 pt-5 sm:py-7 md:pb-8">
         <div className="mb-4 sm:mb-6">
           <Link
             href="/counsellors"
@@ -114,16 +124,16 @@ export default function CounsellorProfilePage() {
         </div>
 
         <section className="overflow-hidden rounded-3xl bg-white dark:bg-gray-900 border border-border-light dark:border-border-dark shadow-lg">
-          <div className="relative h-40 sm:h-52 bg-gradient-to-r from-primary via-fuchsia-500 to-pink-500">
+          <div className="relative h-28 bg-gradient-to-r from-primary via-fuchsia-500 to-pink-500 sm:h-52">
             <div className="absolute inset-0 bg-black/10" />
             <div className="absolute -top-16 -right-16 w-40 h-40 rounded-full bg-white/10 blur-3xl" />
             <div className="absolute -bottom-16 -left-16 w-40 h-40 rounded-full bg-pink-500/20 blur-3xl" />
           </div>
 
-          <div className="relative -mt-16 px-4 pb-6 sm:-mt-20 sm:px-7 sm:pb-8">
+          <div className="relative -mt-12 px-4 pb-6 sm:-mt-20 sm:px-7 sm:pb-8">
             <div className="flex flex-col md:flex-row gap-5 sm:gap-6 items-start">
               <div className="relative shrink-0">
-                <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-3xl overflow-hidden border-4 border-white dark:border-gray-900 shadow-xl bg-gray-200">
+                <div className="h-24 w-24 overflow-hidden rounded-3xl border-4 border-white bg-gray-200 shadow-xl dark:border-gray-900 sm:h-36 sm:w-36">
                   <Image
                     src={
                       counsellor.photoURL || "/icons/sistercare-pink-v3.svg"
@@ -164,6 +174,24 @@ export default function CounsellorProfilePage() {
                 <p className="mt-1 text-base sm:text-lg text-text-secondary">
                   {counsellor.title}
                 </p>
+
+                <div className="mt-4 rounded-2xl border border-primary/15 bg-primary/[0.04] p-3 sm:p-4 md:flex md:items-center md:justify-between md:gap-5">
+                  <div>
+                    <p className="text-sm font-bold text-text-primary dark:text-white">Private support with {counsellor.name}</p>
+                    <p className="mt-1 text-xs leading-5 text-text-secondary sm:text-sm">Message privately, then start an anonymous audio call when you are both ready.</p>
+                  </div>
+                  <div className="mt-3 hidden w-full max-w-xs shrink-0 md:block">
+                    {canContact ? (
+                      <RequestCounsellorButton
+                        requesting={requesting}
+                        onRequest={() => void requestPrivateSession()}
+                      />
+                    ) : (
+                      <AvailabilityNotice status={counsellor.status} />
+                    )}
+                    {requestError && <RequestError message={requestError} />}
+                  </div>
+                </div>
 
                 <div className="flex flex-wrap items-center gap-4 mt-4 text-sm sm:text-base text-text-secondary">
                   <span className="inline-flex items-center gap-1.5">
@@ -209,17 +237,6 @@ export default function CounsellorProfilePage() {
                   ))}
                 </div>
 
-                <div className="mt-5 hidden max-w-md md:block">
-                  {canContact ? (
-                    <RequestCounsellorButton
-                      requesting={requesting}
-                      onRequest={() => void requestPrivateSession()}
-                    />
-                  ) : (
-                    <AvailabilityNotice status={counsellor.status} />
-                  )}
-                  {requestError && <RequestError message={requestError} />}
-                </div>
               </div>
             </div>
           </div>
@@ -288,24 +305,30 @@ export default function CounsellorProfilePage() {
               </ul>
             </div>
 
-            <div className="mt-5 md:hidden">
-              {!canContact && (
-                <AvailabilityNotice status={counsellor.status} inverse />
-              )}
-              {requestError && <RequestError message={requestError} />}
-            </div>
           </aside>
         </section>
       </main>
 
-      {canContact && (
-        <div className="fixed inset-x-3 bottom-[calc(var(--bottom-nav-height)+env(safe-area-inset-bottom,0px)+0.5rem)] z-40 md:hidden">
-          <RequestCounsellorButton
-            requesting={requesting}
-            onRequest={() => void requestPrivateSession()}
-          />
-        </div>
-      )}
+      <div className="fixed inset-x-3 bottom-[calc(var(--bottom-nav-height)+env(safe-area-inset-bottom,0px)+0.5rem)] z-40 rounded-2xl border border-primary/15 bg-white/95 p-2 shadow-2xl shadow-black/15 backdrop-blur-xl dark:border-primary/25 dark:bg-gray-900/95 md:hidden">
+        {canContact ? (
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+            <div className="min-w-0 px-2">
+              <p className="truncate text-xs font-bold text-text-primary dark:text-white">{counsellor.name}</p>
+              <p className="flex items-center gap-1 text-[11px] font-semibold text-green-700 dark:text-green-400">
+                <span className="h-2 w-2 rounded-full bg-green-500" /> Available now
+              </p>
+            </div>
+            <RequestCounsellorButton
+              compact
+              requesting={requesting}
+              onRequest={() => void requestPrivateSession()}
+            />
+          </div>
+        ) : (
+          <AvailabilityNotice status={counsellor.status} />
+        )}
+        {requestError && <RequestError message={requestError} />}
+      </div>
     </div>
   );
 }
@@ -313,40 +336,34 @@ export default function CounsellorProfilePage() {
 function RequestCounsellorButton({
   requesting,
   onRequest,
+  compact = false,
 }: {
   requesting: boolean;
   onRequest: () => void;
+  compact?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onRequest}
       disabled={requesting}
-      className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-extrabold text-white shadow-lg shadow-primary/25 transition hover:bg-primary-dark disabled:cursor-wait disabled:opacity-70"
+      className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-extrabold text-white shadow-lg shadow-primary/25 transition hover:bg-primary-dark disabled:cursor-wait disabled:opacity-70 ${compact ? "w-auto whitespace-nowrap" : "w-full"}`}
     >
       <span className="material-symbols-outlined text-xl" aria-hidden="true">
         {requesting ? "progress_activity" : "lock_open"}
       </span>
-      {requesting ? "Creating private room…" : "Request private session"}
+      {requesting ? "Opening support…" : "Chat or call privately"}
     </button>
   );
 }
 
 function AvailabilityNotice({
   status,
-  inverse = false,
 }: {
   status: Counsellor["status"];
-  inverse?: boolean;
 }) {
   return (
-    <div
-      className={`rounded-xl border p-3 text-sm ${
-        inverse
-          ? "border-white/20 bg-black/10 text-white/90"
-          : "border-border-light bg-background-light text-text-secondary dark:border-border-dark dark:bg-background-dark"
-      }`}
-    >
+    <div className="rounded-xl border border-border-light bg-background-light p-3 text-sm text-text-secondary dark:border-border-dark dark:bg-background-dark">
       {status === "in_session"
         ? "This counsellor is helping someone now and cannot receive another request."
         : "This counsellor is offline and cannot receive a request yet."}
@@ -362,5 +379,65 @@ function RequestError({ message }: { message: string }) {
     >
       {message}
     </p>
+  );
+}
+
+function CounsellorProfileSkeleton() {
+  return (
+    <div className="app-page" aria-busy="true" aria-label="Loading counsellor profile">
+      <Header variant="app" />
+      <main className="main-content page-container py-5 sm:py-7">
+        <Skeleton className="mb-5 h-6 w-44 rounded-lg" />
+        <section className="overflow-hidden rounded-3xl border border-border-light bg-white shadow-lg dark:border-border-dark dark:bg-gray-900">
+          <Skeleton className="h-28 w-full rounded-none sm:h-52" />
+          <div className="relative -mt-12 flex flex-col gap-5 px-4 pb-7 sm:-mt-20 sm:flex-row sm:px-7">
+            <Skeleton className="h-24 w-24 shrink-0 rounded-3xl sm:h-36 sm:w-36" />
+            <div className="w-full space-y-3 pt-2 sm:pt-20 md:pt-4">
+              <Skeleton className="h-6 w-36 rounded-full" />
+              <Skeleton className="h-9 w-2/3 rounded-lg" />
+              <Skeleton className="h-5 w-1/3 rounded-lg" />
+              <Skeleton className="h-20 w-full rounded-2xl" />
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}
+
+function ProfileStateMessage({
+  icon,
+  title,
+  message,
+  actionLabel,
+  onAction,
+}: {
+  icon: string;
+  title: string;
+  message: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <div className="min-h-screen bg-bg-light dark:bg-bg-dark">
+      <Header variant="app" />
+      <main className="mx-auto max-w-3xl px-4 py-10 sm:py-14">
+        <div className="rounded-2xl border border-border-light bg-white p-6 text-center shadow-sm dark:border-border-dark dark:bg-gray-900 sm:p-8">
+          <span className="material-symbols-outlined text-4xl text-primary" aria-hidden="true">{icon}</span>
+          <h1 className="mt-2 text-lg font-semibold text-text-primary dark:text-white sm:text-xl">{title}</h1>
+          <p className="mx-auto mt-2 max-w-lg text-sm text-text-secondary sm:text-base">{message}</p>
+          <div className="mt-5 flex flex-wrap justify-center gap-3">
+            {onAction && actionLabel && (
+              <button type="button" onClick={onAction} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-4 py-2.5 font-semibold text-white">
+                {actionLabel}
+              </button>
+            )}
+            <Link href="/counsellors" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-primary/20 px-4 py-2.5 font-semibold text-primary">
+              Back to counsellors
+            </Link>
+          </div>
+        </div>
+      </main>
+    </div>
   );
 }
