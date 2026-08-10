@@ -2050,8 +2050,9 @@ export default function ChatPage() {
         {/* Main Chat Area */}
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {/* Subtle chat header bar */}
-          <div className="flex shrink-0 items-center justify-between border-b border-black/[0.04] bg-white px-3 py-2 dark:border-white/[0.05] dark:bg-card-dark">
-            <div className="flex min-w-0 items-center gap-1">
+          <div className="shrink-0 border-b border-black/[0.04] bg-white px-3 py-2 dark:border-white/[0.05] dark:bg-card-dark">
+            <div className="flex items-center justify-between">
+              <div className="flex min-w-0 items-center gap-1">
               {sidebarCollapsed && (
                 <button
                   onClick={() => setSidebarCollapsed(false)}
@@ -2067,27 +2068,37 @@ export default function ChatPage() {
                   <span>{activeConversation.type === "counsellor" ? "Counsellor" : "AI"}</span>
                 </div>
               )}
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={toggleVoiceReplies}
+                  aria-pressed={voiceRepliesEnabled}
+                  aria-label={voiceRepliesEnabled ? "Turn automatic spoken replies off" : "Turn automatic spoken replies on"}
+                  title={voiceRepliesEnabled ? "Voice replies on" : "Voice replies off"}
+                  className={`flex h-8 items-center gap-1.5 rounded-lg px-2 text-[10px] font-semibold transition-colors ${
+                    voiceRepliesEnabled
+                      ? "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary-light"
+                      : "text-text-secondary hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06]"
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-sm" aria-hidden="true">
+                    {voiceRepliesEnabled ? "volume_up" : "volume_off"}
+                  </span>
+                  <span className="hidden sm:inline">Voice {voiceRepliesEnabled ? "on" : "off"}</span>
+                </button>
+                <button
+                  onClick={handleNewChat}
+                  className="flex h-8 items-center gap-1 rounded-lg px-1.5 text-[10px] font-medium text-text-secondary transition-colors hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06]"
+                >
+                  <span className="material-symbols-outlined text-xs">add</span>
+                  New
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={toggleVoiceReplies}
-                aria-pressed={voiceRepliesEnabled}
-                aria-label={voiceRepliesEnabled ? "Turn automatic spoken replies off" : "Turn automatic spoken replies on"}
-                title={voiceRepliesEnabled ? "Voice replies on" : "Voice replies off"}
-                className={`flex h-8 items-center gap-1.5 rounded-lg px-2 text-[10px] font-semibold transition-colors ${
-                  voiceRepliesEnabled
-                    ? "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary-light"
-                    : "text-text-secondary hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06]"
-                }`}
-              >
-                <span className="material-symbols-outlined text-sm" aria-hidden="true">
-                  {voiceRepliesEnabled ? "volume_up" : "volume_off"}
-                </span>
-                <span className="hidden sm:inline">Voice {voiceRepliesEnabled ? "on" : "off"}</span>
-              </button>
-              <label className="sr-only" htmlFor="sister-voice-select">
-                Choose Sister&apos;s speaking voice
+            <div className="mx-auto mt-2 flex w-full max-w-sm items-center gap-2 rounded-xl bg-background-light px-3 py-2 dark:bg-background-dark">
+              <label className="shrink-0 text-xs font-semibold text-text-primary dark:text-white" htmlFor="sister-voice-select">
+                Sister&apos;s voice
               </label>
               <select
                 id="sister-voice-select"
@@ -2099,7 +2110,7 @@ export default function ChatPage() {
                     ? `Speaking voice for ${SUPPORTED_LANGUAGES[userLanguage].name}`
                     : `No ${SUPPORTED_LANGUAGES[userLanguage].name} voice is currently available`
                 }
-                className="h-8 max-w-[7.5rem] rounded-lg border border-black/[0.06] bg-white px-1.5 text-[10px] font-medium text-text-secondary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-300 sm:max-w-[10rem]"
+                className="h-10 min-w-0 flex-1 rounded-lg border border-black/[0.08] bg-white px-3 text-sm font-medium text-text-primary focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/[0.05] dark:text-white"
               >
                 {getSunbirdVoices(userLanguage).length === 0 ? (
                   <option value="">Voice unavailable</option>
@@ -2109,13 +2120,6 @@ export default function ChatPage() {
                   ))
                 )}
               </select>
-              <button
-                onClick={handleNewChat}
-                className="flex h-8 items-center gap-1 rounded-lg px-1.5 text-[10px] font-medium text-text-secondary transition-colors hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06]"
-              >
-                <span className="material-symbols-outlined text-xs">add</span>
-                New
-              </button>
             </div>
           </div>
 
