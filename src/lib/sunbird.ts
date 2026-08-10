@@ -111,48 +111,20 @@ export interface SunbirdVoiceOption {
   label: string;
 }
 
-/** Current Orpheus catalog tags published by Sunbird. */
+/** SisterCare-approved Orpheus voices. Keep one reviewed voice per language. */
 export const SUNBIRD_VOICE_CATALOG: Record<
   SupportedLanguageCode,
   readonly SunbirdVoiceOption[]
 > = {
-  eng: [
-    { id: "salt_eng_0001", label: "English voice 1" },
-    { id: "salt_eng_0002", label: "English voice 2" },
-    { id: "salt_eng_0003", label: "English voice 3" },
-  ],
-  lug: [
-    { id: "salt_lug_0001", label: "Luganda voice 1" },
-    { id: "waxal_lug_0002", label: "Luganda voice 2" },
-    { id: "waxal_lug_0003", label: "Luganda voice 3" },
-    { id: "waxal_lug_0004", label: "Luganda voice 4" },
-    { id: "waxal_lug_0005", label: "Luganda voice 5" },
-    { id: "waxal_lug_0006", label: "Luganda voice 6" },
-    { id: "waxal_lug_0007", label: "Luganda voice 7" },
-    { id: "waxal_lug_0008", label: "Luganda voice 8" },
-  ],
-  ach: [
-    { id: "salt_ach_0001", label: "Acholi voice 1" },
-    { id: "waxal_ach_0001", label: "Acholi voice 2" },
-    { id: "waxal_ach_0005", label: "Acholi voice 3" },
-    { id: "waxal_ach_0006", label: "Acholi voice 4" },
-    { id: "waxal_ach_0008", label: "Acholi voice 5" },
-  ],
+  eng: [{ id: "salt_eng_0001", label: "English voice 1" }],
+  lug: [{ id: "waxal_lug_0003", label: "Luganda voice 3" }],
+  ach: [{ id: "waxal_ach_0008", label: "Acholi voice 5" }],
   // Sunbird documents Lugbara in the model training mix but currently
   // exposes no selectable Lugbara speaker ID.
   lgg: [],
-  nyn: [
-    { id: "salt_nyn_0001", label: "Runyankole voice 1" },
-    { id: "waxal_nyn_0003", label: "Runyankole voice 2" },
-    { id: "waxal_nyn_0004", label: "Runyankole voice 3" },
-    { id: "waxal_nyn_0007", label: "Runyankole voice 4" },
-    { id: "waxal_nyn_0008", label: "Runyankole voice 5" },
-  ],
+  nyn: [{ id: "waxal_nyn_0007", label: "Runyankole voice 4" }],
   teo: [{ id: "salt_teo_0001", label: "Ateso voice 1" }],
-  swa: [
-    { id: "waxal_swa_0006", label: "Swahili voice 1" },
-    { id: "waxal_swa_0007", label: "Swahili voice 2" },
-  ],
+  swa: [{ id: "waxal_swa_0006", label: "Swahili voice 1" }],
 };
 
 export class SpeechVoiceUnavailableError extends Error {

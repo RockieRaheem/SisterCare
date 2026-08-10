@@ -46,12 +46,9 @@ import {
 } from "@/lib/speechCapture";
 import {
   readVoiceRepliesPreference,
-  readVoiceSelections,
   selectedVoiceForLanguage,
   speechLocale,
   VOICE_REPLIES_STORAGE_KEY,
-  VOICE_SELECTIONS_STORAGE_KEY,
-  VoiceSelections,
 } from "@/lib/voicePlayback";
 
 interface Message {
@@ -333,7 +330,6 @@ export default function ChatPage() {
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const [preparingAudioId, setPreparingAudioId] = useState<string | null>(null);
   const [voiceRepliesEnabled, setVoiceRepliesEnabled] = useState(false);
-  const [voiceSelections, setVoiceSelections] = useState<VoiceSelections>({});
   const [voicePlaybackError, setVoicePlaybackError] = useState<string | null>(null);
   const [freshChatId, setFreshChatId] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -451,11 +447,6 @@ export default function ChatPage() {
     );
     voiceRepliesEnabledRef.current = enabled;
     setVoiceRepliesEnabled(enabled);
-    setVoiceSelections(
-      readVoiceSelections(
-        typeof window !== "undefined" ? window.localStorage : undefined,
-      ),
-    );
   }, []);
 
   const stopAllSpokenAudio = useCallback(() => {
@@ -492,7 +483,7 @@ export default function ChatPage() {
       const language = normalizeSupportedLanguageCode(
         message.language || userLanguage,
       );
-      const voice = selectedVoiceForLanguage(language, voiceSelections);
+      const voice = selectedVoiceForLanguage(language, {});
       if (!voice) {
         throw new Error(
           `${SUPPORTED_LANGUAGES[language].name} does not currently have an available Sunbird voice.`,
@@ -554,7 +545,7 @@ export default function ChatPage() {
         setPreparingAudioId(null);
       }
     }
-  }, [playingAudioId, stopAllSpokenAudio, userLanguage, voiceSelections]);
+  }, [playingAudioId, stopAllSpokenAudio, userLanguage]);
 
   const toggleVoiceReplies = useCallback(() => {
     const enabled = !voiceRepliesEnabledRef.current;
@@ -575,21 +566,6 @@ export default function ChatPage() {
       .find((message) => message.sender === "sister");
     if (latestReply) void playMessageAudio(latestReply);
   }, [messages, playMessageAudio, stopAllSpokenAudio]);
-
-  const changeSpokenVoice = useCallback((voice: string) => {
-    const available = getSunbirdVoices(userLanguage);
-    if (!available.some((option) => option.id === voice)) return;
-    const next = { ...voiceSelections, [userLanguage]: voice };
-    setVoiceSelections(next);
-    stopAllSpokenAudio();
-    setVoicePlaybackError(null);
-    try {
-      window.localStorage.setItem(
-        VOICE_SELECTIONS_STORAGE_KEY,
-        JSON.stringify(next),
-      );
-    } catch {}
-  }, [stopAllSpokenAudio, userLanguage, voiceSelections]);
 
   const startVoiceRecording = useCallback(async () => {
     try {
@@ -2097,29 +2073,29 @@ export default function ChatPage() {
               </div>
             </div>
             <div className="mx-auto mt-2 flex w-full max-w-sm items-center gap-2 rounded-xl bg-background-light px-3 py-2 dark:bg-background-dark">
-              <label className="shrink-0 text-xs font-semibold text-text-primary dark:text-white" htmlFor="sister-voice-select">
+              <span className="shrink-0 text-xs font-semibold text-text-primary dark:text-white">
                 Sister&apos;s voice
-              </label>
-              <select
-                id="sister-voice-select"
-                value={selectedVoiceForLanguage(userLanguage, voiceSelections) || ""}
-                onChange={(event) => changeSpokenVoice(event.target.value)}
-                disabled={getSunbirdVoices(userLanguage).length === 0}
+              </span>
+              <div
+                role="status"
                 title={
                   getSunbirdVoices(userLanguage).length
-                    ? `Speaking voice for ${SUPPORTED_LANGUAGES[userLanguage].name}`
+                    ? `Approved speaking voice for ${SUPPORTED_LANGUAGES[userLanguage].name}`
                     : `No ${SUPPORTED_LANGUAGES[userLanguage].name} voice is currently available`
                 }
-                className="h-10 min-w-0 flex-1 rounded-lg border border-black/[0.08] bg-white px-3 text-sm font-medium text-text-primary focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/[0.05] dark:text-white"
+                className={`flex min-h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border px-3 text-sm font-medium ${
+                  getSunbirdVoices(userLanguage).length
+                    ? "border-primary/15 bg-white text-text-primary dark:border-primary/25 dark:bg-white/[0.05] dark:text-white"
+                    : "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200"
+                }`}
               >
-                {getSunbirdVoices(userLanguage).length === 0 ? (
-                  <option value="">Voice unavailable</option>
-                ) : (
-                  getSunbirdVoices(userLanguage).map((voice) => (
-                    <option key={voice.id} value={voice.id}>{voice.label}</option>
-                  ))
-                )}
-              </select>
+                <span className="material-symbols-outlined shrink-0 text-base" aria-hidden="true">
+                  {getSunbirdVoices(userLanguage).length ? "record_voice_over" : "voice_over_off"}
+                </span>
+                <span className="min-w-0 leading-5">
+                  {getSunbirdVoices(userLanguage)[0]?.label || `${SUPPORTED_LANGUAGES[userLanguage].name} voice unavailable`}
+                </span>
+              </div>
             </div>
           </div>
 

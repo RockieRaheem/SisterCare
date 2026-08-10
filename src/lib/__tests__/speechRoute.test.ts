@@ -55,7 +55,7 @@ describe("spoken response route", () => {
     );
   });
 
-  it("honours a valid user-selected voice", async () => {
+  it("enforces the approved voice when a client sends a legacy choice", async () => {
     const response = await POST(request({
       text: "Oli otya?",
       language: "lug",
@@ -66,7 +66,7 @@ describe("spoken response route", () => {
       "Oli otya?",
       "lug",
       undefined,
-      "waxal_lug_0006",
+      "waxal_lug_0003",
     );
   });
 

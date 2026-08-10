@@ -43,8 +43,6 @@ async function postSpeech(request: NextRequest) {
   const rawLanguage =
     typeof body?.language === "string" ? body.language.trim().toLowerCase() : "eng";
   const language = normalizeSupportedLanguageCode(rawLanguage);
-  const requestedVoice =
-    typeof body?.voice === "string" ? body.voice.trim() : undefined;
 
   if (!text) {
     return NextResponse.json(
@@ -66,13 +64,9 @@ async function postSpeech(request: NextRequest) {
   }
 
   try {
-    const voice = resolveSunbirdVoice(language, requestedVoice);
-    if (requestedVoice && voice.id !== requestedVoice) {
-      return NextResponse.json(
-        { success: false, error: "The selected voice is not available for this language." },
-        { status: 400 },
-      );
-    }
+    // Voice choice is enforced server-side so stale clients cannot select an
+    // unreviewed speaker for a supported language.
+    const voice = resolveSunbirdVoice(language);
     const audio = await synthesizeSpokenResponse(
       text,
       language,
