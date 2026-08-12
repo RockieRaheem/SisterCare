@@ -117,7 +117,7 @@ export const SUNBIRD_VOICE_CATALOG: Record<
   readonly SunbirdVoiceOption[]
 > = {
   eng: [{ id: "salt_eng_0001", label: "English voice 1" }],
-  lug: [{ id: "waxal_lug_0003", label: "Luganda voice 3" }],
+  lug: [{ id: "salt_lug_0001", label: "Luganda female voice" }],
   ach: [{ id: "waxal_ach_0008", label: "Acholi voice 5" }],
   // Sunbird documents Lugbara in the model training mix but currently
   // exposes no selectable Lugbara speaker ID.

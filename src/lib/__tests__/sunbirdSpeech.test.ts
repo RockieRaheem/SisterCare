@@ -10,20 +10,20 @@ describe("current Sunbird speech contracts", () => {
     vi.stubEnv("SUNBIRD_API_KEY", "sunbird-test-key");
     const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       audio_url: "https://audio.test/luganda.wav",
-      voice: "waxal_lug_0003",
+      voice: "salt_lug_0001",
       language: "lug",
       duration_seconds: 2.5,
       sample_rate: 24_000,
       gcs_object: "orpheus/luganda.wav",
     }), { status: 200, headers: { "content-type": "application/json" } }));
 
-    await textToSpeech("Oli otya?", "lug", 0.7, "waxal_lug_0003", fetcher);
+    await textToSpeech("Oli otya?", "lug", 0.7, "salt_lug_0001", fetcher);
 
     const [, init] = fetcher.mock.calls[0];
     const body = JSON.parse(String(init.body));
     expect(body).toEqual({
       text: "Oli otya?",
-      voice: "waxal_lug_0003",
+      voice: "salt_lug_0001",
       language: "lug",
       response_mode: "url",
     });
@@ -52,7 +52,7 @@ describe("current Sunbird speech contracts", () => {
 
   it("publishes exactly one approved voice per supported spoken language", () => {
     expect(getSunbirdVoices("eng")).toEqual([{ id: "salt_eng_0001", label: "English voice 1" }]);
-    expect(getSunbirdVoices("lug")).toEqual([{ id: "waxal_lug_0003", label: "Luganda voice 3" }]);
+    expect(getSunbirdVoices("lug")).toEqual([{ id: "salt_lug_0001", label: "Luganda female voice" }]);
     expect(getSunbirdVoices("ach")).toEqual([{ id: "waxal_ach_0008", label: "Acholi voice 5" }]);
     expect(getSunbirdVoices("lgg")).toEqual([]);
     expect(getSunbirdVoices("nyn")).toEqual([{ id: "waxal_nyn_0007", label: "Runyankole voice 4" }]);

@@ -66,7 +66,7 @@ describe("spoken response route", () => {
       "Oli otya?",
       "lug",
       undefined,
-      "waxal_lug_0003",
+      "salt_lug_0001",
     );
   });
 

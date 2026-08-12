@@ -28,7 +28,7 @@ describe("voice reply accessibility preferences", () => {
         ? JSON.stringify({ lug: "waxal_lug_0006", eng: "not-a-real-voice" })
         : null,
     });
-    expect(selectedVoiceForLanguage("lug", selections)).toBe("waxal_lug_0003");
+    expect(selectedVoiceForLanguage("lug", selections)).toBe("salt_lug_0001");
     expect(selectedVoiceForLanguage("eng", selections)).toBe("salt_eng_0001");
     expect(selectedVoiceForLanguage("lgg", selections)).toBeUndefined();
   });
