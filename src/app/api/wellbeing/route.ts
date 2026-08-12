@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     .eq("user_id", auth.uid)
     .eq("record_type", "wellbeing")
     .order("created_at", { ascending: false })
-    .limit(30);
+    .limit(90);
   if (error) return unavailable();
   return NextResponse.json(
     {

@@ -1,709 +1,295 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
-import { useLanguage } from "@/context/LanguageContext";
 import Header from "@/components/layout/Header";
-import Card from "@/components/ui/Card";
-import Button from "@/components/ui/Button";
-import { getUserProfile, getSymptoms, getAgentEvents } from "@/lib/dataClient";
-import { UserProfile, SymptomLog, MoodType, AgentEvent } from "@/types";
 import { AppShellSkeleton } from "@/components/ui/Skeleton";
+import { useAuth } from "@/context/AuthContext";
+import { authenticatedFetch } from "@/lib/authenticatedFetch";
+import { getSymptoms, getUserProfile } from "@/lib/dataClient";
+import {
+  localWellbeingDate,
+  type WellbeingContext,
+  type WellbeingFeeling,
+} from "@/lib/wellbeing";
+import {
+  contextLabel,
+  feelingDetails,
+  wellbeingSupportMessage,
+} from "@/lib/wellbeingPresentation";
+import type { SymptomLog, UserProfile, WellbeingCheckIn } from "@/types";
 
-// Color mapping for moods
-const moodColors: Record<MoodType, string> = {
-  great: "#10B981", // green
-  good: "#34D399", // emerald
-  okay: "#FBBF24", // amber
-  low: "#FB923C", // orange
-  bad: "#EF4444", // red
-};
+type Period = "week" | "month" | "3months";
+const PERIOD_DAYS: Record<Period, number> = { week: 7, month: 30, "3months": 90 };
+const PERIOD_LABELS: Record<Period, string> = { week: "7 days", month: "30 days", "3months": "3 months" };
 
-const moodEmojis: Record<MoodType, string> = {
-  great: "🤩",
-  good: "😊",
-  okay: "😐",
-  low: "😔",
-  bad: "😞",
-};
+const hydrateCheckIn = (entry: WellbeingCheckIn): WellbeingCheckIn => ({
+  ...entry,
+  createdAt: new Date(entry.createdAt),
+  updatedAt: entry.updatedAt ? new Date(entry.updatedAt) : undefined,
+});
 
-// Common symptom colors
-const symptomColors: Record<string, string> = {
-  cramps: "#F472B6",
-  bloating: "#A78BFA",
-  headache: "#60A5FA",
-  fatigue: "#FBBF24",
-  backache: "#FB923C",
-  nausea: "#34D399",
-  moodSwings: "#F87171",
+const average = (values: number[]): number | null =>
+  values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
+
+const scoreLabel = (score: number | null, inverse = false): string => {
+  if (score === null) return "—";
+  if (inverse) return score >= 4 ? "High" : score >= 3 ? "Moderate" : "Low";
+  return score >= 4 ? "Good" : score >= 3 ? "Mixed" : "Low";
 };
 
 export default function AnalyticsPage() {
   const { user, loading: authLoading } = useAuth();
-  const { t } = useLanguage();
   const router = useRouter();
-
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [symptomLogs, setSymptomLogs] = useState<SymptomLog[]>([]);
-  const [agentEvents, setAgentEvents] = useState<AgentEvent[]>([]);
+  const [checkIns, setCheckIns] = useState<WellbeingCheckIn[]>([]);
+  const [selectedPeriod, setSelectedPeriod] = useState<Period>("month");
+  const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedPeriod, setSelectedPeriod] = useState<
-    "week" | "month" | "3months"
-  >("month");
+  const [error, setError] = useState<string | null>(null);
+  const [referenceTime] = useState(() => Date.now());
+  const [today] = useState(() => localWellbeingDate());
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push("/auth/login");
-    }
-  }, [user, authLoading, router]);
+    if (!authLoading && !user) router.push("/auth/login");
+  }, [authLoading, router, user]);
 
   useEffect(() => {
-    const loadData = async () => {
-      if (!user) return;
-
-      try {
-        // Get last 90 days of symptom data
-        const endDate = new Date();
-        const startDate = new Date(
-          endDate.getTime() - 90 * 24 * 60 * 60 * 1000,
-        );
-
-        const [userProfileResult, logsResult, eventsResult] =
-          await Promise.allSettled([
-            getUserProfile(user.uid),
-            getSymptoms(user.uid, startDate, endDate),
-            getAgentEvents(user.uid, 90),
-          ]);
-
-        const userProfile =
-          userProfileResult.status === "fulfilled"
-            ? userProfileResult.value
-            : null;
-        const logs = logsResult.status === "fulfilled" ? logsResult.value : [];
-        const events =
-          eventsResult.status === "fulfilled" ? eventsResult.value : [];
-
-        setProfile(userProfile);
-        setSymptomLogs(logs || []);
-        setAgentEvents(events || []);
-      } catch (error) {
-        console.error("Error loading analytics data:", error);
-      } finally {
-        setLoading(false);
+    if (!user || authLoading) return;
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      const endDate = new Date();
+      const startDate = new Date(endDate.getTime() - 90 * 86_400_000);
+      const [profileResult, symptomsResult, wellbeingResult] = await Promise.allSettled([
+        getUserProfile(user.uid),
+        getSymptoms(user.uid, startDate, endDate),
+        authenticatedFetch("/api/wellbeing", { cache: "no-store" }),
+      ]);
+      if (profileResult.status === "fulfilled") setProfile(profileResult.value);
+      if (symptomsResult.status === "fulfilled") setSymptomLogs(symptomsResult.value || []);
+      if (wellbeingResult.status === "fulfilled") {
+        const payload = await wellbeingResult.value.json().catch(() => ({}));
+        if (wellbeingResult.value.ok) {
+          const entries = (payload.data?.checkIns || []).map(hydrateCheckIn);
+          setCheckIns(entries);
+          setSelectedEntryId((current) => current || entries[0]?.id || null);
+        } else {
+          setError(payload.error || "Your wellbeing patterns could not be loaded.");
+        }
+      } else {
+        setError("Your wellbeing patterns could not be loaded.");
       }
+      setLoading(false);
     };
+    void load();
+  }, [authLoading, user]);
 
-    if (user && !authLoading) {
-      loadData();
-    }
-  }, [user, authLoading]);
+  const cutoff = useMemo(
+    () => new Date(referenceTime - PERIOD_DAYS[selectedPeriod] * 86_400_000),
+    [referenceTime, selectedPeriod],
+  );
+  const filteredCheckIns = useMemo(
+    () => checkIns.filter((entry) => entry.createdAt >= cutoff),
+    [checkIns, cutoff],
+  );
+  const filteredSymptoms = useMemo(
+    () => symptomLogs.filter((entry) => new Date(entry.date) >= cutoff),
+    [cutoff, symptomLogs],
+  );
+  const chronological = useMemo(
+    () => [...filteredCheckIns].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime()),
+    [filteredCheckIns],
+  );
+  const selectedEntry =
+    filteredCheckIns.find((entry) => entry.id === selectedEntryId) ||
+    filteredCheckIns[0] ||
+    null;
 
-  // Filter logs based on selected period
-  const filteredLogs = useMemo(() => {
-    const now = new Date();
-    const days =
-      selectedPeriod === "week" ? 7 : selectedPeriod === "month" ? 30 : 90;
-    const cutoff = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+  const averages = useMemo(
+    () => ({
+      mood: average(filteredCheckIns.map((entry) => entry.mood)),
+      stress: average(filteredCheckIns.map((entry) => entry.stress)),
+      sleep: average(filteredCheckIns.map((entry) => entry.sleep)),
+      energy: average(filteredCheckIns.map((entry) => entry.energy)),
+    }),
+    [filteredCheckIns],
+  );
 
-    return symptomLogs.filter((log) => {
-      const logDate = log.date instanceof Date ? log.date : new Date(log.date);
-      return logDate >= cutoff;
-    });
-  }, [symptomLogs, selectedPeriod]);
+  const feelingCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    filteredCheckIns.forEach((entry) =>
+      (entry.feelings || []).forEach((feeling) => counts.set(feeling, (counts.get(feeling) || 0) + 1)),
+    );
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  }, [filteredCheckIns]);
 
-  // Calculate mood distribution
-  const moodDistribution = useMemo(() => {
-    const counts: Record<MoodType, number> = {
-      great: 0,
-      good: 0,
-      okay: 0,
-      low: 0,
-      bad: 0,
-    };
+  const contextCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    filteredCheckIns.forEach((entry) =>
+      (entry.contexts || []).forEach((context) => counts.set(context, (counts.get(context) || 0) + 1)),
+    );
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  }, [filteredCheckIns]);
 
-    filteredLogs.forEach((log) => {
-      if (log.mood && counts[log.mood] !== undefined) {
-        counts[log.mood]++;
-      }
-    });
+  const symptomCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    filteredSymptoms.forEach((entry) =>
+      (entry.symptoms || []).forEach((symptom) => counts.set(symptom, (counts.get(symptom) || 0) + 1)),
+    );
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+  }, [filteredSymptoms]);
 
-    return counts;
-  }, [filteredLogs]);
-
-  // Calculate symptom frequency
-  const symptomFrequency = useMemo(() => {
-    const counts: Record<string, number> = {};
-
-    filteredLogs.forEach((log) => {
-      log.symptoms?.forEach((symptom) => {
-        counts[symptom] = (counts[symptom] || 0) + 1;
-      });
-    });
-
-    return Object.entries(counts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 8);
-  }, [filteredLogs]);
-
-  // Calculate mood trend over time
-  const moodTrend = useMemo(() => {
-    const moodValues: Record<MoodType, number> = {
-      great: 5,
-      good: 4,
-      okay: 3,
-      low: 2,
-      bad: 1,
-    };
-
-    // Group by week
-    const weeks: { week: string; average: number; count: number }[] = [];
-    const groupedByWeek: Record<string, number[]> = {};
-
-    filteredLogs.forEach((log) => {
-      const logDate = log.date instanceof Date ? log.date : new Date(log.date);
-      const weekStart = new Date(logDate);
-      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-      const weekKey = weekStart.toISOString().split("T")[0];
-
-      if (!groupedByWeek[weekKey]) {
-        groupedByWeek[weekKey] = [];
-      }
-      if (log.mood && moodValues[log.mood]) {
-        groupedByWeek[weekKey].push(moodValues[log.mood]);
-      }
-    });
-
-    Object.entries(groupedByWeek).forEach(([week, values]) => {
-      if (values.length > 0) {
-        weeks.push({
-          week,
-          average: values.reduce((a, b) => a + b, 0) / values.length,
-          count: values.length,
-        });
-      }
-    });
-
-    return weeks.sort((a, b) => a.week.localeCompare(b.week));
-  }, [filteredLogs]);
-
-  // Cycle statistics
-  const cycleStats = useMemo(() => {
+  const cycleSummary = useMemo(() => {
     const history = profile?.cycleData?.history || [];
-
-    if (history.length === 0) {
-      return {
-        averageCycleLength: profile?.cycleData?.cycleLength || 28,
-        averagePeriodLength: profile?.cycleData?.periodLength || 5,
-        totalCycles: 0,
-        shortestCycle: 0,
-        longestCycle: 0,
-      };
-    }
-
-    const cycleLengths = history.map((h) => h.cycleLength).filter((l) => l > 0);
-    const periodLengths = history
-      .map((h) => h.periodLength)
-      .filter((l) => l > 0);
-
+    const cycles = history.map((entry) => entry.cycleLength).filter((value) => value > 0);
+    const periods = history.map((entry) => entry.periodLength).filter((value) => value > 0);
     return {
-      averageCycleLength:
-        cycleLengths.length > 0
-          ? Math.round(
-              cycleLengths.reduce((a, b) => a + b, 0) / cycleLengths.length,
-            )
-          : profile?.cycleData?.cycleLength || 28,
-      averagePeriodLength:
-        periodLengths.length > 0
-          ? Math.round(
-              periodLengths.reduce((a, b) => a + b, 0) / periodLengths.length,
-            )
-          : profile?.cycleData?.periodLength || 5,
-      totalCycles: history.length,
-      shortestCycle: cycleLengths.length > 0 ? Math.min(...cycleLengths) : 0,
-      longestCycle: cycleLengths.length > 0 ? Math.max(...cycleLengths) : 0,
+      count: history.length,
+      cycle: cycles.length ? Math.round(average(cycles) as number) : profile?.cycleData?.cycleLength || null,
+      period: periods.length ? Math.round(average(periods) as number) : profile?.cycleData?.periodLength || null,
     };
   }, [profile]);
 
-  // Calculate total logged days
-  const totalLoggedDays = filteredLogs.length;
-  const totalSymptoms = filteredLogs.reduce(
-    (acc, log) => acc + (log.symptoms?.length || 0),
-    0,
-  );
+  const patternNotes = useMemo(() => {
+    if (filteredCheckIns.length < 3) {
+      return ["A few more check-ins will make patterns easier to notice. There is no need to log more than once a day."];
+    }
+    const notes: string[] = [];
+    if ((averages.stress || 0) >= 4) notes.push("Stress has often felt high in this period. Consider choosing support before it becomes harder to carry.");
+    if ((averages.sleep || 5) <= 2.5) notes.push("Rest has often felt difficult. You may want to talk about what is interrupting sleep.");
+    if ((averages.energy || 5) <= 2.5) notes.push("Low energy has appeared often. A smaller pace and practical support may be worth considering.");
+    if (contextCounts[0]) notes.push(`${contextLabel(contextCounts[0][0] as WellbeingContext)} was the context you mentioned most often.`);
+    return notes.length ? notes : ["Your recent check-ins look varied. Open any day below to remember what was happening around it."];
+  }, [averages.energy, averages.sleep, averages.stress, contextCounts, filteredCheckIns.length]);
 
-  // Agent evaluation metrics
-  const agentMetrics = useMemo(() => {
-    const triageEvents = agentEvents.filter((e) => e.type === "triage");
-    const highRiskTriage = triageEvents.filter(
-      (e) => e.severity === "high" || e.severity === "critical",
-    ).length;
-
-    const handoffOffered = agentEvents.filter(
-      (e) => e.type === "handoff_offered",
-    ).length;
-    const handoffConnected = agentEvents.filter(
-      (e) => e.type === "handoff_connected",
-    ).length;
-
-    const cyclePrompts = agentEvents.filter(
-      (e) => e.type === "cycle_confirmation_prompted",
-    ).length;
-    const cycleUpdates = agentEvents.filter(
-      (e) => e.type === "cycle_updated",
-    ).length;
-
-    const handoffOpportunityCount = handoffOffered + handoffConnected;
-    const handoffConversionRate =
-      handoffOpportunityCount > 0
-        ? Math.round((handoffConnected / handoffOpportunityCount) * 100)
-        : 0;
-
-    const cycleUpdateRate =
-      cyclePrompts > 0 ? Math.round((cycleUpdates / cyclePrompts) * 100) : 0;
-
-    return {
-      triageCount: triageEvents.length,
-      highRiskTriage,
-      handoffOffered,
-      handoffConnected,
-      handoffConversionRate,
-      cyclePrompts,
-      cycleUpdates,
-      cycleUpdateRate,
-    };
-  }, [agentEvents]);
-
-  if (authLoading || loading) {
-    return <AppShellSkeleton />;
-  }
+  if (authLoading || loading) return <AppShellSkeleton />;
+  if (!user) return null;
 
   return (
-    <div className="app-page flex min-h-screen flex-col">
+    <div className="app-page min-h-screen">
       <Header variant="app" />
-
-      <main className="main-content page-container flex-1 py-6 sm:py-8">
-        {/* Page Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <div>
-            <span className="eyebrow">Patterns over time</span>
-            <h1 className="mt-1 flex items-center gap-3 text-3xl font-extrabold text-text-primary dark:text-white">
-              Analytics & Insights
-            </h1>
-            <p className="text-text-secondary mt-1">
-              Track your health patterns and gain insights about your cycle
-            </p>
+      <main className="main-content page-container pb-32 pt-6 md:pb-12 md:pt-8">
+        <header className="grid gap-5 rounded-3xl bg-[#241429] p-6 text-white shadow-soft-lg sm:p-8 lg:grid-cols-[1fr_auto] lg:items-end">
+          <div className="max-w-3xl">
+            <span className="inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.16em] text-fuchsia-200"><span className="material-symbols-outlined text-lg" aria-hidden="true">monitoring</span>Your wellbeing</span>
+            <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Notice patterns, not perfect days</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75 sm:text-base">See how mood, stress, sleep, energy, and life context have moved over time. These reflections support self-understanding; they are not a diagnosis.</p>
           </div>
+          <Link href="/wellbeing" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-extrabold text-white shadow-primary-sm"><span className="material-symbols-outlined" aria-hidden="true">edit_note</span>{checkIns[0]?.localDate === today ? "Update today's check-in" : "Check in today"}</Link>
+        </header>
 
-          {/* Period Selector */}
-          <div className="flex gap-2 bg-white dark:bg-card-dark p-1 rounded-xl border border-border-light dark:border-border-dark">
-            {(["week", "month", "3months"] as const).map((period) => (
-              <button
-                key={period}
-                onClick={() => setSelectedPeriod(period)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                  selectedPeriod === period
-                    ? "bg-primary text-white"
-                    : "text-text-secondary hover:bg-primary/10"
-                }`}
-              >
-                {period === "week"
-                  ? "Week"
-                  : period === "month"
-                    ? "Month"
-                    : "3 Months"}
-              </button>
-            ))}
-          </div>
+        <div className="mt-5 flex max-w-full gap-2 overflow-x-auto rounded-2xl border border-border-light bg-white p-1.5 dark:border-border-dark dark:bg-card-dark sm:ml-auto sm:w-fit" aria-label="Pattern time range">
+          {(Object.keys(PERIOD_DAYS) as Period[]).map((period) => (
+            <button key={period} type="button" onClick={() => setSelectedPeriod(period)} aria-pressed={selectedPeriod === period} className={`min-h-10 shrink-0 rounded-xl px-4 text-sm font-bold transition ${selectedPeriod === period ? "bg-primary text-white" : "text-text-secondary hover:bg-primary/8"}`}>{PERIOD_LABELS[period]}</button>
+          ))}
         </div>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-          <Card padding="md" className="text-center">
-            <div className="text-3xl sm:text-4xl font-black text-primary">
-              {totalLoggedDays}
-            </div>
-            <div className="text-sm text-text-secondary mt-1">Days Logged</div>
-          </Card>
-          <Card padding="md" className="text-center">
-            <div className="text-3xl sm:text-4xl font-black text-primary-dark">
-              {totalSymptoms}
-            </div>
-            <div className="text-sm text-text-secondary mt-1">
-              Symptoms Tracked
-            </div>
-          </Card>
-          <Card padding="md" className="text-center">
-            <div className="text-3xl sm:text-4xl font-black text-emerald-500">
-              {cycleStats.averageCycleLength}
-            </div>
-            <div className="text-sm text-text-secondary mt-1">
-              Avg. Cycle (days)
-            </div>
-          </Card>
-          <Card padding="md" className="text-center">
-            <div className="text-3xl sm:text-4xl font-black text-pink-500">
-              {cycleStats.averagePeriodLength}
-            </div>
-            <div className="text-sm text-text-secondary mt-1">
-              Avg. Period (days)
-            </div>
-          </Card>
-        </div>
+        {error && <div role="alert" className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-100">{error}</div>}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Mood Distribution Chart */}
-          <Card padding="lg">
-            <h2 className="text-lg font-bold text-text-primary dark:text-white mb-4 flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary">
-                mood
-              </span>
-              Mood Distribution
-            </h2>
+        {filteredCheckIns.length === 0 ? (
+          <section className="mt-6 rounded-3xl border border-dashed border-primary/25 bg-primary/[0.03] p-8 text-center sm:p-12">
+            <span className="material-symbols-outlined text-5xl text-primary" aria-hidden="true">psychiatry</span>
+            <h2 className="mt-3 text-2xl font-black text-text-primary dark:text-white">Begin with one honest check-in</h2>
+            <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-text-secondary">Choose words for what you feel, add context if useful, and decide whether you want reflection, coping ideas, or human support.</p>
+            <Link href="/wellbeing" className="mt-5 inline-flex min-h-12 items-center justify-center rounded-xl bg-primary px-6 text-sm font-bold text-white">Open private check-in</Link>
+          </section>
+        ) : (
+          <>
+            <section className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <SummaryCard icon="event_note" value={String(filteredCheckIns.length)} label="Check-in days" helper={`Within ${PERIOD_LABELS[selectedPeriod]}`} showScale={false} />
+              <SummaryCard icon="mood" value={averages.mood?.toFixed(1) || "—"} label="Average mood" helper={scoreLabel(averages.mood)} />
+              <SummaryCard icon="psychology" value={averages.stress?.toFixed(1) || "—"} label="Average stress" helper={scoreLabel(averages.stress, true)} />
+              <SummaryCard icon="bedtime" value={averages.sleep?.toFixed(1) || "—"} label="Average sleep" helper={scoreLabel(averages.sleep)} />
+            </section>
 
-            {Object.values(moodDistribution).some((v) => v > 0) ? (
-              <div className="space-y-3">
-                {(Object.entries(moodDistribution) as [MoodType, number][]).map(
-                  ([mood, count]) => {
-                    const total = Object.values(moodDistribution).reduce(
-                      (a, b) => a + b,
-                      0,
-                    );
-                    const percentage = total > 0 ? (count / total) * 100 : 0;
-
+            <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(300px,0.6fr)]">
+              <div className="rounded-3xl border border-border-light bg-white p-5 shadow-soft dark:border-border-dark dark:bg-card-dark sm:p-6">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div><span className="eyebrow">Daily view</span><h2 className="mt-1 text-xl font-black text-text-primary dark:text-white">Mood over time</h2><p className="mt-1 text-sm text-text-secondary">Tap a day to see what you recorded.</p></div>
+                  <div className="flex gap-3 text-xs font-semibold text-text-secondary"><span>Mood 1–5</span><span>·</span><span>{chronological.length} entries</span></div>
+                </div>
+                <div className="mt-6 flex h-56 items-end gap-2 overflow-x-auto border-b border-border-light px-1 pb-2 dark:border-border-dark">
+                  {chronological.map((entry) => {
+                    const selected = selectedEntry?.id === entry.id;
                     return (
-                      <div key={mood} className="flex items-center gap-3">
-                        <span className="text-2xl w-8">{moodEmojis[mood]}</span>
-                        <div className="flex-1">
-                          <div className="flex justify-between text-sm mb-1">
-                            <span className="capitalize text-text-primary dark:text-white font-medium">
-                              {mood}
-                            </span>
-                            <span className="text-text-secondary">
-                              {count} ({percentage.toFixed(0)}%)
-                            </span>
-                          </div>
-                          <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                            <div
-                              className="h-full rounded-full transition-all duration-500"
-                              style={{
-                                width: `${percentage}%`,
-                                backgroundColor: moodColors[mood],
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
+                      <button key={entry.id} type="button" aria-pressed={selected} aria-label={`${entry.localDate}, mood ${entry.mood} of 5`} onClick={() => setSelectedEntryId(entry.id)} className="group flex h-full min-w-14 flex-col items-center justify-end gap-2 rounded-xl px-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                        <span className="text-xs font-black text-text-secondary">{entry.mood}</span>
+                        <span className={`w-7 rounded-t-xl transition-all ${selected ? "bg-primary shadow-primary-sm" : "bg-primary/25 group-hover:bg-primary/50"}`} style={{ height: `${Math.max(18, entry.mood * 27)}px` }} />
+                        <span className={`text-[10px] font-bold ${selected ? "text-primary" : "text-text-secondary"}`}>{entry.createdAt.toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
+                      </button>
                     );
-                  },
-                )}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-text-secondary">
-                <span className="material-symbols-outlined text-4xl mb-2">
-                  sentiment_neutral
-                </span>
-                <p>No mood data logged yet</p>
-                <Button
-                  size="sm"
-                  className="mt-3"
-                  onClick={() => router.push("/dashboard")}
-                >
-                  Log Your Mood
-                </Button>
-              </div>
-            )}
-          </Card>
-
-          {/* Top Symptoms Chart */}
-          <Card padding="lg">
-            <h2 className="text-lg font-bold text-text-primary dark:text-white mb-4 flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary">
-                health_metrics
-              </span>
-              Top Symptoms
-            </h2>
-
-            {symptomFrequency.length > 0 ? (
-              <div className="space-y-3">
-                {symptomFrequency.map(([symptom, count], index) => {
-                  const maxCount = symptomFrequency[0][1];
-                  const percentage = (count / maxCount) * 100;
-                  const color = symptomColors[symptom] || "#ff00ff";
-
-                  return (
-                    <div key={symptom} className="flex items-center gap-3">
-                      <span className="text-sm font-bold text-text-secondary w-6">
-                        #{index + 1}
-                      </span>
-                      <div className="flex-1">
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="capitalize text-text-primary dark:text-white font-medium">
-                            {symptom.replace(/([A-Z])/g, " $1").trim()}
-                          </span>
-                          <span className="text-text-secondary">{count}x</span>
-                        </div>
-                        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all duration-500"
-                            style={{
-                              width: `${percentage}%`,
-                              backgroundColor: color,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-text-secondary">
-                <span className="material-symbols-outlined text-4xl mb-2">
-                  monitor_heart
-                </span>
-                <p>No symptoms logged yet</p>
-                <Button
-                  size="sm"
-                  className="mt-3"
-                  onClick={() => router.push("/dashboard")}
-                >
-                  Log Symptoms
-                </Button>
-              </div>
-            )}
-          </Card>
-
-          {/* Mood Trend Chart */}
-          <Card padding="lg" className="lg:col-span-2">
-            <h2 className="text-lg font-bold text-text-primary dark:text-white mb-4 flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary">
-                trending_up
-              </span>
-              Mood Trend Over Time
-            </h2>
-
-            {moodTrend.length > 1 ? (
-              <div className="h-48 flex items-end gap-2 overflow-x-auto pb-2">
-                {moodTrend.map((week, index) => {
-                  const height = (week.average / 5) * 100;
-                  const color =
-                    week.average >= 4
-                      ? "#10B981"
-                      : week.average >= 3
-                        ? "#FBBF24"
-                        : "#EF4444";
-                  const date = new Date(week.week);
-
-                  return (
-                    <div
-                      key={week.week}
-                      className="flex flex-col items-center min-w-[50px]"
-                    >
-                      <div className="flex-1 w-full flex items-end justify-center">
-                        <div
-                          className="w-8 rounded-t-lg transition-all duration-500 hover:opacity-80"
-                          style={{
-                            height: `${height}%`,
-                            backgroundColor: color,
-                            minHeight: "10px",
-                          }}
-                          title={`Week: ${week.week}, Avg: ${week.average.toFixed(1)}, Logs: ${week.count}`}
-                        />
-                      </div>
-                      <div className="text-xs text-text-secondary mt-2 text-center">
-                        {date.toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-text-secondary">
-                <span className="material-symbols-outlined text-4xl mb-2">
-                  show_chart
-                </span>
-                <p>Log more moods to see your trend</p>
-              </div>
-            )}
-
-            {/* Legend */}
-            <div className="flex justify-center gap-6 mt-4 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-emerald-500" />
-                <span className="text-text-secondary">Feeling Good</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-amber-500" />
-                <span className="text-text-secondary">Neutral</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-red-500" />
-                <span className="text-text-secondary">Feeling Low</span>
-              </div>
-            </div>
-          </Card>
-
-          {/* Cycle History */}
-          <Card padding="lg" className="lg:col-span-2">
-            <h2 className="text-lg font-bold text-text-primary dark:text-white mb-4 flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary">
-                cycle
-              </span>
-              Cycle Statistics
-            </h2>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="bg-gradient-to-br from-pink-50 to-white dark:from-pink-900/20 dark:to-card-dark p-4 rounded-xl text-center border border-pink-100 dark:border-pink-800/30">
-                <div className="text-2xl font-black text-pink-500">
-                  {cycleStats.totalCycles}
-                </div>
-                <div className="text-sm text-text-secondary mt-1">
-                  Cycles Tracked
-                </div>
-              </div>
-              <div className="bg-gradient-to-br from-fuchsia-50 to-white dark:from-fuchsia-950/20 dark:to-card-dark p-4 rounded-xl text-center border border-fuchsia-100 dark:border-fuchsia-800/30">
-                <div className="text-2xl font-black text-primary-dark dark:text-fuchsia-300">
-                  {cycleStats.averageCycleLength}
-                </div>
-                <div className="text-sm text-text-secondary mt-1">
-                  Avg. Cycle Length
-                </div>
-              </div>
-              <div className="bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-900/20 dark:to-card-dark p-4 rounded-xl text-center border border-emerald-100 dark:border-emerald-800/30">
-                <div className="text-2xl font-black text-emerald-500">
-                  {cycleStats.shortestCycle > 0
-                    ? cycleStats.shortestCycle
-                    : "-"}
-                </div>
-                <div className="text-sm text-text-secondary mt-1">
-                  Shortest Cycle
-                </div>
-              </div>
-              <div className="bg-gradient-to-br from-amber-50 to-white dark:from-amber-900/20 dark:to-card-dark p-4 rounded-xl text-center border border-amber-100 dark:border-amber-800/30">
-                <div className="text-2xl font-black text-amber-500">
-                  {cycleStats.longestCycle > 0 ? cycleStats.longestCycle : "-"}
-                </div>
-                <div className="text-sm text-text-secondary mt-1">
-                  Longest Cycle
-                </div>
-              </div>
-            </div>
-
-            {cycleStats.totalCycles === 0 && (
-              <div className="text-center py-6 text-text-secondary mt-4 border-t border-border-light dark:border-border-dark">
-                <p>Start tracking your cycles to see detailed statistics</p>
-                <Button
-                  size="sm"
-                  className="mt-3"
-                  onClick={() => router.push("/profile")}
-                >
-                  Set Up Cycle Tracking
-                </Button>
-              </div>
-            )}
-          </Card>
-
-          {/* Agent Evaluation Metrics */}
-          <Card padding="lg" className="lg:col-span-2">
-            <h2 className="text-lg font-bold text-text-primary dark:text-white mb-4 flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary">
-                smart_toy
-              </span>
-              Agent Evaluation Metrics
-            </h2>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
-              <div className="bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-900/20 dark:to-card-dark p-4 rounded-xl text-center border border-indigo-100 dark:border-indigo-800/30">
-                <div className="text-2xl font-black text-indigo-500">
-                  {agentMetrics.triageCount}
-                </div>
-                <div className="text-sm text-text-secondary mt-1">
-                  Triage Runs
+                  })}
                 </div>
               </div>
 
-              <div className="bg-gradient-to-br from-red-50 to-white dark:from-red-900/20 dark:to-card-dark p-4 rounded-xl text-center border border-red-100 dark:border-red-800/30">
-                <div className="text-2xl font-black text-red-500">
-                  {agentMetrics.highRiskTriage}
-                </div>
-                <div className="text-sm text-text-secondary mt-1">
-                  High-Risk Flags
-                </div>
+              {selectedEntry && <CheckInDetail entry={selectedEntry} />}
+            </section>
+
+            <section className="mt-6 grid gap-6 lg:grid-cols-2">
+              <div className="rounded-3xl border border-border-light bg-white p-5 shadow-soft dark:border-border-dark dark:bg-card-dark sm:p-6">
+                <span className="eyebrow">Emotional vocabulary</span><h2 className="mt-1 text-xl font-black text-text-primary dark:text-white">Feelings you named</h2>
+                {feelingCounts.length ? <div className="mt-5 space-y-3">{feelingCounts.slice(0, 6).map(([feeling, count]) => { const details = feelingDetails(feeling as WellbeingFeeling); const width = Math.max(10, (count / feelingCounts[0][1]) * 100); return <div key={feeling}><div className="mb-1.5 flex items-center justify-between text-sm"><span className="font-bold text-text-primary dark:text-white">{details?.emoji} {details?.label || feeling}</span><span className="text-text-secondary">{count} {count === 1 ? "day" : "days"}</span></div><div className="h-2.5 overflow-hidden rounded-full bg-background-light dark:bg-background-dark"><div className="h-full rounded-full bg-primary" style={{ width: `${width}%` }} /></div></div>; })}</div> : <p className="mt-4 text-sm text-text-secondary">New check-ins will show the words you use most often.</p>}
               </div>
 
-              <div className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-900/20 dark:to-card-dark p-4 rounded-xl text-center border border-blue-100 dark:border-blue-800/30">
-                <div className="text-2xl font-black text-blue-500">
-                  {agentMetrics.handoffConnected}
-                </div>
-                <div className="text-sm text-text-secondary mt-1">
-                  Handoffs Connected
-                </div>
+              <div className="rounded-3xl border border-border-light bg-white p-5 shadow-soft dark:border-border-dark dark:bg-card-dark sm:p-6">
+                <span className="eyebrow">Gentle reflection</span><h2 className="mt-1 text-xl font-black text-text-primary dark:text-white">What stands out</h2>
+                <div className="mt-4 space-y-3">{patternNotes.map((note) => <p key={note} className="flex gap-3 rounded-2xl bg-background-light p-4 text-sm leading-6 text-text-secondary dark:bg-background-dark"><span className="material-symbols-outlined mt-0.5 text-lg text-primary" aria-hidden="true">lightbulb</span><span>{note}</span></p>)}</div>
+                <p className="mt-4 text-xs leading-5 text-text-secondary">These are simple summaries of what you recorded—not clinical conclusions or predictions.</p>
               </div>
+            </section>
+          </>
+        )}
 
-              <div className="bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-900/20 dark:to-card-dark p-4 rounded-xl text-center border border-emerald-100 dark:border-emerald-800/30">
-                <div className="text-2xl font-black text-emerald-500">
-                  {agentMetrics.cycleUpdates}
-                </div>
-                <div className="text-sm text-text-secondary mt-1">
-                  Cycle Auto-Updates
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="p-4 rounded-xl border border-border-light dark:border-border-dark bg-white dark:bg-card-dark">
-                <p className="text-sm font-semibold text-text-primary dark:text-white mb-1">
-                  Counsellor Handoff Conversion
-                </p>
-                <p className="text-2xl font-black text-primary">
-                  {agentMetrics.handoffConversionRate}%
-                </p>
-                <p className="text-xs text-text-secondary mt-1">
-                  Connected / (Offered + Connected)
-                </p>
-              </div>
-
-              <div className="p-4 rounded-xl border border-border-light dark:border-border-dark bg-white dark:bg-card-dark">
-                <p className="text-sm font-semibold text-text-primary dark:text-white mb-1">
-                  Cycle Confirmation Update Rate
-                </p>
-                <p className="text-2xl font-black text-primary">
-                  {agentMetrics.cycleUpdateRate}%
-                </p>
-                <p className="text-xs text-text-secondary mt-1">
-                  Updated / Prompted
-                </p>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* Export Option */}
-        <Card padding="md" className="mt-6">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <span className="material-symbols-outlined text-primary text-2xl">
-                download
-              </span>
-              <div>
-                <h3 className="font-bold text-text-primary dark:text-white">
-                  Export Your Data
-                </h3>
-                <p className="text-sm text-text-secondary">
-                  Download your health data for your records
-                </p>
-              </div>
-            </div>
-            <Button variant="secondary" icon="download">
-              Export as PDF
-            </Button>
+        <section className="mt-8 overflow-hidden rounded-3xl border border-border-light bg-white dark:border-border-dark dark:bg-card-dark">
+          <div className="border-b border-border-light bg-background-light p-5 dark:border-border-dark dark:bg-background-dark sm:p-6">
+            <span className="eyebrow">Body context</span><h2 className="mt-1 text-2xl font-black text-text-primary dark:text-white">Cycle and physical symptoms</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">Kept here as supporting context. SisterCare does not assume every emotional change is caused by menstruation.</p>
           </div>
-        </Card>
+          <div className="grid gap-5 p-5 sm:p-6 lg:grid-cols-[0.85fr_1.15fr]">
+            {profile?.pregnancyData?.isPregnant ? (
+              <div className="rounded-2xl bg-primary/[0.05] p-5"><p className="font-black text-text-primary dark:text-white">Period tracking is paused</p><p className="mt-2 text-sm leading-6 text-text-secondary">Your profile is currently using pregnancy support, so period statistics are not presented as active predictions.</p></div>
+            ) : profile?.cycleData ? (
+              <div className="grid grid-cols-2 gap-3"><Metric value={cycleSummary.cycle ? `${cycleSummary.cycle} days` : "—"} label="Typical cycle" /><Metric value={cycleSummary.period ? `${cycleSummary.period} days` : "—"} label="Typical period" /><Metric value={String(cycleSummary.count)} label="Completed cycles" /><Metric value={String(filteredSymptoms.length)} label="Symptom-log days" /></div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-border-light p-5 dark:border-border-dark"><p className="font-black text-text-primary dark:text-white">Cycle details are optional</p><p className="mt-2 text-sm leading-6 text-text-secondary">Add them when tracking feels useful. Emotional support remains available without cycle setup.</p><Link href="/onboarding?mode=edit" className="mt-4 inline-flex min-h-11 items-center text-sm font-bold text-primary">Set up cycle tracking <span className="material-symbols-outlined text-lg">arrow_forward</span></Link></div>
+            )}
+            <div>
+              <h3 className="font-black text-text-primary dark:text-white">Physical symptoms mentioned</h3>
+              {symptomCounts.length ? <div className="mt-3 flex flex-wrap gap-2">{symptomCounts.map(([symptom, count]) => <span key={symptom} className="rounded-full border border-border-light bg-background-light px-3 py-2 text-sm font-semibold text-text-primary dark:border-border-dark dark:bg-background-dark dark:text-white">{symptom.replace(/_/g, " ")} · {count}</span>)}</div> : <p className="mt-3 text-sm text-text-secondary">No physical symptoms were recorded in this period.</p>}
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-6 grid gap-3 sm:grid-cols-3">
+          <Link href="/chat" className="group flex min-h-24 items-center gap-4 rounded-2xl bg-primary p-4 text-white shadow-primary-sm"><span className="material-symbols-outlined text-3xl" aria-hidden="true">chat_bubble</span><span><span className="block font-black">Talk privately</span><span className="mt-1 block text-xs text-white/75">Put today into words with Sister</span></span></Link>
+          <Link href="/counsellors" className="group flex min-h-24 items-center gap-4 rounded-2xl border border-border-light bg-white p-4 dark:border-border-dark dark:bg-card-dark"><span className="material-symbols-outlined text-3xl text-primary" aria-hidden="true">support_agent</span><span><span className="block font-black text-text-primary dark:text-white">Human support</span><span className="mt-1 block text-xs text-text-secondary">See available verified counsellors</span></span></Link>
+          <Link href="/settings" className="group flex min-h-24 items-center gap-4 rounded-2xl border border-border-light bg-white p-4 dark:border-border-dark dark:bg-card-dark"><span className="material-symbols-outlined text-3xl text-primary" aria-hidden="true">shield_lock</span><span><span className="block font-black text-text-primary dark:text-white">Your data</span><span className="mt-1 block text-xs text-text-secondary">Manage privacy or export records</span></span></Link>
+        </section>
       </main>
     </div>
   );
+}
+
+function SummaryCard({ icon, value, label, helper, showScale = true }: { icon: string; value: string; label: string; helper: string; showScale?: boolean }) {
+  return <article className="rounded-2xl border border-border-light bg-white p-4 shadow-soft dark:border-border-dark dark:bg-card-dark sm:p-5"><span className="material-symbols-outlined text-2xl text-primary" aria-hidden="true">{icon}</span><p className="mt-3 text-2xl font-black text-text-primary dark:text-white">{value}{showScale && <span className="ml-1 text-xs font-semibold text-text-secondary">/5</span>}</p><p className="mt-1 text-sm font-bold text-text-primary dark:text-white">{label}</p><p className="mt-1 text-xs text-text-secondary">{helper}</p></article>;
+}
+
+function CheckInDetail({ entry }: { entry: WellbeingCheckIn }) {
+  const support = wellbeingSupportMessage(entry);
+  return (
+    <article className="rounded-3xl border border-primary/15 bg-primary/[0.04] p-5 sm:p-6">
+      <div className="flex items-start justify-between gap-3"><div><span className="eyebrow">Selected day</span><h2 className="mt-1 text-xl font-black text-text-primary dark:text-white">{entry.createdAt.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</h2></div><span className="rounded-xl bg-white px-2.5 py-1 text-xs font-black text-primary shadow-sm dark:bg-card-dark">Mood {entry.mood}/5</span></div>
+      <div className="mt-4 flex flex-wrap gap-2">{(entry.feelings || []).map((feeling) => { const details = feelingDetails(feeling); return <span key={feeling} className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-text-primary shadow-sm dark:bg-card-dark dark:text-white">{details?.emoji} {details?.label || feeling}</span>; })}</div>
+      <div className="mt-4 grid grid-cols-3 gap-2 text-center"><Metric value={`${entry.stress}/5`} label="Stress" compact /><Metric value={`${entry.sleep}/5`} label="Sleep" compact /><Metric value={`${entry.energy}/5`} label="Energy" compact /></div>
+      {(entry.contexts || []).length > 0 && <p className="mt-4 text-xs leading-5 text-text-secondary">Context: {(entry.contexts || []).map(contextLabel).join(", ")}</p>}
+      {entry.note && <p className="mt-3 rounded-2xl bg-white p-3 text-sm leading-6 text-text-primary dark:bg-card-dark dark:text-gray-200">{entry.note}</p>}
+      <div className="mt-4 border-t border-primary/10 pt-4"><p className="text-sm font-black text-text-primary dark:text-white">{support.title}</p><p className="mt-1 text-xs leading-5 text-text-secondary">{support.message}</p></div>
+    </article>
+  );
+}
+
+function Metric({ value, label, compact = false }: { value: string; label: string; compact?: boolean }) {
+  return <div className={`rounded-2xl bg-background-light text-center dark:bg-background-dark ${compact ? "p-2.5" : "p-4"}`}><p className={`${compact ? "text-base" : "text-xl"} font-black text-text-primary dark:text-white`}>{value}</p><p className="mt-1 text-[11px] font-semibold text-text-secondary">{label}</p></div>;
 }
