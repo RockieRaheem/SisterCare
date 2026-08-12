@@ -235,8 +235,13 @@ export interface WellbeingCheckIn {
   stress: number;
   sleep: number;
   energy: number;
+  localDate: string;
+  feelings?: import("@/lib/wellbeing").WellbeingFeeling[];
+  contexts?: import("@/lib/wellbeing").WellbeingContext[];
+  supportNeed?: import("@/lib/wellbeing").WellbeingSupportNeed;
   note?: string;
   createdAt: Date;
+  updatedAt?: Date;
 }
 
 // ============================================
