@@ -13,12 +13,14 @@ import { AppShellSkeleton } from "@/components/ui/Skeleton";
 import Link from "next/link";
 import {
   getUserProfile,
-  logSymptoms,
   getCurrentPhase,
   getCycleInfo,
 } from "@/lib/dataClient";
-import { UserProfile, MoodType } from "@/types";
+import { UserProfile, WellbeingCheckIn } from "@/types";
 import { auth } from "@/lib/authClient";
+import { authenticatedFetch } from "@/lib/authenticatedFetch";
+import { localWellbeingDate } from "@/lib/wellbeing";
+import { FEELING_OPTIONS, feelingDetails } from "@/lib/wellbeingPresentation";
 
 const phaseColors: Record<string, string> = {
   menstrual: "text-red-500",
@@ -40,9 +42,7 @@ export default function DashboardPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedMood, setSelectedMood] = useState<MoodType | null>(null);
-  const [moodLogged, setMoodLogged] = useState(false);
-  const [moodLogging, setMoodLogging] = useState(false);
+  const [todayCheckIn, setTodayCheckIn] = useState<WellbeingCheckIn | null>(null);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const [dismissedPeriodBanner, setDismissedPeriodBanner] = useState(false);
   const [cycleInfo, setCycleInfo] = useState<{
@@ -156,8 +156,20 @@ export default function DashboardPage() {
 
     setError(null);
     try {
-      const userProfile = await getUserProfile(user.uid);
+      const [userProfile, wellbeingResponse] = await Promise.all([
+        getUserProfile(user.uid),
+        authenticatedFetch("/api/wellbeing", { cache: "no-store" }).catch(() => null),
+      ]);
       setProfile(userProfile);
+
+      if (wellbeingResponse?.ok) {
+        const wellbeingPayload = await wellbeingResponse.json().catch(() => ({}));
+        const today = localWellbeingDate();
+        const entry = (wellbeingPayload.data?.checkIns || []).find(
+          (checkIn: WellbeingCheckIn) => checkIn.localDate === today,
+        );
+        setTodayCheckIn(entry || null);
+      }
 
       // Calculate cycle info if we have cycle data
       if (userProfile?.cycleData) {
@@ -210,55 +222,6 @@ export default function DashboardPage() {
     }
   }, [user, authLoading, onboardingChecked, loadDashboardData]);
 
-  const handleMoodSelect = async (mood: MoodType) => {
-    if (moodLogging) return;
-
-    setSelectedMood(mood);
-    setMoodLogging(true);
-
-    if (!user) {
-      setMoodLogging(false);
-      return;
-    }
-
-    try {
-      await logSymptoms(user.uid, {
-        date: new Date(),
-        mood,
-        symptoms: [],
-        notes: "",
-      });
-      setMoodLogged(true);
-
-      // Reset after 3 seconds
-      setTimeout(() => {
-        setMoodLogged(false);
-        setSelectedMood(null);
-      }, 3000);
-    } catch (err: unknown) {
-      const supabaseError = err as { code?: string; message?: string };
-      console.error("Error logging mood:", err);
-
-      // For permission errors, still show success locally
-      const isPermissionError =
-        supabaseError.message?.includes("permission") ||
-        supabaseError.code === "permission-denied";
-
-      if (isPermissionError) {
-        // Show success locally even if couldn't save to cloud
-        setMoodLogged(true);
-        setTimeout(() => {
-          setMoodLogged(false);
-          setSelectedMood(null);
-        }, 3000);
-      } else {
-        setSelectedMood(null);
-      }
-    } finally {
-      setMoodLogging(false);
-    }
-  };
-
   // Calculate countdown timer values with memoization
   // Uses the corrected nextPeriodDate from getCycleInfo
   const countdown = useMemo(() => {
@@ -300,17 +263,6 @@ export default function DashboardPage() {
       tip: t.dashboard.phaseTips[phaseKey],
     };
   }, [cycleInfo, t]);
-
-  // Moods with translations
-  const moods: { emoji: string; label: string; value: MoodType }[] = useMemo(
-    () => [
-      { emoji: "😊", label: t.dashboard.moods.good, value: "good" },
-      { emoji: "😴", label: t.dashboard.moods.tired, value: "okay" },
-      { emoji: "😔", label: t.dashboard.moods.low, value: "low" },
-      { emoji: "🤩", label: t.dashboard.moods.great, value: "great" },
-    ],
-    [t],
-  );
 
   // Show loading while checking auth OR onboarding status OR loading data
   if (authLoading || !workspaceChecked || !onboardingChecked || loading) {
@@ -675,58 +627,56 @@ export default function DashboardPage() {
               </div>
             </Card>
 
-            {/* Daily Check-in */}
-            <Card>
-              <h2 className="text-text-primary dark:text-white text-xl font-bold mb-6 flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary">
-                  edit_note
-                </span>
-                {t.dashboard.dailyCheckin}
-              </h2>
-
-              {moodLogged ? (
-                <div className="p-6 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800 text-center">
-                  <span className="material-symbols-outlined text-green-500 text-4xl mb-2">
-                    check_circle
+            {/* Daily emotional wellbeing check-in */}
+            <Card className="overflow-hidden border-primary/15">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <span className="inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-[0.14em] text-primary">
+                    <span className="material-symbols-outlined text-base" aria-hidden="true">favorite</span>
+                    Emotional wellbeing
                   </span>
-                  <p className="text-green-700 dark:text-green-400 font-semibold">
-                    {t.dashboard.moodLoggedSuccess}
-                  </p>
-                  <p className="text-green-600 dark:text-green-500 text-sm">
-                    {t.dashboard.thankYouCheckin}
-                  </p>
+                  <h2 className="mt-2 text-2xl font-black text-text-primary dark:text-white">How are you, really?</h2>
+                  <p className="mt-1 max-w-xl text-sm leading-6 text-text-secondary">Name the feeling, add what may be affecting you, and choose the support you want. One private check-in is kept for each day.</p>
+                </div>
+                <Link href="/analytics" className="inline-flex min-h-11 shrink-0 items-center gap-1 text-sm font-bold text-primary">See patterns <span className="material-symbols-outlined text-lg">arrow_forward</span></Link>
+              </div>
+
+              {todayCheckIn ? (
+                <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/20">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="flex items-center gap-2 text-sm font-black text-emerald-800 dark:text-emerald-200"><span className="material-symbols-outlined text-xl" aria-hidden="true">check_circle</span>Today is checked in</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {(todayCheckIn.feelings || []).length > 0 ? (
+                          (todayCheckIn.feelings || []).map((feeling) => {
+                            const details = feelingDetails(feeling);
+                            return <span key={feeling} className="rounded-full bg-white px-3 py-1 text-xs font-bold text-text-primary shadow-sm dark:bg-card-dark dark:text-white">{details?.emoji} {details?.label || feeling}</span>;
+                          })
+                        ) : (
+                          <span className="text-sm text-text-secondary">Mood {todayCheckIn.mood}/5 · Stress {todayCheckIn.stress}/5</span>
+                        )}
+                      </div>
+                    </div>
+                    <Link href="/wellbeing" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-white"><span className="material-symbols-outlined text-lg" aria-hidden="true">edit</span>Update today</Link>
+                  </div>
+                  <p className="mt-3 text-xs leading-5 text-emerald-800/80 dark:text-emerald-200/80">Updating changes this entry instead of creating another one.</p>
                 </div>
               ) : (
-                <>
-                  <p className="text-text-secondary mb-4">
-                    {t.dashboard.welcomeMessage}
-                  </p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    {moods.map((mood) => (
-                      <button
-                        key={mood.label}
-                        onClick={() => handleMoodSelect(mood.value)}
-                        className={`flex flex-col items-center gap-3 p-4 rounded-xl border-2 transition-all ${
-                          selectedMood === mood.value
-                            ? "border-primary bg-primary/10"
-                            : "border-transparent bg-background-light dark:bg-background-dark hover:border-primary"
-                        }`}
+                <div className="mt-5">
+                  <p className="text-sm font-bold text-text-primary dark:text-white">What feels closest right now?</p>
+                  <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
+                    {FEELING_OPTIONS.map((feeling) => (
+                      <Link
+                        key={feeling.value}
+                        href={`/wellbeing?feeling=${feeling.value}`}
+                        className="flex min-h-16 items-center gap-2 rounded-2xl border border-border-light bg-background-light p-3 text-sm font-bold text-text-primary transition hover:border-primary/40 hover:bg-primary/5 dark:border-border-dark dark:bg-background-dark dark:text-white"
                       >
-                        <span className="text-3xl">{mood.emoji}</span>
-                        <span className="text-sm font-semibold">
-                          {mood.label}
-                        </span>
-                      </button>
+                        <span className="text-xl" aria-hidden="true">{feeling.emoji}</span><span>{feeling.label}</span>
+                      </Link>
                     ))}
                   </div>
-                  <div className="mt-6">
-                    <Link href="/wellbeing">
-                      <Button variant="secondary" fullWidth>
-                        Private wellbeing check-in
-                      </Button>
-                    </Link>
-                  </div>
-                </>
+                  <p className="mt-3 text-xs text-text-secondary">Choosing a feeling opens the full private check-in. Nothing is saved until you confirm it.</p>
+                </div>
               )}
             </Card>
 
