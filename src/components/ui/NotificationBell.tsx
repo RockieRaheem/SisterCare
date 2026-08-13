@@ -95,6 +95,8 @@ export default function NotificationBell({
         return "sync";
       case "wellness_tip":
         return "lightbulb";
+      case "wellbeing_checkin":
+        return "favorite";
       case "counsellor_ready":
       case "counsellor_update":
         return "support_agent";
@@ -117,6 +119,8 @@ export default function NotificationBell({
         return "text-fuchsia-600 bg-fuchsia-50 dark:bg-fuchsia-950/30";
       case "wellness_tip":
         return "text-green-500 bg-green-50 dark:bg-green-900/20";
+      case "wellbeing_checkin":
+        return "text-primary bg-primary/10";
       case "counsellor_ready":
       case "counsellor_update":
       case "session_message":

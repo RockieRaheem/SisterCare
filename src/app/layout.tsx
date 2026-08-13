@@ -7,6 +7,7 @@ import BottomNav from "@/components/layout/BottomNav";
 import OfflineIndicator from "@/components/ui/OfflineIndicator";
 import WorkspaceBoundary from "@/components/auth/WorkspaceBoundary";
 import SessionNotifier from "@/components/features/SessionNotifier";
+import WellbeingReminder from "@/components/features/WellbeingReminder";
 import InstallAppPrompt from "@/components/features/InstallAppPrompt";
 
 export const viewport: Viewport = {
@@ -155,6 +156,7 @@ export default function RootLayout({
             <LanguageProvider>
               <OfflineIndicator />
               <SessionNotifier />
+              <WellbeingReminder />
               <InstallAppPrompt />
               <div className="flex flex-col min-h-screen">
                 <main id="main-content" tabIndex={-1}>

@@ -14,6 +14,7 @@ export interface PeriodNotification {
     | "period_today"
     | "phase_change"
     | "wellness_tip"
+    | "wellbeing_checkin"
     | "counsellor_ready"
     | "counsellor_update"
     | "session_message"
