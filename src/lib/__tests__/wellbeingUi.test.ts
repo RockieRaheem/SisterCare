@@ -10,11 +10,13 @@ describe("member wellbeing experience", () => {
   const checkIn = read("src", "app", "wellbeing", "page.tsx");
   const presentation = read("src", "lib", "wellbeingPresentation.ts");
 
-  it("does not create unlimited mood-only symptom records from the dashboard", () => {
+  it("saves a single daily pulse directly from the dashboard", () => {
     expect(dashboard).not.toContain("logSymptoms");
     expect(dashboard).not.toContain("handleMoodSelect");
     expect(dashboard).toContain("Update today");
-    expect(dashboard).toContain("FEELING_OPTIONS");
+    expect(dashboard).toContain("PULSE_OPTIONS");
+    expect(dashboard).toContain("submitOfflineCapableWrite");
+    expect(dashboard).toContain("One tap saves today");
   });
 
   it("offers emotional vocabulary, context and a member-selected support path", () => {
@@ -29,7 +31,13 @@ describe("member wellbeing experience", () => {
 
   it("makes repeat activity an edit to today's reflection", () => {
     expect(checkIn).toContain("todayCheckIn");
-    expect(checkIn).toContain("Update today's check-in");
+    expect(checkIn).toContain("Tap again anytime to update today");
     expect(checkIn).toContain("entry.localDate !== today");
+  });
+
+  it("does not require four scoring scales", () => {
+    expect(checkIn).toContain("One tap is enough");
+    expect(checkIn).not.toContain("SCORE_AREAS");
+    expect(checkIn).not.toContain("Overall mood");
   });
 });

@@ -1,8 +1,8 @@
 export interface WellbeingCheckInInput {
   mood: number;
-  stress: number;
-  sleep: number;
-  energy: number;
+  stress?: number;
+  sleep?: number;
+  energy?: number;
   localDate?: string;
   feelings?: WellbeingFeeling[];
   contexts?: WellbeingContext[];
@@ -45,6 +45,19 @@ export const WELLBEING_SUPPORT_NEEDS = [
 export type WellbeingFeeling = (typeof WELLBEING_FEELINGS)[number];
 export type WellbeingContext = (typeof WELLBEING_CONTEXTS)[number];
 export type WellbeingSupportNeed = (typeof WELLBEING_SUPPORT_NEEDS)[number];
+
+const FEELING_MOOD: Record<WellbeingFeeling, number> = {
+  calm: 4,
+  hopeful: 4,
+  content: 4,
+  tired: 3,
+  anxious: 2,
+  overwhelmed: 1,
+  sad: 2,
+  lonely: 2,
+  angry: 2,
+  numb: 1,
+};
 
 const score = (value: unknown): number | null => {
   const parsed = Number(value);
@@ -97,11 +110,17 @@ export function parseWellbeingCheckIn(
 ): WellbeingCheckInInput | null {
   if (!value || typeof value !== "object") return null;
   const candidate = value as Record<string, unknown>;
-  const mood = score(candidate.mood);
+  const feelings = selections(candidate.feelings, WELLBEING_FEELINGS, 3);
+  const mood = score(candidate.mood) ?? (feelings[0] ? FEELING_MOOD[feelings[0]] : null);
   const stress = score(candidate.stress);
   const sleep = score(candidate.sleep);
   const energy = score(candidate.energy);
-  if (mood === null || stress === null || sleep === null || energy === null) {
+  const hasLegacyScores =
+    score(candidate.mood) !== null &&
+    stress !== null &&
+    sleep !== null &&
+    energy !== null;
+  if (mood === null || (!feelings.length && !hasLegacyScores)) {
     return null;
   }
 
@@ -109,7 +128,6 @@ export function parseWellbeingCheckIn(
     typeof candidate.note === "string"
       ? candidate.note.trim().replace(/\s+/g, " ").slice(0, 500)
       : "";
-  const feelings = selections(candidate.feelings, WELLBEING_FEELINGS, 3);
   const contexts = selections(candidate.contexts, WELLBEING_CONTEXTS, 3);
   const supportNeed = WELLBEING_SUPPORT_NEEDS.includes(
     candidate.supportNeed as WellbeingSupportNeed,
@@ -123,9 +141,9 @@ export function parseWellbeingCheckIn(
       : undefined;
   return {
     mood,
-    stress,
-    sleep,
-    energy,
+    ...(stress !== null ? { stress } : {}),
+    ...(sleep !== null ? { sleep } : {}),
+    ...(energy !== null ? { energy } : {}),
     ...(localDate ? { localDate } : {}),
     ...(feelings.length ? { feelings } : {}),
     ...(contexts.length ? { contexts } : {}),

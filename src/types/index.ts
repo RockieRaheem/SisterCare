@@ -232,9 +232,9 @@ export interface Counsellor {
 export interface WellbeingCheckIn {
   id: string;
   mood: number;
-  stress: number;
-  sleep: number;
-  energy: number;
+  stress?: number;
+  sleep?: number;
+  energy?: number;
   localDate: string;
   feelings?: import("@/lib/wellbeing").WellbeingFeeling[];
   contexts?: import("@/lib/wellbeing").WellbeingContext[];

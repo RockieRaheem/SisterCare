@@ -22,6 +22,20 @@ export const FEELING_OPTIONS: Array<{
   { value: "numb", label: "Numb", emoji: "🌫️" },
 ];
 
+export const PULSE_OPTIONS = [
+  { value: "content", label: "Good", emoji: "😊", prompt: "Things feel manageable" },
+  { value: "calm", label: "Okay", emoji: "😌", prompt: "Nothing strong right now" },
+  { value: "tired", label: "Drained", emoji: "😮‍💨", prompt: "My energy feels low" },
+  { value: "anxious", label: "Anxious", emoji: "😟", prompt: "My mind will not settle" },
+  { value: "sad", label: "Low", emoji: "😔", prompt: "Today feels heavy" },
+  { value: "overwhelmed", label: "Overwhelmed", emoji: "😣", prompt: "It feels like too much" },
+] as const satisfies ReadonlyArray<{
+  value: WellbeingFeeling;
+  label: string;
+  emoji: string;
+  prompt: string;
+}>;
+
 export const CONTEXT_OPTIONS: Array<{
   value: WellbeingContext;
   label: string;
@@ -50,13 +64,6 @@ export const SUPPORT_OPTIONS: Array<{
   { value: "urgent_support", label: "I need help now", description: "I do not feel able to manage alone.", icon: "emergency_home" },
 ];
 
-export const SCORE_AREAS = [
-  { key: "mood", label: "Overall mood", icon: "mood", low: "Very low", high: "Very good" },
-  { key: "stress", label: "Stress", icon: "psychology", low: "Calm", high: "Overwhelming" },
-  { key: "sleep", label: "Sleep", icon: "bedtime", low: "Very poor", high: "Restful" },
-  { key: "energy", label: "Energy", icon: "bolt", low: "Very low", high: "Very high" },
-] as const;
-
 export function feelingDetails(value: WellbeingFeeling) {
   return FEELING_OPTIONS.find((option) => option.value === value);
 }
@@ -73,7 +80,8 @@ export function wellbeingSupportMessage(checkIn: WellbeingCheckIn): {
   if (
     checkIn.supportNeed === "urgent_support" ||
     checkIn.mood === 1 ||
-    checkIn.stress === 5
+    checkIn.stress === 5 ||
+    checkIn.feelings?.includes("overwhelmed")
   ) {
     return {
       tone: "support",
@@ -81,7 +89,11 @@ export function wellbeingSupportMessage(checkIn: WellbeingCheckIn): {
       message: "Consider opening a private conversation or asking an available counsellor for support now.",
     };
   }
-  if (checkIn.mood <= 2 || checkIn.stress >= 4 || checkIn.energy <= 2) {
+  if (
+    checkIn.mood <= 2 ||
+    (checkIn.stress !== undefined && checkIn.stress >= 4) ||
+    (checkIn.energy !== undefined && checkIn.energy <= 2)
+  ) {
     return {
       tone: "care",
       title: "A gentler pace may help today",

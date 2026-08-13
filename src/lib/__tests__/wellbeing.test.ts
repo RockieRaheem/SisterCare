@@ -30,6 +30,19 @@ describe("wellbeing check-ins", () => {
     expect(parseWellbeingCheckIn({ mood: 2, stress: 2, sleep: 3 })).toBeNull();
   });
 
+  it("accepts one emotional pulse without requiring four scales", () => {
+    expect(
+      parseWellbeingCheckIn({
+        localDate: "2026-08-13",
+        feelings: ["anxious"],
+      }),
+    ).toEqual({
+      mood: 2,
+      localDate: "2026-08-13",
+      feelings: ["anxious"],
+    });
+  });
+
   it("keeps bounded emotional context without accepting arbitrary labels", () => {
     expect(
       parseWellbeingCheckIn({

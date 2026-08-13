@@ -20,9 +20,9 @@ const serialize = (row: Record<string, unknown>) => {
   return {
     id: String(row.id),
     mood: Number(payload.mood),
-    stress: Number(payload.stress),
-    sleep: Number(payload.sleep),
-    energy: Number(payload.energy),
+    stress: typeof payload.stress === "number" ? payload.stress : undefined,
+    sleep: typeof payload.sleep === "number" ? payload.sleep : undefined,
+    energy: typeof payload.energy === "number" ? payload.energy : undefined,
     localDate:
       typeof payload.localDate === "string"
         ? payload.localDate
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     : null;
   if (!input) {
     return NextResponse.json(
-      { success: false, error: "Choose one response for every wellbeing area." },
+      { success: false, error: "Choose the feeling that is closest to today." },
       { status: 400 },
     );
   }
