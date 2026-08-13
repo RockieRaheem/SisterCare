@@ -33,12 +33,6 @@ const hydrateCheckIn = (entry: WellbeingCheckIn): WellbeingCheckIn => ({
 const average = (values: number[]): number | null =>
   values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
 
-const scoreLabel = (score: number | null, inverse = false): string => {
-  if (score === null) return "—";
-  if (inverse) return score >= 4 ? "High" : score >= 3 ? "Moderate" : "Low";
-  return score >= 4 ? "Good" : score >= 3 ? "Mixed" : "Low";
-};
-
 export default function AnalyticsPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -108,16 +102,6 @@ export default function AnalyticsPage() {
     filteredCheckIns[0] ||
     null;
 
-  const averages = useMemo(
-    () => ({
-      mood: average(filteredCheckIns.map((entry) => entry.mood)),
-      stress: average(filteredCheckIns.map((entry) => entry.stress)),
-      sleep: average(filteredCheckIns.map((entry) => entry.sleep)),
-      energy: average(filteredCheckIns.map((entry) => entry.energy)),
-    }),
-    [filteredCheckIns],
-  );
-
   const feelingCounts = useMemo(() => {
     const counts = new Map<string, number>();
     filteredCheckIns.forEach((entry) =>
@@ -133,6 +117,11 @@ export default function AnalyticsPage() {
     );
     return [...counts.entries()].sort((a, b) => b[1] - a[1]);
   }, [filteredCheckIns]);
+
+  const supportCount = useMemo(
+    () => filteredCheckIns.filter((entry) => entry.supportNeed && entry.supportNeed !== "reflect").length,
+    [filteredCheckIns],
+  );
 
   const symptomCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -158,12 +147,16 @@ export default function AnalyticsPage() {
       return ["A few more check-ins will make patterns easier to notice. There is no need to log more than once a day."];
     }
     const notes: string[] = [];
-    if ((averages.stress || 0) >= 4) notes.push("Stress has often felt high in this period. Consider choosing support before it becomes harder to carry.");
-    if ((averages.sleep || 5) <= 2.5) notes.push("Rest has often felt difficult. You may want to talk about what is interrupting sleep.");
-    if ((averages.energy || 5) <= 2.5) notes.push("Low energy has appeared often. A smaller pace and practical support may be worth considering.");
+    const difficultFeelings = new Set<WellbeingFeeling>(["anxious", "overwhelmed", "sad", "lonely", "numb"]);
+    const difficultDays = filteredCheckIns.filter((entry) =>
+      (entry.feelings || []).some((feeling) => difficultFeelings.has(feeling)),
+    ).length;
+    const drainedDays = filteredCheckIns.filter((entry) => entry.feelings?.includes("tired")).length;
+    if (difficultDays >= Math.ceil(filteredCheckIns.length / 2)) notes.push("Harder feelings appeared on many of these days. Reaching out early may make them easier to carry.");
+    if (drainedDays >= 2) notes.push("Feeling drained has returned more than once. Notice whether rest, pressure, or something else is affecting your energy.");
     if (contextCounts[0]) notes.push(`${contextLabel(contextCounts[0][0] as WellbeingContext)} was the context you mentioned most often.`);
     return notes.length ? notes : ["Your recent check-ins look varied. Open any day below to remember what was happening around it."];
-  }, [averages.energy, averages.sleep, averages.stress, contextCounts, filteredCheckIns.length]);
+  }, [contextCounts, filteredCheckIns]);
 
   if (authLoading || loading) return <AppShellSkeleton />;
   if (!user) return null;
@@ -176,7 +169,7 @@ export default function AnalyticsPage() {
           <div className="max-w-3xl">
             <span className="inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.16em] text-fuchsia-200"><span className="material-symbols-outlined text-lg" aria-hidden="true">monitoring</span>Your wellbeing</span>
             <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Notice patterns, not perfect days</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75 sm:text-base">See how mood, stress, sleep, energy, and life context have moved over time. These reflections support self-understanding; they are not a diagnosis.</p>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75 sm:text-base">See the feelings and life situations that keep returning. These reflections support self-understanding; they are not a diagnosis.</p>
           </div>
           <Link href="/wellbeing" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-extrabold text-white shadow-primary-sm"><span className="material-symbols-outlined" aria-hidden="true">edit_note</span>{checkIns[0]?.localDate === today ? "Update today's check-in" : "Check in today"}</Link>
         </header>
@@ -199,26 +192,28 @@ export default function AnalyticsPage() {
         ) : (
           <>
             <section className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <SummaryCard icon="event_note" value={String(filteredCheckIns.length)} label="Check-in days" helper={`Within ${PERIOD_LABELS[selectedPeriod]}`} showScale={false} />
-              <SummaryCard icon="mood" value={averages.mood?.toFixed(1) || "—"} label="Average mood" helper={scoreLabel(averages.mood)} />
-              <SummaryCard icon="psychology" value={averages.stress?.toFixed(1) || "—"} label="Average stress" helper={scoreLabel(averages.stress, true)} />
-              <SummaryCard icon="bedtime" value={averages.sleep?.toFixed(1) || "—"} label="Average sleep" helper={scoreLabel(averages.sleep)} />
+              <SummaryCard icon="event_note" value={String(filteredCheckIns.length)} label="Days checked in" helper={`Within ${PERIOD_LABELS[selectedPeriod]}`} />
+              <SummaryCard icon="mood" value={feelingCounts[0] ? (feelingDetails(feelingCounts[0][0] as WellbeingFeeling)?.emoji || "—") : "—"} label="Most named feeling" helper={feelingCounts[0] ? (feelingDetails(feelingCounts[0][0] as WellbeingFeeling)?.label || feelingCounts[0][0]) : "No feeling yet"} />
+              <SummaryCard icon="explore" value={String(contextCounts.reduce((sum, [, count]) => sum + count, 0))} label="Contexts noticed" helper={contextCounts[0] ? `${contextLabel(contextCounts[0][0] as WellbeingContext)} appears most` : "Context is optional"} />
+              <SummaryCard icon="volunteer_activism" value={String(supportCount)} label="Support choices" helper="Days you asked for a next step" />
             </section>
 
             <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(300px,0.6fr)]">
               <div className="rounded-3xl border border-border-light bg-white p-5 shadow-soft dark:border-border-dark dark:bg-card-dark sm:p-6">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                  <div><span className="eyebrow">Daily view</span><h2 className="mt-1 text-xl font-black text-text-primary dark:text-white">Mood over time</h2><p className="mt-1 text-sm text-text-secondary">Tap a day to see what you recorded.</p></div>
-                  <div className="flex gap-3 text-xs font-semibold text-text-secondary"><span>Mood 1–5</span><span>·</span><span>{chronological.length} entries</span></div>
+                  <div><span className="eyebrow">Daily view</span><h2 className="mt-1 text-xl font-black text-text-primary dark:text-white">Your emotional timeline</h2><p className="mt-1 text-sm text-text-secondary">Tap a day to remember what was happening.</p></div>
+                  <div className="text-xs font-semibold text-text-secondary">{chronological.length} {chronological.length === 1 ? "entry" : "entries"}</div>
                 </div>
-                <div className="mt-6 flex h-56 items-end gap-2 overflow-x-auto border-b border-border-light px-1 pb-2 dark:border-border-dark">
+                <div className="mt-6 flex gap-2 overflow-x-auto pb-2">
                   {chronological.map((entry) => {
                     const selected = selectedEntry?.id === entry.id;
+                    const primaryFeeling = entry.feelings?.[0];
+                    const details = primaryFeeling ? feelingDetails(primaryFeeling) : null;
                     return (
-                      <button key={entry.id} type="button" aria-pressed={selected} aria-label={`${entry.localDate}, mood ${entry.mood} of 5`} onClick={() => setSelectedEntryId(entry.id)} className="group flex h-full min-w-14 flex-col items-center justify-end gap-2 rounded-xl px-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
-                        <span className="text-xs font-black text-text-secondary">{entry.mood}</span>
-                        <span className={`w-7 rounded-t-xl transition-all ${selected ? "bg-primary shadow-primary-sm" : "bg-primary/25 group-hover:bg-primary/50"}`} style={{ height: `${Math.max(18, entry.mood * 27)}px` }} />
-                        <span className={`text-[10px] font-bold ${selected ? "text-primary" : "text-text-secondary"}`}>{entry.createdAt.toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
+                      <button key={entry.id} type="button" aria-pressed={selected} aria-label={`${entry.localDate}, ${details?.label || "earlier check-in"}`} onClick={() => setSelectedEntryId(entry.id)} className={`group flex min-h-28 min-w-24 flex-col items-center justify-center gap-2 rounded-2xl border px-3 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${selected ? "border-primary bg-primary/10 shadow-primary-sm" : "border-border-light bg-background-light hover:border-primary/40 dark:border-border-dark dark:bg-background-dark"}`}>
+                        <span className="text-3xl" aria-hidden="true">{details?.emoji || "•"}</span>
+                        <span className={`text-xs font-black ${selected ? "text-primary" : "text-text-primary dark:text-white"}`}>{details?.label || "Check-in"}</span>
+                        <span className="text-[10px] font-bold text-text-secondary">{entry.createdAt.toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
                       </button>
                     );
                   })}
@@ -272,17 +267,18 @@ export default function AnalyticsPage() {
   );
 }
 
-function SummaryCard({ icon, value, label, helper, showScale = true }: { icon: string; value: string; label: string; helper: string; showScale?: boolean }) {
-  return <article className="rounded-2xl border border-border-light bg-white p-4 shadow-soft dark:border-border-dark dark:bg-card-dark sm:p-5"><span className="material-symbols-outlined text-2xl text-primary" aria-hidden="true">{icon}</span><p className="mt-3 text-2xl font-black text-text-primary dark:text-white">{value}{showScale && <span className="ml-1 text-xs font-semibold text-text-secondary">/5</span>}</p><p className="mt-1 text-sm font-bold text-text-primary dark:text-white">{label}</p><p className="mt-1 text-xs text-text-secondary">{helper}</p></article>;
+function SummaryCard({ icon, value, label, helper }: { icon: string; value: string; label: string; helper: string }) {
+  return <article className="rounded-2xl border border-border-light bg-white p-4 shadow-soft dark:border-border-dark dark:bg-card-dark sm:p-5"><span className="material-symbols-outlined text-2xl text-primary" aria-hidden="true">{icon}</span><p className="mt-3 text-2xl font-black text-text-primary dark:text-white">{value}</p><p className="mt-1 text-sm font-bold text-text-primary dark:text-white">{label}</p><p className="mt-1 text-xs text-text-secondary">{helper}</p></article>;
 }
 
 function CheckInDetail({ entry }: { entry: WellbeingCheckIn }) {
   const support = wellbeingSupportMessage(entry);
+  const primaryFeeling = entry.feelings?.[0];
+  const details = primaryFeeling ? feelingDetails(primaryFeeling) : null;
   return (
     <article className="rounded-3xl border border-primary/15 bg-primary/[0.04] p-5 sm:p-6">
-      <div className="flex items-start justify-between gap-3"><div><span className="eyebrow">Selected day</span><h2 className="mt-1 text-xl font-black text-text-primary dark:text-white">{entry.createdAt.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</h2></div><span className="rounded-xl bg-white px-2.5 py-1 text-xs font-black text-primary shadow-sm dark:bg-card-dark">Mood {entry.mood}/5</span></div>
-      <div className="mt-4 flex flex-wrap gap-2">{(entry.feelings || []).map((feeling) => { const details = feelingDetails(feeling); return <span key={feeling} className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-text-primary shadow-sm dark:bg-card-dark dark:text-white">{details?.emoji} {details?.label || feeling}</span>; })}</div>
-      <div className="mt-4 grid grid-cols-3 gap-2 text-center"><Metric value={`${entry.stress}/5`} label="Stress" compact /><Metric value={`${entry.sleep}/5`} label="Sleep" compact /><Metric value={`${entry.energy}/5`} label="Energy" compact /></div>
+      <div><span className="eyebrow">Selected day</span><h2 className="mt-1 text-xl font-black text-text-primary dark:text-white">{entry.createdAt.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</h2></div>
+      <div className="mt-4 flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-card-dark"><span className="text-4xl" aria-hidden="true">{details?.emoji || "•"}</span><div><p className="text-xs font-bold uppercase tracking-wide text-text-secondary">You felt</p><p className="text-lg font-black text-text-primary dark:text-white">{details?.label || "Checked in"}</p></div></div>
       {(entry.contexts || []).length > 0 && <p className="mt-4 text-xs leading-5 text-text-secondary">Context: {(entry.contexts || []).map(contextLabel).join(", ")}</p>}
       {entry.note && <p className="mt-3 rounded-2xl bg-white p-3 text-sm leading-6 text-text-primary dark:bg-card-dark dark:text-gray-200">{entry.note}</p>}
       <div className="mt-4 border-t border-primary/10 pt-4"><p className="text-sm font-black text-text-primary dark:text-white">{support.title}</p><p className="mt-1 text-xs leading-5 text-text-secondary">{support.message}</p></div>

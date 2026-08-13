@@ -11,8 +11,10 @@ describe("member Track experience", () => {
   it("uses private wellbeing check-ins as its primary source", () => {
     expect(page).toContain('authenticatedFetch("/api/wellbeing"');
     expect(page).toContain("Notice patterns, not perfect days");
-    expect(page).toContain("Mood over time");
+    expect(page).toContain("Your emotional timeline");
     expect(page).toContain("Feelings you named");
+    expect(page).not.toContain("Mood 1–5");
+    expect(page).not.toContain("Average stress");
   });
 
   it("keeps conclusions factual and non-diagnostic", () => {
