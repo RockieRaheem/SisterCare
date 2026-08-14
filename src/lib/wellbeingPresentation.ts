@@ -68,6 +68,10 @@ export function feelingDetails(value: WellbeingFeeling) {
   return FEELING_OPTIONS.find((option) => option.value === value);
 }
 
+export function pulseDetails(value: WellbeingFeeling) {
+  return PULSE_OPTIONS.find((option) => option.value === value);
+}
+
 export function contextLabel(value: WellbeingContext): string {
   return CONTEXT_OPTIONS.find((option) => option.value === value)?.label || value;
 }
@@ -77,6 +81,7 @@ export function wellbeingSupportMessage(checkIn: WellbeingCheckIn): {
   title: string;
   message: string;
 } {
+  const primaryFeeling = checkIn.feelings?.[0];
   if (
     checkIn.supportNeed === "urgent_support" ||
     checkIn.mood === 1 ||
@@ -87,6 +92,27 @@ export function wellbeingSupportMessage(checkIn: WellbeingCheckIn): {
       tone: "support",
       title: "You do not have to hold this alone",
       message: "Consider opening a private conversation or asking an available counsellor for support now.",
+    };
+  }
+  if (primaryFeeling === "anxious") {
+    return {
+      tone: "care",
+      title: "Let us slow this moment down",
+      message: "Put both feet down, loosen your shoulders, and take one slow breath. You can talk privately if your mind still feels crowded.",
+    };
+  }
+  if (["sad", "lonely", "numb"].includes(primaryFeeling || "")) {
+    return {
+      tone: "care",
+      title: "You deserve support, not silence",
+      message: "You do not need to explain everything at once. Start with one sentence here or reach someone safe when you are ready.",
+    };
+  }
+  if (primaryFeeling === "tired") {
+    return {
+      tone: "care",
+      title: "Your energy is asking for care",
+      message: "Choose the smallest useful next step: water, food, rest, space, or asking someone to take one thing off your plate.",
     };
   }
   if (
@@ -102,7 +128,7 @@ export function wellbeingSupportMessage(checkIn: WellbeingCheckIn): {
   }
   return {
     tone: "steady",
-    title: "Keep noticing what supports you",
-    message: "Your check-ins can reveal helpful patterns over time without judging individual days.",
+    title: "Thank you for checking in with yourself",
+    message: "Notice one thing helping today. Small moments of steadiness matter, and your private timeline will remember the pattern.",
   };
 }

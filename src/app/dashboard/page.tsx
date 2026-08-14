@@ -10,6 +10,7 @@ import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import PeriodReminderBanner from "@/components/ui/PeriodReminderBanner";
 import { AppShellSkeleton } from "@/components/ui/Skeleton";
+import DashboardWellbeingCard from "@/components/features/DashboardWellbeingCard";
 import Link from "next/link";
 import {
   getUserProfile,
@@ -21,7 +22,6 @@ import { auth } from "@/lib/authClient";
 import { authenticatedFetch } from "@/lib/authenticatedFetch";
 import { submitOfflineCapableWrite } from "@/lib/offlineQueue";
 import { localWellbeingDate, type WellbeingFeeling } from "@/lib/wellbeing";
-import { PULSE_OPTIONS, feelingDetails, wellbeingSupportMessage } from "@/lib/wellbeingPresentation";
 
 const phaseColors: Record<string, string> = {
   menstrual: "text-red-500",
@@ -497,6 +497,13 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-6 lg:gap-8">
           {/* Main Tracking Column */}
           <div className="lg:col-span-2 space-y-5 sm:space-y-6 lg:space-y-8">
+            <DashboardWellbeingCard
+              checkIn={todayCheckIn}
+              busy={pulseBusy !== null}
+              error={pulseError}
+              onSelect={(feeling) => void saveDailyPulse(feeling)}
+            />
+
             {/* Timer & Status Section */}
             <Card padding="lg" className="relative overflow-hidden border-primary/15 bg-white dark:bg-card-dark">
               <div className="flex flex-col items-center text-center">
@@ -668,64 +675,6 @@ export default function DashboardPage() {
                   </div>
                 )}
               </div>
-            </Card>
-
-            {/* Daily emotional wellbeing check-in */}
-            <Card className="overflow-hidden border-primary/15">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <span className="inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-[0.14em] text-primary">
-                    <span className="material-symbols-outlined text-base" aria-hidden="true">favorite</span>
-                    Emotional wellbeing
-                  </span>
-                  <h2 className="mt-2 text-2xl font-black text-text-primary dark:text-white">How are you, really?</h2>
-                  <p className="mt-1 max-w-xl text-sm leading-6 text-text-secondary">A five-second pulse is enough. Add context or ask for support only when you want to.</p>
-                </div>
-                <Link href="/analytics" className="inline-flex min-h-11 shrink-0 items-center gap-1 text-sm font-bold text-primary">See patterns <span className="material-symbols-outlined text-lg">arrow_forward</span></Link>
-              </div>
-
-              {todayCheckIn ? (
-                <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/20">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="flex items-center gap-2 text-sm font-black text-emerald-800 dark:text-emerald-200"><span className="material-symbols-outlined text-xl" aria-hidden="true">check_circle</span>Today is checked in</p>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {(todayCheckIn.feelings || []).length > 0 ? (
-                          (todayCheckIn.feelings || []).map((feeling) => {
-                            const details = feelingDetails(feeling);
-                            return <span key={feeling} className="rounded-full bg-white px-3 py-1 text-xs font-bold text-text-primary shadow-sm dark:bg-card-dark dark:text-white">{details?.emoji} {details?.label || feeling}</span>;
-                          })
-                        ) : (
-                          <span className="text-sm text-text-secondary">Your earlier check-in is saved privately.</span>
-                        )}
-                      </div>
-                    </div>
-                    <Link href="/wellbeing" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-white"><span className="material-symbols-outlined text-lg" aria-hidden="true">edit</span>Update today</Link>
-                  </div>
-                  <p className="mt-3 text-xs leading-5 text-emerald-800/80 dark:text-emerald-200/80">Updating changes this entry instead of creating another one.</p>
-                  <p className="mt-2 text-sm font-semibold text-emerald-900 dark:text-emerald-100">{wellbeingSupportMessage(todayCheckIn).message}</p>
-                </div>
-              ) : (
-                <div className="mt-5">
-                  <p className="text-sm font-bold text-text-primary dark:text-white">What feels closest right now?</p>
-                  <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                    {PULSE_OPTIONS.map((feeling) => (
-                      <button
-                        key={feeling.value}
-                        type="button"
-                        disabled={pulseBusy !== null}
-                        onClick={() => void saveDailyPulse(feeling.value)}
-                        className="flex min-h-20 items-center gap-3 rounded-2xl border border-border-light bg-background-light p-3 text-left text-sm font-bold text-text-primary transition hover:border-primary/40 hover:bg-primary/5 disabled:cursor-wait disabled:opacity-60 dark:border-border-dark dark:bg-background-dark dark:text-white"
-                      >
-                        <span className="text-2xl" aria-hidden="true">{pulseBusy === feeling.value ? "..." : feeling.emoji}</span>
-                        <span><span className="block">{feeling.label}</span><span className="mt-0.5 block text-[11px] font-normal leading-4 text-text-secondary">{feeling.prompt}</span></span>
-                      </button>
-                    ))}
-                  </div>
-                  <p className="mt-3 text-xs text-text-secondary">One tap saves today. You can update it or add private context later.</p>
-                  {pulseError && <p role="alert" className="mt-3 rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-800 dark:bg-rose-950/30 dark:text-rose-200">{pulseError}</p>}
-                </div>
-              )}
             </Card>
 
             {/* No Cycle Data Warning */}
