@@ -36,12 +36,11 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-border-light/80 bg-white/95 md:hidden dark:border-border-dark dark:bg-card-dark/95"
+      className="member-bottom-nav border-t border-border-light/80 bg-white/95 dark:border-border-dark dark:bg-card-dark/95"
       aria-label={t.nav.home}
       role="navigation"
-      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
-      <div className="mx-auto max-w-md backdrop-blur-xl">
+      <div className="mx-auto max-w-md">
         <div
           className="flex h-[64px] items-center justify-around px-1"
           role="menubar"

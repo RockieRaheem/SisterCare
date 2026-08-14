@@ -61,6 +61,41 @@ body {
   letter-spacing: -0.008em;
 }
 
+html,
+body {
+  min-height: 100%;
+}
+
+/* Keep the member controls anchored to the visual viewport on mobile Safari,
+   installed PWAs and Android browsers during momentum scrolling. */
+.member-bottom-nav {
+  position: fixed !important;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 100;
+  width: 100%;
+  padding-right: var(--safe-area-inset-right);
+  padding-bottom: var(--safe-area-inset-bottom);
+  padding-left: var(--safe-area-inset-left);
+  transform: translate3d(0, 0, 0);
+  -webkit-transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  contain: layout paint;
+  isolation: isolate;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+}
+
+@media (min-width: 768px) {
+  .member-bottom-nav {
+    display: none;
+  }
+}
+
 .dark body { background: rgb(var(--color-canvas-dark)); }
 
 ::selection {

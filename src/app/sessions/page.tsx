@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
-import BottomNav from "@/components/layout/BottomNav";
 import { useAuth } from "@/context/AuthContext";
 import { CounsellingSession } from "@/types";
 import {
@@ -176,7 +175,6 @@ export default function SessionsPage() {
           </div>
         )}
       </main>
-      <BottomNav />
     </div>
   );
 }
