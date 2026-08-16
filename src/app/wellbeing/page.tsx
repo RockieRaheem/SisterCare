@@ -8,7 +8,7 @@ import Header from "@/components/layout/Header";
 import { AppShellSkeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/context/AuthContext";
 import { authenticatedFetch } from "@/lib/authenticatedFetch";
-import { submitOfflineCapableWrite } from "@/lib/offlineQueue";
+import { queuedWriteMessage, submitOfflineCapableWrite } from "@/lib/offlineQueue";
 import {
   localWellbeingDate,
   type WellbeingContext,
@@ -126,7 +126,7 @@ export default function WellbeingPage() {
             } as WellbeingCheckIn);
       setTodayCheckIn(checkIn);
       setHistory((current) => [checkIn, ...current.filter((entry) => entry.localDate !== today)].slice(0, 90));
-      setMessage(result.state === "synced" ? "Saved for today" : "Saved here. It will sync when you are online.");
+      setMessage(result.state === "synced" ? "Saved for today" : queuedWriteMessage(result.reason));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Your check-in could not be saved.");
     } finally {

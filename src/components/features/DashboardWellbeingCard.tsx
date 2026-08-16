@@ -9,11 +9,13 @@ export default function DashboardWellbeingCard({
   checkIn,
   busy,
   error,
+  status,
   onSelect,
 }: {
   checkIn: WellbeingCheckIn | null;
   busy: boolean;
   error: string | null;
+  status: string | null;
   onSelect: (feeling: WellbeingFeeling) => void;
 }) {
   return (
@@ -48,6 +50,7 @@ export default function DashboardWellbeingCard({
         <p className="mt-3 text-center text-xs text-text-secondary">One tap saves privately. You can change it later.</p>
       )}
       {error && <p role="alert" className="mt-3 rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-800 dark:bg-rose-950/30 dark:text-rose-200">{error}</p>}
+      {status && <p role="status" className="mt-3 rounded-xl bg-amber-50 p-3 text-xs font-semibold leading-5 text-amber-900 dark:bg-amber-950/25 dark:text-amber-100">{status}</p>}
     </Card>
   );
 }

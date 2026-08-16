@@ -18,8 +18,20 @@ export interface QueuedWrite {
   conflictMessage?: string;
 }
 
+export type QueuedWriteReason = "offline" | "connection" | "service";
+
 export function shouldQueueResponseStatus(status: number): boolean {
   return status === 502 || status === 503 || status === 504;
+}
+
+export function queuedWriteMessage(reason: QueuedWriteReason): string {
+  if (reason === "offline") {
+    return "Saved on this device. It will sync automatically when your connection returns.";
+  }
+  if (reason === "connection") {
+    return "Saved on this device because SisterCare could not reach the service. It will retry automatically.";
+  }
+  return "Saved safely on this device while SisterCare reconnects. Automatic retry is in progress.";
 }
 
 function openDatabase(): Promise<IDBDatabase> {
@@ -98,7 +110,7 @@ export async function submitOfflineCapableWrite(params: {
   body?: unknown;
 }): Promise<
   | { state: "synced"; payload: Record<string, unknown> }
-  | { state: "queued"; localId: string }
+  | { state: "queued"; localId: string; reason: QueuedWriteReason }
 > {
   const id = crypto.randomUUID();
   const entry: QueuedWrite = {
@@ -112,8 +124,10 @@ export async function submitOfflineCapableWrite(params: {
     status: "pending",
   };
 
+  let queueReason: QueuedWriteReason = navigator.onLine ? "connection" : "offline";
   if (navigator.onLine) {
-    try {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
       const response = await authenticatedFetch(entry.url, {
         method: entry.method,
         headers: {
@@ -131,18 +145,27 @@ export async function submitOfflineCapableWrite(params: {
             : `The update was rejected (${response.status}).`,
         );
       }
-    } catch (error) {
-      if (
-        error instanceof Error &&
-        !/fetch|network|offline|load failed/i.test(error.message)
-      ) {
-        throw error;
+        queueReason = "service";
+        if (attempt === 0) {
+          await new Promise((resolve) => setTimeout(resolve, 350));
+          continue;
+        }
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          !/fetch|network|offline|load failed/i.test(error.message)
+        ) {
+          throw error;
+        }
+        queueReason = navigator.onLine ? "connection" : "offline";
+        break;
       }
+      break;
     }
   }
 
   await putQueuedWrite(entry);
-  return { state: "queued", localId: id };
+  return { state: "queued", localId: id, reason: queueReason };
 }
 
 export async function syncOfflineQueue(userId: string): Promise<{

@@ -50,26 +50,41 @@ export default function OfflineIndicator() {
       setConflicts(0);
       return;
     }
+    let synchronizing = false;
+    let retryTimer: number | null = null;
     const refresh = async () => {
       const entries = await listQueuedWrites(user.uid).catch(() => []);
       setPending(entries.filter((entry) => entry.status === "pending").length);
       setConflicts(entries.filter((entry) => entry.status === "conflict").length);
     };
     const synchronize = async () => {
+      if (synchronizing || !navigator.onLine) return;
+      synchronizing = true;
       const result = await syncOfflineQueue(user.uid).catch(() => null);
       if (result) {
         setPending(result.pending);
         setConflicts(result.conflicts);
         if (result.synced > 0) setShowBanner(true);
       }
+      synchronizing = false;
+    };
+    const queueChanged = () => {
+      void refresh();
+      if (navigator.onLine) {
+        if (retryTimer !== null) window.clearTimeout(retryTimer);
+        retryTimer = window.setTimeout(() => void synchronize(), 5_000);
+      }
     };
     void refresh();
     if (navigator.onLine) void synchronize();
+    const retryInterval = window.setInterval(() => void synchronize(), 30_000);
     window.addEventListener("online", synchronize);
-    window.addEventListener(OFFLINE_QUEUE_CHANGE_EVENT, refresh);
+    window.addEventListener(OFFLINE_QUEUE_CHANGE_EVENT, queueChanged);
     return () => {
+      window.clearInterval(retryInterval);
+      if (retryTimer !== null) window.clearTimeout(retryTimer);
       window.removeEventListener("online", synchronize);
-      window.removeEventListener(OFFLINE_QUEUE_CHANGE_EVENT, refresh);
+      window.removeEventListener(OFFLINE_QUEUE_CHANGE_EVENT, queueChanged);
     };
   }, [user]);
 

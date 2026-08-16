@@ -20,7 +20,7 @@ import {
 import { UserProfile, WellbeingCheckIn } from "@/types";
 import { auth } from "@/lib/authClient";
 import { authenticatedFetch } from "@/lib/authenticatedFetch";
-import { submitOfflineCapableWrite } from "@/lib/offlineQueue";
+import { queuedWriteMessage, submitOfflineCapableWrite } from "@/lib/offlineQueue";
 import { localWellbeingDate, type WellbeingFeeling } from "@/lib/wellbeing";
 
 const phaseColors: Record<string, string> = {
@@ -46,6 +46,7 @@ export default function DashboardPage() {
   const [todayCheckIn, setTodayCheckIn] = useState<WellbeingCheckIn | null>(null);
   const [pulseBusy, setPulseBusy] = useState<WellbeingFeeling | null>(null);
   const [pulseError, setPulseError] = useState<string | null>(null);
+  const [pulseStatus, setPulseStatus] = useState<string | null>(null);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const [dismissedPeriodBanner, setDismissedPeriodBanner] = useState(false);
   const [cycleInfo, setCycleInfo] = useState<{
@@ -64,6 +65,7 @@ export default function DashboardPage() {
     if (!user || pulseBusy) return;
     setPulseBusy(feeling);
     setPulseError(null);
+    setPulseStatus(null);
     const localDate = localWellbeingDate();
     try {
       const result = await submitOfflineCapableWrite({
@@ -93,6 +95,7 @@ export default function DashboardPage() {
         createdAt: new Date(checkIn.createdAt),
         updatedAt: checkIn.updatedAt ? new Date(checkIn.updatedAt) : undefined,
       });
+      if (result.state === "queued") setPulseStatus(queuedWriteMessage(result.reason));
     } catch (error) {
       setPulseError(error instanceof Error ? error.message : "Your pulse could not be saved. Please try again.");
     } finally {
@@ -501,6 +504,7 @@ export default function DashboardPage() {
               checkIn={todayCheckIn}
               busy={pulseBusy !== null}
               error={pulseError}
+              status={pulseStatus}
               onSelect={(feeling) => void saveDailyPulse(feeling)}
             />
 
