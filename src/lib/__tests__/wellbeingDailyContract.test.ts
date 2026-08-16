@@ -22,6 +22,13 @@ describe("daily wellbeing persistence contract", () => {
     expect(route).not.toContain('.eq("idempotency_key", idempotencyKey)');
   });
 
+  it("uses the signed-in member token and Row Level Security instead of the admin client", () => {
+    expect(route).toContain("database.auth.getUser(token)");
+    expect(route).toContain("Authorization: `Bearer ${token}`");
+    expect(route).toContain("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
+    expect(route).not.toContain("getSupabaseAdmin");
+  });
+
   it("enforces the invariant in Postgres during concurrent requests", () => {
     expect(migration).toContain("create unique index");
     expect(migration).toContain("user_id, record_type, ((payload ->> 'localDate'))");

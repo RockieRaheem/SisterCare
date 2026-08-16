@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateRequest, isAuthEnforced } from "@/lib/serverAuth";
-import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   normalizeWellbeingDate,
   parseWellbeingCheckIn,
@@ -11,6 +10,53 @@ const unavailable = () =>
     { success: false, error: "Wellbeing check-ins are temporarily unavailable." },
     { status: 503 },
   );
+
+type WellbeingAuthorization =
+  | { authorized: true; uid: string; database: SupabaseClient }
+  | { authorized: false; response: NextResponse };
+
+async function authorize(request: NextRequest): Promise<WellbeingAuthorization> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !publishableKey) {
+    return { authorized: false, response: unavailable() };
+  }
+  const token = (request.headers.get("authorization") || "").match(/^Bearer\s+(.+)$/i)?.[1];
+  if (!token) {
+    return {
+      authorized: false,
+      response: NextResponse.json(
+        { success: false, error: "Authentication required" },
+        { status: 401 },
+      ),
+    };
+  }
+  const database = createClient(url, publishableKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false,
+    },
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  });
+  let verification;
+  try {
+    verification = await database.auth.getUser(token);
+  } catch {
+    return { authorized: false, response: unavailable() };
+  }
+  const { data, error } = verification;
+  if (error || !data.user) {
+    return {
+      authorized: false,
+      response: NextResponse.json(
+        { success: false, error: "Your session is missing or expired. Please sign in again." },
+        { status: 401 },
+      ),
+    };
+  }
+  return { authorized: true, uid: data.user.id, database };
+}
 
 const serialize = (row: Record<string, unknown>) => {
   const payload =
@@ -38,16 +84,10 @@ const serialize = (row: Record<string, unknown>) => {
 };
 
 export async function GET(request: NextRequest) {
-  if (!isAuthEnforced()) return unavailable();
-  const auth = await authenticateRequest(request);
-  if (auth.status !== "verified") {
-    return NextResponse.json(
-      { success: false, error: "Authentication required" },
-      { status: 401 },
-    );
-  }
+  const auth = await authorize(request);
+  if (!auth.authorized) return auth.response;
 
-  const { data, error } = await getSupabaseAdmin()
+  const { data, error } = await auth.database
     .from("user_records")
     .select("id,payload,created_at,updated_at")
     .eq("user_id", auth.uid)
@@ -65,14 +105,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!isAuthEnforced()) return unavailable();
-  const auth = await authenticateRequest(request);
-  if (auth.status !== "verified") {
-    return NextResponse.json(
-      { success: false, error: "Authentication required" },
-      { status: 401 },
-    );
-  }
+  const auth = await authorize(request);
+  if (!auth.authorized) return auth.response;
   const body = await request.json().catch(() => null);
   const parsed = parseWellbeingCheckIn(body);
   const input = parsed
@@ -104,7 +138,7 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
-  const db = getSupabaseAdmin();
+  const db = auth.database;
   const { data: existingToday, error: existingTodayError } = await db
     .from("user_records")
     .select("id,payload,created_at,updated_at")
