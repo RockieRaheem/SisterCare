@@ -15,6 +15,8 @@ describe("daily wellbeing persistence contract", () => {
 
   it("updates today's reflection instead of inserting another one", () => {
     expect(route).toContain('.eq("payload->>localDate", input.localDate)');
+    expect(route).toContain('.order("updated_at", { ascending: false })');
+    expect(route).toContain(".limit(1)");
     expect(route).toContain(".update({ payload: input })");
     expect(route).toContain("updated: true");
   });

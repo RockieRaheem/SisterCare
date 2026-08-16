@@ -127,6 +127,8 @@ export async function POST(request: NextRequest) {
     .eq("user_id", auth.uid)
     .eq("record_type", "wellbeing")
     .eq("payload->>localDate", input.localDate)
+    .order("updated_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
   if (existingTodayError) return unavailable();
   if (existingToday) {
