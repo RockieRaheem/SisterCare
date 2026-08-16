@@ -8,6 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import NotificationBell from "@/components/ui/NotificationBell";
 import { auth } from "@/lib/authClient";
+import { MEMBER_PRIMARY_NAVIGATION } from "@/lib/memberNavigation";
 
 // Helper function to get initials from name or email
 function getInitials(displayName: string | null, email: string | null): string {
@@ -29,20 +30,6 @@ interface HeaderProps {
   variant?: "landing" | "app";
 }
 
-interface NavLink {
-  href: string;
-  labelKey: "dashboard" | "chat" | "counsellors" | "library" | "settings";
-  icon: string;
-}
-
-const navLinks: NavLink[] = [
-  { href: "/dashboard", labelKey: "dashboard", icon: "dashboard" },
-  { href: "/chat", labelKey: "chat", icon: "chat_bubble" },
-  { href: "/counsellors", labelKey: "counsellors", icon: "support_agent" },
-  { href: "/library", labelKey: "library", icon: "menu_book" },
-  { href: "/settings", labelKey: "settings", icon: "settings" },
-];
-
 export default function Header({ variant = "landing" }: HeaderProps) {
   const { resolvedTheme, toggleTheme } = useTheme();
   const { user, signOut } = useAuth();
@@ -60,7 +47,7 @@ export default function Header({ variant = "landing" }: HeaderProps) {
   }, [user]);
 
   // Get translated label for nav item
-  const getNavLabel = (key: NavLink["labelKey"]) => t.nav[key];
+  const getNavLabel = (key: (typeof MEMBER_PRIMARY_NAVIGATION)[number]["labelKey"]) => t.nav[key];
 
   // Close mobile menu when route changes
   useEffect(() => {
@@ -100,8 +87,11 @@ export default function Header({ variant = "landing" }: HeaderProps) {
   // Get current page title
   const getCurrentPageTitle = () => {
     if (pathname.startsWith("/admin")) return "Admin";
-    const currentLink = navLinks.find((link) => isActive(link.href));
-    return currentLink ? getNavLabel(currentLink.labelKey) : "SisterCare";
+    const currentLink = MEMBER_PRIMARY_NAVIGATION.find((link) => isActive(link.href));
+    if (currentLink) return getNavLabel(currentLink.labelKey);
+    if (pathname.startsWith("/library")) return t.nav.library;
+    if (pathname.startsWith("/settings")) return t.nav.settings;
+    return "SisterCare";
   };
 
   if (variant === "app") {
@@ -188,7 +178,7 @@ export default function Header({ variant = "landing" }: HeaderProps) {
               </h2>
             </Link>
             <nav className="flex items-center gap-1">
-              {navLinks.map((link) => (
+              {MEMBER_PRIMARY_NAVIGATION.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
