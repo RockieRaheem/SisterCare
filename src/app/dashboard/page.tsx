@@ -20,7 +20,12 @@ import {
 import { UserProfile, WellbeingCheckIn } from "@/types";
 import { auth } from "@/lib/authClient";
 import { authenticatedFetch } from "@/lib/authenticatedFetch";
-import { queuedWriteMessage, submitOfflineCapableWrite } from "@/lib/offlineQueue";
+import {
+  listQueuedWrites,
+  OFFLINE_QUEUE_CHANGE_EVENT,
+  queuedWriteMessage,
+  submitOfflineCapableWrite,
+} from "@/lib/offlineQueue";
 import { localWellbeingDate, type WellbeingFeeling } from "@/lib/wellbeing";
 
 const phaseColors: Record<string, string> = {
@@ -47,6 +52,7 @@ export default function DashboardPage() {
   const [pulseBusy, setPulseBusy] = useState<WellbeingFeeling | null>(null);
   const [pulseError, setPulseError] = useState<string | null>(null);
   const [pulseStatus, setPulseStatus] = useState<string | null>(null);
+  const [pendingPulseWriteId, setPendingPulseWriteId] = useState<string | null>(null);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const [dismissedPeriodBanner, setDismissedPeriodBanner] = useState(false);
   const [cycleInfo, setCycleInfo] = useState<{
@@ -96,12 +102,26 @@ export default function DashboardPage() {
         updatedAt: checkIn.updatedAt ? new Date(checkIn.updatedAt) : undefined,
       });
       if (result.state === "queued") setPulseStatus(queuedWriteMessage(result.reason));
+      setPendingPulseWriteId(result.state === "queued" ? result.localId : null);
     } catch (error) {
       setPulseError(error instanceof Error ? error.message : "Your pulse could not be saved. Please try again.");
     } finally {
       setPulseBusy(null);
     }
   };
+
+  useEffect(() => {
+    if (!user || !pendingPulseWriteId) return;
+    const refreshSyncState = async () => {
+      const pending = await listQueuedWrites(user.uid).catch(() => []);
+      if (!pending.some((entry) => entry.id === pendingPulseWriteId)) {
+        setPendingPulseWriteId(null);
+        setPulseStatus(null);
+      }
+    };
+    window.addEventListener(OFFLINE_QUEUE_CHANGE_EVENT, refreshSyncState);
+    return () => window.removeEventListener(OFFLINE_QUEUE_CHANGE_EVENT, refreshSyncState);
+  }, [pendingPulseWriteId, user]);
 
   // Update time every minute for countdown
   useEffect(() => {

@@ -9,7 +9,12 @@ import Header from "@/components/layout/Header";
 import { AppShellSkeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/context/AuthContext";
 import { authenticatedFetch } from "@/lib/authenticatedFetch";
-import { queuedWriteMessage, submitOfflineCapableWrite } from "@/lib/offlineQueue";
+import {
+  listQueuedWrites,
+  OFFLINE_QUEUE_CHANGE_EVENT,
+  queuedWriteMessage,
+  submitOfflineCapableWrite,
+} from "@/lib/offlineQueue";
 import {
   localWellbeingDate,
   type WellbeingContext,
@@ -54,6 +59,7 @@ export default function WellbeingPage() {
   const [busy, setBusy] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
+  const [pendingWriteId, setPendingWriteId] = useState<string | null>(null);
   const autoSavedQueryRef = useRef(false);
   const today = localWellbeingDate();
 
@@ -126,6 +132,7 @@ export default function WellbeingPage() {
             } as WellbeingCheckIn);
       setTodayCheckIn(checkIn);
       setHistory((current) => [checkIn, ...current.filter((entry) => entry.localDate !== today)].slice(0, 90));
+      setPendingWriteId(result.state === "queued" ? result.localId : null);
       setMessage(result.state === "synced" ? "Saved for today" : queuedWriteMessage(result.reason));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Your check-in could not be saved.");
@@ -133,6 +140,19 @@ export default function WellbeingPage() {
       setBusy(false);
     }
   };
+
+  useEffect(() => {
+    if (!user || !pendingWriteId) return;
+    const refreshSyncState = async () => {
+      const pending = await listQueuedWrites(user.uid).catch(() => []);
+      if (!pending.some((entry) => entry.id === pendingWriteId)) {
+        setPendingWriteId(null);
+        setMessage("Saved for today");
+      }
+    };
+    window.addEventListener(OFFLINE_QUEUE_CHANGE_EVENT, refreshSyncState);
+    return () => window.removeEventListener(OFFLINE_QUEUE_CHANGE_EVENT, refreshSyncState);
+  }, [pendingWriteId, user]);
 
   useEffect(() => {
     if (loadingHistory || !user || autoSavedQueryRef.current || todayCheckIn) return;

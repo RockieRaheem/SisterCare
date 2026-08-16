@@ -20,6 +20,8 @@ describe("member wellbeing experience", () => {
     expect(dashboard).toContain("DashboardWellbeingCard");
     expect(dashboardCard).toContain("WellbeingPulsePicker");
     expect(dashboard).toContain("submitOfflineCapableWrite");
+    expect(dashboard).toContain("OFFLINE_QUEUE_CHANGE_EVENT");
+    expect(checkIn).toContain("OFFLINE_QUEUE_CHANGE_EVENT");
     expect(dashboardCard).toContain("One tap saves privately");
   });
 
