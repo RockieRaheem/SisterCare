@@ -114,7 +114,7 @@ export default function RootLayout({
               // Register Service Worker for PWA
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js?v=pink-v3')
+                  navigator.serviceWorker.register('/sw.js?v=private-runtime-v4', { updateViaCache: 'none' })
                     .then(function(registration) {
                       console.log('[PWA] Service Worker registered:', registration.scope);
                     })

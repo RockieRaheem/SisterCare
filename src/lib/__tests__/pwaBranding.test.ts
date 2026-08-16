@@ -38,9 +38,15 @@ describe("pink PWA identity", () => {
   });
 
   it("forces a new service-worker cache without legacy icon references", () => {
-    expect(serviceWorker).toContain('CACHE_VERSION = "v3-pink-brand"');
+    expect(serviceWorker).toContain('CACHE_VERSION = "v4-private-runtime"');
     expect(serviceWorker).toContain("sistercare-pink-v3-192x192.png");
     expect(serviceWorker).not.toContain('"/icons/icon-');
     expect(serviceWorker).not.toContain('"/icons/icon.svg"');
+  });
+
+  it("never caches authenticated or cross-origin runtime data", () => {
+    expect(serviceWorker).toContain("url.origin !== self.location.origin");
+    expect(serviceWorker).not.toContain("handleDynamicRequest(request)");
+    expect(serviceWorker).not.toContain("cache.put(request, response.clone())\n      return response");
   });
 });

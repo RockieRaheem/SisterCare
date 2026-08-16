@@ -1,16 +1,15 @@
 /**
- * SisterCare Service Worker v3
- * Enhanced offline support, caching strategies, and push notifications
+ * SisterCare Service Worker v4
+ * Offline shell, immutable public assets, and push notifications
  */
 
-const CACHE_VERSION = "v3-pink-brand";
+const CACHE_VERSION = "v4-private-runtime";
 const STATIC_CACHE = `sistercare-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `sistercare-dynamic-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";
 
 // Core assets to cache immediately on install
 const STATIC_ASSETS = [
-  "/",
   "/offline.html",
   "/manifest.json?v=pink-v3",
   "/icons/sistercare-pink-v3-favicon.png",
@@ -91,35 +90,41 @@ self.addEventListener("fetch", (event) => {
   // Skip chrome-extension and other non-http requests
   if (!url.protocol.startsWith("http")) return;
 
-  // Strategy 1: API requests - Network first, cache fallback
+  // Never intercept authenticated data from Supabase or another origin. A
+  // shared Cache Storage entry must not outlive the signed-in account that
+  // produced it.
+  if (url.origin !== self.location.origin) {
+    if (
+      url.hostname.includes("fonts.googleapis.com") ||
+      url.hostname.includes("fonts.gstatic.com")
+    ) {
+      event.respondWith(handleFontRequest(request));
+    }
+    return;
+  }
+
+  // Strategy 1: API requests - network only, with an explicit offline response
   if (url.pathname.startsWith("/api/")) {
     event.respondWith(handleApiRequest(request, url));
     return;
   }
 
-  // Strategy 2: Font files - Cache first (they rarely change)
-  if (
-    url.hostname.includes("fonts.googleapis.com") ||
-    url.hostname.includes("fonts.gstatic.com")
-  ) {
-    event.respondWith(handleFontRequest(request));
-    return;
-  }
-
-  // Strategy 3: Static assets - Cache first, network fallback
+  // Strategy 2: Versioned static assets - Cache first, network fallback
   if (isStaticAsset(url.pathname)) {
     event.respondWith(handleStaticRequest(request));
     return;
   }
 
-  // Strategy 4: Page navigations - Network first, cache fallback, offline page
+  // Strategy 3: Page navigations - Network first, cache fallback, offline page
   if (request.mode === "navigate") {
     event.respondWith(handleNavigationRequest(request));
     return;
   }
 
-  // Strategy 5: Other requests - Stale-while-revalidate
-  event.respondWith(handleDynamicRequest(request));
+  // Next.js server components, authenticated Supabase requests and all other
+  // runtime data use the browser's normal network path. Caching them here can
+  // show one account another account's stale state or falsely report that an
+  // online write is still pending.
 });
 
 // Helper function to identify static assets
@@ -160,10 +165,6 @@ async function handleApiRequest(request, url) {
         { headers: { "Content-Type": "application/json" } },
       );
     }
-
-    // Return cached version if available
-    const cached = await caches.match(request);
-    if (cached) return cached;
 
     return new Response(
       JSON.stringify({ error: "Offline", message: "No internet connection" }),
@@ -238,23 +239,6 @@ self.addEventListener("message", (event) => {
   if (event.data?.type !== "PURGE_PRIVATE_DATA") return;
   event.waitUntil(caches.delete(DYNAMIC_CACHE));
 });
-
-// Handle dynamic requests - Stale-while-revalidate
-async function handleDynamicRequest(request) {
-  const cache = await caches.open(DYNAMIC_CACHE);
-  const cached = await cache.match(request);
-
-  const networkPromise = fetch(request)
-    .then((response) => {
-      if (response.ok) {
-        cache.put(request, response.clone());
-      }
-      return response;
-    })
-    .catch(() => null);
-
-  return cached || (await networkPromise) || new Response("", { status: 404 });
-}
 
 // Push notification handling
 self.addEventListener("push", (event) => {
