@@ -68,7 +68,7 @@ export default function WellbeingReminder() {
 
       const id = `wellbeing-pulse-${today}`;
       const title = "A moment for you";
-      const message = "Take a five-second check-in. One tap is enough.";
+      const message = "Take a private five-second check-in, then choose support if you need it.";
       const href = "/wellbeing";
       storeNotification(
         {

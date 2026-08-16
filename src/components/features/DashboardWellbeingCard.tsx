@@ -18,6 +18,7 @@ export default function DashboardWellbeingCard({
   status: string | null;
   onSelect: (feeling: WellbeingFeeling) => void;
 }) {
+  const support = checkIn ? wellbeingSupportMessage(checkIn) : null;
   return (
     <Card className="overflow-hidden border-primary/15">
       <div className="flex items-start justify-between gap-3">
@@ -40,9 +41,10 @@ export default function DashboardWellbeingCard({
       {checkIn ? (
         <div className="mt-3 rounded-2xl border border-primary/10 bg-primary/[0.04] p-4">
           <p className="flex items-center gap-2 text-sm font-black text-text-primary dark:text-white"><span className="material-symbols-outlined text-xl text-primary" aria-hidden="true">check_circle</span>Saved for today</p>
-          <p className="mt-2 text-sm leading-6 text-text-secondary">{wellbeingSupportMessage(checkIn).message}</p>
+          <p className="mt-2 text-sm font-extrabold text-text-primary dark:text-white">{support?.title}</p>
+          <p className="mt-1 text-sm leading-6 text-text-secondary">{support?.message}</p>
           <div className="mt-3 flex flex-wrap gap-4">
-            <Link href="/wellbeing" className="inline-flex min-h-11 items-center gap-1 text-sm font-bold text-primary">Add context <span className="material-symbols-outlined text-lg" aria-hidden="true">arrow_forward</span></Link>
+            <Link href="/wellbeing" className="inline-flex min-h-11 items-center gap-1 text-sm font-bold text-primary">Choose support <span className="material-symbols-outlined text-lg" aria-hidden="true">arrow_forward</span></Link>
             <Link href="/chat" className="inline-flex min-h-11 items-center gap-1 text-sm font-bold text-primary">Talk privately <span className="material-symbols-outlined text-lg" aria-hidden="true">chat_bubble</span></Link>
           </div>
         </div>
