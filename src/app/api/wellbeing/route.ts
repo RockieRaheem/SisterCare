@@ -105,22 +105,6 @@ export async function POST(request: NextRequest) {
     );
   }
   const db = getSupabaseAdmin();
-  if (idempotencyKey) {
-    const { data: existing, error: existingError } = await db
-      .from("user_records")
-      .select("id,payload,created_at,updated_at")
-      .eq("user_id", auth.uid)
-      .eq("idempotency_key", idempotencyKey)
-      .maybeSingle();
-    if (existingError) return unavailable();
-    if (existing) {
-      return NextResponse.json({
-        success: true,
-        data: { checkIn: serialize(existing), duplicate: true },
-      });
-    }
-  }
-
   const { data: existingToday, error: existingTodayError } = await db
     .from("user_records")
     .select("id,payload,created_at,updated_at")
@@ -151,7 +135,6 @@ export async function POST(request: NextRequest) {
       user_id: auth.uid,
       record_type: "wellbeing",
       payload: input,
-      idempotency_key: idempotencyKey || null,
     })
     .select("id,payload,created_at,updated_at")
     .single();

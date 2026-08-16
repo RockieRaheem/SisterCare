@@ -19,6 +19,7 @@ describe("daily wellbeing persistence contract", () => {
     expect(route).toContain(".limit(1)");
     expect(route).toContain(".update({ payload: input })");
     expect(route).toContain("updated: true");
+    expect(route).not.toContain('.eq("idempotency_key", idempotencyKey)');
   });
 
   it("enforces the invariant in Postgres during concurrent requests", () => {
