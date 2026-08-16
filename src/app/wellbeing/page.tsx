@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import WellbeingPulsePicker from "@/components/features/WellbeingPulsePicker";
+import WellbeingCareChoices from "@/components/features/WellbeingCareChoices";
 import Header from "@/components/layout/Header";
 import { AppShellSkeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/context/AuthContext";
@@ -18,7 +19,6 @@ import {
 import {
   CONTEXT_OPTIONS,
   PULSE_OPTIONS,
-  SUPPORT_OPTIONS,
   contextLabel,
   pulseDetails,
   wellbeingSupportMessage,
@@ -200,14 +200,11 @@ export default function WellbeingPage() {
                   <p className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold leading-5 text-rose-900 dark:border-rose-900/60 dark:bg-rose-950/25 dark:text-rose-100">If you may hurt yourself or someone else, or you are in immediate danger, contact local emergency help or a trusted person near you now.</p>
                 )}
 
-                <div className="mt-5 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-                  <Link href="/chat" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-extrabold text-white shadow-primary-sm"><span className="material-symbols-outlined text-xl" aria-hidden="true">chat_bubble</span>Talk privately</Link>
-                  <Link href="/counsellors" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-primary/20 bg-white px-4 text-sm font-extrabold text-primary dark:bg-card-dark"><span className="material-symbols-outlined text-xl" aria-hidden="true">support_agent</span>Human support</Link>
-                </div>
+                <div className="mt-5"><WellbeingCareChoices /></div>
 
                 <button type="button" onClick={() => setShowDetails((value) => !value)} aria-expanded={showDetails} className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-bold text-text-secondary hover:bg-background-light dark:hover:bg-background-dark">
                   <span className="material-symbols-outlined text-lg text-primary" aria-hidden="true">add_circle</span>
-                  {showDetails ? "Close optional details" : "Add what is behind this"}
+                  {showDetails ? "Close personal details" : "Add to my private check-in"}
                 </button>
               </div>
 
@@ -225,18 +222,6 @@ export default function WellbeingPage() {
                           </button>
                         );
                       })}
-                    </div>
-                  </div>
-
-                  <div className="mt-6">
-                    <h3 className="text-base font-black text-text-primary dark:text-white">What would help now?</h3>
-                    <div className="mt-3 grid grid-cols-2 gap-2">
-                      {SUPPORT_OPTIONS.map((option) => (
-                        <button key={option.value} type="button" aria-pressed={supportNeed === option.value} onClick={() => setSupportNeed(option.value)} className={`min-h-[76px] rounded-2xl border p-3 text-left transition ${supportNeed === option.value ? "border-primary bg-primary/[0.08]" : "border-border-light bg-white dark:border-border-dark dark:bg-card-dark"}`}>
-                          <span className="material-symbols-outlined text-xl text-primary" aria-hidden="true">{option.icon}</span>
-                          <span className="mt-1 block text-xs font-extrabold text-text-primary dark:text-white">{option.label}</span>
-                        </button>
-                      ))}
                     </div>
                   </div>
 

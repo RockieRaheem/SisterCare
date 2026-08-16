@@ -12,7 +12,8 @@ describe("member Track experience", () => {
     expect(page).toContain('authenticatedFetch("/api/wellbeing"');
     expect(page).toContain("Notice patterns, not perfect days");
     expect(page).toContain("Your emotional timeline");
-    expect(page).toContain("Feelings you named");
+    expect(page).toContain("Your recent picture");
+    expect(page).not.toContain("SummaryCard");
     expect(page).not.toContain("Mood 1–5");
     expect(page).not.toContain("Average stress");
   });

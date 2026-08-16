@@ -118,11 +118,6 @@ export default function AnalyticsPage() {
     return [...counts.entries()].sort((a, b) => b[1] - a[1]);
   }, [filteredCheckIns]);
 
-  const supportCount = useMemo(
-    () => filteredCheckIns.filter((entry) => entry.supportNeed && entry.supportNeed !== "reflect").length,
-    [filteredCheckIns],
-  );
-
   const symptomCounts = useMemo(() => {
     const counts = new Map<string, number>();
     filteredSymptoms.forEach((entry) =>
@@ -191,11 +186,14 @@ export default function AnalyticsPage() {
           </section>
         ) : (
           <>
-            <section className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <SummaryCard icon="event_note" value={String(filteredCheckIns.length)} label="Days checked in" helper={`Within ${PERIOD_LABELS[selectedPeriod]}`} />
-              <SummaryCard icon="mood" value={feelingCounts[0] ? (feelingDetails(feelingCounts[0][0] as WellbeingFeeling)?.emoji || "—") : "—"} label="Most named feeling" helper={feelingCounts[0] ? (feelingDetails(feelingCounts[0][0] as WellbeingFeeling)?.label || feelingCounts[0][0]) : "No feeling yet"} />
-              <SummaryCard icon="explore" value={String(contextCounts.reduce((sum, [, count]) => sum + count, 0))} label="Contexts noticed" helper={contextCounts[0] ? `${contextLabel(contextCounts[0][0] as WellbeingContext)} appears most` : "Context is optional"} />
-              <SummaryCard icon="volunteer_activism" value={String(supportCount)} label="Support choices" helper="Days you asked for a next step" />
+            <section className="mt-6 rounded-3xl border border-border-light bg-white p-5 shadow-soft dark:border-border-dark dark:bg-card-dark sm:p-6">
+              <span className="eyebrow">Your recent picture</span>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <span className="rounded-full bg-background-light px-4 py-2 text-sm font-bold text-text-primary dark:bg-background-dark dark:text-white">{filteredCheckIns.length} {filteredCheckIns.length === 1 ? "day" : "days"} checked in</span>
+                {feelingCounts[0] && <span className="rounded-full bg-primary/[0.07] px-4 py-2 text-sm font-bold text-primary">{feelingDetails(feelingCounts[0][0] as WellbeingFeeling)?.emoji} Most often {feelingDetails(feelingCounts[0][0] as WellbeingFeeling)?.label?.toLowerCase() || feelingCounts[0][0]}</span>}
+                {contextCounts[0] && <span className="rounded-full bg-background-light px-4 py-2 text-sm font-bold text-text-primary dark:bg-background-dark dark:text-white">Often around {contextLabel(contextCounts[0][0] as WellbeingContext).toLowerCase()}</span>}
+              </div>
+              <p className="mt-4 text-xs leading-5 text-text-secondary">This is a private reflection of what you recorded, not a score or diagnosis.</p>
             </section>
 
             <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(300px,0.6fr)]">
@@ -223,12 +221,7 @@ export default function AnalyticsPage() {
               {selectedEntry && <CheckInDetail entry={selectedEntry} />}
             </section>
 
-            <section className="mt-6 grid gap-6 lg:grid-cols-2">
-              <div className="rounded-3xl border border-border-light bg-white p-5 shadow-soft dark:border-border-dark dark:bg-card-dark sm:p-6">
-                <span className="eyebrow">Emotional vocabulary</span><h2 className="mt-1 text-xl font-black text-text-primary dark:text-white">Feelings you named</h2>
-                {feelingCounts.length ? <div className="mt-5 space-y-3">{feelingCounts.slice(0, 6).map(([feeling, count]) => { const details = feelingDetails(feeling as WellbeingFeeling); const width = Math.max(10, (count / feelingCounts[0][1]) * 100); return <div key={feeling}><div className="mb-1.5 flex items-center justify-between text-sm"><span className="font-bold text-text-primary dark:text-white">{details?.emoji} {details?.label || feeling}</span><span className="text-text-secondary">{count} {count === 1 ? "day" : "days"}</span></div><div className="h-2.5 overflow-hidden rounded-full bg-background-light dark:bg-background-dark"><div className="h-full rounded-full bg-primary" style={{ width: `${width}%` }} /></div></div>; })}</div> : <p className="mt-4 text-sm text-text-secondary">New check-ins will show the words you use most often.</p>}
-              </div>
-
+            <section className="mt-6">
               <div className="rounded-3xl border border-border-light bg-white p-5 shadow-soft dark:border-border-dark dark:bg-card-dark sm:p-6">
                 <span className="eyebrow">Gentle reflection</span><h2 className="mt-1 text-xl font-black text-text-primary dark:text-white">What stands out</h2>
                 <div className="mt-4 space-y-3">{patternNotes.map((note) => <p key={note} className="flex gap-3 rounded-2xl bg-background-light p-4 text-sm leading-6 text-text-secondary dark:bg-background-dark"><span className="material-symbols-outlined mt-0.5 text-lg text-primary" aria-hidden="true">lightbulb</span><span>{note}</span></p>)}</div>
@@ -265,10 +258,6 @@ export default function AnalyticsPage() {
       </main>
     </div>
   );
-}
-
-function SummaryCard({ icon, value, label, helper }: { icon: string; value: string; label: string; helper: string }) {
-  return <article className="rounded-2xl border border-border-light bg-white p-4 shadow-soft dark:border-border-dark dark:bg-card-dark sm:p-5"><span className="material-symbols-outlined text-2xl text-primary" aria-hidden="true">{icon}</span><p className="mt-3 text-2xl font-black text-text-primary dark:text-white">{value}</p><p className="mt-1 text-sm font-bold text-text-primary dark:text-white">{label}</p><p className="mt-1 text-xs text-text-secondary">{helper}</p></article>;
 }
 
 function CheckInDetail({ entry }: { entry: WellbeingCheckIn }) {
