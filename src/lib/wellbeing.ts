@@ -1,5 +1,5 @@
 export interface WellbeingCheckInInput {
-  mood: number;
+  mood?: number;
   stress?: number;
   sleep?: number;
   energy?: number;

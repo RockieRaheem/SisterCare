@@ -9,7 +9,7 @@ const page = readFileSync(
 
 describe("member Track experience", () => {
   it("uses private wellbeing check-ins as its primary source", () => {
-    expect(page).toContain('authenticatedFetch("/api/wellbeing"');
+    expect(page).toContain("getWellbeingCheckIns(user.uid)");
     expect(page).toContain("Notice patterns, not perfect days");
     expect(page).toContain("Your emotional timeline");
     expect(page).toContain("Your recent picture");

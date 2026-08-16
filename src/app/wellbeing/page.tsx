@@ -8,13 +8,12 @@ import WellbeingCareChoices from "@/components/features/WellbeingCareChoices";
 import Header from "@/components/layout/Header";
 import { AppShellSkeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/context/AuthContext";
-import { authenticatedFetch } from "@/lib/authenticatedFetch";
 import {
   listQueuedWrites,
   OFFLINE_QUEUE_CHANGE_EVENT,
   queuedWriteMessage,
-  submitOfflineCapableWrite,
 } from "@/lib/offlineQueue";
+import { getWellbeingCheckIns, submitWellbeingCheckIn } from "@/lib/wellbeingClient";
 import {
   localWellbeingDate,
   type WellbeingContext,
@@ -69,11 +68,8 @@ export default function WellbeingPage() {
 
   useEffect(() => {
     if (!user) return;
-    authenticatedFetch("/api/wellbeing", { cache: "no-store" })
-      .then(async (response) => {
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(payload.error || "Could not load your check-ins.");
-        const entries = (payload.data?.checkIns || []).map(hydrate);
+    getWellbeingCheckIns(user.uid)
+      .then((entries) => {
         const existing = entries.find((entry: WellbeingCheckIn) => entry.localDate === today) || null;
         setHistory(entries);
         setTodayCheckIn(existing);
@@ -105,20 +101,16 @@ export default function WellbeingPage() {
       const nextContexts = details?.contexts ?? contexts;
       const nextSupport = details?.supportNeed ?? supportNeed;
       const nextNote = details?.note ?? note;
-      const result = await submitOfflineCapableWrite({
-        userId: user.uid,
-        url: "/api/wellbeing",
-        body: {
+      const result = await submitWellbeingCheckIn(user.uid, {
           localDate: today,
           feelings: [feeling],
           contexts: nextContexts,
           supportNeed: nextSupport,
           note: nextNote,
-        },
       });
       const checkIn =
         result.state === "synced"
-          ? hydrate((result.payload.data as { checkIn: WellbeingCheckIn }).checkIn)
+          ? result.checkIn
           : ({
               id: todayCheckIn?.id || result.localId,
               mood: pulseMood(feeling),

@@ -19,13 +19,12 @@ import {
 } from "@/lib/dataClient";
 import { UserProfile, WellbeingCheckIn } from "@/types";
 import { auth } from "@/lib/authClient";
-import { authenticatedFetch } from "@/lib/authenticatedFetch";
 import {
   listQueuedWrites,
   OFFLINE_QUEUE_CHANGE_EVENT,
   queuedWriteMessage,
-  submitOfflineCapableWrite,
 } from "@/lib/offlineQueue";
+import { getWellbeingCheckIns, submitWellbeingCheckIn } from "@/lib/wellbeingClient";
 import { localWellbeingDate, type WellbeingFeeling } from "@/lib/wellbeing";
 
 const phaseColors: Record<string, string> = {
@@ -74,19 +73,15 @@ export default function DashboardPage() {
     setPulseStatus(null);
     const localDate = localWellbeingDate();
     try {
-      const result = await submitOfflineCapableWrite({
-        userId: user.uid,
-        url: "/api/wellbeing",
-        body: {
+      const result = await submitWellbeingCheckIn(user.uid, {
           localDate,
           feelings: [feeling],
           contexts: todayCheckIn?.contexts || [],
           supportNeed: todayCheckIn?.supportNeed || "reflect",
           note: todayCheckIn?.note || "",
-        },
       });
       const checkIn = result.state === "synced"
-        ? (result.payload.data as { checkIn: WellbeingCheckIn }).checkIn
+        ? result.checkIn
         : {
             id: result.localId,
             localDate,
@@ -222,20 +217,15 @@ export default function DashboardPage() {
 
     setError(null);
     try {
-      const [userProfile, wellbeingResponse] = await Promise.all([
+      const [userProfile, wellbeingCheckIns] = await Promise.all([
         getUserProfile(user.uid),
-        authenticatedFetch("/api/wellbeing", { cache: "no-store" }).catch(() => null),
+        getWellbeingCheckIns(user.uid).catch(() => []),
       ]);
       setProfile(userProfile);
 
-      if (wellbeingResponse?.ok) {
-        const wellbeingPayload = await wellbeingResponse.json().catch(() => ({}));
-        const today = localWellbeingDate();
-        const entry = (wellbeingPayload.data?.checkIns || []).find(
-          (checkIn: WellbeingCheckIn) => checkIn.localDate === today,
-        );
-        setTodayCheckIn(entry || null);
-      }
+      const today = localWellbeingDate();
+      const entry = wellbeingCheckIns.find((checkIn) => checkIn.localDate === today);
+      setTodayCheckIn(entry || null);
 
       // Calculate cycle info if we have cycle data
       if (userProfile?.cycleData) {

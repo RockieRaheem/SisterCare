@@ -6,8 +6,8 @@ import { useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
 import { AppShellSkeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/context/AuthContext";
-import { authenticatedFetch } from "@/lib/authenticatedFetch";
 import { getSymptoms, getUserProfile } from "@/lib/dataClient";
+import { getWellbeingCheckIns } from "@/lib/wellbeingClient";
 import {
   localWellbeingDate,
   type WellbeingContext,
@@ -60,19 +60,14 @@ export default function AnalyticsPage() {
       const [profileResult, symptomsResult, wellbeingResult] = await Promise.allSettled([
         getUserProfile(user.uid),
         getSymptoms(user.uid, startDate, endDate),
-        authenticatedFetch("/api/wellbeing", { cache: "no-store" }),
+        getWellbeingCheckIns(user.uid),
       ]);
       if (profileResult.status === "fulfilled") setProfile(profileResult.value);
       if (symptomsResult.status === "fulfilled") setSymptomLogs(symptomsResult.value || []);
       if (wellbeingResult.status === "fulfilled") {
-        const payload = await wellbeingResult.value.json().catch(() => ({}));
-        if (wellbeingResult.value.ok) {
-          const entries = (payload.data?.checkIns || []).map(hydrateCheckIn);
-          setCheckIns(entries);
-          setSelectedEntryId((current) => current || entries[0]?.id || null);
-        } else {
-          setError(payload.error || "Your wellbeing patterns could not be loaded.");
-        }
+        const entries = wellbeingResult.value.map(hydrateCheckIn);
+        setCheckIns(entries);
+        setSelectedEntryId((current) => current || entries[0]?.id || null);
       } else {
         setError("Your wellbeing patterns could not be loaded.");
       }

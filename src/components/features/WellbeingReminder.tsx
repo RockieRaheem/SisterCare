@@ -2,14 +2,13 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { authenticatedFetch } from "@/lib/authenticatedFetch";
 import {
   showBrowserNotification,
   storeNotification,
 } from "@/lib/notifications";
 import { localWellbeingDate } from "@/lib/wellbeing";
 import { shouldSendWellbeingReminder } from "@/lib/wellbeingReminder";
-import type { WellbeingCheckIn } from "@/types";
+import { getWellbeingCheckIns } from "@/lib/wellbeingClient";
 
 const reminderKey = (uid: string) => `sistercare_wellbeing_reminder_${uid}`;
 
@@ -47,13 +46,8 @@ export default function WellbeingReminder() {
         return;
       }
 
-      const response = await authenticatedFetch("/api/wellbeing", {
-        cache: "no-store",
-      });
-      if (!response.ok) return;
-      const payload = await response.json().catch(() => ({}));
-      const alreadyCheckedIn = (payload.data?.checkIns || []).some(
-        (entry: Pick<WellbeingCheckIn, "localDate">) => entry.localDate === today,
+      const alreadyCheckedIn = (await getWellbeingCheckIns(user.uid)).some(
+        (entry) => entry.localDate === today,
       );
       if (
         !shouldSendWellbeingReminder({
