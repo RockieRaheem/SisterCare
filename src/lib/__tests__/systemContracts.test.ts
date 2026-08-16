@@ -44,7 +44,7 @@ describe("whole-system architecture contracts", () => {
         source,
         `${route} must verify the caller or a protected scheduler secret`,
       ).toMatch(
-        /authenticateRequest|verifySupabaseAccessToken|verifyCronSecret/,
+        /authenticateRequest|verifySupabaseAccessToken|verifyCronSecret|auth\.getUser\(token\)/,
       );
     }
   });
