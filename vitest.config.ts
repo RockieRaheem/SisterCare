@@ -10,6 +10,9 @@ export default defineConfig({
   test: {
     include: ["src/**/*.test.{ts,tsx}"],
     environment: "node",
+    // Keep CI memory predictable; unconstrained worker fan-out previously
+    // made the coverage job time out despite every test passing in isolation.
+    maxWorkers: 2,
     coverage: {
       provider: "v8",
       reporter: ["text", "json-summary", "html"],
