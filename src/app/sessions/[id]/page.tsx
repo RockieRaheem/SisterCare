@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
 import CounsellorShell from "@/components/counsellor/CounsellorShell";
@@ -452,6 +453,15 @@ export default function SessionRoomPage() {
           </div>
         )}
       </div>
+
+      {isSessionUser && (
+        <div className="mb-4 flex justify-end">
+          <Link href={`/report?type=session&targetId=${encodeURIComponent(sessionId)}`} className="inline-flex min-h-10 items-center gap-2 rounded-xl px-3 text-xs font-semibold text-text-secondary hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/20 dark:hover:text-red-300">
+            <span className="material-symbols-outlined text-lg" aria-hidden="true">report</span>
+            Report a concern about this session
+          </Link>
+        </div>
+      )}
 
       {isSessionUser &&
         session.lastDeclinedAt &&

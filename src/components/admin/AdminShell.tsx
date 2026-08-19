@@ -8,6 +8,7 @@ const links: readonly OperationsNavItem[] = [
   { href: "/admin/articles", label: "Clinical review", description: "Publication queue", icon: "edit_note" },
   { href: "/admin/crisis", label: "Crisis monitor", description: "Time-to-human response", icon: "emergency" },
   { href: "/admin/incidents", label: "Incidents", description: "Acknowledge and resolve", icon: "assignment_late" },
+  { href: "/admin/reports", label: "Member reports", description: "Safety, privacy and conduct", icon: "report" },
   { href: "/admin/operations", label: "Service health", description: "Reliability and outcomes", icon: "monitoring" },
 ];
 

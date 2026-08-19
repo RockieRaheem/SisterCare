@@ -305,6 +305,11 @@ export default function CounsellorProfilePage() {
               </ul>
             </div>
 
+            <Link href={`/report?type=counsellor&targetId=${encodeURIComponent(counsellor.id)}`} className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-xl px-2 text-sm font-semibold text-white/85 hover:bg-white/10 hover:text-white">
+              <span className="material-symbols-outlined text-lg" aria-hidden="true">report</span>
+              Report a concern about this counsellor
+            </Link>
+
           </aside>
         </section>
       </main>

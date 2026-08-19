@@ -92,6 +92,10 @@ export default function HelpPage() {
               .
             </p>
           </div>
+          <Link href="/report" className="surface group flex items-start gap-3 p-5 transition hover:border-primary/30">
+            <span className="material-symbols-outlined text-primary" aria-hidden="true">report</span>
+            <span><span className="block font-bold text-text-primary group-hover:text-primary dark:text-white">Report a concern</span><span className="mt-1 block text-sm leading-6 text-text-secondary dark:text-gray-300">Privately report unsafe advice, conduct, privacy or access problems.</span></span>
+          </Link>
         </aside>
       </div>
     </PublicPageShell>

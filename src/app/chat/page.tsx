@@ -1776,6 +1776,14 @@ export default function ChatPage() {
         </div>
         <div className="flex items-center gap-1">
           <Link
+            href={`/report?type=ai_response&targetId=${encodeURIComponent(activeConversationId || "")}`}
+            className="flex h-9 w-9 items-center justify-center rounded-xl text-text-secondary transition-colors hover:bg-black/[0.05] hover:text-red-600 dark:text-gray-400 dark:hover:bg-white/[0.06]"
+            title="Report a concern"
+            aria-label="Report a concern about this conversation"
+          >
+            <span className="material-symbols-outlined text-xl">report</span>
+          </Link>
+          <Link
             href="/library"
             className="hidden h-9 w-9 items-center justify-center rounded-xl text-text-secondary transition-colors hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06] sm:flex"
             title="Health Library"
