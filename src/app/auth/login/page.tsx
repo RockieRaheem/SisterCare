@@ -21,6 +21,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{
     email?: string;
     password?: string;
@@ -36,6 +37,12 @@ export default function LoginPage() {
   } = useAuth();
   const router = useRouter();
   const routingRef = useRef(false);
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("reason") === "privacy-timeout") {
+      setNotice("SisterCare signed you out after inactivity to protect your private information on this device.");
+    }
+  }, []);
 
   const routeToWorkspace = useCallback(async (
     requestedIntent?: "member" | "counsellor",
@@ -166,6 +173,13 @@ export default function LoginPage() {
           >
             <span className="material-symbols-outlined text-lg">error</span>
             {error}
+          </div>
+        )}
+
+        {notice && (
+          <div role="status" className="mb-4 flex items-start gap-2 rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm leading-6 text-text-primary dark:text-white">
+            <span className="material-symbols-outlined text-lg text-primary" aria-hidden="true">shield_lock</span>
+            {notice}
           </div>
         )}
 

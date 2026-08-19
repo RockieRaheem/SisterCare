@@ -61,6 +61,7 @@ export default function SettingsPage() {
     useState<UserPrivacyPreferences["counsellorContextSharing"]>(
       "ask_each_time",
     );
+  const [sharedDeviceLockMinutes, setSharedDeviceLockMinutes] = useState(5);
   const [browserNotificationStatus, setBrowserNotificationStatus] = useState<
     NotificationPermission | "unsupported"
   >("default");
@@ -95,6 +96,9 @@ export default function SettingsPage() {
         );
         setCounsellorContextSharing(
           profile.privacyPreferences.counsellorContextSharing,
+        );
+        setSharedDeviceLockMinutes(
+          profile.privacyPreferences.sharedDeviceLockMinutes,
         );
       }
     } catch (error: unknown) {
@@ -152,6 +156,7 @@ export default function SettingsPage() {
           ...current.privacyPreferences,
           conversationRetention,
           counsellorContextSharing,
+          sharedDeviceLockMinutes,
         },
       });
       setMessage({ type: "success", text: "Settings saved successfully!" });
@@ -909,6 +914,26 @@ export default function SettingsPage() {
                 Share only the summary I approve
               </option>
               <option value="never">Do not share conversation context</option>
+            </select>
+          </Card>
+
+          <Card>
+            <label htmlFor="shared-device-timeout" className="block text-sm font-bold text-text-primary dark:text-white sm:text-base">
+              Shared-device privacy timeout
+            </label>
+            <p className="mt-1 text-xs leading-relaxed text-text-secondary sm:text-sm">
+              SisterCare signs you out after this much inactivity and clears private data stored by this browser. Active counselling call pages are not interrupted.
+            </p>
+            <select
+              id="shared-device-timeout"
+              value={sharedDeviceLockMinutes}
+              onChange={(event) => setSharedDeviceLockMinutes(Number(event.target.value))}
+              className="mt-3 h-11 w-full rounded-xl border-2 border-gray-200 bg-white px-4 text-base text-text-primary focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-gray-700 dark:bg-card-dark dark:text-white"
+            >
+              <option value={5}>5 minutes</option>
+              <option value={15}>15 minutes</option>
+              <option value={30}>30 minutes</option>
+              <option value={60}>60 minutes</option>
             </select>
           </Card>
 

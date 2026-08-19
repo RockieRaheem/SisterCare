@@ -1,9 +1,9 @@
 /**
- * SisterCare Service Worker v4
+ * SisterCare Service Worker v5
  * Offline shell, immutable public assets, and push notifications
  */
 
-const CACHE_VERSION = "v4-private-runtime";
+const CACHE_VERSION = "v5-private-notifications";
 const STATIC_CACHE = `sistercare-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `sistercare-dynamic-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";
@@ -254,8 +254,10 @@ self.addEventListener("push", (event) => {
     }
   }
 
+  // Push payloads are always discreet because a service worker cannot safely
+  // know who is looking at a shared device's lock screen.
   const options = {
-    body: data.body,
+    body: "You have a private update. Open SisterCare to view it.",
     icon: "/icons/sistercare-pink-v3-192x192.png",
     badge: "/icons/sistercare-pink-v3-192x192.png",
     vibrate: [100, 50, 100],
@@ -276,7 +278,7 @@ self.addEventListener("push", (event) => {
     ],
   };
 
-  event.waitUntil(self.registration.showNotification(data.title, options));
+  event.waitUntil(self.registration.showNotification("SisterCare", options));
 });
 
 // Notification click handling

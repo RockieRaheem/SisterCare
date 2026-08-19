@@ -38,10 +38,16 @@ describe("pink PWA identity", () => {
   });
 
   it("forces a new service-worker cache without legacy icon references", () => {
-    expect(serviceWorker).toContain('CACHE_VERSION = "v4-private-runtime"');
+    expect(serviceWorker).toContain('CACHE_VERSION = "v5-private-notifications"');
     expect(serviceWorker).toContain("sistercare-pink-v3-192x192.png");
     expect(serviceWorker).not.toContain('"/icons/icon-');
     expect(serviceWorker).not.toContain('"/icons/icon.svg"');
+  });
+
+  it("never exposes push payload details on a device lock screen", () => {
+    expect(serviceWorker).toContain('showNotification("SisterCare"');
+    expect(serviceWorker).toContain("You have a private update. Open SisterCare to view it.");
+    expect(serviceWorker).not.toContain("showNotification(data.title");
   });
 
   it("never caches authenticated or cross-origin runtime data", () => {

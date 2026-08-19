@@ -9,6 +9,7 @@ import WorkspaceBoundary from "@/components/auth/WorkspaceBoundary";
 import SessionNotifier from "@/components/features/SessionNotifier";
 import WellbeingReminder from "@/components/features/WellbeingReminder";
 import InstallAppPrompt from "@/components/features/InstallAppPrompt";
+import SharedDevicePrivacyGuard from "@/components/auth/SharedDevicePrivacyGuard";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -114,7 +115,7 @@ export default function RootLayout({
               // Register Service Worker for PWA
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js?v=private-runtime-v4', { updateViaCache: 'none' })
+                  navigator.serviceWorker.register('/sw.js?v=private-runtime-v5', { updateViaCache: 'none' })
                     .then(function(registration) {
                       console.log('[PWA] Service Worker registered:', registration.scope);
                     })
@@ -158,6 +159,7 @@ export default function RootLayout({
               <SessionNotifier />
               <WellbeingReminder />
               <InstallAppPrompt />
+              <SharedDevicePrivacyGuard />
               <div className="flex flex-col min-h-screen">
                 <main id="main-content" tabIndex={-1}>
                   <WorkspaceBoundary>{children}</WorkspaceBoundary>
