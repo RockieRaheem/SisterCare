@@ -4,6 +4,7 @@ import { ReactNode, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { resolveRoleBoundaryRedirect } from "@/lib/workspaceRouting";
+import ControlledPilotBoundary from "./ControlledPilotBoundary";
 
 export default function WorkspaceBoundary({
   children,
@@ -30,5 +31,5 @@ export default function WorkspaceBoundary({
   }, [destination, loading, profileLoading, router]);
 
   if (!loading && !profileLoading && destination) return null;
-  return <>{children}</>;
+  return <ControlledPilotBoundary>{children}</ControlledPilotBoundary>;
 }

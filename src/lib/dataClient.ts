@@ -110,6 +110,9 @@ function profileFromRow(row: JsonRecord): UserProfile {
     pregnancyData: revivePregnancy((row.pregnancy_data as JsonRecord | null) || null),
     registrationIntent: row.registration_intent === "counsellor" ? "counsellor" : "member",
     role: row.role as UserProfile["role"],
+    adultConfirmed: row.adult_confirmed === true,
+    pilotConsentVersion: (row.pilot_consent_version as string | null) || null,
+    pilotConsentAt: row.pilot_consent_at ? asDate(row.pilot_consent_at) : null,
   };
 }
 

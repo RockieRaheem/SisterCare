@@ -14,6 +14,7 @@ import { clearPrivateClientData } from "@/lib/privacy";
 import { UserProfile as FullUserProfile } from "@/types";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 import { markCounsellorOfflineBeforeSignOut } from "@/lib/presenceClient";
+import type { PilotConsent } from "@/lib/pilot";
 
 interface UserProfile {
   uid: string;
@@ -28,10 +29,10 @@ interface AuthContextType {
   loading: boolean;
   profileLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, registrationIntent?: "member" | "counsellor") => Promise<{ emailConfirmationRequired: boolean }>;
+  signUp: (email: string, password: string, registrationIntent: "member" | "counsellor", pilotConsent: PilotConsent) => Promise<{ emailConfirmationRequired: boolean }>;
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<void>;
-  signInWithGoogle: (registrationIntent?: "member" | "counsellor") => Promise<void>;
+  signInWithGoogle: (registrationIntent?: "member" | "counsellor", pilotConsent?: PilotConsent) => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
@@ -142,8 +143,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await auth.signInWithEmailAndPassword(email, password);
   };
 
-  const signUp = async (email: string, password: string, registrationIntent: "member" | "counsellor" = "member") => {
-    return auth.createUserWithEmailAndPassword(email, password, registrationIntent);
+  const signUp = async (email: string, password: string, registrationIntent: "member" | "counsellor", pilotConsent: PilotConsent) => {
+    return auth.createUserWithEmailAndPassword(email, password, registrationIntent, pilotConsent);
   };
 
   const signOut = async () => {
@@ -194,8 +195,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUserProfile(null);
   };
 
-  const signInWithGoogle = async (registrationIntent?: "member" | "counsellor") => {
-    await auth.signInWithGoogle(registrationIntent);
+  const signInWithGoogle = async (registrationIntent?: "member" | "counsellor", pilotConsent?: PilotConsent) => {
+    await auth.signInWithGoogle(registrationIntent, pilotConsent);
   };
 
   return (

@@ -17,6 +17,10 @@ export interface UserProfile {
   registrationIntent?: "member" | "counsellor";
   /** Server-controlled Supabase role; never accepted from a browser update. */
   role?: "member" | "counsellor" | "admin";
+  /** Self-attested adult consent for the current controlled pilot. */
+  adultConfirmed: boolean;
+  pilotConsentVersion: string | null;
+  pilotConsentAt: Date | null;
 }
 
 export type MemberAgeBand =

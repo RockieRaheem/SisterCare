@@ -29,6 +29,9 @@ function profile(row: Json): UserProfile {
     onboardingCompleted: Boolean(row.onboarding_completed), preferences: row.preferences as UserProfile["preferences"],
     privacyPreferences: normalizePrivacyPreferences(row.privacy_preferences),
     registrationIntent: row.registration_intent === "counsellor" ? "counsellor" : "member",
+    adultConfirmed: row.adult_confirmed === true,
+    pilotConsentVersion: (row.pilot_consent_version as string | null) || null,
+    pilotConsentAt: row.pilot_consent_at ? date(row.pilot_consent_at) : null,
     cycleData: cycle ? { ...(cycle as unknown as CycleData), lastPeriodDate: date(cycle.lastPeriodDate), nextPeriodDate: date(cycle.nextPeriodDate) } : null,
     pregnancyData: pregnancy ? { ...(pregnancy as unknown as PregnancyData), estimatedDueDate: pregnancy.estimatedDueDate ? date(pregnancy.estimatedDueDate) : undefined, lastMenstrualPeriodDate: pregnancy.lastMenstrualPeriodDate ? date(pregnancy.lastMenstrualPeriodDate) : undefined, conceptionDate: pregnancy.conceptionDate ? date(pregnancy.conceptionDate) : undefined, birthDate: pregnancy.birthDate ? date(pregnancy.birthDate) : undefined } : null,
   };

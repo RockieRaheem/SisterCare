@@ -3,6 +3,7 @@
 
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "./supabase";
+import type { PilotConsent } from "./pilot";
 
 export interface SisterCareAuthUser {
   uid: string;
@@ -89,18 +90,32 @@ class SupabaseAuthFacade {
     await this.notify(data.session);
   }
 
-  async createUserWithEmailAndPassword(email: string, password: string, registrationIntent: "member" | "counsellor") {
+  async createUserWithEmailAndPassword(
+    email: string,
+    password: string,
+    registrationIntent: "member" | "counsellor",
+    pilotConsent: PilotConsent,
+  ) {
     const { data, error } = await getSupabaseBrowserClient().auth.signUp({
       email,
       password,
-      options: { data: { registration_intent: registrationIntent } },
+      options: {
+        data: {
+          registration_intent: registrationIntent,
+          adult_confirmed: pilotConsent.adultConfirmed,
+          pilot_consent_version: pilotConsent.consentVersion,
+        },
+      },
     });
     if (error) throw error;
     await this.notify(data.session);
     return { emailConfirmationRequired: Boolean(data.user && !data.session) };
   }
 
-  async signInWithGoogle(registrationIntent?: "member" | "counsellor") {
+  async signInWithGoogle(
+    registrationIntent?: "member" | "counsellor",
+    _pilotConsent?: PilotConsent,
+  ) {
     if (registrationIntent) {
       window.localStorage.setItem(
         "sistercare-registration-intent",

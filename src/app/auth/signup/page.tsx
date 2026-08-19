@@ -9,6 +9,7 @@ import Button from "@/components/ui/Button";
 import AuthShell from "@/components/layout/AuthShell";
 import { resolveSignedInWorkspace } from "@/lib/workspaceClient";
 import { auth } from "@/lib/authClient";
+import { CONTROLLED_PILOT, currentPilotConsent } from "@/lib/pilot";
 
 // Email validation regex
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -79,6 +80,7 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [adultConfirmed, setAdultConfirmed] = useState(false);
   const { signUp, signInWithGoogle } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -133,6 +135,11 @@ export default function SignupPage() {
       return;
     }
 
+    if (!adultConfirmed) {
+      setError(`This controlled pilot is currently open only to people aged ${CONTROLLED_PILOT.minimumAge} or older.`);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -140,7 +147,12 @@ export default function SignupPage() {
         router.replace(await resolveSignedInWorkspace(registrationIntent));
         return;
       }
-      const result = await signUp(email.trim().toLowerCase(), password, registrationIntent);
+      const result = await signUp(
+        email.trim().toLowerCase(),
+        password,
+        registrationIntent,
+        currentPilotConsent(),
+      );
       if (result.emailConfirmationRequired) {
         setNotice("Check your email to confirm your account, then sign in to continue with SisterCare.");
         return;
@@ -166,10 +178,14 @@ export default function SignupPage() {
   const handleGoogleSignIn = async () => {
     setError("");
     setFieldErrors({});
+    if (!agreedToTerms || !adultConfirmed) {
+      setError("Confirm the pilot eligibility and privacy terms before continuing.");
+      return;
+    }
     setLoading(true);
 
     try {
-      await signInWithGoogle(registrationIntent);
+      await signInWithGoogle(registrationIntent, currentPilotConsent());
     } catch (err: unknown) {
       const errorCode = (err as { code?: string })?.code || "";
       if (errorCode === "auth/popup-closed-by-user") {
@@ -407,6 +423,19 @@ export default function SignupPage() {
               <Link href="/privacy" className="text-primary hover:underline">
                 Privacy Policy
               </Link>
+            </label>
+          </div>
+
+          <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950/30">
+            <input
+              type="checkbox"
+              checked={adultConfirmed}
+              onChange={(event) => setAdultConfirmed(event.target.checked)}
+              className="mt-1 rounded border-amber-400 text-primary focus:ring-primary"
+              id="adult-pilot-checkbox"
+            />
+            <label htmlFor="adult-pilot-checkbox" className="cursor-pointer text-xs leading-5 text-amber-950 dark:text-amber-100">
+              I confirm that I am at least {CONTROLLED_PILOT.minimumAge} years old and understand that this is a controlled pilot. SisterCare is not an emergency service and does not replace professional diagnosis or treatment.
             </label>
           </div>
 
