@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const nextConfig = require("../../../next.config.js") as {
   headers: () => Promise<Array<{ source: string; headers: Array<{ key: string; value: string }> }>>;
 };

@@ -1,71 +1,26 @@
+import Link from "next/link";
 import PublicPageShell from "@/components/layout/PublicPageShell";
 
 const SECTIONS = [
-  {
-    title: "Information you choose to share",
-    body: "This can include your account details, menstrual cycle data, symptoms, preferences, conversation context and health-related notes. We also collect limited operational data needed to keep the service secure and reliable.",
-  },
-  {
-    title: "How SisterCare uses it",
-    body: "We use your information to provide cycle predictions, personalize relevant guidance, perform actions you request, deliver opted-in reminders, connect you with counsellors and improve service safety.",
-  },
-  {
-    title: "Security and responsible processing",
-    body: "Access is restricted by authenticated identity and server-side authorization. Sensitive actions are audited, and personal health information is not sold or used for third-party advertising.",
-  },
-  {
-    title: "Your controls",
-    body: "You may review and correct your profile, export your information, change notification preferences or request complete account deletion from Settings.",
-  },
+  { title: "Who this notice is for", body: "This notice applies to the adult-only SisterCare controlled pilot. SisterCare is responsible for deciding why pilot information is used. Participation is voluntary, and you may stop using the pilot at any time." },
+  { title: "Information you choose to share", body: "We may process your sign-in details, display name or support alias, wellbeing check-ins, menstrual tracking information, preferences, questions to Sister, counselling requests, in-app messages, call connection events, reports and account-support requests. Counsellor applicants also provide professional profile and private KYC information." },
+  { title: "Information collected to operate safely", body: "We record limited security, authorization, reliability and safety events, such as sign-in state, request outcomes, role changes, counsellor availability, incident response and report review. We design operational logs to avoid message text and direct identifiers where they are not needed." },
+  { title: "Why we use information", body: "We use information to provide the features you request, keep your account secure, remember approved preferences, generate wellbeing and cycle estimates, connect you to a selected counsellor, respond to safety concerns, investigate reports and improve pilot reliability. We do not sell health information or use it for third-party advertising." },
+  { title: "AI and service providers", body: "Sister is an AI assistant, not a person or clinician. The minimum relevant prompt and context may be sent through approved AI providers such as Groq or Gemini to generate a reply. Supabase supports authentication and data storage, Vercel hosts the application, Sunbird supports selected speech features and Daily supports private audio rooms. Provider processing may occur outside your country under their service terms." },
+  { title: "Counsellor access and audio", body: "A counsellor receives only the care-room information needed for an accepted request and any context you explicitly approve. Other counsellors cannot open that room. Private audio is designed for two participants, with recording and video disabled. Connection metadata may be kept for security and service operations; SisterCare does not intentionally record call audio." },
+  { title: "Retention and deletion", body: "Account-retained conversations remain until you delete them or your account. Session-only assistant conversations are removed when the private session is cleared or you sign out. Account deletion removes eligible account data. A limited safety, report or audit record may need to remain where necessary to investigate harm, meet a legal duty or protect the service. The exact long-term retention schedule is a controlled-pilot launch gate and must be approved before a wider public release." },
+  { title: "Your choices and rights", body: "You can correct profile details, choose an alias, control conversation retention and counsellor context sharing, keep notifications discreet, export available information, delete eligible chats, submit a private concern report or request account deletion. You may also ask for access, correction, restriction or deletion by contacting the privacy address below." },
+  { title: "Shared devices and security", body: "SisterCare uses authenticated access, role checks, private database policies, non-cacheable private pages and audited sensitive actions. Device notifications hide health details. The app signs an inactive account out according to the shared-device timeout you select. No internet service can promise absolute security, so use a device passcode and sign out when sharing a device." },
 ];
 
 export default function PrivacyPage() {
   return (
-    <PublicPageShell
-      eyebrow="Privacy"
-      title="Your health information belongs to you."
-      description="This overview explains what SisterCare processes, why it is needed, and the controls available to you."
-    >
-      <div className="grid gap-8 lg:grid-cols-[220px_1fr] lg:gap-14">
-        <aside>
-          <div className="surface sticky top-24 p-5">
-            <span className="material-symbols-outlined text-2xl text-primary">
-              shield_lock
-            </span>
-            <p className="mt-3 font-bold text-text-primary dark:text-white">
-              Privacy summary
-            </p>
-            <p className="mt-2 text-xs leading-5 text-text-secondary dark:text-gray-400">
-              Updated 27 July 2026
-            </p>
-          </div>
-        </aside>
+    <PublicPageShell eyebrow="Controlled pilot privacy notice" title="Your private information should stay under your control." description="This notice explains what the SisterCare pilot processes, why it is needed, who helps provide the service and the choices available to you.">
+      <div className="grid gap-8 lg:grid-cols-[240px_1fr] lg:gap-14">
+        <aside><div className="surface sticky top-24 p-5"><span className="material-symbols-outlined text-2xl text-primary" aria-hidden="true">shield_lock</span><p className="mt-3 font-bold text-text-primary dark:text-white">Privacy summary</p><p className="mt-2 text-xs leading-5 text-text-secondary dark:text-gray-400">Effective 19 August 2026 · Pilot version</p><div className="mt-4 rounded-xl bg-primary/5 p-3 text-xs leading-5 text-text-secondary dark:text-gray-300">SisterCare is currently limited to adults aged 18 or older. It is not an emergency or diagnostic service.</div></div></aside>
         <div className="space-y-8">
-          {SECTIONS.map((section, index) => (
-            <section key={section.title} className="border-b border-border-light pb-8 last:border-0 dark:border-border-dark">
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">
-                {String(index + 1).padStart(2, "0")}
-              </p>
-              <h2 className="mt-2 text-xl font-bold text-text-primary dark:text-white">
-                {section.title}
-              </h2>
-              <p className="mt-3 max-w-2xl text-sm leading-7 text-text-secondary dark:text-gray-300 sm:text-base">
-                {section.body}
-              </p>
-            </section>
-          ))}
-          <section className="surface p-6">
-            <h2 className="font-bold text-text-primary dark:text-white">
-              Questions or privacy requests
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-text-secondary dark:text-gray-300">
-              Contact{" "}
-              <a className="font-semibold text-primary hover:underline" href="mailto:privacy@sistercare.app">
-                privacy@sistercare.app
-              </a>
-              .
-            </p>
-          </section>
+          {SECTIONS.map((section, index) => <section key={section.title} className="border-b border-border-light pb-8 last:border-0 dark:border-border-dark"><p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">{String(index + 1).padStart(2, "0")}</p><h2 className="mt-2 text-xl font-bold text-text-primary dark:text-white">{section.title}</h2><p className="mt-3 max-w-3xl text-sm leading-7 text-text-secondary dark:text-gray-300 sm:text-base">{section.body}</p></section>)}
+          <section className="surface p-6"><h2 className="font-bold text-text-primary dark:text-white">Questions, rights or a privacy concern</h2><p className="mt-2 text-sm leading-6 text-text-secondary dark:text-gray-300">Email <a className="font-semibold text-primary hover:underline" href="mailto:privacy@sistercare.app">privacy@sistercare.app</a>. You can also <Link className="font-semibold text-primary hover:underline" href="/report?type=privacy">submit a private report</Link>. If you remain dissatisfied, you may contact Uganda&apos;s Personal Data Protection Office.</p></section>
         </div>
       </div>
     </PublicPageShell>
