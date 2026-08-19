@@ -6,6 +6,8 @@
  * symptoms, conditions, and treatments.
  */
 
+import { UGANDA_EMERGENCY_RESOURCES } from "@/lib/emergencyResources";
+
 export interface HealthArticle {
   id: string;
   title: string;
@@ -390,14 +392,14 @@ WARNING SIGNS (see doctor):
 // Uganda-specific healthcare resources
 export const UGANDA_HEALTHCARE_RESOURCES = {
   emergency: {
-    police: "999 or 112",
-    ambulance: "911",
-    sauti_helpline: "116 (toll-free, 24/7)",
+    police: UGANDA_EMERGENCY_RESOURCES.police.number,
+    ambulance: UGANDA_EMERGENCY_RESOURCES.ambulance.number,
+    sauti_helpline: `${UGANDA_EMERGENCY_RESOURCES.sauti.number} (${UGANDA_EMERGENCY_RESOURCES.sauti.availability})`,
   },
   helplines: [
     {
       name: "Sauti 116 Helpline",
-      number: "116",
+      number: UGANDA_EMERGENCY_RESOURCES.sauti.number,
       description:
         "National toll-free 24/7 helpline for child and family support, mental health, and crisis intervention",
       services: [
@@ -409,7 +411,7 @@ export const UGANDA_HEALTHCARE_RESOURCES = {
     },
     {
       name: "FIDA Uganda",
-      number: "0414 530 848",
+      number: UGANDA_EMERGENCY_RESOURCES.fida.number,
       description: "Free legal support for women and girls",
       services: ["legal aid", "women's rights", "domestic violence"],
     },
@@ -421,7 +423,8 @@ export const UGANDA_HEALTHCARE_RESOURCES = {
     },
     {
       name: "Butabika National Mental Hospital",
-      number: "0414 504 379",
+      number: UGANDA_EMERGENCY_RESOURCES.butabika.directNumber,
+      tollFreeNumber: UGANDA_EMERGENCY_RESOURCES.butabika.tollFreeNumber,
       description: "National referral mental health facility",
       services: ["mental health", "psychiatric care"],
     },

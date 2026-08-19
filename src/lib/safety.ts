@@ -13,6 +13,7 @@
  */
 
 import { TriageSeverity } from "@/types";
+import { BUTABIKA_CONTACT_TEXT } from "@/lib/emergencyResources";
 
 // Crisis detection patterns - these bypass the agent for immediate safety
 export const CRISIS_PATTERNS = {
@@ -88,7 +89,7 @@ Would you like me to help you think through your options for getting help safely
 Please reach out right now in Uganda:
 
 📞 Sauti 116 Helpline: Call 116 (toll-free, 24/7) - They provide mental health and psychosocial support
-📞 Butabika National Referral Mental Hospital: 0414 504 379
+📞 Butabika National Referral Mental Hospital: ${BUTABIKA_CONTACT_TEXT}
 📞 Uganda Police Emergency: 999 or 112
 🏥 Go to the nearest hospital or health centre
 
@@ -141,7 +142,7 @@ But I care about you, and I want to help you find a safer way to deal with this.
 Please reach out to talk to someone right now:
 
 📞 Sauti 116 Helpline: Call 116 (toll-free, 24/7) - They can help you work through these feelings
-📞 Butabika National Referral Mental Hospital: 0414 504 379
+📞 Butabika National Referral Mental Hospital: ${BUTABIKA_CONTACT_TEXT}
 
 Can you tell me more about what's making you feel this way? Sometimes talking about what's hurting us can help us find better solutions. You're not alone in this. 💗`,
 };

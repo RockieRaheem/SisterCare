@@ -4,6 +4,7 @@ import {
   assessTriageSeverity,
   CRISIS_RESPONSES,
 } from "../safety";
+import { UGANDA_EMERGENCY_RESOURCES } from "../emergencyResources";
 
 describe("checkForCrisis — self-harm (highest priority)", () => {
   it.each([
@@ -27,6 +28,22 @@ describe("checkForCrisis — self-harm (highest priority)", () => {
   it("every self-harm response includes Uganda emergency contacts", () => {
     expect(CRISIS_RESPONSES.selfHarm).toContain("116");
     expect(CRISIS_RESPONSES.selfHarm).toContain("Butabika");
+    expect(CRISIS_RESPONSES.selfHarm).toContain(
+      UGANDA_EMERGENCY_RESOURCES.butabika.directNumber,
+    );
+    expect(CRISIS_RESPONSES.selfHarm).toContain(
+      UGANDA_EMERGENCY_RESOURCES.butabika.tollFreeNumber,
+    );
+  });
+
+  it("does not retain the retired Butabika contact", () => {
+    expect(JSON.stringify(CRISIS_RESPONSES)).not.toContain("0414 504 379");
+  });
+
+  it("keeps the verified Uganda emergency registry current", () => {
+    expect(UGANDA_EMERGENCY_RESOURCES.police.number).toBe("999 or 112");
+    expect(UGANDA_EMERGENCY_RESOURCES.ambulance.number).toBe("912");
+    expect(UGANDA_EMERGENCY_RESOURCES.verifiedAt).toBe("2026-08-19");
   });
 });
 
