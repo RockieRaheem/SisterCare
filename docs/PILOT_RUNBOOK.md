@@ -41,14 +41,15 @@ Fill this table before inviting anyone. One person may hold more than one role o
 
 ## 4. Release procedure
 
-1. Apply migrations in timestamp order. Do not edit the production schema manually after migration tracking is established.
-2. Run `npm run pilot:verify` on the exact commit intended for deployment.
-3. Set `SUPABASE_DB_URL` locally to the Session Pooler connection string. Percent-encode special password characters. Run:
+1. Set `SUPABASE_DB_URL` locally to the Session Pooler connection string. Percent-encode special password characters. Create and secure a **pre-change** backup:
    `powershell -ExecutionPolicy Bypass -File scripts/backup-supabase.ps1 -OutputDirectory C:\secure-sistercare-backups`
-4. Encrypt the resulting directory and copy it to restricted off-site storage. Never commit database dumps.
+2. Encrypt the backup directory and copy it to restricted off-site storage. Never commit database dumps.
+3. Apply migrations in timestamp order. Do not edit the production schema manually after migration tracking is established.
+4. Run `npm run pilot:verify` on the exact commit intended for deployment.
 5. Deploy the exact commit to Vercel Production and confirm the `sister-care.vercel.app` production alias points to it.
 6. Run `PILOT_BASE_URL=https://sister-care.vercel.app npm run pilot:smoke` (PowerShell: `$env:PILOT_BASE_URL='https://sister-care.vercel.app'; npm.cmd run pilot:smoke`).
-7. Record the commit hash, deployment URL, health response, backup manifest and gate owners in the pilot log.
+7. Create a second post-migration backup, encrypt it and store it separately from the pre-change backup.
+8. Record the commit hash, deployment URL, health response, both backup manifests and gate owners in the pilot log.
 
 ## 5. Two-browser acceptance rehearsal
 
