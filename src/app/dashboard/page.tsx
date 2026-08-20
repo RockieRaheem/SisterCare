@@ -17,15 +17,8 @@ import {
   getCurrentPhase,
   getCycleInfo,
 } from "@/lib/dataClient";
-import { UserProfile, WellbeingCheckIn } from "@/types";
+import { UserProfile } from "@/types";
 import { auth } from "@/lib/authClient";
-import {
-  listQueuedWrites,
-  OFFLINE_QUEUE_CHANGE_EVENT,
-  queuedWriteMessage,
-} from "@/lib/offlineQueue";
-import { getWellbeingCheckIns, submitWellbeingCheckIn } from "@/lib/wellbeingClient";
-import { localWellbeingDate, type WellbeingFeeling } from "@/lib/wellbeing";
 
 const phaseColors: Record<string, string> = {
   menstrual: "text-red-500",
@@ -47,11 +40,6 @@ export default function DashboardPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [todayCheckIn, setTodayCheckIn] = useState<WellbeingCheckIn | null>(null);
-  const [pulseBusy, setPulseBusy] = useState<WellbeingFeeling | null>(null);
-  const [pulseError, setPulseError] = useState<string | null>(null);
-  const [pulseStatus, setPulseStatus] = useState<string | null>(null);
-  const [pendingPulseWriteId, setPendingPulseWriteId] = useState<string | null>(null);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const [dismissedPeriodBanner, setDismissedPeriodBanner] = useState(false);
   const [cycleInfo, setCycleInfo] = useState<{
@@ -65,57 +53,6 @@ export default function DashboardPage() {
   } | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [workspaceChecked, setWorkspaceChecked] = useState(false);
-
-  const saveDailyPulse = async (feeling: WellbeingFeeling) => {
-    if (!user || pulseBusy) return;
-    setPulseBusy(feeling);
-    setPulseError(null);
-    setPulseStatus(null);
-    const localDate = localWellbeingDate();
-    try {
-      const result = await submitWellbeingCheckIn(user.uid, {
-          localDate,
-          feelings: [feeling],
-          contexts: todayCheckIn?.contexts || [],
-          supportNeed: todayCheckIn?.supportNeed || "reflect",
-          note: todayCheckIn?.note || "",
-      });
-      const checkIn = result.state === "synced"
-          ? result.checkIn
-          : {
-            id: result.localId,
-            localDate,
-            feelings: [feeling],
-            contexts: [],
-            supportNeed: "reflect" as const,
-            createdAt: new Date(),
-          };
-      setTodayCheckIn({
-        ...checkIn,
-        createdAt: new Date(checkIn.createdAt),
-        updatedAt: checkIn.updatedAt ? new Date(checkIn.updatedAt) : undefined,
-      });
-      if (result.state === "queued") setPulseStatus(queuedWriteMessage(result.reason));
-      setPendingPulseWriteId(result.state === "queued" ? result.localId : null);
-    } catch (error) {
-      setPulseError(error instanceof Error ? error.message : "Your pulse could not be saved. Please try again.");
-    } finally {
-      setPulseBusy(null);
-    }
-  };
-
-  useEffect(() => {
-    if (!user || !pendingPulseWriteId) return;
-    const refreshSyncState = async () => {
-      const pending = await listQueuedWrites(user.uid).catch(() => []);
-      if (!pending.some((entry) => entry.id === pendingPulseWriteId)) {
-        setPendingPulseWriteId(null);
-        setPulseStatus(null);
-      }
-    };
-    window.addEventListener(OFFLINE_QUEUE_CHANGE_EVENT, refreshSyncState);
-    return () => window.removeEventListener(OFFLINE_QUEUE_CHANGE_EVENT, refreshSyncState);
-  }, [pendingPulseWriteId, user]);
 
   // Update time every minute for countdown
   useEffect(() => {
@@ -216,15 +153,8 @@ export default function DashboardPage() {
 
     setError(null);
     try {
-      const [userProfile, wellbeingCheckIns] = await Promise.all([
-        getUserProfile(user.uid),
-        getWellbeingCheckIns(user.uid).catch(() => []),
-      ]);
+      const userProfile = await getUserProfile(user.uid);
       setProfile(userProfile);
-
-      const today = localWellbeingDate();
-      const entry = wellbeingCheckIns.find((checkIn) => checkIn.localDate === today);
-      setTodayCheckIn(entry || null);
 
       // Calculate cycle info if we have cycle data
       if (userProfile?.cycleData) {
@@ -509,13 +439,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-6 lg:gap-8">
           {/* Main Tracking Column */}
           <div className="lg:col-span-2 space-y-5 sm:space-y-6 lg:space-y-8">
-            <DashboardWellbeingCard
-              checkIn={todayCheckIn}
-              busy={pulseBusy !== null}
-              error={pulseError}
-              status={pulseStatus}
-              onSelect={(feeling) => void saveDailyPulse(feeling)}
-            />
+            <DashboardWellbeingCard />
 
             {/* Timer & Status Section */}
             <Card padding="lg" className="relative overflow-hidden border-primary/15 bg-white dark:bg-card-dark">

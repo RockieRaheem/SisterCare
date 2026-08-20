@@ -14,16 +14,18 @@ describe("member wellbeing experience", () => {
   const careChoices = read("src", "components", "features", "WellbeingCareChoices.tsx");
   const grounding = read("src", "components", "features", "WellbeingGrounding.tsx");
 
-  it("saves a single daily pulse directly from the dashboard", () => {
+  it("opens with private support instead of demanding a daily score", () => {
     expect(dashboard).not.toContain("logSymptoms");
     expect(dashboard).not.toContain("handleMoodSelect");
     expect(dashboard).toContain("DashboardWellbeingCard");
-    expect(dashboardCard).toContain("WellbeingPulsePicker");
-    expect(dashboard).toContain("submitWellbeingCheckIn");
+    expect(dashboardCard).toContain("You do not need the right words");
+    expect(dashboardCard).toContain('href="/chat"');
+    expect(dashboardCard).toContain('href="/counsellors"');
+    expect(dashboardCard).toContain('href="/wellbeing"');
+    expect(dashboard).not.toContain("submitWellbeingCheckIn");
     expect(checkIn).toContain("submitWellbeingCheckIn");
-    expect(dashboard).toContain("OFFLINE_QUEUE_CHANGE_EVENT");
     expect(checkIn).toContain("OFFLINE_QUEUE_CHANGE_EVENT");
-    expect(dashboardCard).toContain("One tap saves privately");
+    expect(dashboardCard).not.toContain("WellbeingPulsePicker");
   });
 
   it("turns a check-in into immediate care rather than another survey", () => {
