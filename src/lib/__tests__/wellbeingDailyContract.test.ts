@@ -12,6 +12,11 @@ describe("daily wellbeing persistence contract", () => {
     "migrations",
     "20260812_0023_daily_wellbeing_checkins.sql",
   );
+  const repairMigration = read(
+    "supabase",
+    "migrations",
+    "20260820_0026_repair_wellbeing_storage.sql",
+  );
 
   it("updates today's reflection instead of inserting another one", () => {
     expect(route).toContain('.eq("payload->>localDate", input.localDate)');
@@ -33,5 +38,14 @@ describe("daily wellbeing persistence contract", () => {
     expect(migration).toContain("create unique index");
     expect(migration).toContain("user_id, record_type, ((payload ->> 'localDate'))");
     expect(migration).toContain("record_type = 'wellbeing'");
+  });
+
+  it("repairs older databases without weakening owner-only access", () => {
+    expect(repairMigration).toContain("drop constraint if exists user_records_record_type_check");
+    expect(repairMigration).toContain("'wellbeing'");
+    expect(repairMigration).toContain("to authenticated");
+    expect(repairMigration).toContain("using (user_id = auth.uid())");
+    expect(repairMigration).toContain("with check (user_id = auth.uid())");
+    expect(repairMigration).not.toContain("to anon");
   });
 });

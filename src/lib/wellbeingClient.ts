@@ -35,7 +35,7 @@ function databaseError(action: "load" | "save", error: { code?: string; message?
     return new Error("Your signed-in session could not access this private check-in. Please sign in again.");
   }
   if (error?.code === "23514" || error?.code === "42703") {
-    return new Error("Wellbeing storage needs a database update. Please contact SisterCare support.");
+    return new Error("Private check-ins are temporarily unavailable while SisterCare completes a storage update. Please try again shortly.");
   }
   return new Error(error?.message || `Could not ${action} your wellbeing check-in.`);
 }
