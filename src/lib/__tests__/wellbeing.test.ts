@@ -6,7 +6,7 @@ import {
 } from "../wellbeing";
 
 describe("wellbeing check-ins", () => {
-  it("accepts four bounded scores and normalizes the note", () => {
+  it("migrates a complete legacy scale into a word without keeping scores", () => {
     expect(
       parseWellbeingCheckIn({
         mood: 2,
@@ -16,15 +16,12 @@ describe("wellbeing check-ins", () => {
         note: "  I   need a quiet day. ",
       }),
     ).toEqual({
-      mood: 2,
-      stress: 5,
-      sleep: 3,
-      energy: 1,
+      feelings: ["overwhelmed"],
       note: "I need a quiet day.",
     });
   });
 
-  it("rejects missing, fractional, and out-of-range scores", () => {
+  it("rejects incomplete, fractional, and out-of-range legacy scales", () => {
     expect(parseWellbeingCheckIn({ mood: 0, stress: 2, sleep: 3, energy: 4 })).toBeNull();
     expect(parseWellbeingCheckIn({ mood: 2.5, stress: 2, sleep: 3, energy: 4 })).toBeNull();
     expect(parseWellbeingCheckIn({ mood: 2, stress: 2, sleep: 3 })).toBeNull();
@@ -37,7 +34,6 @@ describe("wellbeing check-ins", () => {
         feelings: ["anxious"],
       }),
     ).toEqual({
-      mood: 2,
       localDate: "2026-08-13",
       feelings: ["anxious"],
     });

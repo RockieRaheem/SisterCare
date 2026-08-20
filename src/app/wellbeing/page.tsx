@@ -35,15 +35,6 @@ const hydrate = (entry: WellbeingCheckIn): WellbeingCheckIn => ({
   updatedAt: entry.updatedAt ? new Date(entry.updatedAt) : undefined,
 });
 
-const pulseMood = (feeling: WellbeingFeeling) =>
-  ["content", "calm"].includes(feeling)
-    ? 4
-    : feeling === "tired"
-      ? 3
-      : feeling === "overwhelmed"
-        ? 1
-        : 2;
-
 export default function WellbeingPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
@@ -113,7 +104,6 @@ export default function WellbeingPage() {
           ? result.checkIn
           : ({
               id: todayCheckIn?.id || result.localId,
-              mood: pulseMood(feeling),
               localDate: today,
               feelings: [feeling],
               contexts: nextContexts,

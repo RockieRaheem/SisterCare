@@ -84,8 +84,6 @@ export function wellbeingSupportMessage(checkIn: WellbeingCheckIn): {
   const primaryFeeling = checkIn.feelings?.[0];
   if (
     checkIn.supportNeed === "urgent_support" ||
-    checkIn.mood === 1 ||
-    checkIn.stress === 5 ||
     checkIn.feelings?.includes("overwhelmed")
   ) {
     return {
@@ -113,17 +111,6 @@ export function wellbeingSupportMessage(checkIn: WellbeingCheckIn): {
       tone: "care",
       title: "Your energy is asking for care",
       message: "Choose the smallest useful next step: water, food, rest, space, or asking someone to take one thing off your plate.",
-    };
-  }
-  if (
-    checkIn.mood <= 2 ||
-    (checkIn.stress !== undefined && checkIn.stress >= 4) ||
-    (checkIn.energy !== undefined && checkIn.energy <= 2)
-  ) {
-    return {
-      tone: "care",
-      title: "A gentler pace may help today",
-      message: "Choose one small need to meet first—rest, food, water, space, or a conversation with someone safe.",
     };
   }
   return {

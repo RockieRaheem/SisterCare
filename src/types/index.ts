@@ -235,9 +235,13 @@ export interface Counsellor {
 
 export interface WellbeingCheckIn {
   id: string;
-  mood: number;
+  /** @deprecated Present only on historical score-based records. */
+  mood?: number;
+  /** @deprecated Present only on historical score-based records. */
   stress?: number;
+  /** @deprecated Present only on historical score-based records. */
   sleep?: number;
+  /** @deprecated Present only on historical score-based records. */
   energy?: number;
   localDate: string;
   feelings?: import("@/lib/wellbeing").WellbeingFeeling[];

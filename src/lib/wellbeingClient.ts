@@ -4,6 +4,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase";
 import {
   normalizeWellbeingDate,
   parseWellbeingCheckIn,
+  wellbeingFeelingsFromPayload,
   type WellbeingCheckInInput,
 } from "@/lib/wellbeing";
 import { submitOfflineCapableWrite } from "@/lib/offlineQueue";
@@ -18,12 +19,8 @@ type WellbeingRow = {
 
 const fromRow = (row: WellbeingRow): WellbeingCheckIn => ({
   id: row.id,
-  mood: Number(row.payload.mood),
-  stress: typeof row.payload.stress === "number" ? row.payload.stress : undefined,
-  sleep: typeof row.payload.sleep === "number" ? row.payload.sleep : undefined,
-  energy: typeof row.payload.energy === "number" ? row.payload.energy : undefined,
   localDate: typeof row.payload.localDate === "string" ? row.payload.localDate : row.created_at.slice(0, 10),
-  feelings: Array.isArray(row.payload.feelings) ? row.payload.feelings as WellbeingCheckIn["feelings"] : [],
+  feelings: wellbeingFeelingsFromPayload(row.payload),
   contexts: Array.isArray(row.payload.contexts) ? row.payload.contexts as WellbeingCheckIn["contexts"] : [],
   supportNeed: typeof row.payload.supportNeed === "string" ? row.payload.supportNeed as WellbeingCheckIn["supportNeed"] : undefined,
   note: typeof row.payload.note === "string" ? row.payload.note : undefined,

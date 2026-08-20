@@ -81,11 +81,10 @@ export default function DashboardPage() {
           note: todayCheckIn?.note || "",
       });
       const checkIn = result.state === "synced"
-        ? result.checkIn
-        : {
+          ? result.checkIn
+          : {
             id: result.localId,
             localDate,
-            mood: ["content", "calm"].includes(feeling) ? 4 : feeling === "tired" ? 3 : feeling === "overwhelmed" ? 1 : 2,
             feelings: [feeling],
             contexts: [],
             supportNeed: "reflect" as const,

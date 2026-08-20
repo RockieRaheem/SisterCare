@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   normalizeWellbeingDate,
   parseWellbeingCheckIn,
+  wellbeingFeelingsFromPayload,
 } from "@/lib/wellbeing";
 
 const unavailable = () =>
@@ -65,15 +66,11 @@ const serialize = (row: Record<string, unknown>) => {
       : {};
   return {
     id: String(row.id),
-    mood: Number(payload.mood),
-    stress: typeof payload.stress === "number" ? payload.stress : undefined,
-    sleep: typeof payload.sleep === "number" ? payload.sleep : undefined,
-    energy: typeof payload.energy === "number" ? payload.energy : undefined,
     localDate:
       typeof payload.localDate === "string"
         ? payload.localDate
         : String(row.created_at).slice(0, 10),
-    feelings: Array.isArray(payload.feelings) ? payload.feelings : [],
+    feelings: wellbeingFeelingsFromPayload(payload),
     contexts: Array.isArray(payload.contexts) ? payload.contexts : [],
     supportNeed:
       typeof payload.supportNeed === "string" ? payload.supportNeed : undefined,

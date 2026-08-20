@@ -1,7 +1,11 @@
 export interface WellbeingCheckInInput {
+  /** @deprecated Accepted only to migrate check-ins created before the word-based pulse. */
   mood?: number;
+  /** @deprecated Accepted only to migrate check-ins created before the word-based pulse. */
   stress?: number;
+  /** @deprecated Accepted only to migrate check-ins created before the word-based pulse. */
   sleep?: number;
+  /** @deprecated Accepted only to migrate check-ins created before the word-based pulse. */
   energy?: number;
   localDate?: string;
   feelings?: WellbeingFeeling[];
@@ -46,25 +50,36 @@ export type WellbeingFeeling = (typeof WELLBEING_FEELINGS)[number];
 export type WellbeingContext = (typeof WELLBEING_CONTEXTS)[number];
 export type WellbeingSupportNeed = (typeof WELLBEING_SUPPORT_NEEDS)[number];
 
-const FEELING_MOOD: Record<WellbeingFeeling, number> = {
-  calm: 4,
-  hopeful: 4,
-  content: 4,
-  tired: 3,
-  anxious: 2,
-  overwhelmed: 1,
-  sad: 2,
-  lonely: 2,
-  angry: 2,
-  numb: 1,
-};
-
 const score = (value: unknown): number | null => {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed >= 1 && parsed <= 5
     ? parsed
     : null;
 };
+
+const legacyFeeling = (candidate: Record<string, unknown>): WellbeingFeeling | null => {
+  const mood = score(candidate.mood);
+  const stress = score(candidate.stress);
+  const energy = score(candidate.energy);
+  if (mood === null || stress === null || score(candidate.sleep) === null || energy === null) {
+    return null;
+  }
+  if (stress === 5 || mood === 1) return "overwhelmed";
+  if (mood <= 2) return "sad";
+  if (energy <= 2) return "tired";
+  if (stress >= 4) return "anxious";
+  if (mood >= 4) return "content";
+  return "calm";
+};
+
+export function wellbeingFeelingsFromPayload(value: unknown): WellbeingFeeling[] {
+  if (!value || typeof value !== "object") return [];
+  const candidate = value as Record<string, unknown>;
+  const feelings = selections(candidate.feelings, WELLBEING_FEELINGS, 3);
+  if (feelings.length) return feelings;
+  const migrated = legacyFeeling(candidate);
+  return migrated ? [migrated] : [];
+}
 
 const selections = <T extends string>(
   value: unknown,
@@ -110,19 +125,8 @@ export function parseWellbeingCheckIn(
 ): WellbeingCheckInInput | null {
   if (!value || typeof value !== "object") return null;
   const candidate = value as Record<string, unknown>;
-  const feelings = selections(candidate.feelings, WELLBEING_FEELINGS, 3);
-  const mood = score(candidate.mood) ?? (feelings[0] ? FEELING_MOOD[feelings[0]] : null);
-  const stress = score(candidate.stress);
-  const sleep = score(candidate.sleep);
-  const energy = score(candidate.energy);
-  const hasLegacyScores =
-    score(candidate.mood) !== null &&
-    stress !== null &&
-    sleep !== null &&
-    energy !== null;
-  if (mood === null || (!feelings.length && !hasLegacyScores)) {
-    return null;
-  }
+  const feelings = wellbeingFeelingsFromPayload(candidate);
+  if (!feelings.length) return null;
 
   const note =
     typeof candidate.note === "string"
@@ -140,12 +144,8 @@ export function parseWellbeingCheckIn(
       ? candidate.localDate
       : undefined;
   return {
-    mood,
-    ...(stress !== null ? { stress } : {}),
-    ...(sleep !== null ? { sleep } : {}),
-    ...(energy !== null ? { energy } : {}),
     ...(localDate ? { localDate } : {}),
-    ...(feelings.length ? { feelings } : {}),
+    feelings,
     ...(contexts.length ? { contexts } : {}),
     ...(supportNeed ? { supportNeed } : {}),
     ...(note ? { note } : {}),
