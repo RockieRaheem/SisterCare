@@ -30,9 +30,10 @@ describe("member wellbeing experience", () => {
 
   it("turns a check-in into immediate care rather than another survey", () => {
     expect(checkIn).toContain("WellbeingCareChoices");
-    expect(careChoices).toContain("Ground me");
+    expect(careChoices).toContain("Steady this moment");
     expect(careChoices).toContain("Let it out");
-    expect(careChoices).toContain("A real person");
+    expect(careChoices).toContain("Talk to a person");
+    expect(careChoices).toContain("I may not be safe");
     expect(grounding).toContain("Nothing is being recorded");
     expect(grounding).toContain("Step ${step + 1} of ${STEPS.length}");
   });
@@ -45,6 +46,7 @@ describe("member wellbeing experience", () => {
     expect(presentation).toContain('value: "talk_to_someone"');
     expect(checkIn).toContain("choose up to three");
     expect(checkIn).toContain("Add to my private check-in");
+    expect(checkIn.indexOf("What would help right now?")).toBeLessThan(checkIn.indexOf("<WellbeingPulsePicker selected"));
   });
 
   it("makes repeat activity an edit to today's reflection", () => {
@@ -54,7 +56,7 @@ describe("member wellbeing experience", () => {
   });
 
   it("does not require four scoring scales", () => {
-    expect(checkIn).toContain("No scores. No long form");
+    expect(checkIn).toContain("Nothing here is a test");
     expect(checkIn).not.toContain("SCORE_AREAS");
     expect(checkIn).not.toContain("Overall mood");
   });

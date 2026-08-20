@@ -115,7 +115,7 @@ export function wellbeingSupportMessage(checkIn: WellbeingCheckIn): {
   }
   return {
     tone: "steady",
-    title: "Thank you for checking in with yourself",
-    message: "Notice one thing helping today. Small moments of steadiness matter, and your private timeline will remember the pattern.",
+    title: "Noted for today",
+    message: "You can leave it here, add what was happening, or choose support whenever it feels useful.",
   };
 }

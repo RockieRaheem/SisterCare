@@ -173,13 +173,21 @@ export default function WellbeingPage() {
           <header className="px-1 sm:text-center">
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/[0.05] px-3 py-1.5 text-xs font-bold text-primary">
               <span className="material-symbols-outlined text-base" aria-hidden="true">lock</span>
-              Private daily check-in
+              Private wellbeing space
             </div>
-            <h1 className="mt-4 text-[2rem] font-black leading-tight tracking-[-0.045em] text-text-primary dark:text-white sm:text-4xl">How are you holding up today?</h1>
-            <p className="mt-2 text-sm leading-6 text-text-secondary sm:text-base">No scores. No long form. Choose what feels closest.</p>
+            <h1 className="mt-4 text-[2rem] font-black leading-tight tracking-[-0.045em] text-text-primary dark:text-white sm:text-4xl">What would help right now?</h1>
+            <p className="mt-2 text-sm leading-6 text-text-secondary sm:text-base">You can talk, pause, reach a person, or simply name the feeling. Nothing here is a test.</p>
           </header>
 
-          <section className="mt-5 rounded-[26px] border border-border-light bg-background-light p-3 shadow-soft dark:border-border-dark dark:bg-background-dark sm:p-5">
+          <section className="mt-5 rounded-[26px] border border-primary/15 bg-white p-4 shadow-soft dark:border-primary/25 dark:bg-card-dark sm:p-6">
+            <WellbeingCareChoices />
+          </section>
+
+          <section className="mt-4 rounded-[26px] border border-border-light bg-background-light p-3 shadow-soft dark:border-border-dark dark:bg-background-dark sm:p-5">
+            <div className="mb-4 px-1">
+              <h2 className="text-lg font-black text-text-primary dark:text-white">If words feel difficult, start here</h2>
+              <p className="mt-1 text-xs leading-5 text-text-secondary">Choose one feeling. It saves as a private note for today, and you can edit it later.</p>
+            </div>
             <WellbeingPulsePicker selected={selectedFeeling} busy={busy} onSelect={(feeling) => void persist(feeling)} />
             <div className="mt-3 flex min-h-6 items-center justify-center gap-2 text-center text-xs font-semibold text-text-secondary" aria-live="polite">
               {busy ? <><span className="material-symbols-outlined animate-spin text-base text-primary" aria-hidden="true">progress_activity</span>Saving gently…</> : message ? <><span className="material-symbols-outlined text-base text-primary" aria-hidden="true">check_circle</span>{message}</> : "One tap saves today. Tap another feeling if it changes."}
@@ -201,8 +209,6 @@ export default function WellbeingPage() {
                 {selectedFeeling === "overwhelmed" && (
                   <p className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold leading-5 text-rose-900 dark:border-rose-900/60 dark:bg-rose-950/25 dark:text-rose-100">If you may hurt yourself or someone else, or you are in immediate danger, contact local emergency help or a trusted person near you now.</p>
                 )}
-
-                <div className="mt-5"><WellbeingCareChoices /></div>
 
                 <button type="button" onClick={() => setShowDetails((value) => !value)} aria-expanded={showDetails} className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-bold text-text-secondary hover:bg-background-light dark:hover:bg-background-dark">
                   <span className="material-symbols-outlined text-lg text-primary" aria-hidden="true">add_circle</span>
