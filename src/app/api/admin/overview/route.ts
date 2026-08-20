@@ -21,7 +21,7 @@ async function getOverview(request: NextRequest) {
   const [directory, members, applications, liveSessions, incidents] = await Promise.all([
     getLiveCounsellors(),
     db.from("profiles").select("id", { count: "exact", head: true }).eq("role", "member"),
-    db.from("counsellor_applications").select("counsellor_id, application").eq("status", "pending").order("submitted_at", { ascending: true }).limit(5),
+    db.from("counsellor_applications").select("counsellor_id, application", { count: "exact" }).eq("status", "pending").order("submitted_at", { ascending: true }).limit(5),
     db.from("counselling_sessions").select("id, state").in("state", ["requested", "matched", "accepted", "active"]),
     db.from("incidents").select("id", { count: "exact", head: true }).in("status", ["open", "acknowledged"]),
   ]);
@@ -30,16 +30,19 @@ async function getOverview(request: NextRequest) {
   fail(liveSessions.error);
   fail(incidents.error);
   const sessions = liveSessions.data || [];
+  const verifiedDirectory = directory.filter(
+    (item) => item.verified && item.verificationStatus === "verified",
+  );
   return NextResponse.json(
     {
       success: true,
       data: {
         counts: {
           members: members.count || 0,
-          counsellors: directory.length,
-          available: directory.filter((item) => item.status === "available").length,
-          inSession: directory.filter((item) => item.status === "in_session").length,
-          pendingKyc: applications.data?.length || 0,
+          counsellors: verifiedDirectory.length,
+          available: verifiedDirectory.filter((item) => item.status === "available").length,
+          inSession: verifiedDirectory.filter((item) => item.status === "in_session").length,
+          pendingKyc: applications.count || 0,
           liveSessions: sessions.length,
           waiting: sessions.filter((item) => ["requested", "matched"].includes(item.state)).length,
           openIncidents: incidents.count || 0,

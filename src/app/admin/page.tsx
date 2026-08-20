@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
@@ -10,10 +10,11 @@ import {
   OperationsPageHeader,
   OperationsSkeleton,
   OperationsStat,
+  OperationsSyncStatus,
   StatusBadge,
 } from "@/components/operations/OperationsUI";
 import { useAuth } from "@/context/AuthContext";
-import { auth } from "@/lib/authClient";
+import { authenticatedFetch } from "@/lib/authenticatedFetch";
 import { readApiResponse } from "@/lib/apiResponse";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
 
@@ -33,15 +34,11 @@ type Overview = {
 type ApiResult<T> = { success?: boolean; data?: T; error?: string };
 
 async function adminFetch(path: string, init?: RequestInit) {
-  const token = await auth.currentUser?.getIdToken();
-  if (!token) throw new Error("Your secure session expired. Sign in again.");
-  return fetch(path, {
+  const headers = new Headers(init?.headers);
+  headers.set("Content-Type", "application/json");
+  return authenticatedFetch(path, {
     ...init,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-      ...init?.headers,
-    },
+    headers,
   });
 }
 
@@ -65,19 +62,29 @@ export default function AdminDashboardPage() {
   const { isAdmin, checking, verificationUnavailable, retry } = useAdminAccess();
   const [overview, setOverview] = useState<Overview | null>(null);
   const [error, setError] = useState("");
+  const [accessError, setAccessError] = useState("");
   const [accountEmail, setAccountEmail] = useState("");
   const [accountRole, setAccountRole] = useState<"admin" | "user">("admin");
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [synchronizing, setSynchronizing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [clock, setClock] = useState(() => Date.now());
+  const [online, setOnline] = useState(() =>
+    typeof navigator === "undefined" ? true : navigator.onLine,
+  );
   const [showAccess, setShowAccess] = useState(false);
+  const loadInFlightRef = useRef(false);
 
   useEffect(() => {
     if (!loading && !user) router.replace("/auth/login?next=/admin");
   }, [loading, router, user]);
 
   const load = useCallback(async (silent = false) => {
+    if (loadInFlightRef.current) return;
+    loadInFlightRef.current = true;
+    setSynchronizing(true);
     if (!silent) setRefreshing(true);
     try {
       const response = await adminFetch("/api/admin/overview");
@@ -91,6 +98,8 @@ export default function AdminDashboardPage() {
       setError(loadError instanceof Error ? loadError.message : "Could not load the operations overview");
     } finally {
       setRefreshing(false);
+      setSynchronizing(false);
+      loadInFlightRef.current = false;
     }
   }, []);
 
@@ -100,12 +109,23 @@ export default function AdminDashboardPage() {
     const refreshVisible = () => {
       if (document.visibilityState === "visible") void load(true);
     };
+    const reconnect = () => {
+      setOnline(true);
+      void load(true);
+    };
+    const disconnect = () => setOnline(false);
     const interval = window.setInterval(refreshVisible, LIVE_REFRESH_MS);
+    const clockInterval = window.setInterval(() => setClock(Date.now()), 15_000);
     window.addEventListener("focus", refreshVisible);
+    window.addEventListener("online", reconnect);
+    window.addEventListener("offline", disconnect);
     document.addEventListener("visibilitychange", refreshVisible);
     return () => {
       window.clearInterval(interval);
+      window.clearInterval(clockInterval);
       window.removeEventListener("focus", refreshVisible);
+      window.removeEventListener("online", reconnect);
+      window.removeEventListener("offline", disconnect);
       document.removeEventListener("visibilitychange", refreshVisible);
     };
   }, [isAdmin, load]);
@@ -115,12 +135,12 @@ export default function AdminDashboardPage() {
     const email = accountEmail.trim().toLowerCase();
     if (!email) return;
     if (accountRole === "user" && email === user?.email?.toLowerCase()) {
-      setError("You cannot remove your own administrator access from the active session.");
+      setAccessError("You cannot remove your own administrator access from the active session.");
       return;
     }
     setSaving(true);
     setNotice("");
-    setError("");
+    setAccessError("");
     try {
       const response = await adminFetch("/api/admin/roles", {
         method: "POST",
@@ -135,7 +155,7 @@ export default function AdminDashboardPage() {
       );
       setAccountEmail("");
     } catch (assignmentError) {
-      setError(assignmentError instanceof Error ? assignmentError.message : "Role assignment failed");
+      setAccessError(assignmentError instanceof Error ? assignmentError.message : "Role assignment failed");
     } finally {
       setSaving(false);
     }
@@ -155,6 +175,9 @@ export default function AdminDashboardPage() {
     (counts?.available || 0) > 0
       ? `${counts?.available} counsellor${counts?.available === 1 ? "" : "s"} available`
       : "No counsellors available";
+  const dataIsStale = Boolean(
+    lastUpdated && clock - lastUpdated.getTime() > LIVE_REFRESH_MS * 4,
+  );
 
   if (checking) {
     return (
@@ -189,15 +212,24 @@ export default function AdminDashboardPage() {
         title="Care operations overview"
         description="Prioritize unresolved work, monitor care coverage and move directly into the operational areas that need attention."
         actions={
-          <button
-            type="button"
-            onClick={() => void load()}
-            disabled={refreshing}
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-950 px-4 text-sm font-bold text-white transition hover:bg-slate-800 disabled:opacity-50 dark:bg-white dark:text-slate-950"
-          >
-            <span className={`material-symbols-outlined text-xl ${refreshing ? "animate-spin" : ""}`} aria-hidden="true">refresh</span>
-            {refreshing ? "Refreshing…" : "Refresh"}
-          </button>
+          <>
+            <OperationsSyncStatus
+              updatedAt={lastUpdated}
+              refreshing={synchronizing}
+              hasError={Boolean(error)}
+              stale={dataIsStale}
+              online={online}
+            />
+            <button
+              type="button"
+              onClick={() => void load()}
+              disabled={refreshing || synchronizing}
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-950 px-4 text-sm font-bold text-white transition hover:bg-slate-800 disabled:opacity-50 dark:bg-white dark:text-slate-950"
+            >
+              <span className={`material-symbols-outlined text-xl ${refreshing ? "animate-spin" : ""}`} aria-hidden="true">refresh</span>
+              {refreshing ? "Refreshing…" : "Refresh"}
+            </button>
+          </>
         }
       />
 
@@ -208,11 +240,29 @@ export default function AdminDashboardPage() {
           </OperationsNotice>
         </div>
       )}
-      {error && <div className="mb-5"><OperationsNotice tone="danger" title="Operations data needs attention">{error}</OperationsNotice></div>}
+      {error && (
+        <div className="mb-5">
+          <OperationsNotice
+            tone="danger"
+            title={overview ? "Live update interrupted" : "Operations data unavailable"}
+            action={<button type="button" onClick={() => void load()} className="min-h-9 rounded-lg border border-current px-3 text-xs font-bold">Retry</button>}
+          >
+            {error}{overview && lastUpdated ? ` Showing the last confirmed view from ${lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.` : " No figures are shown until a verified response is received."}
+          </OperationsNotice>
+        </div>
+      )}
       {notice && <div className="mb-5"><OperationsNotice tone="success" title="Access updated">{notice}</OperationsNotice></div>}
 
-      {!overview && refreshing ? (
-        <OperationsSkeleton rows={5} />
+      {!overview ? (
+        refreshing || synchronizing ? (
+          <OperationsSkeleton rows={5} />
+        ) : (
+          <OperationsEmptyState
+            icon="sync_problem"
+            title="No verified operations view"
+            description="SisterCare will not substitute missing operational data with zeroes. Retry when the secure service is available."
+          />
+        )
       ) : (
         <>
           <section className="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]" aria-label="Current operational status">
@@ -338,6 +388,13 @@ export default function AdminDashboardPage() {
                 <OperationsNotice tone="warning" title="High-impact action">
                   Grant access only to a known staff account. Role changes are server-authorised and audit logged.
                 </OperationsNotice>
+                {accessError && (
+                  <div className="mt-4">
+                    <OperationsNotice tone="danger" title="Access change not completed">
+                      {accessError}
+                    </OperationsNotice>
+                  </div>
+                )}
                 <form onSubmit={assignRole} className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto]">
                   <label className="text-sm font-bold text-slate-700 dark:text-slate-200">
                     Existing account email

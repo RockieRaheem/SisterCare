@@ -55,14 +55,25 @@ describe("live admin operations overview", () => {
       token: { role: "admin" },
     });
     mocks.getLiveCounsellors.mockResolvedValue([
-      { id: "counsellor-1", status: "offline" },
+      {
+        id: "counsellor-1",
+        status: "offline",
+        verified: true,
+        verificationStatus: "verified",
+      },
+      {
+        id: "counsellor-suspended",
+        status: "available",
+        verified: false,
+        verificationStatus: "suspended",
+      },
     ]);
     mocks.from.mockImplementation((table: string) => {
       if (table === "profiles") {
         return query({ data: null, count: 8, error: null });
       }
       if (table === "counsellor_applications") {
-        return query({ data: [], error: null });
+        return query({ data: [], count: 12, error: null });
       }
       if (table === "counselling_sessions") {
         return query({
@@ -83,8 +94,10 @@ describe("live admin operations overview", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toContain("no-store");
     expect(payload.data.counts).toMatchObject({
+      counsellors: 1,
       available: 0,
       inSession: 0,
+      pendingKyc: 12,
       waiting: 1,
       liveSessions: 1,
     });
