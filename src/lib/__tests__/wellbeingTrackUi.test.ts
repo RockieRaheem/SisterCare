@@ -10,7 +10,7 @@ const page = readFileSync(
 describe("member Track experience", () => {
   it("uses private wellbeing check-ins as its primary source", () => {
     expect(page).toContain("getWellbeingCheckIns(user.uid)");
-    expect(page).toContain("Remember what mattered—then choose what to do");
+    expect(page).toContain("Your private timeline");
     expect(page).toContain("Your emotional timeline");
     expect(page).not.toContain("SummaryCard");
     expect(page).not.toContain("Mood 1–5");
@@ -18,7 +18,7 @@ describe("member Track experience", () => {
   });
 
   it("keeps conclusions factual and non-diagnostic", () => {
-    expect(page).toContain("Track does not grade your wellbeing or create a diagnosis");
+    expect(page).toContain("These records are not a score or diagnosis");
     expect(page).not.toContain("Most often");
     expect(page).not.toContain("What stands out");
     expect(page).not.toContain("days checked in");
@@ -29,7 +29,7 @@ describe("member Track experience", () => {
   it("presents cycle tracking as secondary body context", () => {
     expect(page).toContain("Separate body record");
     expect(page).toContain("does not assume menstruation caused a feeling");
-    expect(page.indexOf("What Track is for")).toBeLessThan(page.indexOf("Separate body record"));
+    expect(page.indexOf("Your emotional timeline")).toBeLessThan(page.indexOf("Separate body record"));
   });
 
   it("keeps private AI and verified human support immediately reachable", () => {
@@ -40,11 +40,14 @@ describe("member Track experience", () => {
     expect(page).toContain("Ask a counsellor");
   });
 
-  it("makes the value of Track visible before showing records", () => {
-    expect(page).toContain("Remember the context");
-    expect(page).toContain("Prepare to talk");
-    expect(page).toContain("Keep body context separate");
-    expect(page).toContain("Choose what to look back at");
-    expect(page).toContain("Changing this never deletes anything");
+  it("removes explanatory clutter and uses the pink and white theme", () => {
+    expect(page).not.toContain("What Track is for");
+    expect(page).not.toContain("Your records should help you take action");
+    expect(page).not.toContain("Remember the context");
+    expect(page).not.toContain("Prepare to talk");
+    expect(page).not.toContain("Keep body context separate");
+    expect(page).not.toContain('bg-[#241429]');
+    expect(page).toContain("border-primary/20 bg-white");
+    expect(page).toContain("Time range");
   });
 });

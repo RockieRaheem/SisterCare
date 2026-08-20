@@ -121,33 +121,18 @@ export default function AnalyticsPage() {
     <div className="app-page min-h-screen">
       <Header variant="app" />
       <main className="main-content page-container pb-32 pt-6 md:pb-12 md:pt-8">
-        <header className="grid gap-5 rounded-3xl bg-[#241429] p-6 text-white shadow-soft-lg sm:p-8 lg:grid-cols-[1fr_auto] lg:items-end">
-          <div className="max-w-3xl">
-            <span className="inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.16em] text-fuchsia-200"><span className="material-symbols-outlined text-lg" aria-hidden="true">timeline</span>Track</span>
-            <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Remember what mattered—then choose what to do.</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75 sm:text-base">Track keeps the feelings, context, notes and body information you deliberately saved. Use it to remember, prepare for a conversation, or notice something you want help with.</p>
+        <header className="relative grid gap-5 overflow-hidden rounded-3xl border border-primary/20 bg-white p-6 text-text-primary shadow-soft-lg dark:border-primary/30 dark:bg-card-dark dark:text-white sm:p-8 lg:grid-cols-[1fr_auto] lg:items-end">
+          <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-primary/10 blur-2xl" aria-hidden="true" />
+          <div className="relative max-w-3xl">
+            <span className="inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.16em] text-primary"><span className="material-symbols-outlined text-lg" aria-hidden="true">timeline</span>Track</span>
+            <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Your private timeline</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-text-secondary sm:text-base">Review the feelings, notes and body information you chose to save. These records are not a score or diagnosis.</p>
           </div>
-          <Link href="/wellbeing" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-extrabold text-white shadow-primary-sm"><span className="material-symbols-outlined" aria-hidden="true">edit_note</span>{checkIns[0]?.localDate === today ? "Update today's check-in" : "Check in today"}</Link>
+          <Link href="/wellbeing" className="relative inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-extrabold text-white shadow-primary-sm"><span className="material-symbols-outlined" aria-hidden="true">edit_note</span>{checkIns[0]?.localDate === today ? "Update today's check-in" : "Check in today"}</Link>
         </header>
 
-        <section aria-labelledby="track-purpose-heading" className="mt-5 rounded-3xl border border-border-light bg-white p-5 shadow-soft dark:border-border-dark dark:bg-card-dark sm:p-6">
-          <div className="max-w-2xl"><span className="eyebrow">What Track is for</span><h2 id="track-purpose-heading" className="mt-1 text-2xl font-black text-text-primary dark:text-white">Your records should help you take action</h2><p className="mt-2 text-sm leading-6 text-text-secondary">Track does not grade your wellbeing or create a diagnosis. It brings your own records together in a form you can actually use.</p></div>
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            {[
-              ["history", "Remember the context", "Return to a feeling, note or situation you chose to save."],
-              ["forum", "Prepare to talk", "Use an earlier entry to begin a private chat or counsellor conversation."],
-              ["join_inner", "Keep body context separate", "View menstrual and physical records without assuming they caused an emotion."],
-            ].map(([icon, title, text]) => (
-              <article key={title} className="rounded-2xl border border-border-light bg-background-light p-4 dark:border-border-dark dark:bg-background-dark">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/[0.08] text-primary"><span className="material-symbols-outlined" aria-hidden="true">{icon}</span></span>
-                <h3 className="mt-3 text-sm font-black text-text-primary dark:text-white">{title}</h3><p className="mt-1 text-xs leading-5 text-text-secondary">{text}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
         <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div><p className="text-sm font-black text-text-primary dark:text-white">Choose what to look back at</p><p className="text-xs text-text-secondary">Changing this never deletes anything.</p></div>
+          <p className="text-sm font-black text-text-primary dark:text-white">Time range</p>
           <div className="flex max-w-full gap-2 overflow-x-auto rounded-2xl border border-border-light bg-white p-1.5 dark:border-border-dark dark:bg-card-dark" aria-label="Timeline time range">
           {(Object.keys(PERIOD_DAYS) as Period[]).map((period) => (
             <button key={period} type="button" onClick={() => setSelectedPeriod(period)} aria-pressed={selectedPeriod === period} className={`min-h-10 shrink-0 rounded-xl px-4 text-sm font-bold transition ${selectedPeriod === period ? "bg-primary text-white" : "text-text-secondary hover:bg-primary/8"}`}>{PERIOD_LABELS[period]}</button>
