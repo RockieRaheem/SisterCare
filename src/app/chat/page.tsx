@@ -239,27 +239,27 @@ function isPermissionDeniedError(err: unknown): boolean {
 
 const icebreakers = [
   {
-    icon: "healing",
-    label: "Cramp relief",
-    text: "How can I manage cramps naturally?",
+    icon: "heart_broken",
+    label: "Something happened",
+    text: "I need to talk about something that hurt me",
     tone: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200",
   },
   {
     icon: "mood",
     label: "Feeling anxious",
-    text: "I'm feeling a bit anxious today",
+    text: "I feel anxious and I don't know what to do",
     tone: "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary-light",
   },
   {
-    icon: "bedtime",
-    label: "Sleep tips",
-    text: "Tips for better sleep during my period",
+    icon: "diversity_1",
+    label: "Relationships",
+    text: "I'm struggling with a relationship",
     tone: "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-200",
   },
   {
-    icon: "cycle",
-    label: "My cycle",
-    text: "What phase of my cycle am I in?",
+    icon: "health_and_safety",
+    label: "Private health",
+    text: "I have a private health question",
     tone: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200",
   },
 ];
@@ -1531,15 +1531,15 @@ export default function ChatPage() {
   const emptyStateContent = isFreshChat
     ? {
         key: "fresh",
-        title: "What's on your mind?",
-        subtitle: "Ask me anything — I'm here to listen and help.",
+        title: "What would you like to talk through?",
+        subtitle: "Share as little or as much as feels comfortable. You can begin with one sentence.",
         showIcebreakers: true,
       }
     : !activeConversationId
       ? {
           key: "none",
-          title: "How can I support you today?",
-          subtitle: "Ask about your health, cycle, symptoms, or how you are feeling.",
+          title: "What would you like to talk through?",
+          subtitle: "Share as little or as much as feels comfortable. You can begin with one sentence.",
           showIcebreakers: true,
         }
       : {
@@ -1584,7 +1584,8 @@ export default function ChatPage() {
             !isBusy && openConversationFromSidebar(conversation.id);
           }
         }}
-        className={`group relative flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all duration-150 ${
+        aria-label={`Open conversation ${conversation.title || "Untitled"}`}
+        className={`group relative flex min-h-14 w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all duration-150 ${
           isBusy ? "cursor-wait opacity-50" : "hover:bg-black/[0.03] dark:hover:bg-white/[0.04]"
         } ${
           isActive
@@ -1629,7 +1630,7 @@ export default function ChatPage() {
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+        <div className="flex shrink-0 items-center opacity-100 transition-opacity duration-150 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -1639,6 +1640,7 @@ export default function ChatPage() {
             }}
             className="flex h-7 w-7 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-black/[0.06] dark:text-gray-400 dark:hover:bg-white/10"
             title="More options"
+            aria-label={`More options for ${conversation.title || "conversation"}`}
           >
             <span className="material-symbols-outlined text-sm">more_horiz</span>
           </button>
@@ -2053,76 +2055,57 @@ export default function ChatPage() {
 
         {/* Main Chat Area */}
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          {/* Subtle chat header bar */}
-          <div className="shrink-0 border-b border-black/[0.04] bg-white px-3 py-2 dark:border-white/[0.05] dark:bg-card-dark">
-            <div className="flex items-center justify-between">
-              <div className="flex min-w-0 items-center gap-1">
-              {sidebarCollapsed && (
-                <button
-                  onClick={() => setSidebarCollapsed(false)}
-                  className="hidden h-7 w-7 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06] lg:flex"
-                >
-                  <span className="material-symbols-outlined text-sm">dock_to_right</span>
-                </button>
-              )}
-              {activeConversation && (
-                <div className="flex items-center gap-1.5 text-[10px] text-text-secondary/50 dark:text-gray-500">
-                  <span>{activeConversation.messageCount || 0} messages</span>
-                  <span className="h-0.5 w-0.5 rounded-full bg-current" />
-                  <span>{activeConversation.type === "counsellor" ? "Counsellor" : "AI"}</span>
+          {/* Conversation controls */}
+          <div className="shrink-0 border-b border-primary/10 bg-white/90 px-3 py-2 backdrop-blur-xl dark:border-white/[0.06] dark:bg-card-dark/90 sm:px-5">
+            <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2">
+                {sidebarCollapsed && (
+                  <button
+                    onClick={() => setSidebarCollapsed(false)}
+                    className="hidden h-9 w-9 items-center justify-center rounded-xl text-text-secondary transition-colors hover:bg-primary/[0.06] hover:text-primary lg:flex"
+                    aria-label="Expand chat history"
+                  >
+                    <span className="material-symbols-outlined text-lg">dock_to_right</span>
+                  </button>
+                )}
+                <span className="material-symbols-outlined text-lg text-primary" aria-hidden="true">shield_lock</span>
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-bold text-text-primary dark:text-white">Private conversation</p>
+                  <p className="truncate text-[10px] text-text-secondary">
+                    {activeConversation ? `${activeConversation.messageCount || messages.length} messages` : "Start when you are ready"}
+                  </p>
                 </div>
-              )}
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex shrink-0 items-center gap-1.5">
                 <button
                   type="button"
                   onClick={toggleVoiceReplies}
                   aria-pressed={voiceRepliesEnabled}
                   aria-label={voiceRepliesEnabled ? "Turn automatic spoken replies off" : "Turn automatic spoken replies on"}
-                  title={voiceRepliesEnabled ? "Voice replies on" : "Voice replies off"}
-                  className={`flex h-8 items-center gap-1.5 rounded-lg px-2 text-[10px] font-semibold transition-colors ${
+                  title={
+                    getSunbirdVoices(userLanguage).length
+                      ? `${getSunbirdVoices(userLanguage)[0]?.label}; spoken replies ${voiceRepliesEnabled ? "on" : "off"}`
+                      : `${SUPPORTED_LANGUAGES[userLanguage].name} spoken replies unavailable`
+                  }
+                  className={`flex min-h-10 items-center gap-1.5 rounded-xl border px-2.5 text-xs font-bold transition-colors ${
                     voiceRepliesEnabled
-                      ? "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary-light"
-                      : "text-text-secondary hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06]"
+                      ? "border-primary/20 bg-primary/[0.08] text-primary"
+                      : "border-transparent text-text-secondary hover:bg-primary/[0.05] hover:text-primary"
                   }`}
                 >
-                  <span className="material-symbols-outlined text-sm" aria-hidden="true">
+                  <span className="material-symbols-outlined text-lg" aria-hidden="true">
                     {voiceRepliesEnabled ? "volume_up" : "volume_off"}
                   </span>
-                  <span className="hidden sm:inline">Voice {voiceRepliesEnabled ? "on" : "off"}</span>
+                  <span className="hidden sm:inline">Spoken replies</span>
                 </button>
                 <button
                   onClick={handleNewChat}
-                  className="flex h-8 items-center gap-1 rounded-lg px-1.5 text-[10px] font-medium text-text-secondary transition-colors hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06]"
+                  className="flex min-h-10 items-center gap-1.5 rounded-xl border border-primary/15 bg-white px-2.5 text-xs font-bold text-primary transition-colors hover:bg-primary/[0.05] dark:bg-card-dark"
+                  aria-label="Start a new conversation"
                 >
-                  <span className="material-symbols-outlined text-xs">add</span>
-                  New
+                  <span className="material-symbols-outlined text-lg" aria-hidden="true">add_comment</span>
+                  <span className="hidden xs:inline">New chat</span>
                 </button>
-              </div>
-            </div>
-            <div className="mx-auto mt-2 flex w-full max-w-sm items-center gap-2 rounded-xl bg-background-light px-3 py-2 dark:bg-background-dark">
-              <span className="shrink-0 text-xs font-semibold text-text-primary dark:text-white">
-                Sister&apos;s voice
-              </span>
-              <div
-                role="status"
-                title={
-                  getSunbirdVoices(userLanguage).length
-                    ? `Approved speaking voice for ${SUPPORTED_LANGUAGES[userLanguage].name}`
-                    : `No ${SUPPORTED_LANGUAGES[userLanguage].name} voice is currently available`
-                }
-                className={`flex min-h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border px-3 text-sm font-medium ${
-                  getSunbirdVoices(userLanguage).length
-                    ? "border-primary/15 bg-white text-text-primary dark:border-primary/25 dark:bg-white/[0.05] dark:text-white"
-                    : "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200"
-                }`}
-              >
-                <span className="material-symbols-outlined shrink-0 text-base" aria-hidden="true">
-                  {getSunbirdVoices(userLanguage).length ? "record_voice_over" : "voice_over_off"}
-                </span>
-                <span className="min-w-0 leading-5">
-                  {getSunbirdVoices(userLanguage)[0]?.label || `${SUPPORTED_LANGUAGES[userLanguage].name} voice unavailable`}
-                </span>
               </div>
             </div>
           </div>
@@ -2135,9 +2118,9 @@ export default function ChatPage() {
               aria-live="polite"
               aria-relevant="additions text"
               aria-label="Conversation with Sister"
-              className="h-full overflow-y-auto overscroll-contain"
+              className="h-full overflow-y-auto overscroll-contain bg-[radial-gradient(circle_at_50%_0%,rgba(255,0,255,0.045),transparent_38%)]"
             >
-              <div className="mx-auto max-w-3xl px-4 pb-6 pt-5 sm:px-6 sm:pt-8">
+              <div className="mx-auto max-w-4xl px-3 pb-8 pt-4 sm:px-6 sm:pt-7">
                 {error && (
                   <div className="mb-4 flex items-start gap-3 rounded-2xl border border-red-100 bg-red-50/80 px-4 py-3 text-sm text-red-700 backdrop-blur-sm dark:border-red-900/30 dark:bg-red-950/30 dark:text-red-300">
                     <span className="material-symbols-outlined mt-0.5 text-base">error</span>
@@ -2250,33 +2233,32 @@ export default function ChatPage() {
 
                 {/* Empty States */}
                 {messages.length === 0 && !isTyping && (
-                  <div className="flex min-h-[42vh] flex-col items-center justify-center px-4 text-center animate-fade-in">
-                    <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/15 bg-primary/5 dark:bg-primary/10">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary shadow-primary-sm">
-                        <span className="material-symbols-outlined text-2xl text-white">spa</span>
+                  <div className="mx-auto flex min-h-[48vh] w-full max-w-2xl flex-col items-center justify-center px-1 py-8 text-center animate-fade-in sm:px-4">
+                    <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-[22px] border border-primary/15 bg-white shadow-soft dark:bg-card-dark">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary shadow-primary-sm">
+                        <span className="material-symbols-outlined text-2xl text-white">favorite</span>
                       </div>
                     </div>
-                    <h2 className="text-xl font-semibold text-text-primary dark:text-white sm:text-2xl">
+                    <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.16em] text-primary">A private space with Sister</p>
+                    <h2 className="max-w-lg text-2xl font-black leading-tight text-text-primary dark:text-white sm:text-3xl">
                       {emptyStateContent.title}
                     </h2>
-                    <p className="mt-1.5 text-sm text-text-secondary/70 dark:text-gray-400">
+                    <p className="mt-2 max-w-lg text-sm leading-6 text-text-secondary dark:text-gray-400">
                       {emptyStateContent.subtitle}
                     </p>
 
                     {emptyStateContent.showIcebreakers && (
-                      <div className="mt-8 grid w-full max-w-lg grid-cols-1 gap-2.5 xs:grid-cols-2">
+                      <div className="mt-7 grid w-full grid-cols-1 gap-2.5 sm:grid-cols-2">
                         {icebreakers.map((icebreaker) => (
                           <button
                             key={icebreaker.text}
                             onClick={() => sendMessage(icebreaker.text)}
-                            className="group flex items-center gap-3 rounded-2xl border border-black/[0.06] bg-white p-3.5 text-left shadow-sm transition-all hover:border-primary/30 hover:shadow-md hover:shadow-primary/5 dark:border-white/10 dark:bg-white/[0.04] dark:hover:bg-white/[0.07]"
+                            className="group flex min-h-20 items-center gap-3 rounded-2xl border border-primary/10 bg-white p-3.5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-soft dark:border-white/10 dark:bg-white/[0.04] dark:hover:bg-white/[0.07]"
                           >
                             <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${icebreaker.tone}`}>
                               <span className="material-symbols-outlined text-lg">{icebreaker.icon}</span>
                             </div>
-                            <span className="text-sm font-medium leading-snug text-text-primary dark:text-gray-200">
-                              {icebreaker.text}
-                            </span>
+                            <span className="min-w-0"><span className="block text-[10px] font-extrabold uppercase tracking-wide text-primary">{icebreaker.label}</span><span className="mt-0.5 block text-sm font-semibold leading-snug text-text-primary dark:text-gray-200">{icebreaker.text}</span></span>
                           </button>
                         ))}
                       </div>
@@ -2313,21 +2295,21 @@ export default function ChatPage() {
 
                       if (isSister) {
                         return (
-                          <div key={message.id} className="group flex items-start gap-3 animate-fade-in">
-                            <div className="sticky top-0 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary shadow-sm">
-                              <span className="material-symbols-outlined text-sm text-white">spa</span>
+                          <div key={message.id} className="group flex items-start gap-2.5 animate-fade-in sm:gap-3">
+                            <div className="sticky top-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-primary shadow-primary-sm">
+                              <span className="material-symbols-outlined text-base text-white">favorite</span>
                             </div>
-                            <div className="min-w-0 flex-1">
+                            <div className="min-w-0 max-w-[calc(100%-2.875rem)] flex-1 sm:max-w-[85%]">
                               <div className="flex items-baseline gap-2.5">
-                                <span className="text-xs font-semibold text-primary dark:text-primary-light">
+                                <span className="text-xs font-extrabold text-primary dark:text-primary-light">
                                   Sister
                                 </span>
                                 <span className="text-[9px] text-text-secondary/40 dark:text-gray-600">
                                   {formatRelativeTime(message.timestamp)}
                                 </span>
                               </div>
-                              <div className="mt-1.5 rounded-2xl rounded-tl-sm bg-white px-4 py-3 shadow-sm ring-1 ring-black/[0.03] dark:bg-white/[0.06] dark:ring-white/[0.06]">
-                                <p className="text-sm leading-relaxed text-text-primary whitespace-pre-wrap dark:text-gray-100">
+                              <div className="mt-1.5 rounded-[22px] rounded-tl-md border border-primary/[0.08] bg-white px-4 py-3.5 shadow-sm dark:border-white/[0.07] dark:bg-white/[0.06]">
+                                <p className="whitespace-pre-wrap text-[15px] leading-7 text-text-primary dark:text-gray-100">
                                   <StreamedText
                                     text={message.text}
                                     animate={message.animate}
@@ -2336,7 +2318,7 @@ export default function ChatPage() {
                                 </p>
                               </div>
 
-                              <div className="mt-2 flex items-center gap-2">
+                              <div className="mt-2 flex flex-wrap items-center gap-1.5">
                                 <button
                                   type="button"
                                   onClick={() => void playMessageAudio(message)}
@@ -2346,7 +2328,7 @@ export default function ChatPage() {
                                       ? "Pause Sister's spoken response"
                                       : "Listen to Sister's response"
                                   }
-                                  className="flex min-h-9 items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/20 disabled:cursor-wait disabled:opacity-60 dark:bg-primary/20 dark:text-primary-light"
+                                  className="flex min-h-9 items-center gap-1.5 rounded-xl bg-primary/[0.07] px-3 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/15 disabled:cursor-wait disabled:opacity-60 dark:bg-primary/20 dark:text-primary-light"
                                 >
                                   <span className="material-symbols-outlined text-sm" aria-hidden="true">
                                     {preparingAudioId === message.id
@@ -2366,6 +2348,15 @@ export default function ChatPage() {
                                     </span>
                                   )}
                                 </button>
+                                <button
+                                  type="button"
+                                  onClick={() => copyMessageText(message.id, message.text)}
+                                  className="flex min-h-9 items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-text-secondary transition-colors hover:bg-primary/[0.05] hover:text-primary"
+                                  aria-label="Copy Sister's response"
+                                >
+                                  <span className="material-symbols-outlined text-sm" aria-hidden="true">{copiedMessageId === message.id ? "check" : "content_copy"}</span>
+                                  {copiedMessageId === message.id ? "Copied" : "Copy"}
+                                </button>
                               </div>
 
                               {message.language && message.language !== "eng" && (
@@ -2374,15 +2365,6 @@ export default function ChatPage() {
                                     <span className="material-symbols-outlined text-[10px]">language</span>
                                     {SUPPORTED_LANGUAGES[message.language as SupportedLanguageCode]?.name || message.language}
                                   </span>
-                                  <button
-                                    onClick={() => copyMessageText(message.id, message.text)}
-                                    className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] text-text-secondary/60 transition-colors hover:bg-black/5 hover:text-text-primary dark:hover:bg-white/10 dark:hover:text-white"
-                                  >
-                                    <span className="material-symbols-outlined text-[10px]">
-                                      {copiedMessageId === message.id ? "check" : "content_copy"}
-                                    </span>
-                                    {copiedMessageId === message.id ? "Copied" : "Copy"}
-                                  </button>
                                 </div>
                               )}
                             </div>
@@ -2393,9 +2375,9 @@ export default function ChatPage() {
                       // User message
                       return (
                         <div key={message.id} className="group flex justify-end animate-fade-in">
-                          <div className="flex max-w-[80%] flex-col items-end sm:max-w-[70%]">
-                            <div className="rounded-2xl rounded-br-sm bg-primary px-4 py-2.5 text-white shadow-md shadow-primary/20">
-                              <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.text}</p>
+                          <div className="flex max-w-[88%] flex-col items-end sm:max-w-[74%]">
+                            <div className="rounded-[22px] rounded-br-md bg-primary px-4 py-3 text-white shadow-primary-sm">
+                              <p className="whitespace-pre-wrap text-[15px] leading-6">{message.text}</p>
                             </div>
                             <div className="mt-1 flex items-center gap-1.5 px-1">
                               <span className="text-[9px] text-text-secondary/40 dark:text-gray-600">
@@ -2434,7 +2416,8 @@ export default function ChatPage() {
             {showScrollButton && (
               <button
                 onClick={scrollToBottom}
-                className="absolute bottom-4 left-1/2 z-20 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border border-black/[0.06] bg-white text-text-primary shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl dark:border-white/10 dark:bg-gray-800 dark:text-white"
+                className="absolute bottom-4 left-1/2 z-20 flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border border-primary/15 bg-white text-primary shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl dark:border-white/10 dark:bg-gray-800"
+                aria-label="Jump to the newest message"
               >
                 <span className="material-symbols-outlined text-lg">arrow_downward</span>
               </button>
@@ -2442,23 +2425,10 @@ export default function ChatPage() {
           </div>
 
           {/* Composer */}
-          <div className="z-20 shrink-0 border-t border-black/[0.06] bg-white pb-[max(0.5rem,env(safe-area-inset-bottom))] dark:border-white/[0.08] dark:bg-card-dark">
-            <div className="mx-auto max-w-3xl px-3 pt-2.5 sm:px-4 sm:py-3">
+          <div className="z-20 shrink-0 border-t border-primary/10 bg-white/95 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-xl dark:border-white/[0.08] dark:bg-card-dark/95">
+            <div className="mx-auto max-w-4xl px-3 pt-2.5 sm:px-6 sm:py-3">
               <form onSubmit={handleSubmit} className="relative">
-                <div className="flex items-end gap-1.5 rounded-2xl border border-black/[0.08] bg-white p-1.5 shadow-sm transition-all focus-within:border-primary/40 focus-within:shadow-md dark:border-white/10 dark:bg-white/[0.05] sm:gap-2 sm:p-2">
-                  <div className="shrink-0">
-                    <select
-                      value={userLanguage}
-                      onChange={(e) => changeReplyLanguage(e.target.value as SupportedLanguageCode)}
-                      title="Voice and reply language"
-                      aria-label="Voice and reply language"
-                      className="h-9 max-w-[5.5rem] cursor-pointer rounded-xl border-0 bg-black/[0.03] px-1.5 text-[10px] font-semibold text-text-secondary transition-colors hover:bg-black/[0.06] focus:outline-none focus:ring-1 focus:ring-primary/40 dark:bg-white/[0.06] dark:text-gray-300 dark:hover:bg-white/10 sm:h-10 sm:max-w-[7rem] sm:px-2 sm:text-xs"
-                    >
-                      {CHAT_LANGUAGE_OPTIONS.map((code) => (
-                        <option key={code} value={code}>{SUPPORTED_LANGUAGES[code].nativeName}</option>
-                      ))}
-                    </select>
-                  </div>
+                <div className="overflow-hidden rounded-[24px] border border-primary/15 bg-white shadow-[0_10px_32px_rgba(72,32,72,0.09)] transition-all focus-within:border-primary/35 focus-within:shadow-[0_12px_38px_rgba(255,0,255,0.12)] dark:border-white/10 dark:bg-white/[0.05]">
                   <textarea
                     ref={inputRef}
                     value={inputValue}
@@ -2469,46 +2439,55 @@ export default function ChatPage() {
                         ? `Listening… ${recordingSeconds}s`
                         : isTranscribing
                           ? "Turning your voice into text…"
-                          : "Message Sister..."
+                          : "Message Sister"
                     }
                     disabled={isTyping || isListening || isTranscribing}
                     rows={1}
-                    className="max-h-[112px] flex-1 resize-none border-none bg-transparent px-1 py-2.5 text-base leading-6 text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-0 dark:text-white sm:max-h-[160px] sm:px-2 sm:text-sm"
+                    aria-label="Message Sister"
+                    className="max-h-[132px] min-h-12 w-full resize-none border-none bg-transparent px-4 pb-1 pt-3.5 text-base leading-6 text-text-primary placeholder:text-text-secondary/55 focus:outline-none focus:ring-0 disabled:opacity-60 dark:text-white sm:max-h-[180px]"
                   />
-                  {speechSupported && (
-                    <button
-                      type="button"
-                      onClick={toggleVoiceInput}
-                      disabled={isTyping || isTranscribing}
-                      className={`touch-target shrink-0 rounded-xl p-2.5 transition-all sm:p-2.5 ${
-                        isListening
-                          ? "animate-pulse bg-red-500 text-white shadow-md"
-                          : "text-text-secondary hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/10"
-                      }`}
-                      title={
-                        isListening
-                          ? "Stop recording"
-                          : isTranscribing
-                            ? "Transcribing voice"
-                            : "Record voice message"
-                      }
+                  <div className="flex items-center justify-between gap-2 px-2 pb-2">
+                    <div className="flex min-w-0 items-center gap-1 rounded-xl bg-primary/[0.045] pl-2 text-primary">
+                      <span className="material-symbols-outlined text-base" aria-hidden="true">language</span>
+                    <select
+                      value={userLanguage}
+                      onChange={(e) => changeReplyLanguage(e.target.value as SupportedLanguageCode)}
+                      title="Voice and reply language"
+                      aria-label="Voice and reply language"
+                      className="h-10 max-w-[8rem] cursor-pointer rounded-xl border-0 bg-transparent px-1.5 text-xs font-bold text-text-secondary focus:outline-none focus:ring-0 dark:text-gray-300 sm:max-w-[10rem]"
                     >
-                      <span className="material-symbols-outlined text-lg">
-                        {isTranscribing
-                          ? "hourglass_top"
-                          : isListening
-                            ? "stop_circle"
-                            : "mic"}
-                      </span>
-                    </button>
-                  )}
-                  <button
-                    type="submit"
-                    disabled={!inputValue.trim() || isTyping || isOverLimit}
-                    className="touch-target shrink-0 rounded-xl bg-primary p-2.5 text-white shadow-sm transition-all hover:bg-primary-dark hover:shadow-md disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:shadow-none"
-                  >
-                    <span className="material-symbols-outlined text-lg">{isTyping ? "hourglass_top" : "arrow_upward"}</span>
-                  </button>
+                      {CHAT_LANGUAGE_OPTIONS.map((code) => (
+                        <option key={code} value={code}>{SUPPORTED_LANGUAGES[code].nativeName}</option>
+                      ))}
+                    </select>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      {speechSupported && (
+                        <button
+                          type="button"
+                          onClick={toggleVoiceInput}
+                          disabled={isTyping || isTranscribing}
+                          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-all ${
+                            isListening
+                              ? "animate-pulse bg-red-500 text-white shadow-md"
+                              : "text-text-secondary hover:bg-primary/[0.06] hover:text-primary dark:text-gray-400"
+                          }`}
+                          title={isListening ? "Stop recording" : isTranscribing ? "Transcribing voice" : "Speak instead of typing"}
+                          aria-label={isListening ? "Stop recording" : isTranscribing ? "Transcribing voice" : "Speak instead of typing"}
+                        >
+                          <span className="material-symbols-outlined text-xl" aria-hidden="true">{isTranscribing ? "hourglass_top" : isListening ? "stop_circle" : "mic"}</span>
+                        </button>
+                      )}
+                      <button
+                        type="submit"
+                        disabled={!inputValue.trim() || isTyping || isOverLimit}
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary text-white shadow-primary-sm transition-all hover:bg-primary-dark hover:shadow-md disabled:cursor-not-allowed disabled:opacity-35"
+                        aria-label="Send message"
+                      >
+                        <span className="material-symbols-outlined text-xl" aria-hidden="true">{isTyping ? "hourglass_top" : "arrow_upward"}</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </form>
 
@@ -2519,8 +2498,8 @@ export default function ChatPage() {
                 </div>
               )}
 
-              <div className="mt-2 flex items-center justify-between gap-2 px-1">
-                <p className="text-[9px] text-text-secondary/60 dark:text-gray-400 sm:text-[10px]">
+              <div className="mt-2 flex items-start justify-between gap-2 px-1">
+                <p className="max-w-xl text-[9px] leading-4 text-text-secondary/70 dark:text-gray-400 sm:text-[10px]">
                   Sister is an AI companion, not an emergency service.{" "}
                   <Link href="/help" className="font-bold text-primary hover:underline">Urgent human help</Link>
                 </p>
@@ -2543,8 +2522,8 @@ export default function ChatPage() {
         .animate-fade-in { animation: fade-in 0.3s ease-out; }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(139, 92, 246, 0.2); border-radius: 2px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(139, 92, 246, 0.35); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 0, 255, 0.2); border-radius: 2px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255, 0, 255, 0.35); }
       `}</style>
     </div>
   );

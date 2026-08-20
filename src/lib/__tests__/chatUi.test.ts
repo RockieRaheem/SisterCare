@@ -20,4 +20,28 @@ describe("member chat workspace", () => {
     expect(chat).toContain("Open chat history and navigation");
     expect(chat).toContain("Private support");
   });
+
+  it("starts with human concerns instead of presenting itself as a menstrual chatbot", () => {
+    expect(chat).toContain("What would you like to talk through?");
+    expect(chat).toContain("I need to talk about something that hurt me");
+    expect(chat).toContain("I'm struggling with a relationship");
+    expect(chat).toContain("I have a private health question");
+    expect(chat).not.toContain("How can I manage cramps naturally?");
+  });
+
+  it("keeps the mobile composer spacious, accessible and voice capable", () => {
+    expect(chat).toContain('aria-label="Message Sister"');
+    expect(chat).toContain('aria-label="Send message"');
+    expect(chat).toContain("Speak instead of typing");
+    expect(chat).toContain("min-h-12 w-full resize-none");
+    expect(chat).toContain("text-base leading-6");
+    expect(chat).toContain("max-w-4xl");
+  });
+
+  it("makes message controls available to touch and assistive technology", () => {
+    expect(chat).toContain("Copy Sister's response");
+    expect(chat).toContain("Jump to the newest message");
+    expect(chat).toContain("sm:group-focus-within:opacity-100");
+    expect(chat).toContain("More options for");
+  });
 });
