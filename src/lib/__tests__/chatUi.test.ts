@@ -16,9 +16,10 @@ describe("member chat workspace", () => {
   it("provides clear navigation without leaving the conversation stranded", () => {
     expect(chat).toContain("CHAT_WORKSPACE_NAVIGATION");
     expect(chat).toContain("Go to another SisterCare page");
-    expect(chat).toContain("Talk to a counsellor");
     expect(chat).toContain("Open chat history and navigation");
     expect(chat).toContain("Private support");
+    expect(chat.match(/CHAT_WORKSPACE_NAVIGATION\.map/g)).toHaveLength(1);
+    expect(chat.match(/>SisterCare</g)).toHaveLength(1);
   });
 
   it("starts with human concerns instead of presenting itself as a menstrual chatbot", () => {

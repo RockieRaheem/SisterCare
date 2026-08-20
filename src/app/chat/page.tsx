@@ -1768,15 +1768,6 @@ export default function ChatPage() {
           >
             <span className="material-symbols-outlined text-xl">menu</span>
           </button>
-          <Link href="/dashboard" className="hidden items-center gap-2 sm:flex" aria-label="SisterCare home">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-primary-sm">
-              <span className="material-symbols-outlined text-[18px] text-white">favorite</span>
-            </div>
-            <span className="text-sm font-extrabold text-text-primary dark:text-white">
-              SisterCare
-            </span>
-          </Link>
-          <div className="hidden h-5 w-px bg-primary/15 sm:block" />
           <div className="min-w-0">
             <span className="block max-w-[11rem] truncate text-sm font-bold text-text-primary dark:text-white sm:max-w-[16rem] lg:max-w-[20rem]">
               {activeConversationTitle}
@@ -1788,22 +1779,6 @@ export default function ChatPage() {
           </div>
         </div>
         <div className="flex items-center gap-1.5">
-          <nav className="mr-1 hidden items-center gap-1 lg:flex" aria-label="SisterCare pages">
-            {CHAT_WORKSPACE_NAVIGATION.map((item) => (
-              <Link key={item.href} href={item.href} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl px-3 text-xs font-bold text-text-secondary transition-colors hover:bg-primary/[0.06] hover:text-primary">
-                <span className="material-symbols-outlined text-base" aria-hidden="true">{item.icon}</span>
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-          <Link
-            href="/counsellors"
-            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-primary px-3 text-xs font-bold text-white shadow-primary-sm lg:hidden"
-            aria-label="Talk to a counsellor"
-          >
-            <span className="material-symbols-outlined text-lg" aria-hidden="true">support_agent</span>
-            <span className="hidden sm:inline">Counsellors</span>
-          </Link>
           <Link
             href={`/report?type=ai_response&targetId=${encodeURIComponent(activeConversationId || "")}`}
             className="flex h-10 w-10 items-center justify-center rounded-xl text-text-secondary transition-colors hover:bg-red-50 hover:text-red-600 dark:text-gray-400 dark:hover:bg-red-950/30"
@@ -1811,11 +1786,6 @@ export default function ChatPage() {
             aria-label="Report a concern about this conversation"
           >
             <span className="material-symbols-outlined text-xl">report</span>
-          </Link>
-          <Link href="/profile" className="ml-0.5 flex items-center" aria-label="Open profile">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-white">
-              {user?.displayName?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || "U"}
-            </div>
           </Link>
         </div>
       </header>
