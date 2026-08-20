@@ -20,7 +20,7 @@ import type { SymptomLog, UserProfile, WellbeingCheckIn } from "@/types";
 
 type Period = "week" | "month" | "3months";
 const PERIOD_DAYS: Record<Period, number> = { week: 7, month: 30, "3months": 90 };
-const PERIOD_LABELS: Record<Period, string> = { week: "7 days", month: "30 days", "3months": "3 months" };
+const PERIOD_LABELS: Record<Period, string> = { week: "Past 7 days", month: "Past 30 days", "3months": "Past 3 months" };
 
 const hydrateCheckIn = (entry: WellbeingCheckIn): WellbeingCheckIn => ({
   ...entry,
@@ -67,7 +67,7 @@ export default function AnalyticsPage() {
         setCheckIns(entries);
         setSelectedEntryId((current) => current || entries[0]?.id || null);
       } else {
-        setError("Your wellbeing patterns could not be loaded.");
+        setError("Your private timeline could not be loaded. Please try again.");
       }
       setLoading(false);
     };
@@ -123,17 +123,36 @@ export default function AnalyticsPage() {
       <main className="main-content page-container pb-32 pt-6 md:pb-12 md:pt-8">
         <header className="grid gap-5 rounded-3xl bg-[#241429] p-6 text-white shadow-soft-lg sm:p-8 lg:grid-cols-[1fr_auto] lg:items-end">
           <div className="max-w-3xl">
-            <span className="inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.16em] text-fuchsia-200"><span className="material-symbols-outlined text-lg" aria-hidden="true">monitoring</span>Your wellbeing</span>
-            <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Your private timeline</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75 sm:text-base">Return to what you chose to record, in your own words. SisterCare does not score, diagnose, or explain your feelings for you.</p>
+            <span className="inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.16em] text-fuchsia-200"><span className="material-symbols-outlined text-lg" aria-hidden="true">timeline</span>Track</span>
+            <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Remember what mattered—then choose what to do.</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75 sm:text-base">Track keeps the feelings, context, notes and body information you deliberately saved. Use it to remember, prepare for a conversation, or notice something you want help with.</p>
           </div>
           <Link href="/wellbeing" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-extrabold text-white shadow-primary-sm"><span className="material-symbols-outlined" aria-hidden="true">edit_note</span>{checkIns[0]?.localDate === today ? "Update today's check-in" : "Check in today"}</Link>
         </header>
 
-        <div className="mt-5 flex max-w-full gap-2 overflow-x-auto rounded-2xl border border-border-light bg-white p-1.5 dark:border-border-dark dark:bg-card-dark sm:ml-auto sm:w-fit" aria-label="Pattern time range">
+        <section aria-labelledby="track-purpose-heading" className="mt-5 rounded-3xl border border-border-light bg-white p-5 shadow-soft dark:border-border-dark dark:bg-card-dark sm:p-6">
+          <div className="max-w-2xl"><span className="eyebrow">What Track is for</span><h2 id="track-purpose-heading" className="mt-1 text-2xl font-black text-text-primary dark:text-white">Your records should help you take action</h2><p className="mt-2 text-sm leading-6 text-text-secondary">Track does not grade your wellbeing or create a diagnosis. It brings your own records together in a form you can actually use.</p></div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            {[
+              ["history", "Remember the context", "Return to a feeling, note or situation you chose to save."],
+              ["forum", "Prepare to talk", "Use an earlier entry to begin a private chat or counsellor conversation."],
+              ["join_inner", "Keep body context separate", "View menstrual and physical records without assuming they caused an emotion."],
+            ].map(([icon, title, text]) => (
+              <article key={title} className="rounded-2xl border border-border-light bg-background-light p-4 dark:border-border-dark dark:bg-background-dark">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/[0.08] text-primary"><span className="material-symbols-outlined" aria-hidden="true">{icon}</span></span>
+                <h3 className="mt-3 text-sm font-black text-text-primary dark:text-white">{title}</h3><p className="mt-1 text-xs leading-5 text-text-secondary">{text}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div><p className="text-sm font-black text-text-primary dark:text-white">Choose what to look back at</p><p className="text-xs text-text-secondary">Changing this never deletes anything.</p></div>
+          <div className="flex max-w-full gap-2 overflow-x-auto rounded-2xl border border-border-light bg-white p-1.5 dark:border-border-dark dark:bg-card-dark" aria-label="Timeline time range">
           {(Object.keys(PERIOD_DAYS) as Period[]).map((period) => (
             <button key={period} type="button" onClick={() => setSelectedPeriod(period)} aria-pressed={selectedPeriod === period} className={`min-h-10 shrink-0 rounded-xl px-4 text-sm font-bold transition ${selectedPeriod === period ? "bg-primary text-white" : "text-text-secondary hover:bg-primary/8"}`}>{PERIOD_LABELS[period]}</button>
           ))}
+          </div>
         </div>
 
         {error && <div role="alert" className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-100">{error}</div>}
@@ -141,9 +160,9 @@ export default function AnalyticsPage() {
         {filteredCheckIns.length === 0 ? (
           <section className="mt-6 rounded-3xl border border-dashed border-primary/25 bg-primary/[0.03] p-8 text-center sm:p-12">
             <span className="material-symbols-outlined text-5xl text-primary" aria-hidden="true">psychiatry</span>
-            <h2 className="mt-3 text-2xl font-black text-text-primary dark:text-white">Begin with one honest check-in</h2>
-            <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-text-secondary">Choose words for what you feel, add context if useful, and decide whether you want reflection, coping ideas, or human support.</p>
-            <Link href="/wellbeing" className="mt-5 inline-flex min-h-12 items-center justify-center rounded-xl bg-primary px-6 text-sm font-bold text-white">Open private check-in</Link>
+            <h2 className="mt-3 text-2xl font-black text-text-primary dark:text-white">Nothing has been saved here yet</h2>
+            <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-text-secondary">If remembering today may help later, save one feeling and optional context. You never need to complete a questionnaire or maintain a streak.</p>
+            <Link href="/wellbeing" className="mt-5 inline-flex min-h-12 items-center justify-center rounded-xl bg-primary px-6 text-sm font-bold text-white">Save one private word</Link>
           </section>
         ) : (
           <>
@@ -176,7 +195,7 @@ export default function AnalyticsPage() {
 
         <section className="mt-8 overflow-hidden rounded-3xl border border-border-light bg-white dark:border-border-dark dark:bg-card-dark">
           <div className="border-b border-border-light bg-background-light p-5 dark:border-border-dark dark:bg-background-dark sm:p-6">
-            <span className="eyebrow">Body context</span><h2 className="mt-1 text-2xl font-black text-text-primary dark:text-white">Cycle and physical symptoms</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">Kept here as supporting context. SisterCare does not assume every emotional change is caused by menstruation.</p>
+            <span className="eyebrow">Separate body record</span><h2 className="mt-1 text-2xl font-black text-text-primary dark:text-white">Cycle and physical symptoms</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">Use this for menstrual planning and physical history. It stays separate from your emotional timeline because SisterCare does not assume menstruation caused a feeling.</p>
           </div>
           <div className="grid gap-5 p-5 sm:p-6 lg:grid-cols-[0.85fr_1.15fr]">
             {profile?.pregnancyData?.isPregnant ? (
@@ -214,6 +233,7 @@ function CheckInDetail({ entry }: { entry: WellbeingCheckIn }) {
       {(entry.contexts || []).length > 0 && <p className="mt-4 text-xs leading-5 text-text-secondary">Context: {(entry.contexts || []).map(contextLabel).join(", ")}</p>}
       {entry.note && <p className="mt-3 rounded-2xl bg-white p-3 text-sm leading-6 text-text-primary dark:bg-card-dark dark:text-gray-200">{entry.note}</p>}
       <div className="mt-4 border-t border-primary/10 pt-4"><p className="text-sm font-black text-text-primary dark:text-white">{support.title}</p><p className="mt-1 text-xs leading-5 text-text-secondary">{support.message}</p></div>
+      <div className="mt-4 grid gap-2 sm:grid-cols-2"><Link href="/chat" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-3 text-sm font-bold text-white"><span className="material-symbols-outlined text-lg" aria-hidden="true">chat_bubble</span>Talk about this</Link><Link href="/counsellors" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-primary/25 bg-white px-3 text-sm font-bold text-primary dark:bg-card-dark"><span className="material-symbols-outlined text-lg" aria-hidden="true">support_agent</span>Ask a counsellor</Link></div>
     </article>
   );
 }
