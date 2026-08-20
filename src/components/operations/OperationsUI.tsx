@@ -125,6 +125,47 @@ export function StatusBadge({
   );
 }
 
+export function OperationsSyncStatus({
+  updatedAt,
+  refreshing = false,
+  hasError = false,
+  stale = false,
+  online = true,
+}: {
+  updatedAt: Date | null;
+  refreshing?: boolean;
+  hasError?: boolean;
+  stale?: boolean;
+  online?: boolean;
+}) {
+  const status = !online
+    ? { label: "Device offline", tone: "warning" as const, icon: "cloud_off" }
+    : refreshing && !updatedAt
+      ? { label: "Connecting", tone: "info" as const, icon: "sync" }
+      : hasError || stale
+        ? { label: "Data delayed", tone: "warning" as const, icon: "sync_problem" }
+        : updatedAt
+          ? { label: "Live data", tone: "success" as const, icon: "cloud_done" }
+          : { label: "Not synchronized", tone: "neutral" as const, icon: "cloud_sync" };
+
+  return (
+    <span
+      role="status"
+      aria-live="polite"
+      className={`inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-xs font-bold ${tones[status.tone]}`}
+      title={updatedAt ? `Last successful update ${updatedAt.toLocaleString()}` : status.label}
+    >
+      <span
+        className={`material-symbols-outlined text-lg ${refreshing ? "animate-spin" : ""}`}
+        aria-hidden="true"
+      >
+        {refreshing ? "sync" : status.icon}
+      </span>
+      {refreshing && updatedAt ? "Updating" : status.label}
+    </span>
+  );
+}
+
 export function OperationsEmptyState({
   icon,
   title,

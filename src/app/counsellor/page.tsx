@@ -10,6 +10,7 @@ import {
   OperationsPageHeader,
   OperationsSkeleton,
   OperationsStat,
+  OperationsSyncStatus,
   StatusBadge,
 } from "@/components/operations/OperationsUI";
 import { useAuth } from "@/context/AuthContext";
@@ -199,8 +200,14 @@ export default function CounsellorPortalPage() {
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [presenceBusy, setPresenceBusy] = useState(false);
   const [sessionsLoading, setSessionsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
+  const [clock, setClock] = useState(() => Date.now());
+  const [online, setOnline] = useState(() =>
+    typeof navigator === "undefined" ? true : navigator.onLine,
+  );
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const refreshInFlightRef = useRef(false);
   const presenceRef = useRef<PresenceStatus>("offline");
   const presenceStartedRef = useRef(false);
   presenceRef.current = presence;
@@ -244,6 +251,9 @@ export default function CounsellorPortalPage() {
   }, [user, authLoading, refreshAccess, router]);
 
   const refresh = useCallback(async () => {
+    if (refreshInFlightRef.current) return;
+    refreshInFlightRef.current = true;
+    setRefreshing(true);
     try {
       const data = await listCounsellorSessions();
       setAssigned(data.assigned);
@@ -264,6 +274,8 @@ export default function CounsellorPortalPage() {
       else setError("We could not refresh the care desk. Check your connection and try again.");
     } finally {
       setSessionsLoading(false);
+      setRefreshing(false);
+      refreshInFlightRef.current = false;
     }
   }, []);
 
@@ -273,8 +285,28 @@ export default function CounsellorPortalPage() {
   useEffect(() => {
     if (!isCounsellor) return;
     void refresh();
-    const interval = setInterval(() => void refresh(), REFRESH_MS);
-    return () => clearInterval(interval);
+    const refreshVisible = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    const reconnect = () => {
+      setOnline(true);
+      void refresh();
+    };
+    const disconnect = () => setOnline(false);
+    const interval = window.setInterval(refreshVisible, REFRESH_MS);
+    const clockInterval = window.setInterval(() => setClock(Date.now()), 15_000);
+    window.addEventListener("focus", refreshVisible);
+    window.addEventListener("online", reconnect);
+    window.addEventListener("offline", disconnect);
+    document.addEventListener("visibilitychange", refreshVisible);
+    return () => {
+      window.clearInterval(interval);
+      window.clearInterval(clockInterval);
+      window.removeEventListener("focus", refreshVisible);
+      window.removeEventListener("online", reconnect);
+      window.removeEventListener("offline", disconnect);
+      document.removeEventListener("visibilitychange", refreshVisible);
+    };
   }, [isCounsellor, refresh]);
 
   useEffect(() => {
@@ -380,6 +412,9 @@ export default function CounsellorPortalPage() {
   const averageRating = feedback.length
     ? (feedback.reduce((total, rating) => total + rating, 0) / feedback.length).toFixed(1)
     : "—";
+  const dataIsStale = Boolean(
+    lastSyncedAt && clock - lastSyncedAt.getTime() > REFRESH_MS * 3,
+  );
   const firstName =
     userProfile?.displayName?.trim().split(/\s+/)[0] ||
     user?.displayName?.trim().split(/\s+/)[0] ||
@@ -432,6 +467,13 @@ export default function CounsellorPortalPage() {
         description="Manage your live availability, respond to assigned care and continue active conversations from one focused workspace."
         actions={
           <>
+            <OperationsSyncStatus
+              updatedAt={lastSyncedAt}
+              refreshing={refreshing}
+              hasError={Boolean(error)}
+              stale={dataIsStale}
+              online={online}
+            />
             <Link href="/counsellor/profile" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 transition hover:border-primary/30 hover:text-primary dark:border-slate-700 dark:bg-[#1b1922] dark:text-slate-200">
               <span className="material-symbols-outlined text-xl" aria-hidden="true">badge</span>
               Edit profile
@@ -443,11 +485,11 @@ export default function CounsellorPortalPage() {
             <button
               type="button"
               onClick={() => void refresh()}
-              disabled={sessionsLoading}
+              disabled={refreshing}
               className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-950 px-4 text-sm font-bold text-white transition hover:bg-slate-800 disabled:opacity-50 dark:bg-white dark:text-slate-950"
             >
-              <span className="material-symbols-outlined text-xl" aria-hidden="true">refresh</span>
-              Refresh
+              <span className={`material-symbols-outlined text-xl ${refreshing ? "animate-spin" : ""}`} aria-hidden="true">refresh</span>
+              {refreshing ? "Refreshing…" : "Refresh"}
             </button>
           </>
         }

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { authenticatedFetch } from "@/lib/authenticatedFetch";
 
 export interface OperationsNavItem {
   href: string;
@@ -89,6 +90,17 @@ export default function OperationsShell({
   }, [mobileOpen]);
 
   const leave = async () => {
+    if (mode === "counsellor") {
+      try {
+        await authenticatedFetch("/api/presence", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "offline" }),
+        });
+      } catch {
+        // Signing out must remain possible if the presence service is unavailable.
+      }
+    }
     await signOut();
     router.replace("/auth/login");
   };
