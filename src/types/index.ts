@@ -40,6 +40,7 @@ export interface UserPrivacyPreferences {
   discreetNotifications: boolean;
   notificationPreviews: boolean;
   sharedDeviceLockMinutes: number;
+  supportResponseStyle: "listen_first" | "gentle_steps" | "direct_options";
 }
 
 export interface PregnancyData {

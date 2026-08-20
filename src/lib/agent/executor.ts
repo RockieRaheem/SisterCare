@@ -79,6 +79,9 @@ interface AgentContext {
 interface UserProfileData {
   displayName: string | null;
   onboardingCompleted: boolean;
+  privacyPreferences?: {
+    supportResponseStyle?: "listen_first" | "gentle_steps" | "direct_options";
+  };
 }
 
 interface CycleDataContext {
@@ -1954,6 +1957,9 @@ async function executeWithGroq(
       ? calculateCycleInfo(context.cycleData)
       : null,
     pregnancy: context.pregnancyData || null,
+    supportResponseStyle:
+      context.userProfile?.privacyPreferences?.supportResponseStyle ||
+      "listen_first",
   };
   const clinicalRestriction =
     context.clinicalGuidanceAllowed === false
@@ -2112,6 +2118,10 @@ async function executeWithModel(
 
   // Add user context to system prompt if available
   let enhancedSystemPrompt = AGENT_SYSTEM_PROMPT;
+  const supportResponseStyle =
+    context.userProfile?.privacyPreferences?.supportResponseStyle ||
+    "listen_first";
+  enhancedSystemPrompt += `\n\nMEMBER-CHOSEN RESPONSE STYLE: ${supportResponseStyle}. Respect this preference unless immediate safety requires a direct response.`;
   if (context.clinicalGuidanceAllowed === false) {
     enhancedSystemPrompt += `\n\n## TEMPORARY CLINICAL CONTENT RESTRICTION
 Documented clinical review is incomplete. You may converse, explain SisterCare,

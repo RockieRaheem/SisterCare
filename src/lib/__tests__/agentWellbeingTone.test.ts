@@ -10,6 +10,10 @@ const notifications = readFileSync(
   path.join(process.cwd(), "src", "lib", "notifications.ts"),
   "utf8",
 );
+const settings = readFileSync(
+  path.join(process.cwd(), "src", "app", "settings", "page.tsx"),
+  "utf8",
+);
 
 describe("mental-health response contract", () => {
   it("matches serious disclosures without forced positivity", () => {
@@ -23,5 +27,13 @@ describe("mental-health response contract", () => {
     expect(executor).not.toContain("You may feel more energetic and social");
     expect(notifications).not.toContain("generatePhaseTip");
     expect(notifications).not.toContain("Communication skills are enhanced");
+  });
+
+  it("uses a reviewable member preference instead of inferred support style", () => {
+    expect(settings).toContain("How Sister should respond");
+    expect(settings).toContain("Listen before suggesting");
+    expect(settings).toContain("Give clear options quickly");
+    expect(executor).toContain("MEMBER-CHOSEN RESPONSE STYLE");
+    expect(executor).toContain("unless immediate safety requires a direct response");
   });
 });

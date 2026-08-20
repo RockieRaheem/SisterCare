@@ -12,6 +12,7 @@ describe("member privacy preferences", () => {
       DEFAULT_PRIVACY_PREFERENCES,
     );
     expect(DEFAULT_PRIVACY_PREFERENCES.notificationPreviews).toBe(false);
+    expect(DEFAULT_PRIVACY_PREFERENCES.supportResponseStyle).toBe("listen_first");
     expect(
       DEFAULT_PRIVACY_PREFERENCES.counsellorContextSharing,
     ).toBe("ask_each_time");
@@ -25,6 +26,7 @@ describe("member privacy preferences", () => {
         discreetNotifications: false,
         notificationPreviews: true,
         sharedDeviceLockMinutes: 12.4,
+        supportResponseStyle: "direct_options",
       }),
     ).toEqual({
       conversationRetention: "session",
@@ -32,6 +34,7 @@ describe("member privacy preferences", () => {
       discreetNotifications: false,
       notificationPreviews: true,
       sharedDeviceLockMinutes: 12,
+      supportResponseStyle: "direct_options",
     });
 
     expect(

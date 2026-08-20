@@ -62,6 +62,8 @@ export default function SettingsPage() {
       "ask_each_time",
     );
   const [sharedDeviceLockMinutes, setSharedDeviceLockMinutes] = useState(5);
+  const [supportResponseStyle, setSupportResponseStyle] =
+    useState<UserPrivacyPreferences["supportResponseStyle"]>("listen_first");
   const [browserNotificationStatus, setBrowserNotificationStatus] = useState<
     NotificationPermission | "unsupported"
   >("default");
@@ -100,6 +102,7 @@ export default function SettingsPage() {
         setSharedDeviceLockMinutes(
           profile.privacyPreferences.sharedDeviceLockMinutes,
         );
+        setSupportResponseStyle(profile.privacyPreferences.supportResponseStyle);
       }
     } catch (error: unknown) {
       const supabaseError = error as { code?: string; message?: string };
@@ -157,6 +160,7 @@ export default function SettingsPage() {
           conversationRetention,
           counsellorContextSharing,
           sharedDeviceLockMinutes,
+          supportResponseStyle,
         },
       });
       setMessage({ type: "success", text: "Settings saved successfully!" });
@@ -834,6 +838,25 @@ export default function SettingsPage() {
         </h2>
 
         <div className="mb-6 space-y-3 sm:mb-7 sm:space-y-4 md:mb-8">
+          <Card>
+            <label htmlFor="support-response-style" className="block text-sm font-bold text-text-primary dark:text-white sm:text-base">
+              How Sister should respond
+            </label>
+            <p className="mt-1 text-xs leading-relaxed text-text-secondary sm:text-sm">
+              This preference is private, editable, and used only to shape future assistant replies. It is never shared with a counsellor unless you approve a summary.
+            </p>
+            <select
+              id="support-response-style"
+              value={supportResponseStyle}
+              onChange={(event) => setSupportResponseStyle(event.target.value as UserPrivacyPreferences["supportResponseStyle"])}
+              className="mt-3 h-11 w-full rounded-xl border-2 border-gray-200 bg-white px-4 text-base text-text-primary focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-gray-700 dark:bg-card-dark dark:text-white"
+            >
+              <option value="listen_first">Listen before suggesting</option>
+              <option value="gentle_steps">Offer one gentle next step</option>
+              <option value="direct_options">Give clear options quickly</option>
+            </select>
+          </Card>
+
           <Card>
             <label
               htmlFor="support-alias"

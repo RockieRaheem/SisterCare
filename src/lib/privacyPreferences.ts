@@ -9,6 +9,7 @@ export const DEFAULT_PRIVACY_PREFERENCES: UserPrivacyPreferences = {
   discreetNotifications: true,
   notificationPreviews: false,
   sharedDeviceLockMinutes: 5,
+  supportResponseStyle: "listen_first",
 };
 
 const AGE_BANDS = new Set<MemberAgeBand>([
@@ -60,5 +61,10 @@ export function normalizePrivacyPreferences(
       Number.isFinite(lockMinutes) && lockMinutes >= 1 && lockMinutes <= 60
         ? Math.round(lockMinutes)
         : DEFAULT_PRIVACY_PREFERENCES.sharedDeviceLockMinutes,
+    supportResponseStyle:
+      candidate.supportResponseStyle === "gentle_steps" ||
+      candidate.supportResponseStyle === "direct_options"
+        ? candidate.supportResponseStyle
+        : "listen_first",
   };
 }
