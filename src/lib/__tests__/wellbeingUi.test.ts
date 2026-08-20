@@ -56,7 +56,7 @@ describe("member wellbeing experience", () => {
   it("makes repeat activity an edit to today's reflection", () => {
     expect(checkIn).toContain("todayCheckIn");
     expect(checkIn).toContain("Tap another feeling if it changes");
-    expect(checkIn).toContain("entry.localDate !== today");
+    expect(checkIn).toContain("entry.localDate === today");
   });
 
   it("does not require four scoring scales", () => {
@@ -70,7 +70,6 @@ describe("member wellbeing experience", () => {
     expect(picker).toContain("sm:grid-cols-6");
     expect(picker).toContain("aria-pressed");
     expect(picker).toContain("Choose the feeling closest to today");
-    expect(checkIn).toContain("Look back without being scored");
     expect(dashboard.indexOf("DashboardWellbeingCard")).toBeLessThan(dashboard.indexOf("Timer & Status Section"));
   });
 
@@ -79,7 +78,10 @@ describe("member wellbeing experience", () => {
     expect(checkIn).toContain("No scores or streaks");
     expect(checkIn).toContain("Nothing is saved just because you open one of these options");
     expect(checkIn).toContain("Or save one word for today");
-    expect(checkIn).toContain("This timeline repeats only what you chose to save");
+    expect(checkIn).not.toContain("Only when useful");
+    expect(checkIn).not.toContain("Look back without being scored");
+    expect(checkIn).not.toContain("Open timeline");
+    expect(checkIn).not.toContain('bg-[#241429]');
   });
 
   it("does not pressure members with automatic emotional check-in reminders", () => {

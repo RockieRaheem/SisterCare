@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import WellbeingPulsePicker from "@/components/features/WellbeingPulsePicker";
@@ -23,7 +22,6 @@ import {
 import {
   CONTEXT_OPTIONS,
   PULSE_OPTIONS,
-  contextLabel,
   pulseDetails,
   wellbeingSupportMessage,
 } from "@/lib/wellbeingPresentation";
@@ -38,7 +36,6 @@ const hydrate = (entry: WellbeingCheckIn): WellbeingCheckIn => ({
 export default function WellbeingPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
-  const [history, setHistory] = useState<WellbeingCheckIn[]>([]);
   const [todayCheckIn, setTodayCheckIn] = useState<WellbeingCheckIn | null>(null);
   const [selectedFeeling, setSelectedFeeling] = useState<WellbeingFeeling | null>(null);
   const [contexts, setContexts] = useState<WellbeingContext[]>([]);
@@ -62,7 +59,6 @@ export default function WellbeingPage() {
     getWellbeingCheckIns(user.uid)
       .then((entries) => {
         const existing = entries.find((entry: WellbeingCheckIn) => entry.localDate === today) || null;
-        setHistory(entries);
         setTodayCheckIn(existing);
         if (existing) {
           setSelectedFeeling(existing.feelings?.[0] || null);
@@ -121,7 +117,6 @@ export default function WellbeingPage() {
               updatedAt: new Date(),
             } as WellbeingCheckIn);
       setTodayCheckIn(checkIn);
-      setHistory((current) => [checkIn, ...current.filter((entry) => entry.localDate !== today)].slice(0, 90));
       setPendingWriteId(result.state === "queued" ? result.localId : null);
       setMessage(result.state === "synced" ? "Saved for today" : queuedWriteMessage(result.reason));
     } catch (error) {
@@ -186,20 +181,21 @@ export default function WellbeingPage() {
       <Header variant="app" />
       <main className="main-content pb-28 md:pb-12">
         <div className="mx-auto w-full max-w-4xl px-3 pb-8 pt-4 sm:px-6 sm:pt-8">
-          <header className="overflow-hidden rounded-[28px] bg-[#241429] p-5 text-white shadow-soft-lg sm:p-8">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold text-white">
+          <header className="relative overflow-hidden rounded-[28px] border border-primary/20 bg-white p-5 text-text-primary shadow-soft-lg dark:border-primary/30 dark:bg-card-dark dark:text-white sm:p-8">
+            <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-primary/10 blur-2xl" aria-hidden="true" />
+            <div className="relative inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/[0.06] px-3 py-1.5 text-xs font-bold text-primary">
               <span className="material-symbols-outlined text-base" aria-hidden="true">lock</span>
               Your private wellbeing space
             </div>
-            <h1 className="mt-4 max-w-2xl text-[2rem] font-black leading-tight tracking-[-0.045em] sm:text-4xl">Start with what you need—not a questionnaire.</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75 sm:text-base">Talk about what happened, steady a difficult moment, reach a verified person, or leave one private word for later.</p>
-            <div className="mt-5 flex flex-wrap gap-2 text-[11px] font-bold text-white/80">
+            <h1 className="relative mt-4 max-w-2xl text-[2rem] font-black leading-tight tracking-[-0.045em] sm:text-4xl">Start with what you need—not a questionnaire.</h1>
+            <p className="relative mt-3 max-w-2xl text-sm leading-6 text-text-secondary sm:text-base">Talk about what happened, steady a difficult moment, reach a verified person, or leave one private word for later.</p>
+            <div className="relative mt-5 flex flex-wrap gap-2 text-[11px] font-bold text-text-secondary">
               {[
                 ["check_circle", "No scores or streaks"],
                 ["visibility_off", "Private by default"],
                 ["tune", "You choose the next step"],
               ].map(([icon, label]) => (
-                <span key={label} className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-2"><span className="material-symbols-outlined text-sm text-primary-light" aria-hidden="true">{icon}</span>{label}</span>
+                <span key={label} className="inline-flex items-center gap-1.5 rounded-full bg-primary/[0.06] px-3 py-2"><span className="material-symbols-outlined text-sm text-primary" aria-hidden="true">{icon}</span>{label}</span>
               ))}
             </div>
           </header>
@@ -285,29 +281,6 @@ export default function WellbeingPage() {
               )}
             </section>
           )}
-
-          <section className="mt-7 rounded-[26px] border border-border-light bg-white p-4 dark:border-border-dark dark:bg-card-dark sm:p-6">
-            <div className="flex items-end justify-between gap-3">
-               <div><p className="text-xs font-extrabold uppercase tracking-[0.12em] text-primary">Only when useful</p><h2 className="mt-1 text-xl font-black text-text-primary dark:text-white">Look back without being scored</h2><p className="mt-1 text-xs leading-5 text-text-secondary">This timeline repeats only what you chose to save. It does not diagnose or judge you.</p></div>
-              <Link href="/analytics" className="inline-flex min-h-11 shrink-0 items-center gap-1 text-sm font-bold text-primary">Open timeline <span className="material-symbols-outlined text-lg" aria-hidden="true">arrow_forward</span></Link>
-            </div>
-            {history.length === 0 ? (
-              <p className="mt-4 rounded-2xl border border-dashed border-border-light p-5 text-sm leading-6 text-text-secondary dark:border-border-dark">After your first pulse, this becomes a simple emotional timeline—not another task list.</p>
-            ) : (
-              <div className="mt-5 grid grid-cols-7 gap-1.5" aria-label="Recent emotional check-ins">
-                {[...history].slice(0, 7).reverse().map((entry) => {
-                  const details = entry.feelings?.[0] ? pulseDetails(entry.feelings[0]) : null;
-                  return (
-                    <article key={entry.id} title={`${entry.localDate}: ${details?.label || "check-in"}`} className={`flex min-w-0 flex-col items-center rounded-xl px-1 py-2.5 ${entry.localDate === today ? "bg-primary/[0.08] ring-1 ring-primary/20" : "bg-background-light dark:bg-background-dark"}`}>
-                      <span className="text-xl" aria-hidden="true">{details?.emoji || "•"}</span>
-                      <time className="mt-1 truncate text-[9px] font-bold uppercase text-text-secondary">{entry.createdAt.toLocaleDateString(undefined, { weekday: "narrow" })}</time>
-                    </article>
-                  );
-                })}
-              </div>
-            )}
-            {history[0]?.contexts?.length ? <p className="mt-4 text-xs leading-5 text-text-secondary">Recently connected to {history[0].contexts.map(contextLabel).join(", ")}.</p> : null}
-          </section>
         </div>
       </main>
     </div>
