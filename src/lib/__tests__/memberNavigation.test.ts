@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import {
+  isMemberNavigationHiddenPath,
   isMemberPrimaryDestination,
   MEMBER_PRIMARY_NAVIGATION,
 } from "../memberNavigation";
@@ -30,6 +31,14 @@ describe("member primary navigation", () => {
     expect(isMemberPrimaryDestination("/analytics")).toBe(true);
     expect(isMemberPrimaryDestination("/profile")).toBe(true);
     expect(isMemberPrimaryDestination("/library")).toBe(false);
+  });
+
+  it("keeps chat in phone navigation while excluding non-member workspaces", () => {
+    expect(isMemberNavigationHiddenPath("/chat")).toBe(false);
+    expect(isMemberNavigationHiddenPath("/dashboard")).toBe(false);
+    expect(isMemberNavigationHiddenPath("/auth/login")).toBe(true);
+    expect(isMemberNavigationHiddenPath("/admin")).toBe(true);
+    expect(isMemberNavigationHiddenPath("/counsellor/profile")).toBe(true);
   });
 
   it("drives both desktop and phone navigation from the same source", () => {

@@ -41,7 +41,7 @@
   --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
   --safe-area-inset-left: env(safe-area-inset-left, 0px);
   --safe-area-inset-right: env(safe-area-inset-right, 0px);
-  --bottom-nav-height: 80px;
+  --bottom-nav-height: 64px;
 }
 
 html {
@@ -70,19 +70,16 @@ body {
    installed PWAs and Android browsers during momentum scrolling. */
 .member-bottom-nav {
   position: fixed !important;
-  right: 0;
-  bottom: 0;
-  left: 0;
+  inset-inline: 0;
+  top: auto !important;
+  bottom: 0 !important;
   z-index: 100;
   width: 100%;
+  min-height: var(--bottom-nav-height);
+  margin: 0;
   padding-right: var(--safe-area-inset-right);
   padding-bottom: var(--safe-area-inset-bottom);
   padding-left: var(--safe-area-inset-left);
-  transform: translate3d(0, 0, 0);
-  -webkit-transform: translate3d(0, 0, 0);
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  contain: layout paint;
   isolation: isolate;
   overscroll-behavior: none;
   touch-action: manipulation;
@@ -90,9 +87,31 @@ body {
   -webkit-backdrop-filter: blur(18px) saturate(150%);
 }
 
+/* Chat owns the remaining phone viewport above the persistent member bar. */
+.member-chat-viewport {
+  position: fixed;
+  inset: 0 0 calc(var(--bottom-nav-height) + var(--safe-area-inset-bottom));
+  min-height: 0;
+  height: auto;
+}
+
+.member-chat-composer {
+  padding-bottom: 0.5rem;
+}
+
 @media (min-width: 768px) {
   .member-bottom-nav {
     display: none;
+  }
+
+  .member-chat-viewport {
+    position: static;
+    inset: auto;
+    height: 100dvh;
+  }
+
+  .member-chat-composer {
+    padding-bottom: max(0.75rem, var(--safe-area-inset-bottom));
   }
 }
 

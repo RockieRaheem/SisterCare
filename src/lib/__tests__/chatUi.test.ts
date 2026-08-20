@@ -7,9 +7,9 @@ const bottomNav = readFileSync(path.join(process.cwd(), "src", "components", "la
 
 describe("member chat workspace", () => {
   it("owns the mobile viewport so the composer cannot sit behind global navigation", () => {
-    expect(bottomNav).toContain('"/chat"');
-    expect(chat).toContain("h-[100dvh]");
-    expect(chat).not.toContain("h-[calc(100dvh-var(--bottom-nav-height)");
+    expect(bottomNav).toContain("isMemberNavigationHiddenPath");
+    expect(chat).toContain("member-chat-viewport");
+    expect(chat).toContain("member-chat-composer");
     expect(chat).toContain("fixed inset-y-0 left-0");
   });
 
@@ -19,6 +19,7 @@ describe("member chat workspace", () => {
     expect(chat).toContain("Open chat history and navigation");
     expect(chat).toContain(">Menu</span>");
     expect(chat).toContain(">Navigation</p>");
+    expect(chat).toContain("hidden md:block");
     expect(chat).toContain(">Chat history</p>");
     expect(chat).toContain("Private support");
     expect(chat.match(/CHAT_WORKSPACE_NAVIGATION\.map/g)).toHaveLength(1);

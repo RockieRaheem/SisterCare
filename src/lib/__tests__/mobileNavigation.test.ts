@@ -15,8 +15,18 @@ describe("mobile member navigation", () => {
     expect(navigation).toContain("member-bottom-nav");
     expect(styles).toContain(".member-bottom-nav");
     expect(styles).toContain("position: fixed !important");
+    expect(styles).toContain("bottom: 0 !important");
     expect(styles).toContain("padding-bottom: var(--safe-area-inset-bottom)");
-    expect(styles).toContain("translate3d(0, 0, 0)");
+    expect(styles).toContain("min-height: var(--bottom-nav-height)");
+    expect(styles).not.toContain("contain: layout paint");
+  });
+
+  it("reserves the fixed navigation area for the phone chat composer", () => {
+    const chat = read("src", "app", "chat", "page.tsx");
+    expect(styles).toContain(".member-chat-viewport");
+    expect(styles).toContain("calc(var(--bottom-nav-height) + var(--safe-area-inset-bottom))");
+    expect(chat).toContain("member-chat-viewport");
+    expect(chat).toContain("member-chat-composer");
   });
 
   it("is mounted once by the root shell", () => {

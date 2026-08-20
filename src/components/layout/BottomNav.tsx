@@ -4,30 +4,18 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
-import { MEMBER_PRIMARY_NAVIGATION } from "@/lib/memberNavigation";
+import {
+  isMemberNavigationHiddenPath,
+  MEMBER_PRIMARY_NAVIGATION,
+} from "@/lib/memberNavigation";
 
 export default function BottomNav() {
   const pathname = usePathname();
   const { t } = useLanguage();
   const { userProfile } = useAuth();
 
-  // Don't show on landing, login, signup, or onboarding pages
-  const hiddenPaths = [
-    "/",
-    "/about",
-    "/auth/login",
-    "/auth/signup",
-    "/chat",
-    "/help",
-    "/onboarding",
-    "/privacy",
-    "/terms",
-  ];
   if (
-    hiddenPaths.includes(pathname) ||
-    pathname.startsWith("/admin") ||
-    pathname === "/counsellor" ||
-    pathname.startsWith("/counsellor/") ||
+    isMemberNavigationHiddenPath(pathname) ||
     userProfile?.role === "admin" ||
     userProfile?.role === "counsellor" ||
     userProfile?.registrationIntent === "counsellor"
@@ -38,7 +26,7 @@ export default function BottomNav() {
   return (
     <nav
       className="member-bottom-nav border-t border-border-light/80 bg-white/95 dark:border-border-dark dark:bg-card-dark/95"
-      aria-label={t.nav.home}
+      aria-label="Primary navigation"
       role="navigation"
     >
       <div className="mx-auto max-w-md">

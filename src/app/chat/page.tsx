@@ -1713,7 +1713,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex h-[100dvh] flex-col overflow-hidden overscroll-none bg-[#fff8fc] dark:bg-background-dark md:static md:h-screen">
+    <div className="member-chat-viewport z-40 flex flex-col overflow-hidden overscroll-none bg-[#fff8fc] dark:bg-background-dark">
       {/* Delete Confirmation Modal */}
       {deleteModalId && (
         <div
@@ -1872,7 +1872,7 @@ export default function ChatPage() {
               </div>
             </div>
 
-            <div className="mx-3 mb-3">
+            <div className="mx-3 mb-3 hidden md:block">
               <p className="mb-1.5 px-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-text-secondary/70">Navigation</p>
               <nav className="grid grid-cols-2 gap-1 rounded-2xl border border-primary/10 bg-primary/[0.025] p-1.5" aria-label="Go to another SisterCare page">
                 {CHAT_WORKSPACE_NAVIGATION.map((item) => (
@@ -2355,7 +2355,7 @@ export default function ChatPage() {
           </div>
 
           {/* Composer */}
-          <div className="z-20 shrink-0 border-t border-primary/10 bg-white/95 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-xl dark:border-white/[0.08] dark:bg-card-dark/95">
+          <div className="member-chat-composer z-20 shrink-0 border-t border-primary/10 bg-white/95 backdrop-blur-xl dark:border-white/[0.08] dark:bg-card-dark/95">
             <div className="mx-auto max-w-4xl px-3 pt-2.5 sm:px-6 sm:py-3">
               <form onSubmit={handleSubmit} className="relative">
                 <div className="overflow-hidden rounded-[24px] border border-primary/15 bg-white shadow-[0_10px_32px_rgba(72,32,72,0.09)] transition-all focus-within:border-primary/35 focus-within:shadow-[0_12px_38px_rgba(255,0,255,0.12)] dark:border-white/10 dark:bg-white/[0.05]">
