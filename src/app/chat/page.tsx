@@ -2500,9 +2500,9 @@ export default function ChatPage() {
               )}
 
               <div className="mt-2 flex items-center justify-between gap-2 px-1">
-                <p className="text-[9px] text-text-secondary/50 dark:text-gray-500 sm:text-[10px]">
-                  Sister is an AI companion. For emergencies, call{" "}
-                  <a href="tel:116" className="font-medium text-primary hover:underline">Sauti 116</a>
+                <p className="text-[9px] text-text-secondary/60 dark:text-gray-400 sm:text-[10px]">
+                  Sister is an AI companion, not an emergency service.{" "}
+                  <Link href="/help" className="font-bold text-primary hover:underline">Urgent human help</Link>
                 </p>
                 <div className="flex items-center gap-3">
                   {inputValue.length > MAX_MESSAGE_LENGTH - 200 && (

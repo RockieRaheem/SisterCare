@@ -1,5 +1,6 @@
 import Link from "next/link";
 import PublicPageShell from "@/components/layout/PublicPageShell";
+import UrgentSupportPanel from "@/components/features/UrgentSupportPanel";
 
 const FAQS = [
   {
@@ -68,18 +69,7 @@ export default function HelpPage() {
         </section>
 
         <aside className="space-y-4">
-          <div className="rounded-[20px] border border-red-200 bg-red-50 p-5 dark:border-red-800 dark:bg-red-950/30">
-            <span className="material-symbols-outlined text-red-700 dark:text-red-300">
-              emergency
-            </span>
-            <h2 className="mt-3 font-bold text-red-900 dark:text-red-200">
-              Urgent support
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-red-800 dark:text-red-300">
-              Call Sauti 116 or Uganda emergency services on 999 or 112 when
-              immediate help is needed.
-            </p>
-          </div>
+          <UrgentSupportPanel />
           <div className="surface p-5">
             <h2 className="font-bold text-text-primary dark:text-white">
               Product support

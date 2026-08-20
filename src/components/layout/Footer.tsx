@@ -1,4 +1,5 @@
 import Link from "next/link";
+import UrgentSupportPanel from "@/components/features/UrgentSupportPanel";
 
 interface FooterProps {
   variant?: "landing" | "app";
@@ -57,27 +58,7 @@ export default function Footer({ variant = "landing" }: FooterProps) {
             Empowering women and girls through accessible education, emotional
             support, and personalized health tracking. You are never alone.
           </p>
-          {/* Uganda Emergency Support */}
-          <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-800">
-            <p className="text-red-700 dark:text-red-300 font-bold text-sm mb-2 flex items-center gap-2">
-              <span className="material-symbols-outlined text-lg">
-                emergency
-              </span>
-              Need Urgent Help?
-            </p>
-            <div className="space-y-1 text-xs text-red-600 dark:text-red-400">
-              <p>
-                <strong>Sauti 116:</strong> Free 24/7 helpline for children &
-                women
-              </p>
-              <p>
-                <strong>Police:</strong> 999 or 112
-              </p>
-              <p>
-                <strong>FIDA Uganda:</strong> 0414 530 848 (Legal support)
-              </p>
-            </div>
-          </div>
+          <div className="mt-4"><UrgentSupportPanel compact /></div>
         </div>
 
         <div>
