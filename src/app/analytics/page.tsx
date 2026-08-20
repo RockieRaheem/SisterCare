@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
 import { AppShellSkeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/context/AuthContext";
-import { getSymptoms, getUserProfile } from "@/lib/dataClient";
+import { getCycleHistory, getSymptoms, getUserProfile } from "@/lib/dataClient";
+import { mergeCycleHistory, observedCycleSummary } from "@/lib/cycleHistory";
 import { getWellbeingCheckIns } from "@/lib/wellbeingClient";
 import {
   localWellbeingDate,
@@ -16,7 +17,7 @@ import {
   feelingDetails,
   wellbeingSupportMessage,
 } from "@/lib/wellbeingPresentation";
-import type { SymptomLog, UserProfile, WellbeingCheckIn } from "@/types";
+import type { CycleHistory, SymptomLog, UserProfile, WellbeingCheckIn } from "@/types";
 
 type Period = "week" | "month" | "3months";
 const PERIOD_DAYS: Record<Period, number> = { week: 7, month: 30, "3months": 90 };
@@ -28,14 +29,12 @@ const hydrateCheckIn = (entry: WellbeingCheckIn): WellbeingCheckIn => ({
   updatedAt: entry.updatedAt ? new Date(entry.updatedAt) : undefined,
 });
 
-const average = (values: number[]): number | null =>
-  values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
-
 export default function AnalyticsPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [symptomLogs, setSymptomLogs] = useState<SymptomLog[]>([]);
+  const [cycleHistory, setCycleHistory] = useState<CycleHistory[]>([]);
   const [checkIns, setCheckIns] = useState<WellbeingCheckIn[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState<Period>("month");
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
@@ -55,10 +54,11 @@ export default function AnalyticsPage() {
       setError(null);
       const endDate = new Date();
       const startDate = new Date(endDate.getTime() - 90 * 86_400_000);
-      const [profileResult, symptomsResult, wellbeingResult] = await Promise.allSettled([
+      const [profileResult, symptomsResult, wellbeingResult, cycleHistoryResult] = await Promise.allSettled([
         getUserProfile(user.uid),
         getSymptoms(user.uid, startDate, endDate),
         getWellbeingCheckIns(user.uid),
+        getCycleHistory(user.uid, 24),
       ]);
       if (profileResult.status === "fulfilled") setProfile(profileResult.value);
       if (symptomsResult.status === "fulfilled") setSymptomLogs(symptomsResult.value || []);
@@ -69,6 +69,7 @@ export default function AnalyticsPage() {
       } else {
         setError("Your private timeline could not be loaded. Please try again.");
       }
+      if (cycleHistoryResult.status === "fulfilled") setCycleHistory(cycleHistoryResult.value);
       setLoading(false);
     };
     void load();
@@ -103,16 +104,21 @@ export default function AnalyticsPage() {
     return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
   }, [filteredSymptoms]);
 
+  const symptomDayCount = useMemo(
+    () => new Set(filteredSymptoms.map((entry) => localWellbeingDate(new Date(entry.date)))).size,
+    [filteredSymptoms],
+  );
+
   const cycleSummary = useMemo(() => {
-    const history = profile?.cycleData?.history || [];
-    const cycles = history.map((entry) => entry.cycleLength).filter((value) => value > 0);
-    const periods = history.map((entry) => entry.periodLength).filter((value) => value > 0);
+    const history = mergeCycleHistory(cycleHistory, profile?.cycleData?.history || []);
+    const observed = observedCycleSummary(history);
     return {
-      count: history.length,
-      cycle: cycles.length ? Math.round(average(cycles) as number) : profile?.cycleData?.cycleLength || null,
-      period: periods.length ? Math.round(average(periods) as number) : profile?.cycleData?.periodLength || null,
+      ...observed,
+      cycle: observed.cycle ?? profile?.cycleData?.cycleLength ?? null,
+      period: observed.period ?? profile?.cycleData?.periodLength ?? null,
+      hasObservedAverages: observed.cycle !== null || observed.period !== null,
     };
-  }, [profile]);
+  }, [cycleHistory, profile]);
 
   if (authLoading || loading) return <AppShellSkeleton />;
   if (!user) return null;
@@ -154,7 +160,7 @@ export default function AnalyticsPage() {
             <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(300px,0.6fr)]">
               <div className="rounded-3xl border border-border-light bg-white p-5 shadow-soft dark:border-border-dark dark:bg-card-dark sm:p-6">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                  <div><span className="eyebrow">Daily view</span><h2 className="mt-1 text-xl font-black text-text-primary dark:text-white">Your emotional timeline</h2><p className="mt-1 text-sm text-text-secondary">Tap a day to remember what was happening.</p></div>
+                  <div><span className="eyebrow">Daily view · {filteredCheckIns.length} {filteredCheckIns.length === 1 ? "saved day" : "saved days"}</span><h2 className="mt-1 text-xl font-black text-text-primary dark:text-white">Your emotional timeline</h2><p className="mt-1 text-sm text-text-secondary">Tap a day to remember what was happening.</p></div>
                 </div>
                 <div className="mt-6 flex gap-2 overflow-x-auto pb-2">
                   {chronological.map((entry) => {
@@ -186,7 +192,7 @@ export default function AnalyticsPage() {
             {profile?.pregnancyData?.isPregnant ? (
               <div className="rounded-2xl bg-primary/[0.05] p-5"><p className="font-black text-text-primary dark:text-white">Period tracking is paused</p><p className="mt-2 text-sm leading-6 text-text-secondary">Your profile is currently using pregnancy support, so period statistics are not presented as active predictions.</p></div>
             ) : profile?.cycleData ? (
-              <div className="grid grid-cols-2 gap-3"><Metric value={cycleSummary.cycle ? `${cycleSummary.cycle} days` : "—"} label="Typical cycle" /><Metric value={cycleSummary.period ? `${cycleSummary.period} days` : "—"} label="Typical period" /><Metric value={String(cycleSummary.count)} label="Completed cycles" /><Metric value={String(filteredSymptoms.length)} label="Symptom-log days" /></div>
+              <div><div className="grid grid-cols-2 gap-3"><Metric value={cycleSummary.cycle ? `${cycleSummary.cycle} days` : "—"} label={cycleSummary.hasObservedAverages ? "Typical cycle" : "Expected cycle"} /><Metric value={cycleSummary.period ? `${cycleSummary.period} days` : "—"} label={cycleSummary.hasObservedAverages ? "Typical period" : "Expected period"} /><Metric value={String(cycleSummary.count)} label="Completed cycles" /><Metric value={String(symptomDayCount)} label="Days with symptoms" /></div>{cycleSummary.count === 0 && <p className="mt-3 rounded-xl bg-primary/[0.04] px-3 py-2 text-xs leading-5 text-text-secondary">No completed cycle is recorded yet. When you confirm your next period start, SisterCare will close this cycle and begin calculating your observed pattern.</p>}</div>
             ) : (
               <div className="rounded-2xl border border-dashed border-border-light p-5 dark:border-border-dark"><p className="font-black text-text-primary dark:text-white">Cycle details are optional</p><p className="mt-2 text-sm leading-6 text-text-secondary">Add them when tracking feels useful. Emotional support remains available without cycle setup.</p><Link href="/onboarding?mode=edit" className="mt-4 inline-flex min-h-11 items-center text-sm font-bold text-primary">Set up cycle tracking <span className="material-symbols-outlined text-lg">arrow_forward</span></Link></div>
             )}

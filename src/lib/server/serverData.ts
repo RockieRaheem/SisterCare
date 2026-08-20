@@ -1,9 +1,10 @@
 /** Server-side Supabase data layer. All callers have authenticated a request. */
 import { getSupabaseAdmin } from "../supabaseAdmin";
 import { calculateNextPeriod, getCurrentPhase } from "../cycle";
+import { completedCycleFromPeriodStart } from "../cycleHistory";
 import { rankCounsellors } from "../counsellorMatching";
 import { evaluateCounsellorEligibility } from "../counsellorOperations";
-import { AgentEvent, Counsellor, CounsellorSpecialty, CounsellorStatus, CycleData, PregnancyData, Reminder, SymptomLog, TriageSeverity, UserProfile } from "@/types";
+import { AgentEvent, Counsellor, CounsellorSpecialty, CounsellorStatus, CycleData, CycleHistory, PregnancyData, Reminder, SymptomLog, TriageSeverity, UserProfile } from "@/types";
 import { counsellorFromDatabaseRow } from "./counsellorRecord";
 import {
   normalizeMemberAgeBand,
@@ -42,6 +43,36 @@ async function addRecord(userId: string, recordType: string, payload: Json) { co
 async function findRecords(userId: string, recordType: string) { const { data, error } = await admin().from("user_records").select("*").eq("user_id", userId).eq("record_type", recordType).order("created_at", { ascending: false }); check(error); return (data || []) as Json[]; }
 
 export async function saveCycleData(uid: string, cycleData: Partial<CycleData>) { const existing = await getProfile(uid); if (!existing) throw new Error("Cannot update cycle data because the user profile is missing"); const old = (existing.cycle_data as Json) || {}; await updateProfile(uid, { cycle_data: { ...old, ...cycleData, lastPeriodDate: iso(cycleData.lastPeriodDate) || old.lastPeriodDate, nextPeriodDate: iso(cycleData.nextPeriodDate) || old.nextPeriodDate } }); }
+export async function recordPeriodStart(uid: string, startDate: Date) {
+  const row = await getProfile(uid);
+  if (!row) throw new Error("Cannot update cycle data because the user profile is missing");
+  const current = profile(row).cycleData;
+  if (!current) throw new Error("Cycle setup is required before recording a period start");
+  const completed = completedCycleFromPeriodStart(current, startDate);
+  let archivedCycle = false;
+  if (completed) {
+    const startKey = completed.startDate.toISOString().slice(0, 10);
+    const endKey = completed.endDate?.toISOString().slice(0, 10);
+    const existingHistory = await findRecords(uid, "cycle_history");
+    const duplicate = existingHistory.some((entry) => {
+      const payload = entry.payload as Json;
+      return String(payload.startDate || "").slice(0, 10) === startKey && String(payload.endDate || "").slice(0, 10) === endKey;
+    });
+    if (!duplicate) {
+      await addRecord(uid, "cycle_history", {
+        ...completed,
+        startDate: completed.startDate.toISOString(),
+        endDate: completed.endDate?.toISOString() || null,
+      } as unknown as Json);
+      archivedCycle = true;
+    }
+  }
+  const nextPeriodDate = calculateNextPeriod(startDate, current.cycleLength);
+  const { phase } = getCurrentPhase(startDate, current.cycleLength, current.periodLength);
+  await saveCycleData(uid, { lastPeriodDate: startDate, nextPeriodDate, currentPhase: phase as CycleData["currentPhase"] });
+  return { nextPeriodDate, archivedCycle };
+}
+export async function getCycleHistory(uid: string, count = 24): Promise<CycleHistory[]> { return (await findRecords(uid, "cycle_history")).slice(0, count).map((row) => ({ id: row.id as string, ...(row.payload as Json), startDate: date((row.payload as Json).startDate), endDate: (row.payload as Json).endDate ? date((row.payload as Json).endDate) : null } as CycleHistory)); }
 export async function getConversationMemory(uid: string, conversationId: string, maximumMessages = 50): Promise<Array<{ role: "user" | "assistant"; content: string }>> { const { data: conversation, error: ownerError } = await admin().from("conversations").select("id").eq("id", conversationId).eq("user_id", uid).maybeSingle(); check(ownerError); if (!conversation) return []; const { data, error } = await admin().from("messages").select("sender, content").eq("conversation_id", conversationId).order("created_at", { ascending: false }).limit(Math.min(Math.max(maximumMessages, 1), 50)); check(error); return (data || []).reverse().flatMap((message) => typeof message.content === "string" && message.content.trim() ? [{ role: message.sender === "user" ? "user" : "assistant" as const, content: message.content.trim().slice(0, 4000) }] : []); }
 export async function savePregnancyData(uid: string, input: Partial<PregnancyData>) { const existing = await getProfile(uid); if (!existing) throw new Error("Cannot update pregnancy data because the user profile is missing"); const old = (existing.pregnancy_data as Json) || {}; await updateProfile(uid, { pregnancy_data: { ...old, ...input, isPregnant: input.isPregnant ?? old.isPregnant ?? false, gaveBirth: input.gaveBirth ?? old.gaveBirth ?? false, estimatedDueDate: iso(input.estimatedDueDate) || old.estimatedDueDate, lastMenstrualPeriodDate: iso(input.lastMenstrualPeriodDate) || old.lastMenstrualPeriodDate, conceptionDate: iso(input.conceptionDate) || old.conceptionDate, birthDate: iso(input.birthDate) || old.birthDate, updatedAt: new Date().toISOString(), createdAt: old.createdAt || new Date().toISOString() } }); }
 export async function clearPregnancyData(uid: string) { await updateProfile(uid, { pregnancy_data: null }); }

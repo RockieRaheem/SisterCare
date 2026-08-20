@@ -12,13 +12,11 @@ import {
   getUserProfile,
   updateUserProfile,
   updateUserPreferences,
-  saveCycleData,
-  calculateNextPeriod,
-  getCurrentPhase,
+  recordPeriodStart,
   getCycleInfo,
   schedulePeriodReminders,
 } from "@/lib/dataClient";
-import { UserProfile, CycleData, UserPreferences } from "@/types";
+import { UserProfile, UserPreferences } from "@/types";
 import { ProfileSkeleton } from "@/components/ui/Skeleton";
 
 export default function ProfilePage() {
@@ -165,18 +163,10 @@ export default function ProfilePage() {
       // Update cycle data if last period date is provided
       if (lastPeriodDate) {
         const lastDate = new Date(lastPeriodDate);
-        const nextDate = calculateNextPeriod(lastDate, cycleLength);
-        const { phase } = getCurrentPhase(lastDate, cycleLength, periodLength);
-
-        const cycleData: Partial<CycleData> = {
-          lastPeriodDate: lastDate,
+        const { nextPeriodDate: nextDate } = await recordPeriodStart(user.uid, lastDate, {
           cycleLength,
           periodLength,
-          nextPeriodDate: nextDate,
-          currentPhase: phase as CycleData["currentPhase"],
-        };
-
-        await saveCycleData(user.uid, cycleData);
+        });
 
         // Schedule reminders
         await schedulePeriodReminders(user.uid, nextDate, reminderDays);

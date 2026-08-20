@@ -22,7 +22,7 @@ import {
   logSymptoms,
   createReminder,
   getSymptoms,
-  saveCycleData,
+  recordPeriodStart,
   savePregnancyData,
   clearPregnancyData,
   updateCycleAfterBirth,
@@ -550,14 +550,8 @@ async function executeTool(
         let nextPeriodDate: Date | null = null;
         if (context.userId && context.cycleData) {
           try {
-            nextPeriodDate = calculateNextPeriod(
-              startDate,
-              context.cycleData.cycleLength,
-            );
-            await saveCycleData(context.userId, {
-              lastPeriodDate: startDate,
-              nextPeriodDate,
-            });
+            const update = await recordPeriodStart(context.userId, startDate);
+            nextPeriodDate = update.nextPeriodDate;
             persisted = true;
           } catch (error) {
             console.error("[Agent] Failed to update period start:", error);

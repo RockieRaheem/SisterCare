@@ -1,7 +1,31 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import Card from "@/components/ui/Card";
+import { useAuth } from "@/context/AuthContext";
+import { localWellbeingDate } from "@/lib/wellbeing";
+import { getWellbeingCheckIns } from "@/lib/wellbeingClient";
 
 export default function DashboardWellbeingCard() {
+  const { user } = useAuth();
+  const [todaySaved, setTodaySaved] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    getWellbeingCheckIns(user.uid)
+      .then((entries) => {
+        if (active) setTodaySaved(entries.some((entry) => entry.localDate === localWellbeingDate()));
+      })
+      .catch(() => {
+        if (active) setTodaySaved(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
   return (
     <Card className="relative overflow-hidden border-primary/20 bg-white dark:bg-card-dark">
       <div className="pointer-events-none absolute -right-14 -top-16 h-44 w-44 rounded-full bg-primary/[0.07]" aria-hidden="true" />
@@ -35,9 +59,12 @@ export default function DashboardWellbeingCard() {
         </div>
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border-light pt-3 dark:border-border-dark">
-          <p className="text-xs leading-5 text-text-secondary">Not ready to talk? A private check-in takes one tap.</p>
+          <p className="inline-flex items-center gap-1.5 text-xs font-semibold leading-5 text-text-secondary">
+            {todaySaved === true && <span className="material-symbols-outlined text-base text-emerald-600" aria-hidden="true">check_circle</span>}
+            {todaySaved === true ? "Today's private check-in is saved." : "Not ready to talk? A private check-in takes one tap."}
+          </p>
           <Link href="/wellbeing" className="inline-flex min-h-11 items-center gap-1 text-sm font-bold text-primary">
-            Check in quietly <span className="material-symbols-outlined text-lg" aria-hidden="true">arrow_forward</span>
+            {todaySaved === true ? "Review or change" : "Check in quietly"} <span className="material-symbols-outlined text-lg" aria-hidden="true">arrow_forward</span>
           </Link>
         </div>
       </div>

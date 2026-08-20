@@ -26,6 +26,8 @@ describe("member wellbeing experience", () => {
     expect(dashboardCard).toContain('href="/chat"');
     expect(dashboardCard).toContain('href="/counsellors"');
     expect(dashboardCard).toContain('href="/wellbeing"');
+    expect(dashboardCard).toContain("Today's private check-in is saved");
+    expect(dashboardCard).toContain("Review or change");
     expect(dashboard).not.toContain("submitWellbeingCheckIn");
     expect(checkIn).toContain("submitWellbeingCheckIn");
     expect(checkIn).toContain("OFFLINE_QUEUE_CHANGE_EVENT");

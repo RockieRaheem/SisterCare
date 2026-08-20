@@ -6,7 +6,7 @@ import {
   connectUserToCounsellor,
   logAgentEvent,
   routeCounsellor,
-  saveCycleData,
+  recordPeriodStart,
   setActiveCounsellorOnConversation,
   getActiveCounsellorForConversation,
   getCounsellors,
@@ -960,11 +960,7 @@ async function postChat(request: NextRequest) {
       );
 
       try {
-        await saveCycleData(userId, {
-          lastPeriodDate: parsedStartDate,
-          nextPeriodDate: nextPeriod,
-          currentPhase: "menstrual",
-        });
+        await recordPeriodStart(userId, parsedStartDate);
 
         cycleData = {
           ...cycleData,

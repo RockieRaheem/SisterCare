@@ -16,6 +16,7 @@ import {
   UserProfile,
 } from "@/types";
 import { calculateNextPeriod, getCurrentPhase } from "./cycle";
+import { completedCycleFromPeriodStart } from "./cycleHistory";
 import {
   DEFAULT_PRIVACY_PREFERENCES,
   normalizeMemberAgeBand,
@@ -171,6 +172,45 @@ export async function updateUserPreferences(uid: string, preferences: Partial<Us
 export async function saveCycleData(uid: string, cycleData: Partial<CycleData>): Promise<void> {
   const existing = await getUserProfile(uid);
   await updateUserProfile(uid, { cycleData: { ...existing?.cycleData, ...cycleData } as CycleData });
+}
+
+export async function recordPeriodStart(
+  uid: string,
+  startDate: Date,
+  settings: Partial<Pick<CycleData, "cycleLength" | "periodLength">> = {},
+): Promise<{ nextPeriodDate: Date; archivedCycle: boolean }> {
+  const existing = await getUserProfile(uid);
+  if (!existing?.cycleData) throw new Error("Cycle setup is required before recording a period start.");
+
+  const completed = completedCycleFromPeriodStart(existing.cycleData, startDate);
+  let archivedCycle = false;
+  if (completed) {
+    const history = await getCycleHistory(uid, 48);
+    const startKey = completed.startDate.toISOString().slice(0, 10);
+    const endKey = completed.endDate?.toISOString().slice(0, 10);
+    const duplicate = history.some(
+      (entry) =>
+        new Date(entry.startDate).toISOString().slice(0, 10) === startKey &&
+        entry.endDate?.toISOString().slice(0, 10) === endKey,
+    );
+    if (!duplicate) {
+      await logCycleHistory(uid, completed);
+      archivedCycle = true;
+    }
+  }
+
+  const cycleLength = settings.cycleLength ?? existing.cycleData.cycleLength;
+  const periodLength = settings.periodLength ?? existing.cycleData.periodLength;
+  const nextPeriodDate = calculateNextPeriod(startDate, cycleLength);
+  const { phase } = getCurrentPhase(startDate, cycleLength, periodLength);
+  await saveCycleData(uid, {
+    lastPeriodDate: startDate,
+    cycleLength,
+    periodLength,
+    nextPeriodDate,
+    currentPhase: phase as CycleData["currentPhase"],
+  });
+  return { nextPeriodDate, archivedCycle };
 }
 
 export async function completeOnboarding(uid: string, lastPeriodDate: Date, cycleLength: number, periodLength: number): Promise<void> {
