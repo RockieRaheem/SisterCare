@@ -120,7 +120,7 @@ export const en = {
     periodUpdateDesc:
       "Your period was expected {days} day(s) ago. Please update when your period started for accurate tracking.",
     updatePeriodDate: "Update Period Date",
-    takeItEasy: "Take It Easy, Queen",
+    takeItEasy: "Period in progress",
     periodDayMessage:
       "Day {day} of your period. Rest, hydrate, and be gentle with yourself. You're doing amazing!",
     timeUntilNextCycle: "Time until next cycle:",

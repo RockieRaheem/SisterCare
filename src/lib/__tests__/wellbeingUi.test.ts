@@ -16,6 +16,7 @@ describe("member wellbeing experience", () => {
   const layout = read("src", "app", "layout.tsx");
   const pushNotifications = read("src", "lib", "pushNotifications.ts");
   const followUpNotifier = read("src", "components", "features", "WellbeingFollowUpNotifier.tsx");
+  const landing = read("src", "app", "page.tsx");
 
   it("opens with private support instead of demanding a daily score", () => {
     expect(dashboard).not.toContain("logSymptoms");
@@ -88,5 +89,12 @@ describe("member wellbeing experience", () => {
     expect(followUpNotifier).toContain("The private follow-up you requested is ready.");
     expect(followUpNotifier).not.toContain("entry.note");
     expect(followUpNotifier).not.toContain("entry.feelings");
+  });
+
+  it("sets an honest mental-health promise before cycle tracking", () => {
+    expect(landing).toContain("Talk about hurt, loss, fear, relationships, harassment");
+    expect(landing).toContain("Check-ins use words, never scores");
+    expect(landing.indexOf("Emotional wellbeing")).toBeLessThan(landing.indexOf("Menstrual support"));
+    expect(landing).not.toContain("Record mood, stress, sleep, and energy");
   });
 });

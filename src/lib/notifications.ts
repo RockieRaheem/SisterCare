@@ -144,7 +144,7 @@ export const generatePeriodReminder = (
       id: `period-tomorrow-${Date.now()}`,
       type: "period_reminder",
       title: "Period Coming Tomorrow 🌷",
-      message: `${greeting}Your period is expected tomorrow. Make sure you have supplies ready and consider wearing dark clothes. You've got this!`,
+      message: `${greeting}Your period is expected tomorrow. You may want to have your usual supplies ready.`,
       daysUntil: 1,
       timestamp: new Date(),
       read: false,

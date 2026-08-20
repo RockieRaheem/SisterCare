@@ -126,7 +126,7 @@ export const lg: TranslationKeys = {
     periodUpdateDesc:
       "Omwezi gwo gwali gusuubiddwa ennaku {days} emabega. Tusaba otutegeeze omwezi gwo lwagutandikira.",
     updatePeriodDate: "Kyusa olunaku lw'omwezi",
-    takeItEasy: "Wewummule, Kabaka",
+    takeItEasy: "Ennaku zo zigenda mu maaso",
     periodDayMessage:
       "Olunaku {day} olw'omwezi gwo. Wewummule, nywa amazzi, era weefunire. Okola bulungi!",
     timeUntilNextCycle: "Obudde okutuka ku mwezi ogujja:",

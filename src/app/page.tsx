@@ -28,7 +28,7 @@ const FEATURES = [
   {
     icon: "psychology",
     title: "Emotional wellbeing",
-    text: "Record mood, stress, sleep, and energy without streaks or judgment, then decide what you want to discuss.",
+    text: "Talk about hurt, loss, fear, relationships, harassment, or any experience that feels difficult to carry alone. Check-ins use words, never scores.",
   },
   {
     icon: "calendar_month",
@@ -74,10 +74,10 @@ export default function Home() {
               </h1>
 
               <p className="mx-auto mb-8 max-w-xl text-lg leading-relaxed text-text-secondary dark:text-gray-400 sm:text-xl lg:mx-0">
-                SisterCare helps girls and women speak freely about
-                menstruation, emotional wellbeing, relationships, and other
-                sensitive concerns without shame. Talk privately, track what
-                matters, or reach a verified counsellor.
+                SisterCare helps girls and women speak freely about emotional
+                pain, relationships, menstruation, and other sensitive concerns
+                without shame. Talk privately, steady a difficult moment, or
+                reach a verified counsellor.
               </p>
 
               <div className="mb-10 flex flex-col justify-center gap-3 sm:flex-row lg:justify-start">
