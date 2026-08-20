@@ -10,17 +10,18 @@ const page = readFileSync(
 describe("member Track experience", () => {
   it("uses private wellbeing check-ins as its primary source", () => {
     expect(page).toContain("getWellbeingCheckIns(user.uid)");
-    expect(page).toContain("Notice patterns, not perfect days");
+    expect(page).toContain("Your private timeline");
     expect(page).toContain("Your emotional timeline");
-    expect(page).toContain("Your recent picture");
     expect(page).not.toContain("SummaryCard");
     expect(page).not.toContain("Mood 1–5");
     expect(page).not.toContain("Average stress");
   });
 
   it("keeps conclusions factual and non-diagnostic", () => {
-    expect(page).toContain("they are not a diagnosis");
-    expect(page).toContain("not clinical conclusions or predictions");
+    expect(page).toContain("does not score, diagnose, or explain your feelings for you");
+    expect(page).not.toContain("Most often");
+    expect(page).not.toContain("What stands out");
+    expect(page).not.toContain("days checked in");
     expect(page).not.toContain("Agent Evaluation Metrics");
     expect(page).not.toContain("High-Risk Flags");
   });

@@ -275,7 +275,7 @@ export default function WellbeingPage() {
           <section className="mt-7 rounded-[26px] border border-border-light bg-white p-4 dark:border-border-dark dark:bg-card-dark sm:p-6">
             <div className="flex items-end justify-between gap-3">
               <div><p className="text-xs font-extrabold uppercase tracking-[0.12em] text-primary">Your week</p><h2 className="mt-1 text-xl font-black text-text-primary dark:text-white">A quiet record, just for you</h2></div>
-              <Link href="/analytics" className="inline-flex min-h-11 shrink-0 items-center gap-1 text-sm font-bold text-primary">Patterns <span className="material-symbols-outlined text-lg" aria-hidden="true">arrow_forward</span></Link>
+              <Link href="/analytics" className="inline-flex min-h-11 shrink-0 items-center gap-1 text-sm font-bold text-primary">Open timeline <span className="material-symbols-outlined text-lg" aria-hidden="true">arrow_forward</span></Link>
             </div>
             {history.length === 0 ? (
               <p className="mt-4 rounded-2xl border border-dashed border-border-light p-5 text-sm leading-6 text-text-secondary dark:border-border-dark">After your first pulse, this becomes a simple emotional timeline—not another task list.</p>

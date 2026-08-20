@@ -10,8 +10,6 @@ import { getSymptoms, getUserProfile } from "@/lib/dataClient";
 import { getWellbeingCheckIns } from "@/lib/wellbeingClient";
 import {
   localWellbeingDate,
-  type WellbeingContext,
-  type WellbeingFeeling,
 } from "@/lib/wellbeing";
 import {
   contextLabel,
@@ -97,22 +95,6 @@ export default function AnalyticsPage() {
     filteredCheckIns[0] ||
     null;
 
-  const feelingCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    filteredCheckIns.forEach((entry) =>
-      (entry.feelings || []).forEach((feeling) => counts.set(feeling, (counts.get(feeling) || 0) + 1)),
-    );
-    return [...counts.entries()].sort((a, b) => b[1] - a[1]);
-  }, [filteredCheckIns]);
-
-  const contextCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    filteredCheckIns.forEach((entry) =>
-      (entry.contexts || []).forEach((context) => counts.set(context, (counts.get(context) || 0) + 1)),
-    );
-    return [...counts.entries()].sort((a, b) => b[1] - a[1]);
-  }, [filteredCheckIns]);
-
   const symptomCounts = useMemo(() => {
     const counts = new Map<string, number>();
     filteredSymptoms.forEach((entry) =>
@@ -132,22 +114,6 @@ export default function AnalyticsPage() {
     };
   }, [profile]);
 
-  const patternNotes = useMemo(() => {
-    if (filteredCheckIns.length < 3) {
-      return ["A few more check-ins will make patterns easier to notice. There is no need to log more than once a day."];
-    }
-    const notes: string[] = [];
-    const difficultFeelings = new Set<WellbeingFeeling>(["anxious", "overwhelmed", "sad", "lonely", "numb"]);
-    const difficultDays = filteredCheckIns.filter((entry) =>
-      (entry.feelings || []).some((feeling) => difficultFeelings.has(feeling)),
-    ).length;
-    const drainedDays = filteredCheckIns.filter((entry) => entry.feelings?.includes("tired")).length;
-    if (difficultDays >= Math.ceil(filteredCheckIns.length / 2)) notes.push("Harder feelings appeared on many of these days. Reaching out early may make them easier to carry.");
-    if (drainedDays >= 2) notes.push("Feeling drained has returned more than once. Notice whether rest, pressure, or something else is affecting your energy.");
-    if (contextCounts[0]) notes.push(`${contextLabel(contextCounts[0][0] as WellbeingContext)} was the context you mentioned most often.`);
-    return notes.length ? notes : ["Your recent check-ins look varied. Open any day below to remember what was happening around it."];
-  }, [contextCounts, filteredCheckIns]);
-
   if (authLoading || loading) return <AppShellSkeleton />;
   if (!user) return null;
 
@@ -158,8 +124,8 @@ export default function AnalyticsPage() {
         <header className="grid gap-5 rounded-3xl bg-[#241429] p-6 text-white shadow-soft-lg sm:p-8 lg:grid-cols-[1fr_auto] lg:items-end">
           <div className="max-w-3xl">
             <span className="inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.16em] text-fuchsia-200"><span className="material-symbols-outlined text-lg" aria-hidden="true">monitoring</span>Your wellbeing</span>
-            <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Notice patterns, not perfect days</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75 sm:text-base">See the feelings and life situations that keep returning. These reflections support self-understanding; they are not a diagnosis.</p>
+            <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Your private timeline</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75 sm:text-base">Return to what you chose to record, in your own words. SisterCare does not score, diagnose, or explain your feelings for you.</p>
           </div>
           <Link href="/wellbeing" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-extrabold text-white shadow-primary-sm"><span className="material-symbols-outlined" aria-hidden="true">edit_note</span>{checkIns[0]?.localDate === today ? "Update today's check-in" : "Check in today"}</Link>
         </header>
@@ -181,21 +147,10 @@ export default function AnalyticsPage() {
           </section>
         ) : (
           <>
-            <section className="mt-6 rounded-3xl border border-border-light bg-white p-5 shadow-soft dark:border-border-dark dark:bg-card-dark sm:p-6">
-              <span className="eyebrow">Your recent picture</span>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <span className="rounded-full bg-background-light px-4 py-2 text-sm font-bold text-text-primary dark:bg-background-dark dark:text-white">{filteredCheckIns.length} {filteredCheckIns.length === 1 ? "day" : "days"} checked in</span>
-                {feelingCounts[0] && <span className="rounded-full bg-primary/[0.07] px-4 py-2 text-sm font-bold text-primary">{feelingDetails(feelingCounts[0][0] as WellbeingFeeling)?.emoji} Most often {feelingDetails(feelingCounts[0][0] as WellbeingFeeling)?.label?.toLowerCase() || feelingCounts[0][0]}</span>}
-                {contextCounts[0] && <span className="rounded-full bg-background-light px-4 py-2 text-sm font-bold text-text-primary dark:bg-background-dark dark:text-white">Often around {contextLabel(contextCounts[0][0] as WellbeingContext).toLowerCase()}</span>}
-              </div>
-              <p className="mt-4 text-xs leading-5 text-text-secondary">This is a private reflection of what you recorded, not a score or diagnosis.</p>
-            </section>
-
             <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(300px,0.6fr)]">
               <div className="rounded-3xl border border-border-light bg-white p-5 shadow-soft dark:border-border-dark dark:bg-card-dark sm:p-6">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div><span className="eyebrow">Daily view</span><h2 className="mt-1 text-xl font-black text-text-primary dark:text-white">Your emotional timeline</h2><p className="mt-1 text-sm text-text-secondary">Tap a day to remember what was happening.</p></div>
-                  <div className="text-xs font-semibold text-text-secondary">{chronological.length} {chronological.length === 1 ? "entry" : "entries"}</div>
                 </div>
                 <div className="mt-6 flex gap-2 overflow-x-auto pb-2">
                   {chronological.map((entry) => {
@@ -216,13 +171,6 @@ export default function AnalyticsPage() {
               {selectedEntry && <CheckInDetail entry={selectedEntry} />}
             </section>
 
-            <section className="mt-6">
-              <div className="rounded-3xl border border-border-light bg-white p-5 shadow-soft dark:border-border-dark dark:bg-card-dark sm:p-6">
-                <span className="eyebrow">Gentle reflection</span><h2 className="mt-1 text-xl font-black text-text-primary dark:text-white">What stands out</h2>
-                <div className="mt-4 space-y-3">{patternNotes.map((note) => <p key={note} className="flex gap-3 rounded-2xl bg-background-light p-4 text-sm leading-6 text-text-secondary dark:bg-background-dark"><span className="material-symbols-outlined mt-0.5 text-lg text-primary" aria-hidden="true">lightbulb</span><span>{note}</span></p>)}</div>
-                <p className="mt-4 text-xs leading-5 text-text-secondary">These are simple summaries of what you recorded—not clinical conclusions or predictions.</p>
-              </div>
-            </section>
           </>
         )}
 
