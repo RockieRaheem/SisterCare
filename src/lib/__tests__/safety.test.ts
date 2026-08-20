@@ -40,6 +40,12 @@ describe("checkForCrisis — self-harm (highest priority)", () => {
     expect(JSON.stringify(CRISIS_RESPONSES)).not.toContain("0414 504 379");
   });
 
+  it("keeps serious safety responses calm and free of cheerful decoration", () => {
+    expect(JSON.stringify(CRISIS_RESPONSES)).not.toMatch(/[💗🌸🎉✨]/u);
+    expect(CRISIS_RESPONSES.selfHarm).toContain("immediate safety");
+    expect(CRISIS_RESPONSES.selfHarm).toContain("immediate danger right now");
+  });
+
   it("keeps the verified Uganda emergency registry current", () => {
     expect(UGANDA_EMERGENCY_RESOURCES.police.number).toBe("999 or 112");
     expect(UGANDA_EMERGENCY_RESOURCES.ambulance.number).toBe("912");

@@ -69,7 +69,7 @@ const CONTEXTUAL_SELF_HARM_SIGNALS = [
 
 // Crisis responses with Uganda-specific resources
 export const CRISIS_RESPONSES = {
-  familyAbuse: `I'm so sorry you're going through this. What you're describing is serious, and I want you to know that it is NOT your fault. You deserve to be safe. 💗
+  familyAbuse: `What you're describing is serious, and it is not your fault. You deserve to be safe.
 
 Immediate help is available in Uganda:
 
@@ -80,11 +80,11 @@ Immediate help is available in Uganda:
 
 What you can do: Tell a trusted adult like a teacher, LC1 chairperson, religious leader, or relative. Go to the nearest police station and ask for the Child and Family Protection Unit. Go to a safe place like a neighbor, church, or mosque if you can.
 
-Please remember: You are brave for speaking up. This is not your fault. Help is available 24/7 in Uganda. You don't have to face this alone.
+Help is available 24/7 in Uganda. You do not have to handle this alone.
 
 Would you like me to help you think through your options for getting help safely?`,
 
-  selfHarm: `I'm really glad you reached out. What you're feeling matters, and I'm concerned about your safety. Please know you're not alone. 💗
+  selfHarm: `I am taking what you said seriously, and I am concerned about your immediate safety.
 
 Please reach out right now in Uganda:
 
@@ -95,9 +95,9 @@ Please reach out right now in Uganda:
 
 You can also reach out to a trusted person like a teacher, religious leader, counselor, or family member.
 
-Your life matters. These feelings can get better with support. There are people in Uganda who care and want to help you through this. Please don't give up. 💗`,
+Move away from anything you could use to hurt yourself and stay with another person if you can. Reply with just one thing: are you in immediate danger right now?`,
 
-  harassment: `I'm sorry this is happening to you. What you're describing is not okay, and it's not your fault. 💗
+  harassment: `What you're describing is not okay, and it is not your fault.
 
 Get help now in Uganda:
 
@@ -110,7 +110,7 @@ Important steps you can take: Document or screenshot any messages for evidence. 
 
 You deserve to feel safe. Would you like to talk more about what's happening?`,
 
-  danger: `Your safety is the top priority. I hear that you're scared, and I want to help. 💗
+  danger: `Your immediate safety comes first.
 
 If you're in immediate danger in Uganda, call the police right away:
 
@@ -122,7 +122,7 @@ You can also go to a safe place like a trusted neighbor's home, church, mosque, 
 
 Can you tell me more about the situation? Is there somewhere safe you can go right now?`,
 
-  generalAbuse: `I'm really concerned about what you've shared. You don't deserve to be treated this way. 💗
+  generalAbuse: `What you shared is serious. You do not deserve to be treated this way.
 
 Please know: This is NOT your fault. You deserve to be safe. Help is available in Uganda.
 
@@ -135,7 +135,7 @@ Resources:
 
 Would you feel comfortable sharing more about what's happening? I want to make sure you get the right help.`,
 
-  violence: `I can hear that you're going through something really difficult right now. 💗 Those feelings of anger and wanting to hurt someone can be overwhelming.
+  violence: `I am taking this seriously. Move away from the person and from anything you could use to hurt them.
 
 But I care about you, and I want to help you find a safer way to deal with this. Hurting someone would have serious consequences for your life and future.
 
@@ -144,7 +144,7 @@ Please reach out to talk to someone right now:
 📞 Sauti 116 Helpline: Call 116 (toll-free, 24/7) - They can help you work through these feelings
 📞 Butabika National Referral Mental Hospital: ${BUTABIKA_CONTACT_TEXT}
 
-Can you tell me more about what's making you feel this way? Sometimes talking about what's hurting us can help us find better solutions. You're not alone in this. 💗`,
+Call Sauti 116 or ask a trusted person to stay with you now. Are you with the person you might hurt right now?`,
 };
 
 export function detectCrisisType(message: string): CrisisType | null {

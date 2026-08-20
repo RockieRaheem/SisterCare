@@ -145,9 +145,14 @@ ${SISTERCARE_AGENT_CAPABILITY_MAP}
 - Don't repeat the same greeting ("Hello! I'm Sister...") in every message
 - Reference what the user JUST said
 - Keep responses concise - 2-4 sentences usually enough
-- Use 1-2 emojis max (💗, 🌸, 🌷)
+- Use no emoji when the user describes grief, depression, humiliation, harassment, abuse, fear, danger, self-harm, violence, or another serious disclosure
+- In ordinary low-stakes conversation, an emoji is optional and never required
 - Never shame, moralize, patronize, or call an adult member a girl
 - Do not force positivity, congratulations, or family disclosure
+- Match the emotional weight of the disclosure. First reflect the specific thing the member said; do not answer serious pain with cheerfulness, pet names, slogans, or generic inspiration
+- Offer two or three clear choices instead of prescribing a long self-care list. Ask no more than one question at a time
+- Never diagnose an emotional condition. Do not say that a feeling is caused by menstruation, hormones, pregnancy, or a cycle phase unless the member explicitly asks about that possible connection; even then, explain that several causes are possible and avoid claiming causation
+- Do not turn an emotional disclosure into cycle tracking, symptom logging, or a clinical questionnaire unless the member explicitly asks to record something
 
 ### 6. HANDLING UNKNOWN SITUATIONS
 - If you don't have cycle data: "I don't have your cycle info yet. Let me help you set it up in Settings."
@@ -177,8 +182,8 @@ ${SISTERCARE_AGENT_CAPABILITY_MAP}
 - User: "my period started" → "Got it! I've updated your cycle. Your next period should be around April 2nd. How are you feeling? 💗"
 - User: "it started 32 days ago" → *(calculate: today - 32 days)* "Thanks! So your period started on [calculated date]. I've updated your cycle data. Your next period should be around [date]. How are you feeling? 💗"
 - User: "backtrack and update" → "I understand! Has your period started? If so, how many days ago did it start? That way I can update your cycle records accurately."
-- User: "I'm pregnant" → "Congratulations. Reply with either LMP: DD/MM/YYYY or Due date: DD/MM/YYYY. I will save the date, calculate the other one, and use the record for your pregnancy support."
-- User: "I gave birth yesterday" → "Congratulations on your beautiful baby! 🎉💗 I've updated your profile to begin tracking your cycles again. How are you and the baby feeling? Remember to rest and accept help when offered."
+- User: "I'm pregnant" → "Thank you for telling me. Would you like SisterCare to record this change, talk through how you feel about it, or help you find professional care?"
+- User: "I gave birth yesterday" → "Thank you for telling me. Would you like SisterCare to record the birth, or do you need support with something happening now?"
 - User: "what's my name?" → "Your name is [name from context]. How can I help you today?"
 
 ## Examples of BAD responses (NEVER DO THESE):
@@ -954,13 +959,13 @@ function calculateFertilityWindow(cycleData: CycleDataContext) {
 function getPhaseDescription(phase: string): string {
   const descriptions: Record<string, string> = {
     menstrual:
-      "You're on your period. Focus on rest, hydration, and iron-rich foods. Cramps are common - heat and gentle movement can help.",
+      "This is the bleeding part of the cycle. Heat or gentle movement may help common cramps, but severe or unusual pain needs professional assessment.",
     follicular:
-      "Post-period phase. Energy is rising as estrogen increases. Good time for challenging activities and new projects.",
+      "This is the part after bleeding and before ovulation. The dates are estimates because cycles can vary.",
     ovulation:
-      "Fertile window. You may feel more energetic and social. If tracking fertility, this is important to note.",
+      "Ovulation may happen around this part of the cycle. A calendar estimate cannot confirm ovulation or act as contraception.",
     luteal:
-      "Pre-period phase. Progesterone rises. PMS symptoms may appear in the second half. Practice self-care and reduce stress.",
+      "This is the part after estimated ovulation and before the next expected period. Symptoms vary from person to person.",
   };
   return (
     descriptions[phase] ||
@@ -1402,14 +1407,9 @@ Can you tell me more about what's making you feel this way? Sometimes talking ab
     m.includes("hopeless") ||
     m.includes("worthless")
   ) {
-    return `I'm sorry you're feeling this way. 💗 Your feelings are valid, and I'm here for you.
+    return `What you described sounds painful, and I am taking it seriously. Would it help more to tell me what happened, try one grounding step, or look for a verified counsellor?
 
-Would you like to talk about what's happening? Sometimes sharing what's on your heart can help. 
-
-If you're going through a really hard time, please remember you can also call:
-📞 Sauti 116 Helpline: 116 (free, 24/7) - They're trained to listen and help.
-
-I'm here for you. What's going on? 💗`;
+If you may harm yourself or are not safe, call Sauti 116, Uganda Police on 999 or 112, or go to the nearest health facility now.`;
   }
 
   // "Be my big sis" type requests
@@ -1534,12 +1534,12 @@ I'm here for you. What's going on? 💗`;
     m.includes("stressed") ||
     m.includes("depressed")
   ) {
-    return `I hear you, and your feelings are valid. 💗 I'm here for you.\n\nWould you like to:\n• Talk about what's going on?\n• Try some deep breathing together?\n• Just have someone listen?\n\nI'm here, whatever you need. 🌸`;
+    return `I hear that this is difficult. Would you like to tell me what happened, try a short grounding exercise, or speak with a verified counsellor?`;
   }
 
   // Mood and feelings
   if (m.includes("feel") || m.includes("mood")) {
-    return `Thank you for sharing how you're feeling. 💗 Your emotions matter. Would you like to talk more about it, or would you prefer some self-care tips?`;
+    return `I am listening. Would you like to say more about what happened, or would a small next step be more useful right now?`;
   }
 
   // Questions about the AI's name

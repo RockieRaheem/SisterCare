@@ -178,54 +178,6 @@ export const generatePeriodReminder = (
   return null; // No notification needed for periods more than 7 days away
 };
 
-// Generate wellness tips based on cycle phase
-export const generatePhaseTip = (
-  phase: string,
-  dayInCycle: number,
-): PeriodNotification | null => {
-  const tips: Record<string, string[]> = {
-    menstrual: [
-      "Rest is productive! Your body is working hard right now. 💤",
-      "Iron-rich foods like spinach and beans can help replenish what you lose. 🥬",
-      "Gentle stretching or yoga can help ease cramps. 🧘‍♀️",
-      "Hot water bottles or heating pads are your best friend! 🔥",
-    ],
-    follicular: [
-      "Energy is rising! Great time to start new projects. ✨",
-      "Your brain is extra sharp now - perfect for learning! 📚",
-      "Social activities feel easier during this phase. 👯‍♀️",
-      "Great time for trying new workout routines! 💪",
-    ],
-    ovulation: [
-      "You're at peak energy! Make the most of it. 🌟",
-      "Communication skills are enhanced - speak your truth! 🗣️",
-      "Skin often glows during ovulation - you're radiant! ✨",
-      "High energy for both work and social activities. 🎉",
-    ],
-    luteal: [
-      "Comfort foods calling? That's normal! Choose wisely. 🍫",
-      "Journaling can help process the emotions that come up. 📝",
-      "Prioritize sleep - your body needs more rest now. 😴",
-      "Magnesium-rich foods can help with PMS symptoms. 🥜",
-    ],
-  };
-
-  const phaseTips = tips[phase.toLowerCase()];
-  if (!phaseTips) return null;
-
-  // Pick a random tip
-  const randomTip = phaseTips[Math.floor(Math.random() * phaseTips.length)];
-
-  return {
-    id: `tip-${phase}-${Date.now()}`,
-    type: "wellness_tip",
-    title: `${phase.charAt(0).toUpperCase() + phase.slice(1)} Phase Tip`,
-    message: randomTip,
-    timestamp: new Date(),
-    read: false,
-  };
-};
-
 // Schedule check for period reminders (to be called on app load)
 export const checkAndNotify = async (
   daysUntilPeriod: number,
