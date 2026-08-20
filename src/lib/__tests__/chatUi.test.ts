@@ -17,9 +17,13 @@ describe("member chat workspace", () => {
     expect(chat).toContain("CHAT_WORKSPACE_NAVIGATION");
     expect(chat).toContain("Go to another SisterCare page");
     expect(chat).toContain("Open chat history and navigation");
+    expect(chat).toContain(">Menu</span>");
+    expect(chat).toContain(">Navigation</p>");
+    expect(chat).toContain(">Chat history</p>");
     expect(chat).toContain("Private support");
     expect(chat.match(/CHAT_WORKSPACE_NAVIGATION\.map/g)).toHaveLength(1);
     expect(chat.match(/>SisterCare</g)).toHaveLength(1);
+    expect(chat).not.toContain("sidebarCollapsed");
   });
 
   it("starts with human concerns instead of presenting itself as a menstrual chatbot", () => {

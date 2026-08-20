@@ -339,7 +339,6 @@ export default function ChatPage() {
   const [voiceRepliesEnabled, setVoiceRepliesEnabled] = useState(false);
   const [voicePlaybackError, setVoicePlaybackError] = useState<string | null>(null);
   const [freshChatId, setFreshChatId] = useState<string | null>(null);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
@@ -770,7 +769,6 @@ export default function ChatPage() {
     const handleKeydown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        setSidebarCollapsed(false);
         setSidebarOpen(true);
         window.setTimeout(() => searchInputRef.current?.focus(), 50);
       }
@@ -1765,10 +1763,11 @@ export default function ChatPage() {
         <div className="flex min-w-0 items-center gap-2.5">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/10 bg-primary/[0.04] text-primary transition-colors hover:bg-primary/10 lg:hidden"
+            className="flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-primary/10 bg-primary/[0.04] px-3 text-primary transition-colors hover:bg-primary/10 lg:hidden"
             aria-label="Open chat history and navigation"
           >
             <span className="material-symbols-outlined text-xl">menu</span>
+            <span className="text-xs font-extrabold">Menu</span>
           </button>
           <div className="min-w-0">
             <span className="block max-w-[11rem] truncate text-sm font-bold text-text-primary dark:text-white sm:max-w-[16rem] lg:max-w-[20rem]">
@@ -1811,14 +1810,14 @@ export default function ChatPage() {
             dark:border-border-dark dark:bg-card-dark
             lg:relative lg:inset-auto lg:shadow-none
             ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
-            ${sidebarCollapsed ? "lg:w-[4.75rem]" : "lg:w-[19rem]"}
+            lg:w-[19rem]
             w-[min(88vw,20rem)]
           `}
         >
           <div className="flex h-full flex-col">
             {/* Sidebar Header */}
-            <div className={`safe-top flex min-h-16 items-center border-b border-primary/10 dark:border-white/[0.06] ${sidebarCollapsed ? "lg:justify-center lg:px-0" : "justify-between px-4"}`}>
-              <div className={`flex items-center gap-2 ${sidebarCollapsed ? "lg:hidden" : "px-1"}`}>
+            <div className="safe-top flex min-h-16 items-center justify-between border-b border-primary/10 px-4 dark:border-white/[0.06]">
+              <div className="flex items-center gap-2 px-1">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-primary-sm">
                   <span className="material-symbols-outlined text-lg text-white">favorite</span>
                 </div>
@@ -1826,17 +1825,9 @@ export default function ChatPage() {
               </div>
               <div className="flex items-center gap-1">
                 <button
-                  onClick={() => setSidebarCollapsed((prev) => !prev)}
-                  className="sidebar-icon-hover inline-flex hidden h-8 w-8 items-center justify-center rounded-lg text-text-secondary dark:text-gray-400 lg:flex"
-                  title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-                >
-                  <span className="material-symbols-outlined text-sm">
-                    {sidebarCollapsed ? "keyboard_double_arrow_right" : "keyboard_double_arrow_left"}
-                  </span>
-                </button>
-                <button
                   onClick={() => setSidebarOpen(false)}
                   className="sidebar-icon-hover flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary dark:text-gray-400 lg:hidden"
+                  aria-label="Close menu"
                 >
                   <span className="material-symbols-outlined text-sm">close</span>
                 </button>
@@ -1850,26 +1841,21 @@ export default function ChatPage() {
                 <button
                   onClick={handleNewChat}
                   disabled={actionLoading === "new"}
-                  className={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-sm font-bold text-white shadow-primary-sm transition-all duration-200 hover:bg-primary-dark disabled:opacity-50 ${sidebarCollapsed ? "lg:mx-auto lg:h-10 lg:w-10 lg:px-0" : "px-3"}`}
+                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-sm font-bold text-white shadow-primary-sm transition-all duration-200 hover:bg-primary-dark disabled:opacity-50"
                 >
                   {actionLoading === "new" ? (
                     <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                   ) : (
                     <>
                       <span className="material-symbols-outlined text-lg">add_comment</span>
-                      <span className={sidebarCollapsed ? "lg:hidden" : ""}>New conversation</span>
+                      <span>New conversation</span>
                     </>
                   )}
                 </button>
-                {sidebarCollapsed && (
-                  <div className="sidebar-tooltip pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 rounded-lg bg-gray-900 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-all duration-200 group-hover:opacity-100 dark:bg-gray-700 whitespace-nowrap">
-                    New chat
-                  </div>
-                )}
               </div>
 
               {/* Search */}
-              <div className={`${sidebarCollapsed ? "lg:hidden" : ""}`}>
+              <div>
                 <div className="relative">
                   <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-text-secondary/60 dark:text-gray-500">
                     search
@@ -1886,17 +1872,24 @@ export default function ChatPage() {
               </div>
             </div>
 
-            <nav className={`mx-3 mb-3 grid grid-cols-2 gap-1 rounded-2xl border border-primary/10 bg-primary/[0.025] p-1.5 ${sidebarCollapsed ? "lg:hidden" : ""}`} aria-label="Go to another SisterCare page">
-              {CHAT_WORKSPACE_NAVIGATION.map((item) => (
-                <Link key={item.href} href={item.href} onClick={() => setSidebarOpen(false)} className="flex min-h-10 items-center gap-2 rounded-xl px-2.5 text-xs font-bold text-text-secondary transition-colors hover:bg-white hover:text-primary hover:shadow-sm dark:hover:bg-white/[0.06]">
-                  <span className="material-symbols-outlined text-base text-primary" aria-hidden="true">{item.icon}</span>
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
+            <div className="mx-3 mb-3">
+              <p className="mb-1.5 px-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-text-secondary/70">Navigation</p>
+              <nav className="grid grid-cols-2 gap-1 rounded-2xl border border-primary/10 bg-primary/[0.025] p-1.5" aria-label="Go to another SisterCare page">
+                {CHAT_WORKSPACE_NAVIGATION.map((item) => (
+                  <Link key={item.href} href={item.href} onClick={() => setSidebarOpen(false)} className="flex min-h-10 items-center gap-2 rounded-xl px-2.5 text-xs font-bold text-text-secondary transition-colors hover:bg-white hover:text-primary hover:shadow-sm dark:hover:bg-white/[0.06]">
+                    <span className="material-symbols-outlined text-base text-primary" aria-hidden="true">{item.icon}</span>
+                    {item.label}
+                  </Link>
+                ))}
+              </nav>
+            </div>
 
             {/* Conversations List */}
-            <div className={`custom-scrollbar flex-1 overflow-y-auto px-1.5 py-1 ${sidebarCollapsed ? "lg:hidden" : ""}`}>
+            <div className="flex items-center justify-between px-4 pb-1 pt-0.5">
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-text-secondary/70">Chat history</p>
+              <span className="rounded-full bg-primary/[0.07] px-2 py-0.5 text-[10px] font-bold text-primary" aria-label={`${conversations.length} saved conversations`}>{conversations.length}</span>
+            </div>
+            <div className="custom-scrollbar flex-1 overflow-y-auto px-1.5 py-1">
               {pinnedConversations.length === 0 &&
               Object.keys(groupedConversations).length === 0 ? (
                 <div className="flex flex-col items-center px-4 py-12 text-center">
@@ -1946,27 +1939,8 @@ export default function ChatPage() {
               )}
             </div>
 
-            {/* Bottom: collapsed sidebar search shortcut */}
-            <div className={`border-t border-black/[0.04] dark:border-white/[0.06] ${sidebarCollapsed ? "lg:block" : "hidden"}`}>
-              {/* Search button — replaces the down arrow when collapsed */}
-              <div className="relative group flex justify-center px-1.5 py-1">
-                <button
-                  onClick={() => {
-                    setSidebarCollapsed(false);
-                    setTimeout(() => searchInputRef.current?.focus(), 100);
-                  }}
-                  className="sidebar-icon-hover flex h-9 w-9 items-center justify-center rounded-xl text-text-secondary dark:text-gray-400"
-                >
-                  <span className="material-symbols-outlined text-sm">search</span>
-                </button>
-                <div className="sidebar-tooltip pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 rounded-lg bg-gray-900 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-all duration-200 group-hover:opacity-100 dark:bg-gray-700 whitespace-nowrap">
-                  Search conversations
-                </div>
-              </div>
-            </div>
-
             {/* Bottom profile */}
-            <div className={`border-t border-black/[0.04] p-1.5 dark:border-white/[0.06] ${sidebarCollapsed ? "lg:border-t-0" : ""}`}>
+            <div className="border-t border-black/[0.04] p-1.5 dark:border-white/[0.06]">
               {profileMenuOpen && (
                 <div className="absolute bottom-full left-2 right-2 z-20 mb-1.5 overflow-hidden rounded-xl border border-black/[0.06] bg-white py-1 shadow-lg dark:border-white/10 dark:bg-gray-800">
                   <Link
@@ -1996,30 +1970,23 @@ export default function ChatPage() {
                   </button>
                 </div>
               )}
-              <div className={`relative group ${sidebarCollapsed ? "lg:flex lg:justify-center" : ""}`}>
+              <div className="relative group">
                 <button
                   onClick={() => setProfileMenuOpen((prev) => !prev)}
-                  className={`sidebar-icon-hover flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left ${
-                    sidebarCollapsed ? "lg:justify-center lg:w-9 lg:h-9 lg:px-0" : ""
-                  }`}
+                  className="sidebar-icon-hover flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left"
                 >
                   <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-white">
                     {user?.displayName?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || "U"}
                   </div>
-                  <div className={`min-w-0 flex-1 ${sidebarCollapsed ? "lg:hidden" : ""}`}>
+                  <div className="min-w-0 flex-1">
                     <p className="truncate text-[11px] font-medium text-text-primary dark:text-white">
                       {user?.displayName || user?.email?.split("@")[0] || "User"}
                     </p>
                   </div>
-                  <span className={`material-symbols-outlined text-xs text-text-secondary/60 dark:text-gray-500 ${sidebarCollapsed ? "lg:hidden" : ""}`}>
+                  <span className="material-symbols-outlined text-xs text-text-secondary/60 dark:text-gray-500">
                     {profileMenuOpen ? "expand_less" : "expand_more"}
                   </span>
                 </button>
-                {sidebarCollapsed && (
-                  <div className="sidebar-tooltip pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 rounded-lg bg-gray-900 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-all duration-200 group-hover:opacity-100 dark:bg-gray-700 whitespace-nowrap">
-                    {user?.displayName || user?.email?.split("@")[0] || "User"}
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -2031,15 +1998,6 @@ export default function ChatPage() {
           <div className="shrink-0 border-b border-primary/10 bg-white/90 px-3 py-2 backdrop-blur-xl dark:border-white/[0.06] dark:bg-card-dark/90 sm:px-5">
             <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-2">
-                {sidebarCollapsed && (
-                  <button
-                    onClick={() => setSidebarCollapsed(false)}
-                    className="hidden h-9 w-9 items-center justify-center rounded-xl text-text-secondary transition-colors hover:bg-primary/[0.06] hover:text-primary lg:flex"
-                    aria-label="Expand chat history"
-                  >
-                    <span className="material-symbols-outlined text-lg">dock_to_right</span>
-                  </button>
-                )}
                 <span className="material-symbols-outlined text-lg text-primary" aria-hidden="true">shield_lock</span>
                 <div className="min-w-0">
                   <p className="truncate text-xs font-bold text-text-primary dark:text-white">Private conversation</p>
