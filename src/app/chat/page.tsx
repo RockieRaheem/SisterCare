@@ -121,6 +121,13 @@ const CHAT_LANGUAGE_OPTIONS: SupportedLanguageCode[] = [
 ];
 const MAX_MESSAGE_LENGTH = 2000;
 
+const CHAT_WORKSPACE_NAVIGATION = [
+  { href: "/dashboard", icon: "home", label: "Home" },
+  { href: "/analytics", icon: "timeline", label: "Track" },
+  { href: "/counsellors", icon: "support_agent", label: "Counsellors" },
+  { href: "/library", icon: "menu_book", label: "Library" },
+] as const;
+
 function parseConversation(payload: Record<string, unknown>): ChatConversation {
   return {
     id: String(payload.id || ""),
@@ -1704,7 +1711,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="fixed inset-x-0 top-0 z-40 flex h-[calc(100dvh-var(--bottom-nav-height)-env(safe-area-inset-bottom))] flex-col overflow-hidden overscroll-none bg-background-light dark:bg-background-dark md:static md:h-screen">
+    <div className="fixed inset-0 z-40 flex h-[100dvh] flex-col overflow-hidden overscroll-none bg-[#fff8fc] dark:bg-background-dark md:static md:h-screen">
       {/* Delete Confirmation Modal */}
       {deleteModalId && (
         <div
@@ -1750,65 +1757,71 @@ export default function ChatPage() {
       )}
 
       {/* Top Navigation Bar */}
-      <header className="safe-top flex h-16 shrink-0 items-center justify-between border-b border-border-light bg-white/95 px-3 backdrop-blur dark:border-border-dark dark:bg-card-dark/95 sm:px-4">
-        <div className="flex items-center gap-3">
+      <header className="safe-top relative z-40 flex min-h-16 shrink-0 items-center justify-between border-b border-primary/10 bg-white/95 px-3 shadow-[0_1px_0_rgba(255,0,255,0.04)] backdrop-blur-xl dark:border-border-dark dark:bg-card-dark/95 sm:px-5">
+        <div className="flex min-w-0 items-center gap-2.5">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-text-secondary transition-colors hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06] lg:hidden"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/10 bg-primary/[0.04] text-primary transition-colors hover:bg-primary/10 lg:hidden"
+            aria-label="Open chat history and navigation"
           >
             <span className="material-symbols-outlined text-xl">menu</span>
           </button>
-          <Link href="/dashboard" className="flex items-center gap-2">
+          <Link href="/dashboard" className="hidden items-center gap-2 sm:flex" aria-label="SisterCare home">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-primary-sm">
               <span className="material-symbols-outlined text-[18px] text-white">favorite</span>
             </div>
-            <span className="hidden text-sm font-semibold text-text-primary dark:text-white sm:inline">
+            <span className="text-sm font-extrabold text-text-primary dark:text-white">
               SisterCare
             </span>
           </Link>
-          <div className="ml-1 hidden h-4 w-px bg-black/[0.08] dark:bg-white/[0.1] sm:block" />
-          <div className="min-w-0 items-center gap-2 sm:flex">
-            <span className="status-dot" />
-            <span className="block max-w-[10rem] truncate text-sm font-semibold text-text-primary dark:text-white sm:max-w-none">
+          <div className="hidden h-5 w-px bg-primary/15 sm:block" />
+          <div className="min-w-0">
+            <span className="block max-w-[11rem] truncate text-sm font-bold text-text-primary dark:text-white sm:max-w-[16rem] lg:max-w-[20rem]">
               {activeConversationTitle}
+            </span>
+            <span className="flex items-center gap-1.5 text-[10px] font-semibold text-text-secondary">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+              Private support
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
+          <nav className="mr-1 hidden items-center gap-1 lg:flex" aria-label="SisterCare pages">
+            {CHAT_WORKSPACE_NAVIGATION.map((item) => (
+              <Link key={item.href} href={item.href} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl px-3 text-xs font-bold text-text-secondary transition-colors hover:bg-primary/[0.06] hover:text-primary">
+                <span className="material-symbols-outlined text-base" aria-hidden="true">{item.icon}</span>
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+          <Link
+            href="/counsellors"
+            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-primary px-3 text-xs font-bold text-white shadow-primary-sm lg:hidden"
+            aria-label="Talk to a counsellor"
+          >
+            <span className="material-symbols-outlined text-lg" aria-hidden="true">support_agent</span>
+            <span className="hidden sm:inline">Counsellors</span>
+          </Link>
           <Link
             href={`/report?type=ai_response&targetId=${encodeURIComponent(activeConversationId || "")}`}
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-text-secondary transition-colors hover:bg-black/[0.05] hover:text-red-600 dark:text-gray-400 dark:hover:bg-white/[0.06]"
+            className="flex h-10 w-10 items-center justify-center rounded-xl text-text-secondary transition-colors hover:bg-red-50 hover:text-red-600 dark:text-gray-400 dark:hover:bg-red-950/30"
             title="Report a concern"
             aria-label="Report a concern about this conversation"
           >
             <span className="material-symbols-outlined text-xl">report</span>
           </Link>
-          <Link
-            href="/library"
-            className="hidden h-9 w-9 items-center justify-center rounded-xl text-text-secondary transition-colors hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06] sm:flex"
-            title="Health Library"
-          >
-            <span className="material-symbols-outlined text-xl">menu_book</span>
-          </Link>
-          <Link
-            href="/dashboard"
-            className="hidden h-9 w-9 items-center justify-center rounded-xl text-text-secondary transition-colors hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.06] sm:flex"
-            title="Dashboard"
-          >
-            <span className="material-symbols-outlined text-xl">dashboard</span>
-          </Link>
-          <div className="ml-1 flex items-center">
+          <Link href="/profile" className="ml-0.5 flex items-center" aria-label="Open profile">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-white">
               {user?.displayName?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || "U"}
             </div>
-          </div>
+          </Link>
         </div>
       </header>
 
       <div className="flex min-h-0 flex-1 overflow-hidden overscroll-none">
         {/* Sidebar Overlay */}
         <div
-          className={`fixed inset-0 z-30 bg-black/30 backdrop-blur-sm transition-opacity duration-200 lg:hidden ${
+          className={`fixed inset-0 z-50 bg-black/35 backdrop-blur-sm transition-opacity duration-200 lg:hidden ${
             sidebarOpen ? "opacity-100" : "pointer-events-none opacity-0"
           }`}
           onClick={() => setSidebarOpen(false)}
@@ -1817,27 +1830,25 @@ export default function ChatPage() {
         {/* Sidebar — reduced width */}
         <aside
           className={`
-            fixed bottom-[calc(var(--bottom-nav-height)+env(safe-area-inset-bottom))] left-0 top-16 z-40 flex min-h-0 flex-col
-            border-r border-black/[0.05] bg-white
+            fixed inset-y-0 left-0 z-[60] flex min-h-0 flex-col
+            border-r border-primary/10 bg-white
             shadow-xl shadow-black/5
             transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]
             dark:border-border-dark dark:bg-card-dark
             lg:relative lg:inset-auto lg:shadow-none
             ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
-            ${sidebarCollapsed ? "lg:w-[4.5rem]" : "lg:w-64"}
-            w-72
+            ${sidebarCollapsed ? "lg:w-[4.75rem]" : "lg:w-[19rem]"}
+            w-[min(88vw,20rem)]
           `}
         >
           <div className="flex h-full flex-col">
             {/* Sidebar Header */}
-            <div className={`flex items-center border-b border-black/[0.04] dark:border-white/[0.06] ${sidebarCollapsed ? "lg:justify-center lg:px-0" : "justify-between px-3"} py-2.5`}>
+            <div className={`safe-top flex min-h-16 items-center border-b border-primary/10 dark:border-white/[0.06] ${sidebarCollapsed ? "lg:justify-center lg:px-0" : "justify-between px-4"}`}>
               <div className={`flex items-center gap-2 ${sidebarCollapsed ? "lg:hidden" : "px-1"}`}>
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary">
-                  <span className="material-symbols-outlined text-sm text-white">spa</span>
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-primary-sm">
+                  <span className="material-symbols-outlined text-lg text-white">favorite</span>
                 </div>
-                <span className="text-xs font-semibold text-text-primary dark:text-white">
-                  Conversations
-                </span>
+                <div><span className="block text-sm font-extrabold text-text-primary dark:text-white">SisterCare</span><span className="block text-[10px] font-semibold text-text-secondary">Private conversations</span></div>
               </div>
               <div className="flex items-center gap-1">
                 <button
@@ -1859,20 +1870,20 @@ export default function ChatPage() {
             </div>
 
             {/* New Chat + Search */}
-            <div className="space-y-1 px-2 pb-2 pt-2.5">
+            <div className="space-y-2 px-3 pb-3 pt-3">
               {/* New chat button */}
               <div className="relative group">
                 <button
                   onClick={handleNewChat}
                   disabled={actionLoading === "new"}
-                  className={`sidebar-icon-hover inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary/10 py-2 text-xs font-medium text-primary transition-all duration-200 hover:bg-primary/20 disabled:opacity-50 dark:bg-primary/15 dark:text-primary-light dark:hover:bg-primary/25 ${sidebarCollapsed ? "lg:mx-auto lg:w-9 lg:h-9 lg:rounded-xl lg:px-0" : "px-3"}`}
+                  className={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-sm font-bold text-white shadow-primary-sm transition-all duration-200 hover:bg-primary-dark disabled:opacity-50 ${sidebarCollapsed ? "lg:mx-auto lg:h-10 lg:w-10 lg:px-0" : "px-3"}`}
                 >
                   {actionLoading === "new" ? (
                     <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                   ) : (
                     <>
-                      <span className="material-symbols-outlined text-sm">add</span>
-                      <span className={sidebarCollapsed ? "lg:hidden" : ""}>New</span>
+                      <span className="material-symbols-outlined text-lg">add_comment</span>
+                      <span className={sidebarCollapsed ? "lg:hidden" : ""}>New conversation</span>
                     </>
                   )}
                 </button>
@@ -1894,12 +1905,21 @@ export default function ChatPage() {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search..."
-                    className="w-full rounded-xl border border-transparent bg-black/[0.04] py-2 pl-8 pr-3 text-xs text-text-primary placeholder:text-text-secondary/50 transition-colors focus:border-primary/30 focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary/20 dark:bg-white/[0.05] dark:text-white dark:focus:bg-white/[0.07]"
+                    placeholder="Search conversations"
+                    className="min-h-10 w-full rounded-xl border border-primary/10 bg-primary/[0.035] py-2 pl-8 pr-3 text-xs text-text-primary placeholder:text-text-secondary/60 transition-colors focus:border-primary/30 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/10 dark:bg-white/[0.05] dark:text-white dark:focus:bg-white/[0.07]"
                   />
                 </div>
               </div>
             </div>
+
+            <nav className={`mx-3 mb-3 grid grid-cols-2 gap-1 rounded-2xl border border-primary/10 bg-primary/[0.025] p-1.5 ${sidebarCollapsed ? "lg:hidden" : ""}`} aria-label="Go to another SisterCare page">
+              {CHAT_WORKSPACE_NAVIGATION.map((item) => (
+                <Link key={item.href} href={item.href} onClick={() => setSidebarOpen(false)} className="flex min-h-10 items-center gap-2 rounded-xl px-2.5 text-xs font-bold text-text-secondary transition-colors hover:bg-white hover:text-primary hover:shadow-sm dark:hover:bg-white/[0.06]">
+                  <span className="material-symbols-outlined text-base text-primary" aria-hidden="true">{item.icon}</span>
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
 
             {/* Conversations List */}
             <div className={`custom-scrollbar flex-1 overflow-y-auto px-1.5 py-1 ${sidebarCollapsed ? "lg:hidden" : ""}`}>

@@ -17,6 +17,7 @@ export default function BottomNav() {
     "/about",
     "/auth/login",
     "/auth/signup",
+    "/chat",
     "/help",
     "/onboarding",
     "/privacy",
