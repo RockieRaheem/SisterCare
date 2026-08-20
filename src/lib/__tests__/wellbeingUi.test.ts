@@ -13,6 +13,8 @@ describe("member wellbeing experience", () => {
   const dashboardCard = read("src", "components", "features", "DashboardWellbeingCard.tsx");
   const careChoices = read("src", "components", "features", "WellbeingCareChoices.tsx");
   const grounding = read("src", "components", "features", "WellbeingGrounding.tsx");
+  const layout = read("src", "app", "layout.tsx");
+  const pushNotifications = read("src", "lib", "pushNotifications.ts");
 
   it("opens with private support instead of demanding a daily score", () => {
     expect(dashboard).not.toContain("logSymptoms");
@@ -68,5 +70,12 @@ describe("member wellbeing experience", () => {
     expect(picker).toContain("Choose the feeling closest to today");
     expect(checkIn).toContain("A quiet record, just for you");
     expect(dashboard.indexOf("DashboardWellbeingCard")).toBeLessThan(dashboard.indexOf("Timer & Status Section"));
+  });
+
+  it("does not pressure members with automatic emotional check-in reminders", () => {
+    expect(layout).not.toContain("WellbeingReminder");
+    expect(pushNotifications).not.toContain("scheduleDailyWellnessCheck");
+    expect(pushNotifications).not.toContain("dailyWellnessCheck");
+    expect(pushNotifications).not.toContain("Your daily check-in awaits");
   });
 });

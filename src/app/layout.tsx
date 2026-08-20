@@ -7,7 +7,6 @@ import BottomNav from "@/components/layout/BottomNav";
 import OfflineIndicator from "@/components/ui/OfflineIndicator";
 import WorkspaceBoundary from "@/components/auth/WorkspaceBoundary";
 import SessionNotifier from "@/components/features/SessionNotifier";
-import WellbeingReminder from "@/components/features/WellbeingReminder";
 import InstallAppPrompt from "@/components/features/InstallAppPrompt";
 import SharedDevicePrivacyGuard from "@/components/auth/SharedDevicePrivacyGuard";
 
@@ -157,7 +156,6 @@ export default function RootLayout({
             <LanguageProvider>
               <OfflineIndicator />
               <SessionNotifier />
-              <WellbeingReminder />
               <InstallAppPrompt />
               <SharedDevicePrivacyGuard />
               <div className="flex flex-col min-h-screen">

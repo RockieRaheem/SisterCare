@@ -19,8 +19,6 @@ export interface ScheduledReminder {
 export interface ReminderSettings {
   periodReminder: boolean;
   periodReminderDays: number; // days before period
-  dailyWellnessCheck: boolean;
-  wellnessCheckTime: string; // HH:MM format
   hydrationReminder: boolean;
   hydrationInterval: number; // hours
   enabled: boolean;
@@ -29,8 +27,6 @@ export interface ReminderSettings {
 const DEFAULT_SETTINGS: ReminderSettings = {
   periodReminder: true,
   periodReminderDays: 3,
-  dailyWellnessCheck: true,
-  wellnessCheckTime: "09:00",
   hydrationReminder: false,
   hydrationInterval: 2,
   enabled: true,
@@ -191,38 +187,6 @@ export function schedulePeriodReminder(
 }
 
 /**
- * Schedule daily wellness check
- */
-export function scheduleDailyWellnessCheck(time: string = "09:00"): void {
-  const [hours, minutes] = time.split(":").map(Number);
-
-  const now = new Date();
-  const scheduledTime = new Date();
-  scheduledTime.setHours(hours, minutes, 0, 0);
-
-  // If time has passed today, schedule for tomorrow
-  if (scheduledTime <= now) {
-    scheduledTime.setDate(scheduledTime.getDate() + 1);
-  }
-
-  const delay = scheduledTime.getTime() - now.getTime();
-
-  const tips = [
-    "How are you feeling today? Take a moment to log your mood and symptoms. 💗",
-    "Good morning! Remember to stay hydrated and take care of yourself today. 🌸",
-    "Start your day with intention. How's your energy level? Log it! ✨",
-    "Your daily check-in awaits! Tracking helps you understand your body better. 📊",
-  ];
-
-  const body = tips[Math.floor(Math.random() * tips.length)];
-
-  scheduleNotification("Daily Wellness Check 🌟", body, delay, {
-    tag: "wellness-check",
-    url: "/dashboard",
-  });
-}
-
-/**
  * Get reminder settings from localStorage
  */
 export function getReminderSettings(userId?: string): ReminderSettings {
@@ -344,11 +308,7 @@ export async function initializePushNotifications(
   // Get user settings
   const settings = getReminderSettings(userId);
 
-  // If notifications are enabled and we have permission
-  if (settings.enabled && Notification.permission === "granted") {
-    // Schedule daily wellness check if enabled
-    if (settings.dailyWellnessCheck) {
-      scheduleDailyWellnessCheck(settings.wellnessCheckTime);
-    }
-  }
+  // SisterCare never schedules emotional check-ins automatically. Only
+  // reminders explicitly requested by the member are allowed here.
+  void settings;
 }
