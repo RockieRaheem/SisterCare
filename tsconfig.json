@@ -1,4 +1,5 @@
 {
+  // Shared compile-time guarantees for the SisterCare application.
   "compilerOptions": {
     "lib": [
       "dom",
