@@ -50,7 +50,7 @@ describe("member wellbeing experience", () => {
     expect(presentation).toContain('value: "talk_to_someone"');
     expect(checkIn).toContain("choose up to three");
     expect(checkIn).toContain("Add to my private check-in");
-    expect(checkIn.indexOf("What would help right now?")).toBeLessThan(checkIn.indexOf("<WellbeingPulsePicker selected"));
+    expect(checkIn.indexOf("Choose support for this moment")).toBeLessThan(checkIn.indexOf("<WellbeingPulsePicker selected"));
   });
 
   it("makes repeat activity an edit to today's reflection", () => {
@@ -60,7 +60,7 @@ describe("member wellbeing experience", () => {
   });
 
   it("does not require four scoring scales", () => {
-    expect(checkIn).toContain("Nothing here is a test");
+    expect(checkIn).toContain("No scores or streaks");
     expect(checkIn).not.toContain("SCORE_AREAS");
     expect(checkIn).not.toContain("Overall mood");
   });
@@ -70,8 +70,16 @@ describe("member wellbeing experience", () => {
     expect(picker).toContain("sm:grid-cols-6");
     expect(picker).toContain("aria-pressed");
     expect(picker).toContain("Choose the feeling closest to today");
-    expect(checkIn).toContain("A quiet record, just for you");
+    expect(checkIn).toContain("Look back without being scored");
     expect(dashboard.indexOf("DashboardWellbeingCard")).toBeLessThan(dashboard.indexOf("Timer & Status Section"));
+  });
+
+  it("explains the value and privacy of every wellbeing section", () => {
+    expect(checkIn).toContain("Start with what you need—not a questionnaire");
+    expect(checkIn).toContain("No scores or streaks");
+    expect(checkIn).toContain("Nothing is saved just because you open one of these options");
+    expect(checkIn).toContain("Or save one word for today");
+    expect(checkIn).toContain("This timeline repeats only what you chose to save");
   });
 
   it("does not pressure members with automatic emotional check-in reminders", () => {

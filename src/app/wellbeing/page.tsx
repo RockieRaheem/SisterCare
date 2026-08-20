@@ -186,23 +186,37 @@ export default function WellbeingPage() {
       <Header variant="app" />
       <main className="main-content pb-28 md:pb-12">
         <div className="mx-auto w-full max-w-4xl px-3 pb-8 pt-4 sm:px-6 sm:pt-8">
-          <header className="px-1 sm:text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/[0.05] px-3 py-1.5 text-xs font-bold text-primary">
+          <header className="overflow-hidden rounded-[28px] bg-[#241429] p-5 text-white shadow-soft-lg sm:p-8">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold text-white">
               <span className="material-symbols-outlined text-base" aria-hidden="true">lock</span>
-              Private wellbeing space
+              Your private wellbeing space
             </div>
-            <h1 className="mt-4 text-[2rem] font-black leading-tight tracking-[-0.045em] text-text-primary dark:text-white sm:text-4xl">What would help right now?</h1>
-            <p className="mt-2 text-sm leading-6 text-text-secondary sm:text-base">You can talk, pause, reach a person, or simply name the feeling. Nothing here is a test.</p>
+            <h1 className="mt-4 max-w-2xl text-[2rem] font-black leading-tight tracking-[-0.045em] sm:text-4xl">Start with what you need—not a questionnaire.</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75 sm:text-base">Talk about what happened, steady a difficult moment, reach a verified person, or leave one private word for later.</p>
+            <div className="mt-5 flex flex-wrap gap-2 text-[11px] font-bold text-white/80">
+              {[
+                ["check_circle", "No scores or streaks"],
+                ["visibility_off", "Private by default"],
+                ["tune", "You choose the next step"],
+              ].map(([icon, label]) => (
+                <span key={label} className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-2"><span className="material-symbols-outlined text-sm text-primary-light" aria-hidden="true">{icon}</span>{label}</span>
+              ))}
+            </div>
           </header>
 
           <section className="mt-5 rounded-[26px] border border-primary/15 bg-white p-4 shadow-soft dark:border-primary/25 dark:bg-card-dark sm:p-6">
+            <div className="mb-4 flex items-start gap-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-black text-white">1</span>
+              <div><h2 className="text-lg font-black text-text-primary dark:text-white">Choose support for this moment</h2><p className="mt-1 text-xs leading-5 text-text-secondary">Nothing is saved just because you open one of these options.</p></div>
+            </div>
             <WellbeingCareChoices />
           </section>
 
           <section className="mt-4 rounded-[26px] border border-border-light bg-background-light p-3 shadow-soft dark:border-border-dark dark:bg-background-dark sm:p-5">
-            <div className="mb-4 px-1">
-              <h2 className="text-lg font-black text-text-primary dark:text-white">If words feel difficult, start here</h2>
-              <p className="mt-1 text-xs leading-5 text-text-secondary">Choose one feeling. It saves as a private note for today, and you can edit it later.</p>
+            <div className="mb-4 flex items-start gap-3 px-1">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-primary/25 bg-white text-sm font-black text-primary dark:bg-card-dark">2</span>
+              <div><h2 className="text-lg font-black text-text-primary dark:text-white">Or save one word for today</h2>
+              <p className="mt-1 text-xs leading-5 text-text-secondary">Useful when talking feels difficult. Choose one feeling now; edit or add context only if you want to.</p></div>
             </div>
             <WellbeingPulsePicker selected={selectedFeeling} busy={busy} onSelect={(feeling) => void persist(feeling)} />
             <div className="mt-3 flex min-h-6 items-center justify-center gap-2 text-center text-xs font-semibold text-text-secondary" aria-live="polite">
@@ -216,7 +230,7 @@ export default function WellbeingPage() {
                 <div className="flex items-start gap-4">
                   <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary/[0.08] text-3xl" aria-hidden="true">{selectedDetails?.emoji || "♡"}</div>
                   <div className="min-w-0">
-                    <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-primary">Today feels {selectedDetails?.label?.toLowerCase() || "noted"}</p>
+                     <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-primary">Your check-in today · {selectedDetails?.label?.toLowerCase() || "noted"}</p>
                     <h2 className="mt-1 text-xl font-black leading-tight text-text-primary dark:text-white">{support.title}</h2>
                     <p className="mt-2 text-sm leading-6 text-text-secondary">{support.message}</p>
                   </div>
@@ -274,7 +288,7 @@ export default function WellbeingPage() {
 
           <section className="mt-7 rounded-[26px] border border-border-light bg-white p-4 dark:border-border-dark dark:bg-card-dark sm:p-6">
             <div className="flex items-end justify-between gap-3">
-              <div><p className="text-xs font-extrabold uppercase tracking-[0.12em] text-primary">Your week</p><h2 className="mt-1 text-xl font-black text-text-primary dark:text-white">A quiet record, just for you</h2></div>
+               <div><p className="text-xs font-extrabold uppercase tracking-[0.12em] text-primary">Only when useful</p><h2 className="mt-1 text-xl font-black text-text-primary dark:text-white">Look back without being scored</h2><p className="mt-1 text-xs leading-5 text-text-secondary">This timeline repeats only what you chose to save. It does not diagnose or judge you.</p></div>
               <Link href="/analytics" className="inline-flex min-h-11 shrink-0 items-center gap-1 text-sm font-bold text-primary">Open timeline <span className="material-symbols-outlined text-lg" aria-hidden="true">arrow_forward</span></Link>
             </div>
             {history.length === 0 ? (
