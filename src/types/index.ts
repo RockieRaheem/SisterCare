@@ -248,6 +248,8 @@ export interface WellbeingCheckIn {
   contexts?: import("@/lib/wellbeing").WellbeingContext[];
   supportNeed?: import("@/lib/wellbeing").WellbeingSupportNeed;
   note?: string;
+  followUpAt?: string;
+  followUpDeliveredAt?: string;
   createdAt: Date;
   updatedAt?: Date;
 }

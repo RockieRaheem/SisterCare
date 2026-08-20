@@ -75,6 +75,11 @@ const serialize = (row: Record<string, unknown>) => {
     supportNeed:
       typeof payload.supportNeed === "string" ? payload.supportNeed : undefined,
     note: typeof payload.note === "string" ? payload.note : undefined,
+    followUpAt: typeof payload.followUpAt === "string" ? payload.followUpAt : undefined,
+    followUpDeliveredAt:
+      typeof payload.followUpDeliveredAt === "string"
+        ? payload.followUpDeliveredAt
+        : undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

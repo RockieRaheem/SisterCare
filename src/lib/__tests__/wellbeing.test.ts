@@ -65,4 +65,17 @@ describe("wellbeing check-ins", () => {
     expect(normalizeWellbeingDate("2024-01-01", now)).toBe(localWellbeingDate(now));
     expect(normalizeWellbeingDate("not-a-date", now)).toBe(localWellbeingDate(now));
   });
+
+  it("keeps only valid timestamps for an explicitly requested follow-up", () => {
+    expect(
+      parseWellbeingCheckIn({
+        feelings: ["sad"],
+        followUpAt: "2026-08-21T09:30:00+03:00",
+        followUpDeliveredAt: "not-a-date",
+      }),
+    ).toMatchObject({
+      feelings: ["sad"],
+      followUpAt: "2026-08-21T06:30:00.000Z",
+    });
+  });
 });

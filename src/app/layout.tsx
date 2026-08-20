@@ -9,6 +9,7 @@ import WorkspaceBoundary from "@/components/auth/WorkspaceBoundary";
 import SessionNotifier from "@/components/features/SessionNotifier";
 import InstallAppPrompt from "@/components/features/InstallAppPrompt";
 import SharedDevicePrivacyGuard from "@/components/auth/SharedDevicePrivacyGuard";
+import WellbeingFollowUpNotifier from "@/components/features/WellbeingFollowUpNotifier";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -156,6 +157,7 @@ export default function RootLayout({
             <LanguageProvider>
               <OfflineIndicator />
               <SessionNotifier />
+              <WellbeingFollowUpNotifier />
               <InstallAppPrompt />
               <SharedDevicePrivacyGuard />
               <div className="flex flex-col min-h-screen">

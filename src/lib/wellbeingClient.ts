@@ -24,6 +24,8 @@ const fromRow = (row: WellbeingRow): WellbeingCheckIn => ({
   contexts: Array.isArray(row.payload.contexts) ? row.payload.contexts as WellbeingCheckIn["contexts"] : [],
   supportNeed: typeof row.payload.supportNeed === "string" ? row.payload.supportNeed as WellbeingCheckIn["supportNeed"] : undefined,
   note: typeof row.payload.note === "string" ? row.payload.note : undefined,
+  followUpAt: typeof row.payload.followUpAt === "string" ? row.payload.followUpAt : undefined,
+  followUpDeliveredAt: typeof row.payload.followUpDeliveredAt === "string" ? row.payload.followUpDeliveredAt : undefined,
   createdAt: new Date(row.created_at),
   updatedAt: new Date(row.updated_at),
 });
@@ -138,4 +140,19 @@ function fromApiPayload(payload: Record<string, unknown>): WellbeingCheckIn {
     createdAt: new Date(data.checkIn.createdAt),
     updatedAt: data.checkIn.updatedAt ? new Date(data.checkIn.updatedAt) : undefined,
   };
+}
+
+export async function markWellbeingFollowUpDelivered(
+  uid: string,
+  checkIn: WellbeingCheckIn,
+): Promise<WellbeingCheckIn> {
+  return saveWellbeingCheckIn(uid, {
+    localDate: checkIn.localDate,
+    feelings: checkIn.feelings,
+    contexts: checkIn.contexts,
+    supportNeed: checkIn.supportNeed,
+    note: checkIn.note,
+    followUpAt: checkIn.followUpAt,
+    followUpDeliveredAt: new Date().toISOString(),
+  });
 }

@@ -15,6 +15,7 @@ describe("member wellbeing experience", () => {
   const grounding = read("src", "components", "features", "WellbeingGrounding.tsx");
   const layout = read("src", "app", "layout.tsx");
   const pushNotifications = read("src", "lib", "pushNotifications.ts");
+  const followUpNotifier = read("src", "components", "features", "WellbeingFollowUpNotifier.tsx");
 
   it("opens with private support instead of demanding a daily score", () => {
     expect(dashboard).not.toContain("logSymptoms");
@@ -77,5 +78,15 @@ describe("member wellbeing experience", () => {
     expect(pushNotifications).not.toContain("scheduleDailyWellnessCheck");
     expect(pushNotifications).not.toContain("dailyWellnessCheck");
     expect(pushNotifications).not.toContain("Your daily check-in awaits");
+  });
+
+  it("offers only member-requested, privacy-safe follow-ups", () => {
+    expect(checkIn).toContain("Would you like SisterCare to check back?");
+    expect(checkIn).toContain("Later today");
+    expect(checkIn).toContain("Remove follow-up");
+    expect(followUpNotifier).toContain("markWellbeingFollowUpDelivered");
+    expect(followUpNotifier).toContain("The private follow-up you requested is ready.");
+    expect(followUpNotifier).not.toContain("entry.note");
+    expect(followUpNotifier).not.toContain("entry.feelings");
   });
 });

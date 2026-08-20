@@ -12,6 +12,8 @@ export interface WellbeingCheckInInput {
   contexts?: WellbeingContext[];
   supportNeed?: WellbeingSupportNeed;
   note?: string;
+  followUpAt?: string;
+  followUpDeliveredAt?: string;
 }
 
 export const WELLBEING_FEELINGS = [
@@ -97,6 +99,12 @@ const selections = <T extends string>(
   ).slice(0, limit);
 };
 
+const isoTimestamp = (value: unknown): string | undefined => {
+  if (typeof value !== "string" || value.length > 40) return undefined;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
+};
+
 export function localWellbeingDate(date = new Date()): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -143,11 +151,15 @@ export function parseWellbeingCheckIn(
     /^\d{4}-\d{2}-\d{2}$/.test(candidate.localDate)
       ? candidate.localDate
       : undefined;
+  const followUpAt = isoTimestamp(candidate.followUpAt);
+  const followUpDeliveredAt = isoTimestamp(candidate.followUpDeliveredAt);
   return {
     ...(localDate ? { localDate } : {}),
     feelings,
     ...(contexts.length ? { contexts } : {}),
     ...(supportNeed ? { supportNeed } : {}),
     ...(note ? { note } : {}),
+    ...(followUpAt ? { followUpAt } : {}),
+    ...(followUpDeliveredAt ? { followUpDeliveredAt } : {}),
   };
 }

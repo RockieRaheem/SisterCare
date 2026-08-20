@@ -82,6 +82,7 @@ export default function WellbeingPage() {
       contexts?: WellbeingContext[];
       supportNeed?: WellbeingSupportNeed;
       note?: string;
+      followUpAt?: string | null;
     },
   ) => {
     if (!user || busy) return;
@@ -92,12 +93,17 @@ export default function WellbeingPage() {
       const nextContexts = details?.contexts ?? contexts;
       const nextSupport = details?.supportNeed ?? supportNeed;
       const nextNote = details?.note ?? note;
+      const followUpChanged = details && Object.prototype.hasOwnProperty.call(details, "followUpAt");
+      const nextFollowUpAt = followUpChanged ? details.followUpAt || undefined : todayCheckIn?.followUpAt;
+      const nextFollowUpDeliveredAt = followUpChanged ? undefined : todayCheckIn?.followUpDeliveredAt;
       const result = await submitWellbeingCheckIn(user.uid, {
           localDate: today,
           feelings: [feeling],
           contexts: nextContexts,
           supportNeed: nextSupport,
           note: nextNote,
+          followUpAt: nextFollowUpAt,
+          followUpDeliveredAt: nextFollowUpDeliveredAt,
       });
       const checkIn =
         result.state === "synced"
@@ -109,6 +115,8 @@ export default function WellbeingPage() {
               contexts: nextContexts,
               supportNeed: nextSupport,
               ...(nextNote.trim() ? { note: nextNote.trim() } : {}),
+              ...(nextFollowUpAt ? { followUpAt: nextFollowUpAt } : {}),
+              ...(nextFollowUpDeliveredAt ? { followUpDeliveredAt: nextFollowUpDeliveredAt } : {}),
               createdAt: todayCheckIn?.createdAt || new Date(),
               updatedAt: new Date(),
             } as WellbeingCheckIn);
@@ -162,6 +170,14 @@ export default function WellbeingPage() {
     );
   };
 
+  const scheduleFollowUp = (hours: number | null) => {
+    if (!selectedFeeling) return;
+    const followUpAt = hours === null
+      ? null
+      : new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+    void persist(selectedFeeling, { contexts, supportNeed, note, followUpAt });
+  };
+
   if (loading || (user && loadingHistory)) return <AppShellSkeleton />;
   if (!user) return null;
 
@@ -209,6 +225,21 @@ export default function WellbeingPage() {
                 {selectedFeeling === "overwhelmed" && (
                   <p className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold leading-5 text-rose-900 dark:border-rose-900/60 dark:bg-rose-950/25 dark:text-rose-100">If you may hurt yourself or someone else, or you are in immediate danger, contact local emergency help or a trusted person near you now.</p>
                 )}
+
+                <div className="mt-4 rounded-2xl border border-border-light bg-background-light p-4 dark:border-border-dark dark:bg-background-dark">
+                  <p className="text-sm font-black text-text-primary dark:text-white">Would you like SisterCare to check back?</p>
+                  <p className="mt-1 text-xs leading-5 text-text-secondary">Only set this if you want it. The notification will not include what you wrote or how you felt.</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button type="button" disabled={busy} onClick={() => scheduleFollowUp(4)} className="min-h-11 rounded-xl border border-primary/25 bg-white px-4 text-sm font-bold text-primary dark:bg-card-dark">Later today</button>
+                    <button type="button" disabled={busy} onClick={() => scheduleFollowUp(24)} className="min-h-11 rounded-xl border border-primary/25 bg-white px-4 text-sm font-bold text-primary dark:bg-card-dark">Tomorrow</button>
+                    {todayCheckIn.followUpAt && !todayCheckIn.followUpDeliveredAt ? (
+                      <button type="button" disabled={busy} onClick={() => scheduleFollowUp(null)} className="min-h-11 px-3 text-sm font-bold text-text-secondary">Remove follow-up</button>
+                    ) : null}
+                  </div>
+                  {todayCheckIn.followUpAt && !todayCheckIn.followUpDeliveredAt ? (
+                    <p className="mt-2 text-xs font-semibold text-text-secondary">Requested for {new Date(todayCheckIn.followUpAt).toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" })}.</p>
+                  ) : null}
+                </div>
 
                 <button type="button" onClick={() => setShowDetails((value) => !value)} aria-expanded={showDetails} className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-bold text-text-secondary hover:bg-background-light dark:hover:bg-background-dark">
                   <span className="material-symbols-outlined text-lg text-primary" aria-hidden="true">add_circle</span>
