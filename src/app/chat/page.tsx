@@ -18,6 +18,7 @@ import {
 } from "@/lib/dataClient";
 import {
   loadLocalConversations,
+  mergeConversationHistory,
   saveLocalConversation,
   deleteLocalConversation,
   createLocalConversation,
@@ -212,17 +213,16 @@ const isLikelyUiMarkup = (text: string) =>
 const isLikelyDummyConversation = (conversation: ChatConversation) => {
   const title = (conversation.title || "").toLowerCase().trim();
   const lastMessage = (conversation.lastMessage || "").trim();
-  const hasNoContent = !lastMessage && (conversation.messageCount || 0) === 0;
+  const looksSeededByTitle = new Set([
+    "dummy",
+    "sample",
+    "demo",
+    "default",
+    "chat 1",
+    "chat 2",
+  ]).has(title);
 
-  const looksSeededByTitle =
-    title.includes("dummy") ||
-    title.includes("sample") ||
-    title.includes("demo") ||
-    title.includes("default") ||
-    title === "chat 1" ||
-    title === "chat 2";
-
-  return isLikelyUiMarkup(lastMessage) || looksSeededByTitle || hasNoContent;
+  return isLikelyUiMarkup(lastMessage) || looksSeededByTitle;
 };
 
 function isPermissionDeniedError(err: unknown): boolean {
@@ -1062,7 +1062,9 @@ export default function ChatPage() {
     } catch {}
 
     // Merge: prefer local data (which has delete tombstones), supplemented by Supabase
-    const merged = loadLocalConversations(user.uid);
+    const merged = mergeConversationHistory(user.uid, supabaseConvs.filter(
+      (conversation) => !isLikelyDummyConversation(conversation),
+    ));
 
     // History is available in the drawer, but every visit begins with a new
     // blank thread. Opening a past conversation is an intentional choice.

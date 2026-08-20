@@ -45,4 +45,10 @@ describe("member chat workspace", () => {
     expect(chat).toContain("sm:group-focus-within:opacity-100");
     expect(chat).toContain("More options for");
   });
+
+  it("keeps legacy conversations visible when preview metadata is missing", () => {
+    expect(chat).toContain("mergeConversationHistory");
+    expect(chat).not.toContain("hasNoContent");
+    expect(chat).not.toContain('title.includes("sample")');
+  });
 });

@@ -57,6 +57,38 @@ export function loadLocalConversations(userId: string): ChatConversation[] {
     .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 }
 
+/**
+ * Build the visible history from the durable server index and this device's
+ * cache. Server conversations remain visible when localStorage is empty or
+ * unavailable, while local deletion tombstones still prevent removed chats
+ * from unexpectedly returning after a failed network deletion.
+ */
+export function mergeConversationHistory(
+  userId: string,
+  remoteConversations: ChatConversation[],
+): ChatConversation[] {
+  const deleted = getDeletedIds();
+  const merged = new Map<string, ChatConversation>();
+
+  remoteConversations
+    .filter((conversation) => conversation.userId === userId && !deleted.has(conversation.id))
+    .forEach((conversation) => merged.set(conversation.id, conversation));
+
+  loadLocalConversations(userId).forEach((conversation) => {
+    const remote = merged.get(conversation.id);
+    merged.set(
+      conversation.id,
+      remote && remote.updatedAt.getTime() > conversation.updatedAt.getTime()
+        ? remote
+        : conversation,
+    );
+  });
+
+  return Array.from(merged.values()).sort(
+    (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime(),
+  );
+}
+
 export function saveLocalConversation(conv: ChatConversation): void {
   const map = loadConversations();
   map[conv.id] = conv;
