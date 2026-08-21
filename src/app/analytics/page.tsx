@@ -7,7 +7,7 @@ import Header from "@/components/layout/Header";
 import { AppShellSkeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/context/AuthContext";
 import { getCycleHistory, getSymptoms, getUserProfile } from "@/lib/dataClient";
-import { mergeCycleHistory, observedCycleSummary } from "@/lib/cycleHistory";
+import { summarizeMemberTracking } from "@/lib/trackingMetrics";
 import { getWellbeingCheckIns } from "@/lib/wellbeingClient";
 import {
   localWellbeingDate,
@@ -104,21 +104,10 @@ export default function AnalyticsPage() {
     return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
   }, [filteredSymptoms]);
 
-  const symptomDayCount = useMemo(
-    () => new Set(filteredSymptoms.map((entry) => localWellbeingDate(new Date(entry.date)))).size,
-    [filteredSymptoms],
+  const trackingMetrics = useMemo(
+    () => summarizeMemberTracking(profile?.cycleData, cycleHistory, filteredSymptoms),
+    [cycleHistory, filteredSymptoms, profile?.cycleData],
   );
-
-  const cycleSummary = useMemo(() => {
-    const history = mergeCycleHistory(cycleHistory, profile?.cycleData?.history || []);
-    const observed = observedCycleSummary(history);
-    return {
-      ...observed,
-      cycle: observed.cycle ?? profile?.cycleData?.cycleLength ?? null,
-      period: observed.period ?? profile?.cycleData?.periodLength ?? null,
-      hasObservedAverages: observed.cycle !== null || observed.period !== null,
-    };
-  }, [cycleHistory, profile]);
 
   if (authLoading || loading) return <AppShellSkeleton />;
   if (!user) return null;
@@ -192,7 +181,18 @@ export default function AnalyticsPage() {
             {profile?.pregnancyData?.isPregnant ? (
               <div className="rounded-2xl bg-primary/[0.05] p-5"><p className="font-black text-text-primary dark:text-white">Period tracking is paused</p><p className="mt-2 text-sm leading-6 text-text-secondary">Your profile is currently using pregnancy support, so period statistics are not presented as active predictions.</p></div>
             ) : profile?.cycleData ? (
-              <div><div className="grid grid-cols-2 gap-3"><Metric value={cycleSummary.cycle ? `${cycleSummary.cycle} days` : "—"} label={cycleSummary.hasObservedAverages ? "Typical cycle" : "Expected cycle"} /><Metric value={cycleSummary.period ? `${cycleSummary.period} days` : "—"} label={cycleSummary.hasObservedAverages ? "Typical period" : "Expected period"} /><Metric value={String(cycleSummary.count)} label="Completed cycles" /><Metric value={String(symptomDayCount)} label="Days with symptoms" /></div>{cycleSummary.count === 0 && <p className="mt-3 rounded-xl bg-primary/[0.04] px-3 py-2 text-xs leading-5 text-text-secondary">No completed cycle is recorded yet. When you confirm your next period start, SisterCare will close this cycle and begin calculating your observed pattern.</p>}</div>
+              <div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Metric value={trackingMetrics.cycleLength ? `${trackingMetrics.cycleLength} days` : "—"} label="Typical cycle" />
+                  <Metric value={trackingMetrics.periodLength ? `${trackingMetrics.periodLength} days` : "—"} label="Typical period" />
+                  <Metric value={String(trackingMetrics.completedCycles)} label="Completed cycles" />
+                  <Metric value={String(trackingMetrics.symptomDays)} label="Days with symptoms" />
+                </div>
+                <p className="mt-3 rounded-xl bg-primary/[0.04] px-3 py-2 text-xs leading-5 text-text-secondary">
+                  Typical days use your current profile settings. Completed cycles come from confirmed period starts, and symptom days follow the selected time range.{" "}
+                  <Link href="/profile" className="font-extrabold text-primary hover:underline">Update cycle settings</Link>
+                </p>
+              </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-border-light p-5 dark:border-border-dark"><p className="font-black text-text-primary dark:text-white">Cycle details are optional</p><p className="mt-2 text-sm leading-6 text-text-secondary">Add them when tracking feels useful. Emotional support remains available without cycle setup.</p><Link href="/onboarding?mode=edit" className="mt-4 inline-flex min-h-11 items-center text-sm font-bold text-primary">Set up cycle tracking <span className="material-symbols-outlined text-lg">arrow_forward</span></Link></div>
             )}
