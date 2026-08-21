@@ -104,24 +104,20 @@ export default function CounsellorCard({
             <span className="material-symbols-outlined text-yellow-500 text-base sm:text-lg">
               star
             </span>
-            <span className="font-semibold text-text-primary dark:text-white">
-              {counsellor.rating}
-            </span>
-            <span className="text-text-secondary">
-              ({counsellor.reviewCount})
-            </span>
+            {counsellor.reviewCount > 0 ? (
+              <span className="text-text-secondary">
+                <span className="font-semibold text-text-primary dark:text-white">{counsellor.rating}</span>{" "}
+                from {counsellor.reviewCount} member {counsellor.reviewCount === 1 ? "review" : "reviews"}
+              </span>
+            ) : (
+              <span className="text-text-secondary">No member reviews yet</span>
+            )}
           </div>
           <div className="flex items-center gap-0.5 sm:gap-1 text-text-secondary">
             <span className="material-symbols-outlined text-base sm:text-lg">
               work_history
             </span>
-            <span>{counsellor.yearsExperience}+ yrs</span>
-          </div>
-          <div className="flex items-center gap-0.5 sm:gap-1 text-text-secondary">
-            <span className="material-symbols-outlined text-base sm:text-lg">
-              group
-            </span>
-            <span>{counsellor.sessionCount.toLocaleString()}</span>
+            <span>{counsellor.yearsExperience > 0 ? `${counsellor.yearsExperience} years experience` : "Experience not listed"}</span>
           </div>
         </div>
 

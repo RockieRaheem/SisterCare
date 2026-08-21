@@ -356,7 +356,7 @@ export default function ProfilePage() {
 
               <div className="flex flex-col gap-1.5 sm:gap-2">
                 <label className="text-text-primary dark:text-white text-xs sm:text-sm font-semibold">
-                  Average Cycle Length: {cycleLength} days
+                  Your usual cycle length: {cycleLength} days
                 </label>
                 <input
                   type="range"
@@ -371,14 +371,14 @@ export default function ProfilePage() {
                 />
                 <div className="flex justify-between text-[10px] sm:text-xs text-text-secondary">
                   <span>21 days</span>
-                  <span>28 days (typical)</span>
+                  <span>28 days</span>
                   <span>40 days</span>
                 </div>
               </div>
 
               <div className="flex flex-col gap-1.5 sm:gap-2">
                 <label className="text-text-primary dark:text-white text-xs sm:text-sm font-semibold">
-                  Average Period Length: {periodLength} days
+                  Your usual period length: {periodLength} days
                 </label>
                 <input
                   type="range"
@@ -393,7 +393,7 @@ export default function ProfilePage() {
                 />
                 <div className="flex justify-between text-[10px] sm:text-xs text-text-secondary">
                   <span>2 days</span>
-                  <span>5 days (typical)</span>
+                  <span>5 days</span>
                   <span>10 days</span>
                 </div>
               </div>

@@ -198,18 +198,11 @@ export default function CounsellorProfilePage() {
                     <span className="material-symbols-outlined text-yellow-500 text-lg">
                       star
                     </span>
-                    <span className="font-semibold text-text-primary dark:text-white">
-                      {counsellor.rating}
-                    </span>
-                    <span>({counsellor.reviewCount})</span>
-                  </span>
-                  <span className="inline-flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-lg">
-                      group
-                    </span>
-                    <span>
-                      {counsellor.sessionCount.toLocaleString()} sessions
-                    </span>
+                    {counsellor.reviewCount > 0 ? (
+                      <span><span className="font-semibold text-text-primary dark:text-white">{counsellor.rating}</span> from {counsellor.reviewCount} member {counsellor.reviewCount === 1 ? "review" : "reviews"}</span>
+                    ) : (
+                      <span>No member reviews yet</span>
+                    )}
                   </span>
                   <span className="inline-flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-lg">

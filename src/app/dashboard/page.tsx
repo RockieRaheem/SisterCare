@@ -611,6 +611,24 @@ export default function DashboardPage() {
                     )}
                   </div>
                 )}
+
+                {profile?.cycleData && (
+                  <div className="mt-5 w-full rounded-2xl border border-primary/10 bg-primary/[0.035] p-4 text-left">
+                    <div className="flex items-start gap-2.5">
+                      <span className="material-symbols-outlined mt-0.5 text-lg text-primary" aria-hidden="true">info</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold text-text-primary dark:text-white">How this estimate was calculated</p>
+                        <p className="mt-1 text-xs leading-5 text-text-secondary">
+                          It uses your saved period start of {profile.cycleData.lastPeriodDate.toLocaleDateString(dateLocale, { month: "short", day: "numeric", year: "numeric" })}, a {profile.cycleData.cycleLength}-day cycle and a {profile.cycleData.periodLength}-day period. It is a planning estimate, not confirmation that bleeding will start on that date.
+                        </p>
+                        <Link href="/profile" className="mt-2 inline-flex min-h-10 items-center gap-1 text-xs font-extrabold text-primary hover:underline">
+                          Check or change these details
+                          <span className="material-symbols-outlined text-base" aria-hidden="true">arrow_forward</span>
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </Card>
 
