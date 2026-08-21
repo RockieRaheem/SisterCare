@@ -39,6 +39,9 @@ export default function Header({ variant = "landing" }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [mobileAccountOpen, setMobileAccountOpen] = useState(false);
+  const [mobileSigningOut, setMobileSigningOut] = useState(false);
+  const [mobileAccountError, setMobileAccountError] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
@@ -53,6 +56,8 @@ export default function Header({ variant = "landing" }: HeaderProps) {
   useEffect(() => {
     setMobileMenuOpen(false);
     setSearchOpen(false);
+    setMobileAccountOpen(false);
+    setMobileAccountError("");
   }, [pathname]);
 
   // Prevent body scroll when mobile menu is open
@@ -73,6 +78,23 @@ export default function Header({ variant = "landing" }: HeaderProps) {
     if (searchQuery.trim()) {
       router.push(`/library?search=${encodeURIComponent(searchQuery.trim())}`);
       setSearchOpen(false);
+    }
+  };
+
+  const handleMobileSignOut = async () => {
+    setMobileSigningOut(true);
+    setMobileAccountError("");
+    try {
+      await signOut();
+      setMobileAccountOpen(false);
+      router.replace("/");
+    } catch (error) {
+      console.error("Error signing out:", error);
+      setMobileAccountError(
+        "SisterCare could not sign you out. Check your connection and try again.",
+      );
+    } finally {
+      setMobileSigningOut(false);
     }
   };
 
@@ -119,8 +141,13 @@ export default function Header({ variant = "landing" }: HeaderProps) {
             {/* Right Actions */}
             <div className="flex items-center gap-1">
               <button
-                onClick={() => setSearchOpen(!searchOpen)}
+                onClick={() => {
+                  setSearchOpen(!searchOpen);
+                  setMobileAccountOpen(false);
+                }}
                 className="flex items-center justify-center w-10 h-10 rounded-xl text-text-secondary hover:text-primary hover:bg-primary/5 transition-colors touch-target"
+                aria-label={searchOpen ? "Close search" : "Search SisterCare"}
+                aria-expanded={searchOpen}
               >
                 <span className="material-symbols-outlined text-[22px]">
                   search
@@ -129,16 +156,97 @@ export default function Header({ variant = "landing" }: HeaderProps) {
 
               <NotificationBell />
 
-              <button
-                onClick={toggleTheme}
-                className="flex items-center justify-center w-10 h-10 rounded-xl text-text-secondary hover:text-primary hover:bg-primary/5 transition-colors touch-target"
-              >
-                <span className="material-symbols-outlined text-[22px]">
-                  {resolvedTheme === "light" ? "dark_mode" : "light_mode"}
-                </span>
-              </button>
+              {user && (
+                <button
+                  onClick={() => {
+                    setMobileAccountOpen((open) => !open);
+                    setSearchOpen(false);
+                    setMobileAccountError("");
+                  }}
+                  className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-primary/20 bg-primary text-xs font-extrabold text-white shadow-primary-sm transition-colors hover:bg-primary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                  aria-label="Open account menu"
+                  aria-expanded={mobileAccountOpen}
+                  aria-controls="mobile-account-menu"
+                >
+                  {user.photoURL ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={user.photoURL}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    getInitials(user.displayName, user.email)
+                  )}
+                </button>
+              )}
             </div>
           </div>
+
+          {mobileAccountOpen && user && (
+            <>
+              <button
+                type="button"
+                className="fixed inset-0 z-40 cursor-default bg-transparent"
+                onClick={() => setMobileAccountOpen(false)}
+                aria-label="Close account menu"
+              />
+              <div
+                id="mobile-account-menu"
+                className="absolute right-3 top-[calc(100%+0.5rem)] z-50 w-[min(19rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border border-primary/15 bg-white p-2 shadow-2xl shadow-black/15 dark:border-primary/25 dark:bg-card-dark"
+              >
+                <div className="rounded-xl bg-primary/[0.05] px-3 py-3">
+                  <p className="truncate text-sm font-bold text-text-primary dark:text-white">
+                    {user.displayName || "Your account"}
+                  </p>
+                  <p className="mt-0.5 truncate text-xs text-text-secondary dark:text-gray-400">
+                    {user.email}
+                  </p>
+                </div>
+                <div className="mt-1 grid gap-0.5">
+                  <Link
+                    href="/profile"
+                    className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold text-text-primary transition-colors hover:bg-primary/[0.06] hover:text-primary dark:text-white"
+                  >
+                    <span className="material-symbols-outlined text-xl text-primary" aria-hidden="true">person</span>
+                    Profile
+                  </Link>
+                  <Link
+                    href="/settings"
+                    className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold text-text-primary transition-colors hover:bg-primary/[0.06] hover:text-primary dark:text-white"
+                  >
+                    <span className="material-symbols-outlined text-xl text-primary" aria-hidden="true">settings</span>
+                    Settings and privacy
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={toggleTheme}
+                    className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-text-primary transition-colors hover:bg-primary/[0.06] hover:text-primary dark:text-white"
+                  >
+                    <span className="material-symbols-outlined text-xl text-primary" aria-hidden="true">
+                      {resolvedTheme === "light" ? "dark_mode" : "light_mode"}
+                    </span>
+                    {resolvedTheme === "light" ? "Use dark appearance" : "Use light appearance"}
+                  </button>
+                </div>
+                <div className="my-1 border-t border-border-light dark:border-border-dark" />
+                {mobileAccountError && (
+                  <p role="alert" className="mx-2 mb-1 rounded-xl bg-red-50 px-3 py-2 text-xs leading-5 text-red-700 dark:bg-red-950/30 dark:text-red-300">
+                    {mobileAccountError}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={() => void handleMobileSignOut()}
+                  disabled={mobileSigningOut}
+                  className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-bold text-red-600 transition-colors hover:bg-red-50 disabled:cursor-wait disabled:opacity-60 dark:text-red-400 dark:hover:bg-red-950/30"
+                >
+                  <span className="material-symbols-outlined text-xl" aria-hidden="true">logout</span>
+                  {mobileSigningOut ? "Signing out securely…" : "Sign out"}
+                </button>
+              </div>
+            </>
+          )}
 
           {/* Mobile Search Bar - Expandable */}
           {searchOpen && (

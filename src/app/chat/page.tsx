@@ -2010,10 +2010,12 @@ export default function ChatPage() {
                   </button>
                 </div>
               )}
-              <div className="relative group">
+              <div className="relative flex items-center gap-1">
                 <button
                   onClick={() => setProfileMenuOpen((prev) => !prev)}
-                  className="sidebar-icon-hover flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left"
+                  className="sidebar-icon-hover flex min-w-0 flex-1 items-center gap-2 rounded-xl px-2.5 py-2 text-left"
+                  aria-label="Open profile and account options"
+                  aria-expanded={profileMenuOpen}
                 >
                   <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-white">
                     {user?.displayName?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || "U"}
@@ -2026,6 +2028,16 @@ export default function ChatPage() {
                   <span className="material-symbols-outlined text-xs text-text-secondary/60 dark:text-gray-500">
                     {profileMenuOpen ? "expand_less" : "expand_more"}
                   </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleSignOut()}
+                  disabled={signingOut}
+                  className="flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-xs font-bold text-red-600 transition-colors hover:bg-red-50 disabled:cursor-wait disabled:opacity-60 dark:text-red-400 dark:hover:bg-red-950/30 lg:hidden"
+                  aria-label="Sign out of SisterCare"
+                >
+                  <span className="material-symbols-outlined text-lg" aria-hidden="true">logout</span>
+                  {signingOut ? "Signing out…" : "Sign out"}
                 </button>
               </div>
             </div>
