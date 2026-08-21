@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { summarizeMemberTracking } from "@/lib/trackingMetrics";
+import {
+  groupSymptomRecordsByDay,
+  summarizeMemberTracking,
+} from "@/lib/trackingMetrics";
 import type { CycleData, CycleHistory, SymptomLog } from "@/types";
 
 const cycle = (cycleLength: number, periodLength = 4): CycleData => ({
@@ -28,6 +31,7 @@ const symptom = (id: string, date: string): SymptomLog => ({
   mood: "okay",
   symptoms: ["cramps"],
   notes: "",
+  source: "chat",
 });
 
 describe("member tracking metrics", () => {
@@ -55,6 +59,25 @@ describe("member tracking metrics", () => {
 
     expect(result.completedCycles).toBe(1);
     expect(result.symptomDays).toBe(2);
+  });
+
+  it("shows the records and provenance behind each symptom day", () => {
+    const entries = [
+      symptom("s-1", "2026-08-20T08:00:00.000Z"),
+      { ...symptom("s-2", "2026-08-20T18:00:00.000Z"), symptoms: ["headache"], source: "manual" as const },
+      { ...symptom("s-3", "2026-08-19T09:00:00.000Z"), source: undefined },
+    ];
+
+    const grouped = groupSymptomRecordsByDay(entries);
+    expect(grouped).toHaveLength(2);
+    expect(grouped[0]).toMatchObject({
+      dateKey: "2026-08-20",
+      recordIds: ["s-1", "s-2"],
+      symptoms: ["cramps", "headache"],
+      sources: ["chat", "manual"],
+      hasUnknownSource: false,
+    });
+    expect(grouped[1].hasUnknownSource).toBe(true);
   });
 
   it("returns empty personal metrics when cycle setup does not exist", () => {

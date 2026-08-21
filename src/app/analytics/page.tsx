@@ -6,8 +6,12 @@ import { useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
 import { AppShellSkeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/context/AuthContext";
-import { getCycleHistory, getSymptoms, getUserProfile } from "@/lib/dataClient";
-import { summarizeMemberTracking } from "@/lib/trackingMetrics";
+import { getCycleHistory, getUserProfile } from "@/lib/dataClient";
+import {
+  groupSymptomRecordsByDay,
+  summarizeMemberTracking,
+} from "@/lib/trackingMetrics";
+import { deletePrivateSymptoms, getPrivateSymptoms } from "@/lib/symptomsClient";
 import { getWellbeingCheckIns } from "@/lib/wellbeingClient";
 import {
   localWellbeingDate,
@@ -40,6 +44,10 @@ export default function AnalyticsPage() {
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [symptomActionError, setSymptomActionError] = useState<string | null>(null);
+  const [symptomNotice, setSymptomNotice] = useState<string | null>(null);
+  const [confirmDeleteDay, setConfirmDeleteDay] = useState<string | null>(null);
+  const [deletingDay, setDeletingDay] = useState<string | null>(null);
   const [referenceTime] = useState(() => Date.now());
   const [today] = useState(() => localWellbeingDate());
 
@@ -52,11 +60,9 @@ export default function AnalyticsPage() {
     const load = async () => {
       setLoading(true);
       setError(null);
-      const endDate = new Date();
-      const startDate = new Date(endDate.getTime() - 90 * 86_400_000);
       const [profileResult, symptomsResult, wellbeingResult, cycleHistoryResult] = await Promise.allSettled([
         getUserProfile(user.uid),
-        getSymptoms(user.uid, startDate, endDate),
+        getPrivateSymptoms(90),
         getWellbeingCheckIns(user.uid),
         getCycleHistory(user.uid, 24),
       ]);
@@ -96,18 +102,36 @@ export default function AnalyticsPage() {
     filteredCheckIns[0] ||
     null;
 
-  const symptomCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    filteredSymptoms.forEach((entry) =>
-      (entry.symptoms || []).forEach((symptom) => counts.set(symptom, (counts.get(symptom) || 0) + 1)),
-    );
-    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
-  }, [filteredSymptoms]);
+  const symptomDays = useMemo(
+    () => groupSymptomRecordsByDay(filteredSymptoms),
+    [filteredSymptoms],
+  );
 
   const trackingMetrics = useMemo(
     () => summarizeMemberTracking(profile?.cycleData, cycleHistory, filteredSymptoms),
     [cycleHistory, filteredSymptoms, profile?.cycleData],
   );
+
+  const removeSymptomDay = async (dateKey: string, recordIds: string[]) => {
+    setDeletingDay(dateKey);
+    setSymptomActionError(null);
+    setSymptomNotice(null);
+    try {
+      await deletePrivateSymptoms(recordIds);
+      const removed = new Set(recordIds);
+      setSymptomLogs((current) => current.filter((entry) => !removed.has(entry.id)));
+      setConfirmDeleteDay(null);
+      setSymptomNotice("That physical symptom day was removed from your private history.");
+    } catch (actionError) {
+      setSymptomActionError(
+        actionError instanceof Error
+          ? actionError.message
+          : "That physical symptom day could not be removed.",
+      );
+    } finally {
+      setDeletingDay(null);
+    }
+  };
 
   if (authLoading || loading) return <AppShellSkeleton />;
   if (!user) return null;
@@ -186,7 +210,7 @@ export default function AnalyticsPage() {
                   <Metric value={trackingMetrics.cycleLength ? `${trackingMetrics.cycleLength} days` : "—"} label="Typical cycle" />
                   <Metric value={trackingMetrics.periodLength ? `${trackingMetrics.periodLength} days` : "—"} label="Typical period" />
                   <Metric value={String(trackingMetrics.completedCycles)} label="Completed cycles" />
-                  <Metric value={String(trackingMetrics.symptomDays)} label="Days with symptoms" />
+                  <Metric value={String(trackingMetrics.symptomDays)} label="Physical symptom days" />
                 </div>
                 <p className="mt-3 rounded-xl bg-primary/[0.04] px-3 py-2 text-xs leading-5 text-text-secondary">
                   Typical days use your current profile settings. Completed cycles come from confirmed period starts, and symptom days follow the selected time range.{" "}
@@ -197,8 +221,53 @@ export default function AnalyticsPage() {
               <div className="rounded-2xl border border-dashed border-border-light p-5 dark:border-border-dark"><p className="font-black text-text-primary dark:text-white">Cycle details are optional</p><p className="mt-2 text-sm leading-6 text-text-secondary">Add them when tracking feels useful. Emotional support remains available without cycle setup.</p><Link href="/onboarding?mode=edit" className="mt-4 inline-flex min-h-11 items-center text-sm font-bold text-primary">Set up cycle tracking <span className="material-symbols-outlined text-lg">arrow_forward</span></Link></div>
             )}
             <div>
-              <h3 className="font-black text-text-primary dark:text-white">Physical symptoms mentioned</h3>
-              {symptomCounts.length ? <div className="mt-3 flex flex-wrap gap-2">{symptomCounts.map(([symptom, count]) => <span key={symptom} className="rounded-full border border-border-light bg-background-light px-3 py-2 text-sm font-semibold text-text-primary dark:border-border-dark dark:bg-background-dark dark:text-white">{symptom.replace(/_/g, " ")} · {count}</span>)}</div> : <p className="mt-3 text-sm text-text-secondary">No physical symptoms were recorded in this period.</p>}
+              <h3 className="font-black text-text-primary dark:text-white">Physical symptom history</h3>
+              <p className="mt-1 text-sm leading-6 text-text-secondary">
+                {symptomDays.length
+                  ? `${symptomDays.length} ${symptomDays.length === 1 ? "day" : "days"} in ${PERIOD_LABELS[selectedPeriod].toLowerCase()}. These are separate from emotional check-ins such as Anxious or Drained.`
+                  : `No physical symptoms were recorded in ${PERIOD_LABELS[selectedPeriod].toLowerCase()}. Emotional check-ins are counted separately.`}
+              </p>
+              {symptomNotice && <p role="status" className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200">{symptomNotice}</p>}
+              {symptomActionError && <p role="alert" className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-semibold text-red-800 dark:bg-red-950/30 dark:text-red-200">{symptomActionError}</p>}
+              {symptomDays.length > 0 && (
+                <div className="mt-4 space-y-3">
+                  {symptomDays.map((day) => (
+                    <article key={day.dateKey} className="rounded-2xl border border-border-light bg-background-light p-4 dark:border-border-dark dark:bg-background-dark">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-black text-text-primary dark:text-white">
+                            {day.date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {day.symptoms.length ? day.symptoms.map((symptom) => (
+                              <span key={symptom} className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-text-primary shadow-sm dark:bg-card-dark dark:text-white">{symptom.replace(/_/g, " ")}</span>
+                            )) : <span className="text-xs text-text-secondary">No symptom name was saved.</span>}
+                          </div>
+                          <p className="mt-2 text-[11px] leading-5 text-text-secondary">
+                            {[
+                              day.sources.includes("chat") ? "Saved from a private chat" : null,
+                              day.sources.includes("manual") ? "Saved manually" : null,
+                              day.hasUnknownSource ? "Source unavailable for an older record" : null,
+                            ].filter(Boolean).join(" · ")}
+                          </p>
+                        </div>
+                        {confirmDeleteDay !== day.dateKey && (
+                          <button type="button" onClick={() => { setConfirmDeleteDay(day.dateKey); setSymptomActionError(null); }} className="min-h-10 shrink-0 rounded-xl px-3 text-xs font-bold text-red-700 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/30" aria-label={`Remove physical symptoms recorded on ${day.dateKey}`}>Remove</button>
+                        )}
+                      </div>
+                      {confirmDeleteDay === day.dateKey && (
+                        <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 dark:border-red-900 dark:bg-red-950/25">
+                          <p className="text-xs font-bold leading-5 text-red-900 dark:text-red-100">Remove this day from your physical symptom history? This cannot be undone.</p>
+                          <div className="mt-3 flex gap-2">
+                            <button type="button" onClick={() => setConfirmDeleteDay(null)} disabled={deletingDay === day.dateKey} className="min-h-10 flex-1 rounded-lg border border-red-200 bg-white px-3 text-xs font-bold text-red-800 disabled:opacity-50 dark:border-red-800 dark:bg-card-dark dark:text-red-100">Keep it</button>
+                            <button type="button" onClick={() => void removeSymptomDay(day.dateKey, day.recordIds)} disabled={deletingDay === day.dateKey} className="min-h-10 flex-1 rounded-lg bg-red-700 px-3 text-xs font-bold text-white disabled:opacity-50">{deletingDay === day.dateKey ? "Removing…" : "Remove permanently"}</button>
+                          </div>
+                        </div>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </section>

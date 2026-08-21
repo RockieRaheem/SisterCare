@@ -15,6 +15,50 @@ const validSetting = (value: unknown): number | null =>
     ? Math.round(value)
     : null;
 
+export function groupSymptomRecordsByDay(symptoms: SymptomLog[]) {
+  const days = new Map<
+    string,
+    {
+      dateKey: string;
+      date: Date;
+      recordIds: string[];
+      symptoms: Set<string>;
+      sources: Set<"chat" | "manual">;
+      hasUnknownSource: boolean;
+    }
+  >();
+
+  symptoms.forEach((entry) => {
+    const date = new Date(entry.date);
+    if (Number.isNaN(date.getTime())) return;
+    const dateKey = localDateKey(date);
+    const existing = days.get(dateKey) || {
+      dateKey,
+      date,
+      recordIds: [],
+      symptoms: new Set<string>(),
+      sources: new Set<"chat" | "manual">(),
+      hasUnknownSource: false,
+    };
+    existing.recordIds.push(entry.id);
+    (entry.symptoms || []).forEach((symptom) => {
+      const label = symptom.trim();
+      if (label) existing.symptoms.add(label);
+    });
+    if (entry.source) existing.sources.add(entry.source);
+    else existing.hasUnknownSource = true;
+    days.set(dateKey, existing);
+  });
+
+  return [...days.values()]
+    .map((entry) => ({
+      ...entry,
+      symptoms: [...entry.symptoms],
+      sources: [...entry.sources],
+    }))
+    .sort((a, b) => b.date.getTime() - a.date.getTime());
+}
+
 export function summarizeMemberTracking(
   cycleData: CycleData | null | undefined,
   storedHistory: CycleHistory[],
@@ -22,12 +66,7 @@ export function summarizeMemberTracking(
 ) {
   const history = mergeCycleHistory(storedHistory, cycleData?.history || []);
   const completed = observedCycleSummary(history).count;
-  const symptomDays = new Set(
-    symptomsInRange
-      .map((entry) => new Date(entry.date))
-      .filter((date) => !Number.isNaN(date.getTime()))
-      .map(localDateKey),
-  ).size;
+  const symptomDays = groupSymptomRecordsByDay(symptomsInRange).length;
 
   return {
     cycleLength: validSetting(cycleData?.cycleLength),

@@ -252,7 +252,11 @@ async function records(uid: string, recordType: string) {
 }
 
 export async function logSymptoms(uid: string, symptomLog: Omit<SymptomLog, "id">): Promise<string> {
-  return addRecord(uid, "symptom", { ...symptomLog, date: symptomLog.date.toISOString() });
+  return addRecord(uid, "symptom", {
+    ...symptomLog,
+    source: symptomLog.source || "manual",
+    date: symptomLog.date.toISOString(),
+  });
 }
 export async function getSymptoms(uid: string, startDate: Date, endDate: Date): Promise<SymptomLog[]> {
   return (await records(uid, "symptom")).map((row) => ({ id: row.id as string, ...(row.payload as JsonRecord), date: asDate((row.payload as JsonRecord).date) } as SymptomLog)).filter((item) => item.date >= startDate && item.date <= endDate);

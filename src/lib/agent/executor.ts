@@ -242,6 +242,7 @@ async function executeTool(
           mood,
           flowIntensity,
           notes,
+          source: "chat" as const,
         };
 
         // PERSIST TO SUPABASE if userId is available

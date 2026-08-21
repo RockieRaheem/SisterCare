@@ -84,6 +84,8 @@ export interface SymptomLog {
   symptoms: string[];
   notes: string;
   flowIntensity?: FlowIntensity;
+  source?: "chat" | "manual";
+  createdAt?: Date;
 }
 
 export type MoodType = "great" | "good" | "okay" | "low" | "bad";
