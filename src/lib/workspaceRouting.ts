@@ -94,3 +94,19 @@ export function resolveWorkspaceRoute(input: {
   }
   return input.onboardingCompleted ? "/dashboard" : "/onboarding";
 }
+
+/** Resolve a safe signed-in destination when leaving a public information page. */
+export function resolveWorkspaceHome(input: {
+  role?: string | null;
+  registrationIntent?: "member" | "counsellor";
+  onboardingCompleted?: boolean;
+}): string {
+  if (input.role === "admin") return "/admin";
+  if (
+    input.role === "counsellor" ||
+    input.registrationIntent === "counsellor"
+  ) {
+    return "/counsellor";
+  }
+  return input.onboardingCompleted ? "/dashboard" : "/onboarding";
+}

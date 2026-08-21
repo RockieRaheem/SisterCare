@@ -31,6 +31,8 @@ export default function HelpPage() {
       eyebrow="Help centre"
       title="Find an answer or reach someone who can help."
       description="Start with common questions, continue with Sister, or connect with a verified counsellor."
+      authenticatedReturnHref="/chat"
+      authenticatedReturnLabel="Back to conversation"
     >
       <section className="mb-10 grid gap-4 sm:grid-cols-3">
         {[

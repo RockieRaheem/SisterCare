@@ -1,21 +1,42 @@
+"use client";
+
 import Link from "next/link";
+import { useAuth } from "@/context/AuthContext";
+import { resolveWorkspaceHome } from "@/lib/workspaceRouting";
 
 export default function PublicPageShell({
   eyebrow,
   title,
   description,
   children,
+  authenticatedReturnHref,
+  authenticatedReturnLabel,
 }: {
   eyebrow: string;
   title: string;
   description: string;
   children: React.ReactNode;
+  authenticatedReturnHref?: string;
+  authenticatedReturnLabel?: string;
 }) {
+  const { user, userProfile } = useAuth();
+  const workspaceHome = user
+    ? userProfile
+      ? resolveWorkspaceHome(userProfile)
+      : "/dashboard"
+    : "/";
+  const returnHref = user
+    ? authenticatedReturnHref || workspaceHome
+    : "/";
+  const returnLabel = user
+    ? authenticatedReturnLabel || "Back to workspace"
+    : "Back to home";
+
   return (
     <div className="app-page">
       <header className="safe-top sticky top-0 z-40 border-b border-border-light bg-white/95 backdrop-blur dark:border-border-dark dark:bg-card-dark/95">
         <div className="page-container flex h-16 items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5 text-primary">
+          <Link href={workspaceHome} className="flex items-center gap-2.5 text-primary">
             <span
               className="material-symbols-outlined text-2xl"
               style={{ fontVariationSettings: '"FILL" 1, "wght" 600' }}
@@ -27,13 +48,13 @@ export default function PublicPageShell({
             </span>
           </Link>
           <Link
-            href="/"
+            href={returnHref}
             className="inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-text-secondary transition-colors hover:bg-primary/5 hover:text-primary dark:text-gray-300"
           >
             <span className="material-symbols-outlined text-lg">
               arrow_back
             </span>
-            <span className="hidden sm:inline">Back to home</span>
+            <span className="hidden sm:inline">{returnLabel}</span>
           </Link>
         </div>
       </header>

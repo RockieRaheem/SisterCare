@@ -127,7 +127,48 @@ const CHAT_WORKSPACE_NAVIGATION = [
   { href: "/analytics", icon: "timeline", label: "Track" },
   { href: "/counsellors", icon: "support_agent", label: "Counsellors" },
   { href: "/library", icon: "menu_book", label: "Library" },
+  { href: "/profile", icon: "person", label: "Profile" },
 ] as const;
+
+function ChatWorkspaceNavigation({
+  layout,
+  onNavigate,
+}: {
+  layout: "header" | "drawer";
+  onNavigate?: () => void;
+}) {
+  return (
+    <nav
+      className={
+        layout === "header"
+          ? "flex items-center gap-1"
+          : "grid grid-cols-2 gap-1 rounded-2xl border border-primary/10 bg-primary/[0.025] p-1.5"
+      }
+      aria-label="SisterCare workspace"
+    >
+      {CHAT_WORKSPACE_NAVIGATION.map((item) => (
+        <Link
+          key={item.href}
+          href={item.href}
+          onClick={onNavigate}
+          className={
+            layout === "header"
+              ? "flex min-h-10 items-center gap-1.5 rounded-xl px-2.5 text-xs font-bold text-text-secondary transition-colors hover:bg-primary/[0.06] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-gray-300"
+              : "flex min-h-10 items-center gap-2 rounded-xl px-2.5 text-xs font-bold text-text-secondary transition-colors hover:bg-white hover:text-primary hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-gray-300 dark:hover:bg-white/[0.06]"
+          }
+        >
+          <span
+            className="material-symbols-outlined text-base text-primary"
+            aria-hidden="true"
+          >
+            {item.icon}
+          </span>
+          {item.label}
+        </Link>
+      ))}
+    </nav>
+  );
+}
 
 function parseConversation(payload: Record<string, unknown>): ChatConversation {
   return {
@@ -1780,6 +1821,9 @@ export default function ChatPage() {
           </div>
         </div>
         <div className="flex items-center gap-1.5">
+          <div className="hidden lg:block">
+            <ChatWorkspaceNavigation layout="header" />
+          </div>
           <Link
             href={`/report?type=ai_response&targetId=${encodeURIComponent(activeConversationId || "")}`}
             className="flex h-10 w-10 items-center justify-center rounded-xl text-text-secondary transition-colors hover:bg-red-50 hover:text-red-600 dark:text-gray-400 dark:hover:bg-red-950/30"
@@ -1872,16 +1916,12 @@ export default function ChatPage() {
               </div>
             </div>
 
-            <div className="mx-3 mb-3 hidden md:block">
+            <div className="mx-3 mb-3 hidden md:block lg:hidden">
               <p className="mb-1.5 px-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-text-secondary/70">Navigation</p>
-              <nav className="grid grid-cols-2 gap-1 rounded-2xl border border-primary/10 bg-primary/[0.025] p-1.5" aria-label="Go to another SisterCare page">
-                {CHAT_WORKSPACE_NAVIGATION.map((item) => (
-                  <Link key={item.href} href={item.href} onClick={() => setSidebarOpen(false)} className="flex min-h-10 items-center gap-2 rounded-xl px-2.5 text-xs font-bold text-text-secondary transition-colors hover:bg-white hover:text-primary hover:shadow-sm dark:hover:bg-white/[0.06]">
-                    <span className="material-symbols-outlined text-base text-primary" aria-hidden="true">{item.icon}</span>
-                    {item.label}
-                  </Link>
-                ))}
-              </nav>
+              <ChatWorkspaceNavigation
+                layout="drawer"
+                onNavigate={() => setSidebarOpen(false)}
+              />
             </div>
 
             {/* Conversations List */}

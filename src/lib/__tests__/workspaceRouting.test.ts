@@ -3,6 +3,7 @@ import {
   isOAuthWorkspaceReturn,
   resolveRegistrationIntent,
   resolveRoleBoundaryRedirect,
+  resolveWorkspaceHome,
   resolveWorkspaceRoute,
 } from "../workspaceRouting";
 
@@ -19,6 +20,23 @@ describe("login callback routing", () => {
 });
 
 describe("workspace routing", () => {
+  it("returns every signed-in role to its own workspace", () => {
+    expect(resolveWorkspaceHome({ role: "admin" })).toBe("/admin");
+    expect(resolveWorkspaceHome({ role: "counsellor" })).toBe("/counsellor");
+    expect(
+      resolveWorkspaceHome({
+        role: "member",
+        registrationIntent: "counsellor",
+      }),
+    ).toBe("/counsellor");
+    expect(
+      resolveWorkspaceHome({ role: "member", onboardingCompleted: true }),
+    ).toBe("/dashboard");
+    expect(
+      resolveWorkspaceHome({ role: "member", onboardingCompleted: false }),
+    ).toBe("/onboarding");
+  });
+
   it("always routes administrators to administration", () => {
     expect(
       resolveWorkspaceRoute({
