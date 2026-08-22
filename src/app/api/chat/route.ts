@@ -3,13 +3,8 @@ import { executeAgent } from "@/lib/agent";
 // Server data layer: admin-SDK reads/writes that persist under security
 // rules, with client-SDK fallback in unconfigured dev mode.
 import {
-  connectUserToCounsellor,
   logAgentEvent,
-  routeCounsellor,
   recordPeriodStart,
-  setActiveCounsellorOnConversation,
-  getActiveCounsellorForConversation,
-  getCounsellors,
   getAgentSystemOverview,
   getConversationMemory,
   savePregnancyData,
@@ -32,6 +27,7 @@ import { authenticateRequest } from "@/lib/serverAuth";
 import { createSessionRequest } from "@/lib/server/sessions";
 import { emitEvent } from "@/lib/server/events";
 import { withApiObservability } from "@/lib/observability";
+import { describeCanonicalHandoff } from "@/lib/handoffStatus";
 import { getClinicalRuntimeIssues } from "@/lib/clinicalGovernance";
 import { enforceChatRateLimit } from "@/lib/server/rateLimit";
 import { hasConfiguredAgentProvider } from "@/lib/agent/modelRouter";
@@ -1210,10 +1206,9 @@ async function postChat(request: NextRequest) {
         state: "pending",
       });
 
-      // Phase 2 session lane: open a platform-observed session in parallel
-      // with the legacy phone/WhatsApp handoff. Critical triage enters the
-      // crisis lane (queue preemption + time-to-human SLA clock). Failure
-      // here never blocks the legacy handoff below.
+      // The counselling session is the single source of truth for a human
+      // handoff. A match only means a counsellor was notified; the member is
+      // connected only after that counsellor accepts and the session is active.
       try {
         const session = await createSessionRequest({
           userId,
@@ -1231,6 +1226,25 @@ async function postChat(request: NextRequest) {
           state: session.state,
           priority: session.priority,
         };
+        const handoff = describeCanonicalHandoff(
+          session.state,
+          session.counsellorName,
+        );
+        handoffText = `\n\n${handoff.message}`;
+        actionStatuses[actionStatuses.length - 1] = {
+          key: "handoff",
+          label: handoff.label,
+          state: "done",
+        };
+        await logAgentEvent({
+          userId,
+          type: handoff.connected ? "handoff_connected" : "handoff_offered",
+          severity: triage.severity,
+          conversationId: conversationId || undefined,
+          success: true,
+        }).catch((eventError) =>
+          console.warn("Failed to log handoff state:", eventError),
+        );
         if (triage.severity === "critical") {
           await emitEvent("crisis.detected", {
             userId,
@@ -1241,224 +1255,35 @@ async function postChat(request: NextRequest) {
         }
       } catch (sessionErr) {
         console.warn(
-          "Session request creation failed (continuing with legacy handoff):",
+          "Session request creation failed:",
           sessionErr,
         );
-      }
-
-      try {
-        let counsellor;
-        const isPronounReference =
-          handoffPolicy.referencesActiveCounsellor;
-
-        if (isPronounReference && conversationId) {
-          try {
-            const activeCounsellorData =
-              await getActiveCounsellorForConversation(conversationId);
-            if (activeCounsellorData) {
-              const allCounsellors = await getCounsellors();
-              counsellor = allCounsellors.find(
-                (c) => c.id === activeCounsellorData.id,
-              );
-
-              if (!counsellor) {
-                counsellor = {
-                  id: activeCounsellorData.id,
-                  name: activeCounsellorData.name,
-                  title: activeCounsellorData.title,
-                  bio: `${activeCounsellorData.title} specializing in ${activeCounsellorData.specializations.join(", ")}`,
-                  specializations: activeCounsellorData.specializations as any,
-                  photoURL: "",
-                  status: "available" as const,
-                  rating: 5,
-                  reviewCount: 0,
-                  yearsExperience: 1,
-                  languages: activeCounsellorData.languages,
-                  phoneNumber: activeCounsellorData.phoneNumber,
-                  whatsappNumber: activeCounsellorData.whatsappNumber,
-                  availableHours: { start: "08:00", end: "22:00", days: [] },
-                  sessionCount: 0,
-                  verified: true,
-                  createdAt: new Date(),
-                };
-              }
-            }
-          } catch (fetchErr) {
-            console.warn(
-              "Failed to fetch active counsellor, will route new one:",
-              fetchErr,
-            );
-          }
-        }
-
-        if (!counsellor) {
-          const specialty = inferCounsellorSpecialty(messageForAgent);
-          const requestedLanguage = inferRequestedLanguage(trimmedMessage);
-          const preferredLanguage =
-            requestedLanguage ||
-            normalizeLanguageName(userProfile?.preferences?.language) ||
-            SUPPORTED_LANGUAGES[userLanguage]?.name ||
-            "English";
-          counsellor = await routeCounsellor({ specialty, preferredLanguage });
-        }
-
-        if (counsellor) {
-          let handoffConversationId: string | undefined;
-          try {
-            handoffConversationId = await connectUserToCounsellor({
-              userId,
-              counsellorId: counsellor.id,
-              reason: requestedCounsellor ? "user_request" : "risk_detected",
-              summary: trimmedMessage,
-            });
-          } catch (connectError) {
-            console.warn(
-              "Could not create counsellor thread in Supabase, continuing with direct handoff:",
-              connectError,
-            );
-          }
-
-          if (handoffConversationId) {
-            try {
-              await setActiveCounsellorOnConversation({
-                conversationId: handoffConversationId,
-                counsellor,
-              });
-            } catch (metadataErr) {
-              console.warn(
-                "Failed to store active counsellor metadata:",
-                metadataErr,
-              );
-            }
-          }
-
-          await logAgentEvent({
-            userId,
-            type: requestedCounsellor ? "handoff_connected" : "handoff_offered",
-            severity: triage.severity,
-            conversationId: handoffConversationId,
-            success: true,
-          }).catch((eventError) =>
-            console.warn("Failed to log handoff event:", eventError),
-          );
-
-          actionStatuses[actionStatuses.length - 1] = {
-            key: "handoff",
-            label: `Connected to ${counsellor.name} (${counsellor.title})`,
-            state: "done",
-          };
-
-          if (requestedCounsellor || requestedCall || requestedWhatsApp) {
-            const { localizedText, audio } = await localizeResponse(
-              `I've matched you with **${counsellor.name}** — ${counsellor.title}. 💗\n\nI'm opening their profile so you can review their languages, specialties, and availability first. From there, you can request a private SisterCare session.`,
-            );
-
-            return NextResponse.json({
-              response: localizedText,
-              language: userLanguage,
-              languageName:
-                SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
-              audio,
-              translationApplied,
-              source: "agent",
-              type: "agent",
-              toolsUsed: ["counsellor_routing"],
-              actions: [`Matched to ${counsellor.name}`],
-              triage,
-              session: sessionInfo,
-              actionStatuses,
-              handoffThreadCreated: Boolean(handoffConversationId),
-              counsellorProfile: {
-                id: counsellor.id,
-                name: counsellor.name,
-                title: counsellor.title,
-                languages: counsellor.languages,
-                specializations: counsellor.specializations,
-                status: counsellor.status,
-                rating: counsellor.rating,
-                reviewCount: counsellor.reviewCount,
-                photoURL: counsellor.photoURL,
-                phoneNumber: counsellor.phoneNumber,
-                whatsappNumber: counsellor.whatsappNumber,
-                profileUrl: `/counsellors/${counsellor.id}`,
-                callUrl: `tel:${counsellor.phoneNumber.replace(/[^+\d]/g, "")}`,
-                whatsappUrl: `https://wa.me/${counsellor.whatsappNumber.replace(/[^\d]/g, "")}`,
-              },
-              counsellorHandoff: {
-                name: counsellor.name,
-                title: counsellor.title,
-                phone: counsellor.phoneNumber,
-                whatsapp: counsellor.whatsappNumber,
-                photoURL: counsellor.photoURL,
-                status: counsellor.status,
-              },
-            });
-          }
-
-          handoffText = `\n\nI have connected you to ${counsellor.name} (${counsellor.title}) for dedicated support.`;
-        } else {
-          actionStatuses[actionStatuses.length - 1] = {
-            key: "handoff",
-            label:
-              "No counsellor currently available; queued for next available professional",
-            state: "failed",
-          };
-
-          if (requestedCounsellor) {
-            const { localizedText, audio } = await localizeResponse(
-              `I wasn't able to find an immediately available counsellor right now, but I've flagged your request for urgent follow-up. 💗\n\nIf you need urgent support, call your configured regional emergency service. You can also browse live availability in the [Counsellors section](/counsellors) and request a private SisterCare session.`,
-            );
-
-            return NextResponse.json({
-              response: localizedText,
-              language: userLanguage,
-              languageName:
-                SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
-              audio,
-              translationApplied,
-              source: "agent",
-              type: "agent",
-              toolsUsed: ["counsellor_routing"],
-              actions: [
-                "Counsellor routing — no available match, flagged for follow-up",
-              ],
-              triage,
-              session: sessionInfo,
-              actionStatuses,
-            });
-          }
-
-          handoffText =
-            "\n\nI could not find an immediately available counsellor right now, but I have flagged this for urgent follow-up. If this is an emergency, call Sauti 116 or 999 immediately.";
-        }
-      } catch (handoffError) {
-        console.error("Handoff routing failed:", handoffError);
+        handoffText = "\n\nI could not create a counsellor request, so no human has been connected or notified. Please open My Sessions and try again. If you may be in immediate danger, use the urgent help options now.";
         actionStatuses[actionStatuses.length - 1] = {
           key: "handoff",
-          label: "Counsellor routing failed",
+          label: "Care request could not be created",
           state: "failed",
         };
+      }
 
-        if (requestedCounsellor) {
-          const { localizedText, audio } = await localizeResponse(
-            `I encountered an issue connecting you to a counsellor right now. 💗 Please browse [our counsellors](/counsellors) to see live availability and request a private SisterCare session.`,
-          );
-
-          return NextResponse.json({
-            response: localizedText,
-            language: userLanguage,
-            languageName:
-              SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
-            audio,
-            translationApplied,
-            source: "agent",
-            type: "agent",
-            toolsUsed: [],
-            actions: ["Counsellor routing error — fallback provided"],
-            triage,
-            actionStatuses,
-          });
-        }
+      if (requestedCounsellor || requestedCall || requestedWhatsApp) {
+        const { localizedText, audio } = await localizeResponse(
+          handoffText.trim(),
+        );
+        return NextResponse.json({
+          response: localizedText,
+          language: userLanguage,
+          languageName: SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
+          audio,
+          translationApplied,
+          source: "agent",
+          type: "agent",
+          toolsUsed: sessionInfo ? ["counsellor_session_request"] : [],
+          actions: sessionInfo ? ["Created a private counsellor request"] : [],
+          triage,
+          session: sessionInfo,
+          actionStatuses,
+        });
       }
     } else if (shouldOfferHandoff && userId) {
       try {
