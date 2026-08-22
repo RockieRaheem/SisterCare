@@ -43,6 +43,14 @@ type ApplicationReview = {
   reviewedAt: string | null;
   reviewNote: string | null;
 };
+type CareFollowUp = {
+  id: string;
+  source_session_id: string;
+  reason: "member_requested" | "session_interrupted" | "referral";
+  status: "pending" | "contacted";
+  due_at: string;
+  linked_session_id: string | null;
+};
 
 function timeAgo(date?: Date): string {
   if (!date || Number.isNaN(date.getTime())) return "recently";
@@ -200,6 +208,7 @@ export default function CounsellorPortalPage() {
   const [presence, setPresence] = useState<PresenceStatus>("offline");
   const [assigned, setAssigned] = useState<CounsellingSession[]>([]);
   const [openCritical, setOpenCritical] = useState<CounsellingSession[]>([]);
+  const [followUps, setFollowUps] = useState<CareFollowUp[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [presenceBusy, setPresenceBusy] = useState(false);
@@ -259,9 +268,15 @@ export default function CounsellorPortalPage() {
     refreshInFlightRef.current = true;
     setRefreshing(true);
     try {
-      const data = await listCounsellorSessions();
+      const [data, followUpResponse] = await Promise.all([
+        listCounsellorSessions(),
+        authenticatedFetch("/api/care-followups", { cache: "no-store" }),
+      ]);
+      const followUpPayload = await followUpResponse.json().catch(() => ({}));
+      if (!followUpResponse.ok) throw new Error(followUpPayload.error || "Follow-up work could not be refreshed");
       setAssigned(data.assigned);
       setOpenCritical(data.openCritical);
+      setFollowUps(followUpPayload.data?.followUps || []);
       const hasLiveAssignment = data.assigned.some((session) =>
         ["matched", "accepted", "active"].includes(session.state),
       );
@@ -412,6 +427,26 @@ export default function CounsellorPortalPage() {
           : "This request changed before the action completed.",
       );
       await refresh();
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const actOnFollowUp = async (followUp: CareFollowUp, action: "start" | "complete") => {
+    setBusyAction(`follow-up-${followUp.id}`);
+    setError(null);
+    try {
+      const response = await authenticatedFetch("/api/care-followups", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: followUp.id, action }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Follow-up action failed");
+      await refresh();
+      if (payload.data?.sessionId) router.push(`/sessions/${payload.data.sessionId}`);
+    } catch (followUpError) {
+      setError(followUpError instanceof Error ? followUpError.message : "Follow-up action failed");
     } finally {
       setBusyAction(null);
     }
@@ -714,6 +749,14 @@ export default function CounsellorPortalPage() {
                 ))}
               </div>
             )}
+          </section>
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-[#1b1922] sm:p-6">
+            <div className="flex items-start justify-between gap-3">
+              <div><h2 className="font-extrabold text-slate-950 dark:text-white">Follow-up commitments</h2><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Member-requested or interrupted care that still needs your response.</p></div>
+              <StatusBadge tone={followUps.some((item) => item.status === "pending") ? "warning" : "success"}>{followUps.filter((item) => item.status === "pending").length} pending</StatusBadge>
+            </div>
+            {followUps.length ? <div className="mt-4 space-y-3">{followUps.map((followUp) => <article key={followUp.id} className="rounded-xl border border-slate-200 p-4 dark:border-slate-700"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-bold text-slate-950 dark:text-white">{followUp.reason === "member_requested" ? "Member requested follow-up" : followUp.reason === "referral" ? "Referral follow-up" : "Interrupted session follow-up"}</p><p className="mt-1 text-xs text-slate-500">Due {new Date(followUp.due_at).toLocaleString()} · {followUp.status}</p></div>{followUp.status === "pending" ? <button type="button" onClick={() => void actOnFollowUp(followUp, "start")} disabled={busyAction === `follow-up-${followUp.id}`} className="min-h-11 rounded-xl bg-primary px-4 text-sm font-bold text-white disabled:opacity-50">{busyAction === `follow-up-${followUp.id}` ? "Opening…" : "Start private follow-up"}</button> : <div className="flex gap-2"><Link href={`/sessions/${followUp.linked_session_id}`} className="inline-flex min-h-11 items-center rounded-xl border border-slate-300 px-4 text-sm font-bold dark:border-slate-700">Open room</Link><button type="button" onClick={() => void actOnFollowUp(followUp, "complete")} disabled={busyAction === `follow-up-${followUp.id}`} className="min-h-11 rounded-xl bg-emerald-700 px-4 text-sm font-bold text-white disabled:opacity-50">Complete</button></div>}</div></article>)}</div> : <div className="mt-4"><OperationsEmptyState icon="task_alt" title="No follow-ups waiting" description="New follow-up commitments will appear here and stay visible until completed." /></div>}
           </section>
         </div>
 

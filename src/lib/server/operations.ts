@@ -17,6 +17,8 @@ const REQUIRED_TABLES = [
   "rate_limits",
   "safety_duty_roster",
   "care_notifications",
+  "care_outcomes",
+  "care_followups",
 ] as const;
 
 export async function recordMaintenanceRun(

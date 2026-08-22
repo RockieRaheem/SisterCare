@@ -40,7 +40,10 @@ export default function SessionRoomPage() {
   const [error, setError] = useState<string | null>(null);
   const [feedbackRating, setFeedbackRating] = useState(0);
   const [feedbackComment, setFeedbackComment] = useState("");
-  const [feedbackSent, setFeedbackSent] = useState(false);
+  const [feltHeard, setFeltHeard] = useState<"yes" | "partly" | "no" | "prefer_not" | "">("");
+  const [nextStep, setNextStep] = useState<"clear" | "follow_up" | "referral" | "prefer_not" | "">("");
+  const [outcomeSent, setOutcomeSent] = useState(false);
+  const [outcomeBusy, setOutcomeBusy] = useState(false);
   const [audioBusy, setAudioBusy] = useState(false);
   const [audioAccess, setAudioAccess] = useState<{
     roomUrl: string;
@@ -70,7 +73,11 @@ export default function SessionRoomPage() {
     try {
       const detail = await getSessionDetail(sessionId);
       setSession(detail);
-      setFeedbackSent(detail.state === "feedback_received");
+      if (["completed", "feedback_received", "escalated"].includes(detail.state)) {
+        const outcomeResponse = await authenticatedFetch(`/api/sessions/${sessionId}/outcome`, { cache: "no-store" });
+        const outcomePayload = await outcomeResponse.json().catch(() => ({}));
+        setOutcomeSent(Boolean(outcomeResponse.ok && outcomePayload.data?.outcome));
+      }
       setError(null);
     } catch (err) {
       const status = (err as { status?: number }).status;
@@ -217,6 +224,33 @@ export default function SessionRoomPage() {
           ? transitionError.message
           : "Action failed. Please try again.",
       );
+    }
+  };
+
+  const submitOutcome = async () => {
+    if (!feltHeard || !nextStep) return;
+    setOutcomeBusy(true);
+    setError(null);
+    try {
+      if (feedbackRating > 0 && state === "completed") {
+        await transitionSession(sessionId, "feedback", {
+          rating: feedbackRating,
+          comment: feedbackComment.trim() || undefined,
+        });
+      }
+      const response = await authenticatedFetch(`/api/sessions/${sessionId}/outcome`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ feltHeard, nextStep }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Your care outcome could not be saved");
+      setOutcomeSent(true);
+      await loadDetail();
+    } catch (outcomeError) {
+      setError(outcomeError instanceof Error ? outcomeError.message : "Your care outcome could not be saved");
+    } finally {
+      setOutcomeBusy(false);
     }
   };
 
@@ -670,15 +704,21 @@ export default function SessionRoomPage() {
       {/* Feedback */}
       {showFeedback && (
         <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-card-dark">
-          {feedbackSent ? (
+          {outcomeSent ? (
             <p className="text-center text-sm text-gray-600 dark:text-gray-300">
-              Thank you for your feedback. 💗
+              Thank you. Your outcome is recorded privately.{nextStep === "follow_up" || nextStep === "referral" ? " Your counsellor now has an accountable follow-up task." : ""}
             </p>
           ) : (
             <>
-              <p className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
-                How was your session?
-              </p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">Before you leave, did you feel heard?</p>
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {([['yes', 'Yes'], ['partly', 'Partly'], ['no', 'No'], ['prefer_not', 'Prefer not to say']] as const).map(([value, label]) => <button key={value} type="button" onClick={() => setFeltHeard(value)} className={`min-h-11 rounded-xl border px-3 text-sm font-bold ${feltHeard === value ? "border-primary bg-primary text-white" : "border-gray-300 text-gray-700 dark:border-gray-600 dark:text-gray-200"}`}>{label}</button>)}
+              </div>
+              <p className="mb-3 mt-5 text-sm font-semibold text-gray-900 dark:text-white">What should happen next?</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {([['clear', 'I have a clear next step'], ['follow_up', 'I need a follow-up'], ['referral', 'I received a referral'], ['prefer_not', 'Nothing else right now']] as const).map(([value, label]) => <button key={value} type="button" onClick={() => setNextStep(value)} className={`min-h-11 rounded-xl border px-3 text-left text-sm font-bold ${nextStep === value ? "border-primary bg-primary text-white" : "border-gray-300 text-gray-700 dark:border-gray-600 dark:text-gray-200"}`}>{label}</button>)}
+              </div>
+              <p className="mb-2 mt-5 text-xs font-bold uppercase tracking-wide text-gray-500">Optional counsellor rating</p>
               <div className="mb-3 flex gap-1">
                 {[1, 2, 3, 4, 5].map((n) => (
                   <button
@@ -703,16 +743,11 @@ export default function SessionRoomPage() {
                 className="mb-3 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-base focus:border-primary focus:outline-none dark:border-gray-600 dark:bg-card-dark dark:text-white"
               />
               <button
-                onClick={() =>
-                  doTransition("feedback", {
-                    rating: feedbackRating,
-                    comment: feedbackComment.trim() || undefined,
-                  })
-                }
-                disabled={feedbackRating === 0}
+                onClick={() => void submitOutcome()}
+                disabled={!feltHeard || !nextStep || outcomeBusy}
                 className="w-full rounded-xl bg-primary-dark py-2.5 text-sm font-semibold text-white hover:bg-primary-dark/90 disabled:opacity-50"
               >
-                Submit feedback
+                {outcomeBusy ? "Saving…" : "Save my outcome"}
               </button>
             </>
           )}

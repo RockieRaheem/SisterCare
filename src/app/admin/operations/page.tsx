@@ -30,6 +30,11 @@ const METRIC_LABELS: Record<string, { label: string; icon: string; tone: "neutra
   session_requests: { label: "Care requests", icon: "support_agent", tone: "primary" },
   sessions_matched: { label: "Sessions matched", icon: "handshake", tone: "success" },
   crisis_requests: { label: "Crisis requests", icon: "emergency", tone: "warning" },
+  care_outcomes_submitted: { label: "Care outcomes recorded", icon: "fact_check", tone: "info" },
+  care_felt_heard_yes: { label: "Members who felt heard", icon: "hearing", tone: "success" },
+  care_felt_heard_partly: { label: "Members partly heard", icon: "hearing_disabled", tone: "warning" },
+  care_felt_heard_no: { label: "Members not heard", icon: "report", tone: "danger" },
+  care_followups_requested: { label: "Follow-ups requested", icon: "event_repeat", tone: "warning" },
 };
 
 function metricMeta(name: string) {

@@ -78,7 +78,7 @@ describe("server operations readiness", () => {
     mocks.rpc.mockResolvedValue({ error: null });
 
     await expect(getDatabaseReadiness()).resolves.toBe(true);
-    expect(mocks.from).toHaveBeenCalledTimes(16);
+    expect(mocks.from).toHaveBeenCalledTimes(18);
     expect(mocks.from).toHaveBeenCalledWith("session_audio_calls");
     expect(mocks.rpc).toHaveBeenCalledWith("claim_counselling_session", {
       target_session_id: "00000000-0000-0000-0000-000000000000",
