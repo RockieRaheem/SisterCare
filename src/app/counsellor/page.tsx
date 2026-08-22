@@ -20,6 +20,10 @@ import {
   resolveCounsellorPortalState,
 } from "@/lib/counsellorApplicationStatus";
 import { readApiResponse } from "@/lib/apiResponse";
+import {
+  shouldMaintainPresence,
+  shouldWithdrawAvailability,
+} from "@/lib/presencePolicy";
 import { type CounsellingSession } from "@/types";
 import {
   listCounsellorSessions,
@@ -209,7 +213,7 @@ export default function CounsellorPortalPage() {
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const refreshInFlightRef = useRef(false);
   const presenceRef = useRef<PresenceStatus>("offline");
-  const presenceStartedRef = useRef(false);
+  const presenceInitializedRef = useRef(false);
   presenceRef.current = presence;
 
   const refreshAccess = useCallback(async () => {
@@ -292,7 +296,10 @@ export default function CounsellorPortalPage() {
       setOnline(true);
       void refresh();
     };
-    const disconnect = () => setOnline(false);
+    const disconnect = () => {
+      setOnline(false);
+      if (presenceRef.current === "available") setPresence("offline");
+    };
     const interval = window.setInterval(refreshVisible, REFRESH_MS);
     const clockInterval = window.setInterval(() => setClock(Date.now()), 15_000);
     window.addEventListener("focus", refreshVisible);
@@ -310,32 +317,54 @@ export default function CounsellorPortalPage() {
   }, [isCounsellor, refresh]);
 
   useEffect(() => {
-    if (!isCounsellor || presenceStartedRef.current) return;
-    presenceStartedRef.current = true;
+    if (!isCounsellor || presenceInitializedRef.current) return;
+    presenceInitializedRef.current = true;
     setPresenceBusy(true);
-    sendPresence("available")
-      .then((effectiveStatus) => {
+    listCounsellorSessions()
+      .then(async (data) => {
+        const hasLiveAssignment = data.assigned.some((session) =>
+          ["matched", "accepted", "active"].includes(session.state),
+        );
+        const effectiveStatus = await sendPresence(
+          hasLiveAssignment ? "available" : "offline",
+        );
         setPresence(effectiveStatus);
-        return refresh();
+        setAssigned(data.assigned);
+        setOpenCritical(data.openCritical);
+        setLastSyncedAt(new Date());
       })
       .catch(() => {
         setPresence("offline");
-        setError("You are offline because this account is not currently eligible to receive sessions.");
+        setError("Your care desk started offline. Choose Available only when you are ready to receive a member.");
       })
       .finally(() => setPresenceBusy(false));
-  }, [isCounsellor, refresh]);
+  }, [isCounsellor]);
 
   useEffect(() => {
     if (!isCounsellor) return;
     if (presence !== "offline") {
       heartbeatRef.current = setInterval(() => {
-        if (presenceRef.current !== "offline") {
+        if (shouldMaintainPresence(
+          presenceRef.current,
+          document.visibilityState === "visible",
+          navigator.onLine,
+        )) {
           void sendPresence("available").then(setPresence).catch(() => {
+            if (presenceRef.current === "available") setPresence("offline");
             setError("Your live availability signal was interrupted. Reconnect before accepting new care.");
           });
         }
       }, HEARTBEAT_MS);
     }
+    const handleVisibility = () => {
+      if (shouldWithdrawAvailability(
+        presenceRef.current,
+        document.visibilityState === "visible",
+      )) {
+        setPresence("offline");
+        void sendPresence("offline").catch(() => undefined);
+      }
+    };
     const goOffline = () => {
       if (presenceRef.current !== "offline") {
         void authenticatedFetch("/api/presence", {
@@ -347,9 +376,11 @@ export default function CounsellorPortalPage() {
       }
     };
     window.addEventListener("beforeunload", goOffline);
+    document.addEventListener("visibilitychange", handleVisibility);
     return () => {
       if (heartbeatRef.current) clearInterval(heartbeatRef.current);
       window.removeEventListener("beforeunload", goOffline);
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [presence, isCounsellor]);
 
