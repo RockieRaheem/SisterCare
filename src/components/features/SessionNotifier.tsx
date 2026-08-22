@@ -13,6 +13,10 @@ import { authenticatedFetch } from "@/lib/authenticatedFetch";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 import { messageFromRealtimeRow } from "@/lib/sessionMessaging";
 import {
+  CareNotificationType,
+  describeCareNotification,
+} from "@/lib/careNotification";
+import {
   showBrowserNotification,
   storeNotification,
 } from "@/lib/notifications";
@@ -45,10 +49,12 @@ export default function SessionNotifier() {
     id: string;
     kind: "ready" | "declined" | "message";
     counsellorName?: string;
+    title?: string;
     message: string;
   } | null>(null);
   const checkingRef = useRef(false);
   const checkingMessagesRef = useRef(false);
+  const checkingDurableRef = useRef(false);
   const activeSessionIdsRef = useRef(new Set<string>());
   const isMember =
     userProfile?.role !== "admin" &&
@@ -57,6 +63,71 @@ export default function SessionNotifier() {
   const isCounsellor =
     userProfile?.role === "counsellor" ||
     userProfile?.registrationIntent === "counsellor";
+
+  const checkDurableUpdates = useCallback(async () => {
+    if (!user?.uid || checkingDurableRef.current) return;
+    checkingDurableRef.current = true;
+    try {
+      const response = await authenticatedFetch("/api/care-notifications", { cache: "no-store" });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) return;
+      const updates = (payload.data?.notifications || []) as Array<{
+        id: string;
+        sessionId: string;
+        type: CareNotificationType;
+      }>;
+      for (const update of updates) {
+        const content = describeCareNotification(update.type);
+        const href = `/sessions/${update.sessionId}`;
+        storeNotification({
+          id: `care-${update.id}`,
+          type: "counsellor_update",
+          title: content.title,
+          message: content.message,
+          href,
+          timestamp: new Date(),
+          read: false,
+        }, user.uid);
+        showBrowserNotification(content.title, {
+          body: "Open SisterCare to view this private care update.",
+          tag: `care-${update.id}`,
+          data: { href },
+        });
+        setSessionUpdate({
+          id: update.sessionId,
+          kind: update.type === "session_accepted" ? "ready" : update.type === "session_rematching" ? "declined" : "message",
+          title: content.title,
+          message: content.message,
+        });
+      }
+      if (updates.length) {
+        await authenticatedFetch("/api/care-notifications", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids: updates.map((update) => update.id) }),
+        });
+      }
+    } catch {
+      // Existing authenticated polling remains available while durable care
+      // updates reconnect; no sensitive details are placed in the error UI.
+    } finally {
+      checkingDurableRef.current = false;
+    }
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (!user?.uid || !userProfile) return;
+    void checkDurableUpdates();
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") void checkDurableUpdates();
+    }, 5_000);
+    const reconnect = () => void checkDurableUpdates();
+    window.addEventListener("online", reconnect);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("online", reconnect);
+    };
+  }, [checkDurableUpdates, user?.uid, userProfile]);
 
   const check = useCallback(async () => {
     if (!user?.uid || !isMember || checkingRef.current) return;
@@ -301,11 +372,11 @@ export default function SessionNotifier() {
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-extrabold text-text-primary dark:text-white">
-          {sessionUpdate.kind === "ready"
+          {sessionUpdate.title || (sessionUpdate.kind === "ready"
             ? "Your counsellor is ready"
             : sessionUpdate.kind === "message"
               ? "New private message"
-              : "Counsellor request update"}
+              : "Counsellor request update")}
         </p>
         <p className="line-clamp-2 text-xs text-text-secondary">
           {sessionUpdate.kind === "ready" && sessionUpdate.counsellorName
