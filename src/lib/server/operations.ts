@@ -15,6 +15,7 @@ const REQUIRED_TABLES = [
   "metrics_daily",
   "operations_heartbeats",
   "rate_limits",
+  "safety_duty_roster",
 ] as const;
 
 export async function recordMaintenanceRun(
@@ -44,6 +45,22 @@ export async function getMaintenanceReadiness(now = Date.now()): Promise<boolean
       const ranAt = heartbeat?.ran_at ? new Date(heartbeat.ran_at).getTime() : 0;
       return heartbeat?.success === true && ranAt > 0 && now - ranAt <= STALE_AFTER_MS;
     });
+  } catch {
+    return false;
+  }
+}
+
+export async function getSafetyCoverageReadiness(): Promise<boolean> {
+  try {
+    const cutoff = new Date(Date.now() - 3 * 60_000).toISOString();
+    const { data, error } = await getSupabaseAdmin()
+      .from("safety_duty_roster")
+      .select("responder_id")
+      .eq("active", true)
+      .gte("heartbeat_at", cutoff)
+      .limit(1)
+      .maybeSingle();
+    return !error && Boolean(data?.responder_id);
   } catch {
     return false;
   }

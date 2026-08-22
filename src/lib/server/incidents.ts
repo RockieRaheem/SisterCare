@@ -29,11 +29,14 @@ export async function transitionIncident(params: {
   const db = getSupabaseAdmin();
   const { data: incident, error: readError } = await db
     .from("incidents")
-    .select("status")
+    .select("status,assigned_to")
     .eq("id", params.incidentId)
     .maybeSingle();
   if (readError) throw new Error(readError.message);
   if (!incident) throw new Error("Incident not found");
+  if (incident.assigned_to && incident.assigned_to !== params.actorUid) {
+    throw new Error("Incident is assigned to another safety responder");
+  }
   const from = incident.status as IncidentStatus;
   assertIncidentTransition(from, params.to);
   const now = new Date().toISOString();
@@ -43,6 +46,7 @@ export async function transitionIncident(params: {
         updated_at: now,
         acknowledged_at: now,
         acknowledged_by: params.actorUid,
+        assigned_to: params.actorUid,
       }
     : {
         status: params.to,

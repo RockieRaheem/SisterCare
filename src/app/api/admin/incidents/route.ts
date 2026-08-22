@@ -31,6 +31,8 @@ async function getIncidents(request: NextRequest) {
     acknowledgedAt: row.acknowledged_at,
     resolvedAt: row.resolved_at,
     resolutionNote: row.resolution_note || "",
+    assignedTo: row.assigned_to || null,
+    ownershipDueAt: row.ownership_due_at || null,
   }));
   return NextResponse.json({ success: true, data: { incidents } });
 }

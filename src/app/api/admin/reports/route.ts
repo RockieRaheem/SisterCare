@@ -39,6 +39,16 @@ async function patchReport(request: NextRequest) {
     return NextResponse.json({ success: false, error: "A closure note of at least 10 characters is required." }, { status: 400 });
   }
   const db = getSupabaseAdmin();
+  const { data: current, error: currentError } = await db
+    .from("member_concern_reports")
+    .select("assigned_to")
+    .eq("id", reportId)
+    .maybeSingle();
+  if (currentError) return NextResponse.json({ success: false, error: "The report could not be checked." }, { status: 503 });
+  if (!current) return NextResponse.json({ success: false, error: "Report not found" }, { status: 404 });
+  if (current.assigned_to && current.assigned_to !== admin.auth.uid) {
+    return NextResponse.json({ success: false, error: "This report is assigned to another safety responder." }, { status: 409 });
+  }
   const patch = {
     status,
     assigned_to: admin.auth.uid,

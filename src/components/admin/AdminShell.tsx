@@ -1,6 +1,7 @@
 import OperationsShell, {
   type OperationsNavItem,
 } from "@/components/operations/OperationsShell";
+import SafetyDutyHeartbeat from "@/components/admin/SafetyDutyHeartbeat";
 
 const links: readonly OperationsNavItem[] = [
   { href: "/admin", label: "Overview", description: "Network priorities", icon: "space_dashboard" },
@@ -15,6 +16,7 @@ const links: readonly OperationsNavItem[] = [
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   return (
     <OperationsShell mode="admin" navigation={links}>
+      <SafetyDutyHeartbeat />
       {children}
     </OperationsShell>
   );

@@ -72,11 +72,14 @@ describe("administrator report review", () => {
   });
 
   it("assigns the administrator and records the closure", async () => {
+    const readMaybeSingle = vi.fn().mockResolvedValue({ data: { assigned_to: null }, error: null });
+    const readEq = vi.fn().mockReturnValue({ maybeSingle: readMaybeSingle });
+    const readSelect = vi.fn().mockReturnValue({ eq: readEq });
     const select = vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: { id: "report-1" }, error: null }) });
     const eq = vi.fn().mockReturnValue({ select });
     const update = vi.fn().mockReturnValue({ eq });
     const auditInsert = vi.fn().mockResolvedValue({ error: null });
-    mocks.from.mockImplementation((table: string) => table === "member_concern_reports" ? { update } : { insert: auditInsert });
+    mocks.from.mockImplementation((table: string) => table === "member_concern_reports" ? { select: readSelect, update } : { insert: auditInsert });
 
     const response = await updateReport(request("/api/admin/reports", { reportId: "report-1", status: "resolved", resolutionNote: "Reviewed the response and corrected the unsafe content." }));
 

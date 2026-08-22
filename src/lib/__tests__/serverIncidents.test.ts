@@ -42,7 +42,7 @@ describe("server incident and audit persistence", () => {
   it("uses an optimistic status check to prevent conflicting reviews", async () => {
     const maybeSingle = vi
       .fn()
-      .mockResolvedValueOnce({ data: { status: "open" }, error: null })
+      .mockResolvedValueOnce({ data: { status: "open", assigned_to: null }, error: null })
       .mockResolvedValueOnce({ data: null, error: null });
     const select = vi.fn(() => ({ eq: vi.fn(() => ({ maybeSingle })) }));
     const changedMaybeSingle = vi.fn(() => maybeSingle());
@@ -63,6 +63,7 @@ describe("server incident and audit persistence", () => {
       expect.objectContaining({
         status: "acknowledged",
         acknowledged_by: "admin-1",
+        assigned_to: "admin-1",
       }),
     );
     expect(secondEq).toHaveBeenCalledWith("status", "open");

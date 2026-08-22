@@ -25,6 +25,8 @@ interface Incident {
   acknowledgedAt?: string | null;
   resolvedAt?: string | null;
   resolutionNote: string;
+  assignedTo?: string | null;
+  ownershipDueAt?: string | null;
 }
 type ApiResult<T> = { success?: boolean; data?: T; error?: string };
 type Filter = "active" | "open" | "acknowledged" | "resolved" | "all";
@@ -53,6 +55,16 @@ export default function IncidentsPage() {
   const [filter, setFilter] = useState<Filter>("active");
   const [resolutionTarget, setResolutionTarget] = useState<Incident | null>(null);
   const [resolutionNote, setResolutionNote] = useState("");
+  const [duty, setDuty] = useState({ selected: false, covered: false, activeResponders: 0, assignedOpenCases: 0 });
+  const [dutyBusy, setDutyBusy] = useState(false);
+
+  const loadDuty = useCallback(async () => {
+    const token = await auth.currentUser?.getIdToken();
+    if (!token) return;
+    const response = await fetch("/api/admin/safety-duty", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+    const result = await readApiResponse<ApiResult<typeof duty>>(response);
+    if (response.ok && result.data) setDuty(result.data);
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -60,13 +72,36 @@ export default function IncidentsPage() {
       const result = await readApiResponse<ApiResult<{ incidents: Incident[] }>>(response);
       if (!response.ok) throw new Error(result.error || "Could not load incidents");
       setIncidents(result.data?.incidents || []);
+      void loadDuty();
       setError("");
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Could not load incidents");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loadDuty]);
+
+  const toggleDuty = async () => {
+    setDutyBusy(true);
+    setError("");
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("Your secure session expired. Sign in again.");
+      const response = await fetch("/api/admin/safety-duty", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ active: !duty.selected }),
+      });
+      const result = await readApiResponse<ApiResult<{ selected: boolean }>>(response);
+      if (!response.ok) throw new Error(result.error || "Safety duty could not be updated");
+      await loadDuty();
+      await load();
+    } catch (dutyError) {
+      setError(dutyError instanceof Error ? dutyError.message : "Safety duty could not be updated");
+    } finally {
+      setDutyBusy(false);
+    }
+  };
 
   useEffect(() => {
     void load();
@@ -124,6 +159,18 @@ export default function IncidentsPage() {
       {error && <div className="mb-5"><OperationsNotice tone="danger" title="Incident workflow needs attention">{error}</OperationsNotice></div>}
       {notice && <div className="mb-5"><OperationsNotice tone="success" title="Incident updated">{notice}</OperationsNotice></div>}
 
+      <section className={`mb-5 rounded-2xl border p-5 ${duty.covered ? "border-emerald-200 bg-emerald-50/70 dark:border-emerald-900 dark:bg-emerald-950/20" : "border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950/25"}`}>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <StatusBadge tone={duty.covered ? "success" : "danger"} dot>{duty.covered ? "Safety coverage active" : "No safety responder on duty"}</StatusBadge>
+            <h2 className="mt-3 font-extrabold text-slate-950 dark:text-white">Accountable safety duty</h2>
+            <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-300">Going on duty makes you the named owner for new serious cases while this administrator workspace stays active. End duty before leaving.</p>
+            <p className="mt-2 text-xs font-bold text-slate-500">{duty.activeResponders} on duty · {duty.assignedOpenCases} open case{duty.assignedOpenCases === 1 ? "" : "s"} assigned to you</p>
+          </div>
+          <button type="button" onClick={() => void toggleDuty()} disabled={dutyBusy} className={`min-h-11 shrink-0 rounded-xl px-5 text-sm font-bold text-white disabled:opacity-50 ${duty.selected ? "bg-slate-700" : "bg-emerald-700"}`}>{dutyBusy ? "Updating…" : duty.selected ? "End safety duty" : "Go on safety duty"}</button>
+        </div>
+      </section>
+
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <OperationsStat label="Unacknowledged" value={counts.open} icon="notifications_active" tone={counts.open ? "danger" : "success"} helper="Open incidents without ownership" />
         <OperationsStat label="Under response" value={counts.acknowledged} icon="engineering" tone={counts.acknowledged ? "warning" : "neutral"} helper="Acknowledged and awaiting closure" />
@@ -152,6 +199,7 @@ export default function IncidentsPage() {
                     <span>Session {incident.sessionId.slice(0, 8)}</span>
                     <span>Waiting at open: {duration(incident.waitingSecondsAtOpen)}</span>
                     {incident.openedAt && <span>Opened {new Date(incident.openedAt).toLocaleString()}</span>}
+                    <span>{incident.assignedTo ? "Owner assigned" : "Unassigned — coverage required"}</span>
                   </div>
                   {incident.resolutionNote && <p className="mt-4 rounded-xl bg-slate-50 p-4 text-sm leading-6 text-slate-700 dark:bg-slate-900 dark:text-slate-300"><span className="font-bold">Resolution:</span> {incident.resolutionNote}</p>}
                 </div>

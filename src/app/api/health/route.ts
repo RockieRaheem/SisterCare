@@ -7,15 +7,17 @@ import { getClinicalRuntimeIssues } from "@/lib/clinicalGovernance";
 import {
   getDatabaseReadiness,
   getMaintenanceReadiness,
+  getSafetyCoverageReadiness,
 } from "@/lib/server/operations";
 import { isPilotPaused } from "@/lib/pilotAccess";
 
 export async function GET() {
   const securityErrors = validateProductionSecurityConfig();
   const clinicalIssues = getClinicalRuntimeIssues();
-  const [databaseReady, maintenanceReady] = await Promise.all([
+  const [databaseReady, maintenanceReady, safetyCoverageReady] = await Promise.all([
     getDatabaseReadiness(),
     getMaintenanceReadiness(),
+    getSafetyCoverageReadiness(),
   ]);
   const pilotAccessReady = !isPilotPaused();
   const ready =
@@ -23,6 +25,7 @@ export async function GET() {
     clinicalIssues.length === 0 &&
     databaseReady &&
     maintenanceReady &&
+    safetyCoverageReady &&
     pilotAccessReady &&
     isAuthEnforced();
 
@@ -35,6 +38,7 @@ export async function GET() {
         database: databaseReady,
         clinicalGovernance: clinicalIssues.length === 0,
         maintenance: maintenanceReady,
+        safetyCoverage: safetyCoverageReady,
         pilotAccess: pilotAccessReady,
       },
     },
