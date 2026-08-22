@@ -11,6 +11,10 @@ import { authenticatedFetch } from "@/lib/authenticatedFetch";
 import { CounsellingSession, SessionState } from "@/types";
 import DailyAudioCall from "@/components/features/DailyAudioCall";
 import {
+  queuedWriteMessage,
+  submitOfflineCapableWrite,
+} from "@/lib/offlineQueue";
+import {
   mergeSessionMessages,
   messageFromRealtimeRow,
   reviveSessionMessage,
@@ -169,18 +173,30 @@ export default function SessionRoomPage() {
     if (!text || !uid || state !== "active") return;
     setSending(true);
     try {
-      const response = await authenticatedFetch(`/api/sessions/${sessionId}/messages`, {
+      const result = await submitOfflineCapableWrite({
+        userId: uid,
+        url: `/api/sessions/${sessionId}/messages`,
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: { text },
       });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error || "Message failed to send");
-      const saved = reviveSessionMessage(payload.data.message);
-      setMessages((current) =>
-        mergeSessionMessages(current, [saved]),
-      );
       setDraft("");
+      if (result.state === "queued") {
+        setMessages((current) => mergeSessionMessages(current, [{
+          id: result.localId,
+          clientMessageId: result.localId,
+          senderId: uid,
+          senderRole: isCounsellor ? "counsellor" : "user",
+          text,
+          createdAt: new Date(),
+        }]));
+        setError(queuedWriteMessage(result.reason));
+      } else {
+        const payload = result.payload as { data?: { message?: Parameters<typeof reviveSessionMessage>[0] } };
+        if (!payload.data?.message) throw new Error("Message was not confirmed by the service");
+        const saved = reviveSessionMessage(payload.data.message);
+        setMessages((current) => mergeSessionMessages(current, [saved]));
+        setError(null);
+      }
     } catch {
       setError("Message failed to send. Check your connection.");
     } finally {

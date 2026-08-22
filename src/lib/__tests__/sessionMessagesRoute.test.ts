@@ -82,6 +82,31 @@ describe("/api/sessions/:id/messages", () => {
       "session-1",
       "member-1",
       "I need support",
+      undefined,
+    );
+  });
+
+  it("passes the offline retry identifier to idempotent storage", async () => {
+    mocks.sendSessionMessage.mockResolvedValue({
+      id: "message-2",
+      senderId: "member-1",
+      text: "I need support",
+    });
+    const retryId = "10000000-0000-4000-8000-000000000001";
+    await POST(
+      new NextRequest("https://sistercare.test/api/sessions/session-1/messages", {
+        method: "POST",
+        headers: { "content-type": "application/json", "idempotency-key": retryId },
+        body: JSON.stringify({ text: "I need support" }),
+      }),
+      context,
+    );
+
+    expect(mocks.sendSessionMessage).toHaveBeenCalledWith(
+      "session-1",
+      "member-1",
+      "I need support",
+      retryId,
     );
   });
 

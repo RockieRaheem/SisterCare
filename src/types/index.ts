@@ -322,6 +322,7 @@ export interface CounsellingSession {
 
 export interface SessionMessage {
   id: string;
+  clientMessageId?: string;
   senderId: string;
   senderRole: "user" | "counsellor";
   text: string;

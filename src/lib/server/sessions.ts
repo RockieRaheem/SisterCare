@@ -948,12 +948,13 @@ export async function listSessionMessages(
   assertSessionParticipant(session, uid);
   const { data, error } = await db()
     .from("session_messages")
-    .select("id,sender_id,sender_role,text,created_at")
+    .select("id,client_message_id,sender_id,sender_role,text,created_at")
     .eq("session_id", sessionId)
     .order("created_at", { ascending: true });
   check(error);
   return (data || []).map((message) => ({
     id: message.id,
+    clientMessageId: message.client_message_id || undefined,
     senderId: message.sender_id,
     senderRole: message.sender_role,
     text: message.text,
@@ -965,10 +966,14 @@ export async function sendSessionMessage(
   sessionId: string,
   uid: string,
   input: string,
+  clientMessageId?: string,
 ): Promise<SessionMessage> {
   const text = input.trim();
   if (!text) throw new Error("Message cannot be empty");
   if (text.length > 2_000) throw new Error("Message is too long");
+  if (clientMessageId && !/^[0-9a-f-]{36}$/i.test(clientMessageId)) {
+    throw new Error("Invalid message retry identifier");
+  }
   const session = await getSession(sessionId);
   if (!session) throw new Error("Session not found");
   const senderRole = assertSessionParticipant(session, uid);
@@ -982,13 +987,35 @@ export async function sendSessionMessage(
       sender_id: uid,
       sender_role: senderRole,
       text,
+      client_message_id: clientMessageId || null,
     })
-    .select("id,sender_id,sender_role,text,created_at")
+    .select("id,client_message_id,sender_id,sender_role,text,created_at")
     .single();
+  if (error && clientMessageId) {
+    const { data: existing, error: existingError } = await db()
+      .from("session_messages")
+      .select("id,client_message_id,sender_id,sender_role,text,created_at")
+      .eq("session_id", sessionId)
+      .eq("sender_id", uid)
+      .eq("client_message_id", clientMessageId)
+      .maybeSingle();
+    check(existingError);
+    if (existing) {
+      return {
+        id: existing.id,
+        clientMessageId: existing.client_message_id || undefined,
+        senderId: existing.sender_id,
+        senderRole: existing.sender_role,
+        text: existing.text,
+        createdAt: new Date(existing.created_at),
+      };
+    }
+  }
   check(error);
   if (!data) throw new Error("Message was not saved");
   return {
     id: data.id,
+    clientMessageId: data.client_message_id || undefined,
     senderId: data.sender_id,
     senderRole: data.sender_role,
     text: data.text,

@@ -119,7 +119,7 @@ export async function submitOfflineCapableWrite(params: {
     url: params.url,
     method: params.method || "POST",
     body: params.body,
-    idempotencyKey: crypto.randomUUID(),
+    idempotencyKey: id,
     createdAt: new Date().toISOString(),
     status: "pending",
   };

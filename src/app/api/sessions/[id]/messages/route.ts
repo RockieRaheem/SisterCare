@@ -76,6 +76,7 @@ export async function POST(
       id,
       auth.uid,
       typeof body.text === "string" ? body.text : "",
+      request.headers.get("idempotency-key") || undefined,
     );
     return NextResponse.json({ success: true, data: { message } });
   } catch (error) {

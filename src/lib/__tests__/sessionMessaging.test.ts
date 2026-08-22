@@ -55,4 +55,25 @@ describe("private session message synchronization", () => {
       later,
     ]);
   });
+
+  it("replaces an offline optimistic copy with its confirmed server row", () => {
+    const optimistic = reviveSessionMessage({
+      id: "local-1",
+      clientMessageId: "retry-1",
+      senderId: "member-1",
+      senderRole: "user",
+      text: "Please help",
+      createdAt: "2026-08-05T04:00:00.000Z",
+    });
+    const confirmed = reviveSessionMessage({
+      id: "database-1",
+      clientMessageId: "retry-1",
+      senderId: "member-1",
+      senderRole: "user",
+      text: "Please help",
+      createdAt: "2026-08-05T04:00:01.000Z",
+    });
+
+    expect(mergeSessionMessages([optimistic], [confirmed])).toEqual([confirmed]);
+  });
 });
