@@ -93,17 +93,20 @@ export async function POST(request: NextRequest) {
     const ineligible =
       error instanceof CounsellorEligibilityError ||
       message.includes("profile required");
+    const safetyCoverageMissing = message.includes("safety coverage");
     if (!ineligible) console.error("Presence update failed:", error);
     return NextResponse.json(
       {
         success: false,
-        error: ineligible
+        error: safetyCoverageMissing
+          ? "You cannot go available until an administrator is actively covering safety duty."
+          : ineligible
           ? error instanceof CounsellorEligibilityError
             ? describeCounsellorEligibilityFailure(error.reasons)
             : "Your verified counsellor profile is still being prepared. Refresh and try again."
           : "Presence update failed",
       },
-      { status: ineligible ? 403 : 500 },
+      { status: safetyCoverageMissing ? 503 : ineligible ? 403 : 500 },
     );
   }
 }

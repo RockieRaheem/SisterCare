@@ -32,6 +32,9 @@ import {
   finishSessionAudio,
 } from "./sessionAudio";
 import { refreshCounsellorPublicRating } from "./counsellorRatings";
+import { canOpenNewCareRequest } from "../careAdmissionsPolicy";
+import { isPilotPaused } from "../pilotAccess";
+import { getSafetyCoverageReadiness } from "./operations";
 import {
   Counsellor,
   CounsellingSession,
@@ -256,6 +259,13 @@ export async function recordHeartbeat(
   ]);
   check(error);
   if (!current) throw new Error("Verified counsellor profile required");
+  if (
+    process.env.NODE_ENV === "production" &&
+    activeLoad === 0 &&
+    !(await getSafetyCoverageReadiness())
+  ) {
+    throw new Error("Accountable safety coverage must be active before receiving new care requests");
+  }
   const counsellor = rowToCounsellor(current as Row);
   const eligibility =
     activeLoad > 0
@@ -493,7 +503,19 @@ export async function createSessionRequest(params: {
   preferredCounsellorId?: string;
   conversationId?: string;
   explicitSummaryConsent?: boolean;
+  continuity?: boolean;
 }): Promise<CounsellingSession> {
+  if (process.env.NODE_ENV === "production") {
+    const allowed = canOpenNewCareRequest({
+      priority: params.priority,
+      continuity: params.continuity,
+      pilotPaused: isPilotPaused(),
+      safetyCoverageReady: await getSafetyCoverageReadiness(),
+    });
+    if (!allowed) {
+      throw new Error("New counsellor requests are paused because accountable safety coverage is not active");
+    }
+  }
   const { data: memberIdentity, error: memberIdentityError } = await db()
     .from("profiles")
     .select("email,display_name,support_alias,privacy_preferences")

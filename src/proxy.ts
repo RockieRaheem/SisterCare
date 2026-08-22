@@ -4,7 +4,7 @@ import { isPilotPaused, shouldPauseApiPath, shouldPauseWorkspacePath } from "@/l
 export function proxy(request: NextRequest) {
   if (!isPilotPaused()) return NextResponse.next();
   const pathname = request.nextUrl.pathname;
-  if (shouldPauseApiPath(pathname)) {
+  if (shouldPauseApiPath(pathname, request.method)) {
     return NextResponse.json(
       { success: false, error: "SisterCare is temporarily paused while the pilot team completes a safety check." },
       { status: 503, headers: { "Cache-Control": "no-store", "Retry-After": "300" } },

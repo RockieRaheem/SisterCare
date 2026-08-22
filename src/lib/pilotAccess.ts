@@ -2,7 +2,6 @@ const PAUSED_WORKSPACE_PREFIXES = [
   "/dashboard",
   "/chat",
   "/counsellors",
-  "/sessions",
   "/wellbeing",
   "/analytics",
   "/library",
@@ -33,13 +32,17 @@ export function isPilotPaused(env: Record<string, string | undefined> = process.
 }
 
 export function shouldPauseWorkspacePath(pathname: string): boolean {
+  if (pathname === "/counsellor") return false;
   return PAUSED_WORKSPACE_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
 }
 
-export function shouldPauseApiPath(pathname: string): boolean {
+export function shouldPauseApiPath(pathname: string, method = "GET"): boolean {
   if (RECOVERY_API_PATHS.has(pathname) || pathname.startsWith("/api/admin/")) return false;
+  if (pathname === "/api/sessions") return method.toUpperCase() !== "GET";
+  if (pathname.startsWith("/api/sessions/")) return false;
+  if (pathname === "/api/care-followups") return method.toUpperCase() !== "GET";
   return PAUSED_API_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );

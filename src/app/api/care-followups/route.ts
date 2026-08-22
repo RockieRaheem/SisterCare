@@ -51,6 +51,7 @@ export async function PATCH(request: NextRequest) {
     summary: "Member requested a private follow-up after a previous care session without sharing additional context.",
     preferredCounsellorId: counsellor.auth.uid,
     explicitSummaryConsent: false,
+    continuity: true,
   });
   const now = new Date().toISOString();
   const { error: updateError } = await db.from("care_followups").update({ status: "contacted", contacted_at: now, linked_session_id: session.id, updated_at: now }).eq("id", id).eq("status", "pending");
