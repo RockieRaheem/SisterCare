@@ -1,13 +1,19 @@
 # SisterCare
 
-SisterCare is a private support platform for women who may not feel safe or
-comfortable discussing mental health, menstrual health, relationships, loss,
-harassment, or other sensitive experiences with people around them.
+SisterCare is a private support platform for girls and women who may not feel
+safe or comfortable discussing mental health, menstrual health, relationships,
+loss, harassment, or other sensitive experiences with people around them.
 
 The product is built around a simple idea: the first step toward support should
 not require a perfect explanation. A member can begin privately with Sister,
 keep useful personal context, or ask to speak with a verified human counsellor
 without sharing her identity with that counsellor.
+
+The service is designed around one operational promise: asking for help must
+not leave someone abandoned inside a workflow. SisterCare therefore separates
+"requested", "assigned", and "accepted" support states, gives serious cases an
+accountable human owner, keeps low-bandwidth text available when audio fails,
+and records whether a useful next step or follow-up was agreed.
 
 **Current status:** SisterCare is being prepared for a small, supervised,
 adult-only pilot. It is not approved for an unrestricted clinical launch, does
@@ -35,7 +41,10 @@ before they can use the software.
   separate body-health context.
 - Lets a member choose a verified counsellor, see live availability, and request
   anonymous text or audio support.
-- Offers reviewed library content and clear routes to urgent human help.
+- Delivers durable care updates when a counsellor accepts, declines, rematches,
+  replies, completes a session, or needs to follow up.
+- Retries unsent private messages without creating duplicates.
+- Offers governed library content and clear routes to urgent human help.
 
 ### For counsellors
 
@@ -45,6 +54,8 @@ before they can use the software.
   counsellors cannot receive new assignments.
 - Supports assigned requests, real-time private messaging, and two-person audio
   calls.
+- Keeps interrupted-session and agreed follow-up work visible until it has an
+  outcome.
 - Allows verified counsellors to maintain their professional profile and submit
   educational content for review.
 
@@ -54,15 +65,17 @@ before they can use the software.
 - Manages eligibility, capacity, availability, and editorial approvals.
 - Monitors waiting members, active sessions, safety incidents, and service
   health without exposing unnecessary personal data.
+- Provides an explicit safety-duty control so normal care requests are accepted
+  only while a responsible administrator is actively covering the service.
 - Maintains an audit trail for sensitive operational decisions.
 
 ## Language and accessibility
 
 SisterCare currently supports English, Luganda, Acholi, Lugbara, Runyankole,
-Ateso, and Swahili in its language catalogue. Sunbird provides the local-language
-speech and translation layer. Spoken replies are available where the selected
-language has a supported voice; Lugbara currently has no selectable text-to-
-speech voice.
+Ateso, and Swahili in its language catalogue. When configured, Sunbird provides
+the local-language speech and translation layer. Spoken replies are available
+where the selected language has a supported voice; Lugbara currently has no
+selectable text-to-speech voice.
 
 The interface also includes keyboard navigation, visible focus states, semantic
 labels, responsive layouts, and text alternatives. Accessibility remains part
@@ -77,13 +90,19 @@ of release testing rather than a one-time checklist.
 | AI orchestration | Groq first, with Gemini as a fallback provider |
 | Local-language speech | Sunbird speech-to-text, translation, and text-to-speech |
 | Private audio calls | Short-lived Daily rooms and participant tokens |
-| Hosting | Vercel functions, static delivery, and two daily maintenance jobs |
+| Safety scheduling | Supabase Cron runs the care safety clock; Vercel daily jobs reconcile state |
+| Hosting | Vercel functions and static delivery |
 | Quality controls | Vitest, Testing Library, type checking, linting, builds, and pilot smoke tests |
 
 The browser receives only Supabase's publishable key. Privileged database
 operations stay on the server and require an authenticated identity plus an
 explicit role check. Supabase Row Level Security remains a second boundary; it
 is not treated as a replacement for server-side authorization.
+
+The one-minute database safety clock handles fallback notices, incident
+creation, stale-assignment rematching, and old-request expiry even when no
+browser is open. Vercel's Hobby-compatible daily jobs are recovery checks, not
+the mechanism used to meet time-sensitive care obligations.
 
 ## Repository guide
 
@@ -163,6 +182,21 @@ or expose them in browser logs.
 The migrations are the source of truth for the database. Avoid making manual
 dashboard changes that are not captured in a new migration.
 
+For an existing database that was already current through migration `0027`, run
+these newer files in this exact order:
+
+1. `20260822_0028_realtime_care_safety_clock.sql`
+2. `20260822_0029_safety_duty_ownership.sql`
+3. `20260822_0030_durable_care_notifications.sql`
+4. `20260822_0031_idempotent_session_messages.sql`
+5. `20260822_0032_care_outcomes_and_followups.sql`
+
+Migration `0028` may return a small JSON summary such as `fallbacks`,
+`incidents`, `rematched`, and `expired`. Those values describe work found by
+the first safety-clock run; they are not migration errors. Enable Supabase Cron
+for the project if the `pg_cron` extension is unavailable, then rerun that
+migration.
+
 ## Activate the first administrator
 
 1. Generate a long random value and set it as `ADMIN_BOOTSTRAP_SECRET` in the
@@ -174,6 +208,40 @@ dashboard changes that are not captured in a new migration.
    after another authorised administrator can manage roles.
 
 Never share the bootstrap secret with a counsellor applicant or member.
+
+## Complete the clinical release gate
+
+Production deliberately remains unavailable until every registered health,
+crisis, and risk resource has a real, current review. A qualified clinical or
+safeguarding reviewer must approve the exact versions in
+[`src/lib/clinicalGovernance.ts`](src/lib/clinicalGovernance.ts). Store the
+result as the server-only `CLINICAL_APPROVALS_JSON` environment variable:
+
+```json
+[
+  {
+    "id": "menstrual-cycle-basics",
+    "version": "1.0.0",
+    "reviewedBy": "Qualified reviewer's full name",
+    "reviewedAt": "2026-08-24T10:00:00.000Z",
+    "reviewDueAt": "2027-02-24T10:00:00.000Z"
+  }
+]
+```
+
+The example shows the format, not a completed approval list. Production
+requires an entry for every registered resource. Do not invent a reviewer,
+reuse an approval for changed content, or treat an engineering test as a
+clinical sign-off.
+
+## Cover safety duty
+
+At least one authorised administrator must open `/admin/incidents`, select
+**Go on safety duty**, and remain connected while normal human-support requests
+are being accepted. The browser renews the duty heartbeat every minute. If all
+safety responders disconnect, coverage expires after three minutes and new
+normal requests fail closed; existing sessions and critical disclosures remain
+accessible.
 
 ## Verify a change
 
@@ -219,16 +287,39 @@ The two cron expressions in [vercel.json](vercel.json) run once daily so they
 remain compatible with Vercel Hobby limits. Live product correctness must not
 depend on a frequent cron job.
 
+### Read the health endpoint
+
+`GET /api/health` returns HTTP 200 only when every release gate is healthy:
+
+| Check | What `true` means |
+| --- | --- |
+| `security` | Production authentication and required secrets are enforced |
+| `database` | Required tables, columns, policies, and matching functions are available |
+| `clinicalGovernance` | Every governed clinical resource has a current matching approval |
+| `maintenance` | Required reconciliation and safety heartbeats are recent and successful |
+| `safetyCoverage` | An authorised administrator is actively covering safety duty |
+| `pilotAccess` | The `PILOT_PAUSED` emergency switch is not enabled |
+
+A `not_ready` response is a protective result, not permission to bypass the
+failed check. Correct the named operational condition and redeploy only when an
+environment variable changed.
+
 ## Safety and privacy boundaries
 
 - SisterCare is a support and navigation tool, not a replacement for a licensed
   clinician or emergency response service.
 - Critical disclosures must lead to clear human-help options; an AI response is
   never considered the completed crisis intervention.
+- "Connected" is shown only after a counsellor has actually accepted the
+  request; assignment alone is not represented as human contact.
 - Counsellors receive only the identity and chat context a member has consented
   to share.
+- Consented context is preserved so members do not have to repeatedly explain
+  painful experiences during the same care journey.
 - KYC documents are private operational records and must never appear in public
   counsellor profiles.
+- Care notifications contain operational state, not copied private-message
+  text.
 - Sensitive routes use explicit authorization, private caching rules, and
   privacy-safe telemetry.
 - Pilot access can be stopped with `PILOT_PAUSED` if a safety or operational
