@@ -447,8 +447,23 @@ function buildAppDeck() {
     appAllocation.forEach((item, i) => addFundingRow(slide, { x: 4.1, y: 3.13 + i * 0.5, w: 8.1, label: item[0], percent: item[1], amount: item[2], color: i === 1 ? C.pinkDark : C.pink }));
     slide.addShape(pptx.ShapeType.roundRect, { x: 4.1, y: 5.74, w: 8.1, h: 0.58, rectRadius: 0.06, fill: { color: C.pinkSoft }, line: { color: C.pinkPale } });
     addText(slide, "Funds unlock: audited pilot release · staffed coverage · validated guidance · credible pilot evidence", 4.34, 5.86, 7.62, 0.3, { fontSize: 10, bold: true, color: C.pinkDeep, align: "center", fit: "shrink" });
-    addText(slide, "Founding team: Kamwanga Raheem · Kisakye Abigail · Kaboggoza Ivan", 0.72, 6.57, 5.45, 0.24, { fontSize: 9.2, bold: true, color: C.ink });
+    addText(slide, "Milestone-based seed ask · detailed pilot budget available for diligence", 0.72, 6.57, 5.6, 0.24, { fontSize: 9.2, bold: true, color: C.ink });
     addText(slide, "kamwangaraheem2050@gmail.com  ·  +256 704 057 370  ·  sister-care.vercel.app", 6.3, 6.57, 6.0, 0.24, { fontSize: 9.2, color: C.pinkDark, align: "right", hyperlink: { url: "https://sister-care.vercel.app/" } });
+  }
+
+  // 11 — Team
+  {
+    const slide = pptx.addSlide("CLEAN");
+    slide._pptx = pptx;
+    addChrome(slide, 11, "The team");
+    addTitle(slide, "The team", "Three builders creating one trusted place to ask for help.", "We combine product execution with a mission rooted in the questions girls and women often feel unable to ask openly.");
+    addTeam(slide, 3.06);
+    slide.addShape(pptx.ShapeType.roundRect, { x: 0.75, y: 4.47, w: 11.85, h: 1.12, rectRadius: 0.08, fill: { color: C.ink }, line: { color: C.ink } });
+    addText(slide, "What we need now", 1.03, 4.66, 1.65, 0.28, { fontSize: 10, bold: true, color: C.pink });
+    addText(slide, "US$75,000 · pilot partners · qualified clinical and safeguarding advisors", 2.82, 4.6, 9.15, 0.42, { fontFace: FONT_HEAD, fontSize: 17, bold: true, color: C.paper, fit: "shrink" });
+    addText(slide, "kamwangaraheem2050@gmail.com", 0.75, 6.24, 3.5, 0.28, { fontSize: 11, color: C.ink, hyperlink: { url: "mailto:kamwangaraheem2050@gmail.com" } });
+    addText(slide, "+256 704 057 370", 4.48, 6.24, 2.4, 0.28, { fontSize: 11, color: C.ink });
+    addText(slide, "sister-care.vercel.app", 8.2, 6.24, 3.0, 0.28, { fontSize: 11, bold: true, color: C.pinkDark, hyperlink: { url: "https://sister-care.vercel.app/" } });
   }
 
   return pptx;
@@ -649,26 +664,42 @@ function buildOrganisationDeck() {
     const slide = pptx.addSlide("CLEAN");
     slide._pptx = pptx;
     addChrome(slide, 10, "Funding ask", "SisterCares");
-    addTitle(slide, "Funding ask", "UGX 150 million for a 12-month, three-site integrated pilot.", "Grant and CSR funding will test the complete organisation model: private support, mental-health programming, menstrual dignity, safe facilities and completed referrals.");
+    addTitle(slide, "Funding ask", "US$40,000 for a 12-month, three-site integrated pilot.", "Grant and CSR funding will test the complete organisation model: private support, mental-health programming, menstrual dignity, safe facilities and completed referrals.");
     slide.addShape(pptx.ShapeType.roundRect, { x: 0.72, y: 3.0, w: 3.05, h: 2.78, rectRadius: 0.08, fill: { color: C.ink }, line: { color: C.ink } });
     addText(slide, "THE ASK", 0.98, 3.28, 1.0, 0.25, { fontSize: 10, bold: true, color: C.pink, charSpacing: 1.5 });
-    addText(slide, "UGX 150M", 0.98, 3.7, 2.52, 0.62, { fontFace: FONT_HEAD, fontSize: 28, bold: true, color: C.paper });
+    addText(slide, "US$40,000", 0.98, 3.7, 2.52, 0.62, { fontFace: FONT_HEAD, fontSize: 28, bold: true, color: C.paper });
     addText(slide, "12 months · 3 pilot sites", 0.98, 4.35, 2.52, 0.28, { fontSize: 11, bold: true, color: C.paper });
     addText(slide, "Restricted to delivery, dignity supplies, safeguarding and evidence milestones.", 0.98, 4.77, 2.52, 0.6, { fontSize: 9.8, color: "DCD5DC", breakLine: true, fit: "shrink" });
     addText(slide, "Partners can also contribute pads, bins, venues or clinical time.", 0.98, 5.39, 2.52, 0.3, { fontSize: 8.8, bold: true, color: C.pink, fit: "shrink" });
     const organisationAllocation = [
-      ["Community programme delivery", 25, "UGX 37.5M"],
-      ["Pads and menstrual education", 25, "UGX 37.5M"],
-      ["SisterBoxes, bins and installation", 15, "UGX 22.5M"],
-      ["Safeguarding and referral support", 15, "UGX 22.5M"],
-      ["Measurement and learning", 10, "UGX 15M"],
-      ["Governance, communication and contingency", 10, "UGX 15M"],
+      ["Community programme delivery", 25, "$10,000"],
+      ["Pads and menstrual education", 25, "$10,000"],
+      ["SisterBoxes, bins and installation", 15, "$6,000"],
+      ["Safeguarding and referral support", 15, "$6,000"],
+      ["Measurement and learning", 10, "$4,000"],
+      ["Governance, communication and contingency", 10, "$4,000"],
     ];
     organisationAllocation.forEach((item, i) => addFundingRow(slide, { x: 4.1, y: 3.0 + i * 0.43, w: 8.1, label: item[0], percent: item[1], amount: item[2], color: i < 2 ? C.pink : C.pinkDark }));
     slide.addShape(pptx.ShapeType.roundRect, { x: 4.1, y: 5.68, w: 8.1, h: 0.64, rectRadius: 0.06, fill: { color: C.pinkSoft }, line: { color: C.pinkPale } });
     addText(slide, "Funds unlock: 3 equipped sites · anonymous questions · pad access · safeguarded support · measured referrals", 4.34, 5.81, 7.62, 0.34, { fontSize: 9.8, bold: true, color: C.pinkDeep, align: "center", fit: "shrink" });
-    addText(slide, "Founding team: Kamwanga Raheem · Kisakye Abigail · Kaboggoza Ivan", 0.72, 6.57, 5.45, 0.24, { fontSize: 9.2, bold: true, color: C.ink });
-    addText(slide, "kamwangaraheem2050@gmail.com  ·  +256 704 057 370  ·  sister-care.vercel.app", 6.3, 6.57, 6.0, 0.24, { fontSize: 9.2, color: C.pinkDark, align: "right", hyperlink: { url: "https://sister-care.vercel.app/" } });
+    addText(slide, "Local procurement will be rebudgeted at the prevailing official exchange rate before disbursement.", 0.72, 6.57, 5.75, 0.24, { fontSize: 8.8, bold: true, color: C.ink, fit: "shrink" });
+    addText(slide, "kamwangaraheem2050@gmail.com  ·  +256 704 057 370  ·  sister-care.vercel.app", 6.5, 6.57, 5.8, 0.24, { fontSize: 9.2, color: C.pinkDark, align: "right", hyperlink: { url: "https://sister-care.vercel.app/" } });
+    slide.addNotes("Planning conversion uses the Bank of Uganda's published exchange-rate context. Final local procurement budget should use the prevailing official rate at disbursement: https://bou.or.ug/interest_rates_exchange_rates");
+  }
+
+  // 11 — Team
+  {
+    const slide = pptx.addSlide("CLEAN");
+    slide._pptx = pptx;
+    addChrome(slide, 11, "The team", "SisterCares");
+    addTitle(slide, "The team", "Three builders turning private questions into practical support.", "The organisation starts with a working application and grows through responsible community partnerships.");
+    addTeam(slide, 3.06);
+    slide.addShape(pptx.ShapeType.roundRect, { x: 0.75, y: 4.47, w: 11.85, h: 1.12, rectRadius: 0.08, fill: { color: C.pink }, line: { color: C.pink } });
+    addText(slide, "What we need now", 1.03, 4.66, 1.65, 0.28, { fontSize: 10, bold: true, color: C.paper });
+    addText(slide, "US$40,000 · 3 pilot sites · clinical, pad, bin and safeguarding partners", 2.82, 4.6, 9.15, 0.42, { fontFace: FONT_HEAD, fontSize: 17, bold: true, color: C.paper, fit: "shrink" });
+    addText(slide, "kamwangaraheem2050@gmail.com", 0.75, 6.24, 3.5, 0.28, { fontSize: 11, color: C.ink, hyperlink: { url: "mailto:kamwangaraheem2050@gmail.com" } });
+    addText(slide, "+256 704 057 370", 4.48, 6.24, 2.4, 0.28, { fontSize: 11, color: C.ink });
+    addText(slide, "sister-care.vercel.app", 8.2, 6.24, 3.0, 0.28, { fontSize: 11, bold: true, color: C.pinkDark, hyperlink: { url: "https://sister-care.vercel.app/" } });
   }
 
   return pptx;
