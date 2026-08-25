@@ -244,6 +244,24 @@ function addTeam(slide, y = 3.25) {
   });
 }
 
+function addFundingRow(slide, { x, y, w, label, percent, amount, color = C.pink }) {
+  addText(slide, label, x, y, 2.5, 0.28, { fontSize: 9.5, bold: true, color: C.ink, fit: "shrink" });
+  slide.addShape(slide._pptx.ShapeType.roundRect, {
+    x: x + 2.58, y: y + 0.07, w: w - 4.17, h: 0.14,
+    rectRadius: 0.04,
+    fill: { color: C.line },
+    line: { color: C.line },
+  });
+  slide.addShape(slide._pptx.ShapeType.roundRect, {
+    x: x + 2.58, y: y + 0.07, w: (w - 4.17) * (percent / 100), h: 0.14,
+    rectRadius: 0.04,
+    fill: { color },
+    line: { color },
+  });
+  addText(slide, `${percent}%`, x + w - 1.48, y, 0.48, 0.28, { fontSize: 9.5, bold: true, color: C.pinkDark, align: "right" });
+  addText(slide, amount, x + w - 0.93, y, 0.93, 0.28, { fontSize: 9.5, bold: true, color: C.ink, align: "right" });
+}
+
 function buildAppDeck() {
   const pptx = newDeck("SisterCare App Pitch Deck", "The SisterCare private support application");
 
@@ -384,42 +402,53 @@ function buildAppDeck() {
     addText(slide, "No registration, revenue or health-outcome traction is claimed before the pilot.", 7.64, 6.46, 5.05, 0.25, { fontSize: 9.4, color: C.muted, italic: true, align: "center" });
   }
 
-  // 9 — Go to market
+  // 9 — Future
   {
     const slide = pptx.addSlide("CLEAN");
     slide._pptx = pptx;
-    addChrome(slide, 9, "Go to market");
-    addTitle(slide, "Go to market", "Start with trusted partners and earn the right to grow.", "Distribution begins through organisations that can help provide safeguarding, counsellor coverage and honest feedback.");
+    addChrome(slide, 9, "The future");
+    addTitle(slide, "The future", "Prove trust in Uganda, then grow with the same discipline.", "SisterCare's future is a trusted private front door to emotional and menstrual support across underserved communities.");
     const phases = [
-      ["0–3 months", "Supervised pilot", "Recruit a small adult cohort through 2–3 trusted partners. Staff the service and observe every handoff."],
-      ["3–6 months", "Improve the model", "Fix failure points, validate willingness to pay and strengthen counsellor operations."],
-      ["6–12 months", "Repeat with partners", "Offer a documented pilot package to more universities, NGOs, clinics and programmes."],
+      ["YEAR 1", "Prove safe value", "Run a supervised adult pilot in Uganda. Validate human handoffs, user outcomes, pricing and daily care operations."],
+      ["YEAR 2", "Grow through partners", "Expand through universities, NGOs and clinics. Improve local-language quality and funded counsellor coverage."],
+      ["YEAR 3", "Replicate responsibly", "Prepare for new markets only after country-specific clinical, legal, language and emergency-resource approval."],
     ];
     phases.forEach((phase, i) => {
       const x = 0.74 + i * 4.12;
-      slide.addShape(pptx.ShapeType.roundRect, { x, y: 3.12, w: 3.72, h: 2.1, rectRadius: 0.08, fill: { color: i === 0 ? C.ink : C.paper }, line: { color: i === 0 ? C.ink : C.line } });
+      slide.addShape(pptx.ShapeType.roundRect, { x, y: 3.12, w: 3.72, h: 2.18, rectRadius: 0.08, fill: { color: i === 0 ? C.ink : C.paper }, line: { color: i === 0 ? C.ink : C.line } });
       addText(slide, phase[0], x + 0.25, 3.34, 3.2, 0.28, { fontSize: 10, bold: true, color: i === 0 ? C.pink : C.pinkDark });
       addText(slide, phase[1], x + 0.25, 3.77, 3.2, 0.42, { fontFace: FONT_HEAD, fontSize: 18, bold: true, color: i === 0 ? C.paper : C.ink });
-      addText(slide, phase[2], x + 0.25, 4.31, 3.2, 0.65, { fontSize: 10.4, color: i === 0 ? "E7E1E7" : C.muted, valign: "top", breakLine: true, fit: "shrink" });
+      addText(slide, phase[2], x + 0.25, 4.31, 3.2, 0.74, { fontSize: 10.1, color: i === 0 ? "E7E1E7" : C.muted, valign: "top", breakLine: true, fit: "shrink" });
     });
-    slide.addShape(pptx.ShapeType.roundRect, { x: 0.74, y: 5.55, w: 12.0, h: 0.82, rectRadius: 0.08, fill: { color: C.pinkSoft }, line: { color: C.pinkPale } });
-    addText(slide, "North-star outcome", 1.02, 5.72, 1.6, 0.28, { fontSize: 10, bold: true, color: C.pinkDark });
-    addText(slide, "A user says SisterCare helped her ask a difficult question and take a safe next step.", 2.72, 5.67, 9.55, 0.37, { fontFace: FONT_HEAD, fontSize: 15, bold: true, color: C.ink, fit: "shrink" });
+    slide.addShape(pptx.ShapeType.roundRect, { x: 0.74, y: 5.62, w: 12.0, h: 0.82, rectRadius: 0.08, fill: { color: C.pinkSoft }, line: { color: C.pinkPale } });
+    addText(slide, "What never changes", 1.02, 5.79, 1.65, 0.28, { fontSize: 10, bold: true, color: C.pinkDark });
+    addText(slide, "Privacy, truthful availability, accountable human ownership and a clear next step after every serious request.", 2.82, 5.73, 9.35, 0.4, { fontFace: FONT_HEAD, fontSize: 14, bold: true, color: C.ink, fit: "shrink" });
   }
 
-  // 10 — Team and ask
+  // 10 — Funding ask
   {
     const slide = pptx.addSlide("CLEAN");
     slide._pptx = pptx;
-    addChrome(slide, 10, "Team and ask");
-    addTitle(slide, "Team and ask", "Help us prove that a safer first conversation can change what happens next.", "Three student builders are turning a deeply human problem into a product with accountable care operations.");
-    addTeam(slide, 3.04);
-    slide.addShape(pptx.ShapeType.roundRect, { x: 0.75, y: 4.42, w: 11.85, h: 1.17, rectRadius: 0.08, fill: { color: C.ink }, line: { color: C.ink } });
-    addText(slide, "We are looking for", 1.03, 4.63, 1.6, 0.28, { fontSize: 10, bold: true, color: C.pink });
-    addText(slide, "Pilot partners · qualified clinical and safeguarding advisors · seed funding", 2.72, 4.57, 9.35, 0.42, { fontFace: FONT_HEAD, fontSize: 17, bold: true, color: C.paper, fit: "shrink" });
-    addText(slide, "sister-care.vercel.app", 0.75, 6.23, 3.0, 0.28, { fontSize: 11, bold: true, color: C.pinkDark, hyperlink: { url: "https://sister-care.vercel.app/" } });
-    addText(slide, "kamwangaraheem2050@gmail.com", 4.08, 6.23, 3.5, 0.28, { fontSize: 11, color: C.ink, hyperlink: { url: "mailto:kamwangaraheem2050@gmail.com" } });
-    addText(slide, "+256 704 057 370", 8.2, 6.23, 2.5, 0.28, { fontSize: 11, color: C.ink });
+    addChrome(slide, 10, "Funding ask");
+    addTitle(slide, "Funding ask", "US$75,000 to prove a safe, repeatable service in 12 months.", "Milestone-based seed funding will turn the working platform into a supervised pilot with staffed care, independent review and measurable evidence.");
+    slide.addShape(pptx.ShapeType.roundRect, { x: 0.72, y: 3.0, w: 3.05, h: 2.78, rectRadius: 0.08, fill: { color: C.ink }, line: { color: C.ink } });
+    addText(slide, "THE ASK", 0.98, 3.28, 1.0, 0.25, { fontSize: 10, bold: true, color: C.pink, charSpacing: 1.5 });
+    addText(slide, "US$75,000", 0.98, 3.7, 2.52, 0.62, { fontFace: FONT_HEAD, fontSize: 28, bold: true, color: C.paper });
+    addText(slide, "12-month runway", 0.98, 4.35, 2.52, 0.28, { fontSize: 11, bold: true, color: C.paper });
+    addText(slide, "Released against pilot, safety and evidence milestones.", 0.98, 4.77, 2.52, 0.56, { fontSize: 10, color: "DCD5DC", breakLine: true, fit: "shrink" });
+    addText(slide, "No ads. No sale of private data.", 0.98, 5.39, 2.52, 0.24, { fontSize: 9.2, bold: true, color: C.pink });
+    const appAllocation = [
+      ["Product, security and reliability", 30, "$22,500"],
+      ["Care operations and safeguarding", 25, "$18,750"],
+      ["Supervised pilot and evaluation", 20, "$15,000"],
+      ["Clinical and language validation", 15, "$11,250"],
+      ["Legal, data protection and contingency", 10, "$7,500"],
+    ];
+    appAllocation.forEach((item, i) => addFundingRow(slide, { x: 4.1, y: 3.13 + i * 0.5, w: 8.1, label: item[0], percent: item[1], amount: item[2], color: i === 1 ? C.pinkDark : C.pink }));
+    slide.addShape(pptx.ShapeType.roundRect, { x: 4.1, y: 5.74, w: 8.1, h: 0.58, rectRadius: 0.06, fill: { color: C.pinkSoft }, line: { color: C.pinkPale } });
+    addText(slide, "Funds unlock: audited pilot release · staffed coverage · validated guidance · credible pilot evidence", 4.34, 5.86, 7.62, 0.3, { fontSize: 10, bold: true, color: C.pinkDeep, align: "center", fit: "shrink" });
+    addText(slide, "Founding team: Kamwanga Raheem · Kisakye Abigail · Kaboggoza Ivan", 0.72, 6.57, 5.45, 0.24, { fontSize: 9.2, bold: true, color: C.ink });
+    addText(slide, "kamwangaraheem2050@gmail.com  ·  +256 704 057 370  ·  sister-care.vercel.app", 6.3, 6.57, 6.0, 0.24, { fontSize: 9.2, color: C.pinkDark, align: "right", hyperlink: { url: "https://sister-care.vercel.app/" } });
   }
 
   return pptx;
@@ -592,41 +621,54 @@ function buildOrganisationDeck() {
     addText(slide, "No advertising · no sale of private data · transparent sponsored access", 1.64, 5.86, 10.05, 0.3, { fontSize: 12, bold: true, color: C.paper, align: "center" });
   }
 
-  // 9 — Roadmap
+  // 9 — Future
   {
     const slide = pptx.addSlide("CLEAN");
     slide._pptx = pptx;
-    addChrome(slide, 9, "First-year plan", "SisterCares");
-    addTitle(slide, "First-year plan", "Pilot the full model before promising scale.", "Each phase has a decision gate so expansion follows evidence, not enthusiasm alone.");
+    addChrome(slide, 9, "The future", "SisterCares");
+    addTitle(slide, "The future", "Build the evidence, then make the model easier to repeat.", "The organisation grows site by site, keeping local referral ownership and safeguarding ahead of visibility.");
     const phases = [
-      ["Months 0–3", "Co-design", "Select 2–3 sites, map referral partners, approve safeguarding and set baseline measures."],
-      ["Months 4–6", "Launch", "Install SisterBoxes and bins, begin support sessions, pad access and the adult app pilot."],
-      ["Months 7–9", "Learn", "Review unanswered questions, referral completion, user feedback and operating cost."],
-      ["Months 10–12", "Decide", "Publish honest learning, improve the model and expand only what proved safe and useful."],
+      ["YEAR 1", "Prove three sites", "Co-design and run the integrated model. Measure trust, referral completion, menstrual dignity and true delivery cost."],
+      ["YEAR 2", "Deepen locally", "Target ten partner sites across two districts, with trained focal people and dependable clinic and safeguarding partners."],
+      ["YEAR 3", "Prepare to replicate", "Publish the model, improve procurement and create a district-ready toolkit without weakening local accountability."],
     ];
     phases.forEach((phase, i) => {
-      const x = 0.72 + i * 3.08;
-      slide.addShape(pptx.ShapeType.roundRect, { x, y: 3.1, w: 2.76, h: 2.58, rectRadius: 0.08, fill: { color: i === 0 ? C.ink : C.paper }, line: { color: i === 0 ? C.ink : C.line } });
-      addText(slide, phase[0], x + 0.22, 3.35, 2.3, 0.25, { fontSize: 9.5, bold: true, color: i === 0 ? C.pink : C.pinkDark });
-      addText(slide, phase[1], x + 0.22, 3.78, 2.3, 0.42, { fontFace: FONT_HEAD, fontSize: 18, bold: true, color: i === 0 ? C.paper : C.ink });
-      addText(slide, phase[2], x + 0.22, 4.33, 2.3, 0.96, { fontSize: 10, color: i === 0 ? "E6E0E6" : C.muted, valign: "top", breakLine: true, fit: "shrink" });
+      const x = 0.74 + i * 4.12;
+      slide.addShape(pptx.ShapeType.roundRect, { x, y: 3.1, w: 3.72, h: 2.36, rectRadius: 0.08, fill: { color: i === 0 ? C.ink : C.paper }, line: { color: i === 0 ? C.ink : C.line } });
+      addText(slide, phase[0], x + 0.25, 3.35, 3.2, 0.25, { fontSize: 9.5, bold: true, color: i === 0 ? C.pink : C.pinkDark });
+      addText(slide, phase[1], x + 0.25, 3.78, 3.2, 0.42, { fontFace: FONT_HEAD, fontSize: 18, bold: true, color: i === 0 ? C.paper : C.ink });
+      addText(slide, phase[2], x + 0.25, 4.33, 3.2, 0.88, { fontSize: 10.1, color: i === 0 ? "E6E0E6" : C.muted, valign: "top", breakLine: true, fit: "shrink" });
     });
-    addText(slide, "Decision gate: pause any service whose people, safeguarding or referral capacity cannot meet its promise.", 0.72, 6.13, 12.0, 0.34, { fontSize: 10.5, bold: true, color: C.danger, align: "center" });
+    slide.addShape(pptx.ShapeType.roundRect, { x: 0.74, y: 5.78, w: 12.0, h: 0.68, rectRadius: 0.06, fill: { color: C.amberSoft }, line: { color: "F2D6A7" } });
+    addText(slide, "Decision rule", 1.02, 5.93, 1.15, 0.26, { fontSize: 10, bold: true, color: C.amber });
+    addText(slide, "Pause any service whose people, safeguarding, supplies or referral capacity cannot meet its promise.", 2.24, 5.88, 9.9, 0.34, { fontSize: 10.5, bold: true, color: C.ink, fit: "shrink" });
   }
 
-  // 10 — Team and partnership ask
+  // 10 — Funding ask
   {
     const slide = pptx.addSlide("CLEAN");
     slide._pptx = pptx;
-    addChrome(slide, 10, "Team and partnership ask", "SisterCares");
-    addTitle(slide, "Team and partnership ask", "Build a support system that remembers the person.", "SisterCares is beginning with a working application, a community-rooted mission and the discipline to pilot before scaling.");
-    addTeam(slide, 3.0);
-    slide.addShape(pptx.ShapeType.roundRect, { x: 0.75, y: 4.38, w: 11.85, h: 1.26, rectRadius: 0.08, fill: { color: C.pink }, line: { color: C.pink } });
-    addText(slide, "We are looking for", 1.02, 4.58, 1.62, 0.28, { fontSize: 10, bold: true, color: C.paper });
-    addText(slide, "3 pilot sites · clinical and safeguarding partners · pad and bin partners · seed funding", 2.68, 4.52, 9.44, 0.45, { fontFace: FONT_HEAD, fontSize: 16, bold: true, color: C.paper, fit: "shrink" });
-    addText(slide, "kamwangaraheem2050@gmail.com", 0.75, 6.24, 3.5, 0.28, { fontSize: 11, color: C.ink, hyperlink: { url: "mailto:kamwangaraheem2050@gmail.com" } });
-    addText(slide, "+256 704 057 370", 4.48, 6.24, 2.4, 0.28, { fontSize: 11, color: C.ink });
-    addText(slide, "sister-care.vercel.app", 8.2, 6.24, 3.0, 0.28, { fontSize: 11, bold: true, color: C.pinkDark, hyperlink: { url: "https://sister-care.vercel.app/" } });
+    addChrome(slide, 10, "Funding ask", "SisterCares");
+    addTitle(slide, "Funding ask", "UGX 150 million for a 12-month, three-site integrated pilot.", "Grant and CSR funding will test the complete organisation model: private support, mental-health programming, menstrual dignity, safe facilities and completed referrals.");
+    slide.addShape(pptx.ShapeType.roundRect, { x: 0.72, y: 3.0, w: 3.05, h: 2.78, rectRadius: 0.08, fill: { color: C.ink }, line: { color: C.ink } });
+    addText(slide, "THE ASK", 0.98, 3.28, 1.0, 0.25, { fontSize: 10, bold: true, color: C.pink, charSpacing: 1.5 });
+    addText(slide, "UGX 150M", 0.98, 3.7, 2.52, 0.62, { fontFace: FONT_HEAD, fontSize: 28, bold: true, color: C.paper });
+    addText(slide, "12 months · 3 pilot sites", 0.98, 4.35, 2.52, 0.28, { fontSize: 11, bold: true, color: C.paper });
+    addText(slide, "Restricted to delivery, dignity supplies, safeguarding and evidence milestones.", 0.98, 4.77, 2.52, 0.6, { fontSize: 9.8, color: "DCD5DC", breakLine: true, fit: "shrink" });
+    addText(slide, "Partners can also contribute pads, bins, venues or clinical time.", 0.98, 5.39, 2.52, 0.3, { fontSize: 8.8, bold: true, color: C.pink, fit: "shrink" });
+    const organisationAllocation = [
+      ["Community programme delivery", 25, "UGX 37.5M"],
+      ["Pads and menstrual education", 25, "UGX 37.5M"],
+      ["SisterBoxes, bins and installation", 15, "UGX 22.5M"],
+      ["Safeguarding and referral support", 15, "UGX 22.5M"],
+      ["Measurement and learning", 10, "UGX 15M"],
+      ["Governance, communication and contingency", 10, "UGX 15M"],
+    ];
+    organisationAllocation.forEach((item, i) => addFundingRow(slide, { x: 4.1, y: 3.0 + i * 0.43, w: 8.1, label: item[0], percent: item[1], amount: item[2], color: i < 2 ? C.pink : C.pinkDark }));
+    slide.addShape(pptx.ShapeType.roundRect, { x: 4.1, y: 5.68, w: 8.1, h: 0.64, rectRadius: 0.06, fill: { color: C.pinkSoft }, line: { color: C.pinkPale } });
+    addText(slide, "Funds unlock: 3 equipped sites · anonymous questions · pad access · safeguarded support · measured referrals", 4.34, 5.81, 7.62, 0.34, { fontSize: 9.8, bold: true, color: C.pinkDeep, align: "center", fit: "shrink" });
+    addText(slide, "Founding team: Kamwanga Raheem · Kisakye Abigail · Kaboggoza Ivan", 0.72, 6.57, 5.45, 0.24, { fontSize: 9.2, bold: true, color: C.ink });
+    addText(slide, "kamwangaraheem2050@gmail.com  ·  +256 704 057 370  ·  sister-care.vercel.app", 6.3, 6.57, 6.0, 0.24, { fontSize: 9.2, color: C.pinkDark, align: "right", hyperlink: { url: "https://sister-care.vercel.app/" } });
   }
 
   return pptx;
