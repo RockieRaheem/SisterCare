@@ -30,6 +30,12 @@ describe("critical safety alerts", () => {
     expect(service).not.toContain("message_text");
   });
 
+  it("routes each responder to a workspace they are authorised to open", () => {
+    expect(service).toContain('recipientTargets.set(row.id, "/admin/incidents")');
+    expect(service).toContain('params.sessionId ? `/sessions/${params.sessionId}` : "/counsellor"');
+    expect(service).toContain('recipientTargets.set(row.id, "/doctor")');
+  });
+
   it("shows an unambiguous professional alert", () => {
     expect(describeCareNotification("safety_alert")).toEqual({
       title: "Critical safety alert",

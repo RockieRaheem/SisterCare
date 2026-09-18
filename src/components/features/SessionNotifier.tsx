@@ -101,7 +101,7 @@ export default function SessionNotifier() {
         });
         setSessionUpdate({
           id: update.sessionId || update.id,
-          kind: update.type === "safety_alert" ? "safety" : update.type === "session_accepted" ? "ready" : update.type === "session_rematching" ? "declined" : "message",
+          kind: update.type === "safety_alert" || update.type === "medical_safety_block" ? "safety" : update.type === "session_accepted" ? "ready" : update.type === "session_rematching" ? "declined" : "message",
           title: content.title,
           message: content.message,
           href,

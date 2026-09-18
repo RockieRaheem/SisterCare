@@ -65,23 +65,27 @@ export async function notifyCriticalSafetyAlert(params: {
   if (counsellorsResult.error) throw new Error(counsellorsResult.error.message);
   if (doctorsResult.error) throw new Error(doctorsResult.error.message);
 
-  const recipients = new Set<string>(
-    ((adminsResult.data || []) as RecipientRow[]).map((row) => row.id),
-  );
+  const recipientTargets = new Map<string, string>();
+  for (const row of (adminsResult.data || []) as RecipientRow[]) {
+    recipientTargets.set(row.id, "/admin/incidents");
+  }
   for (const row of (counsellorsResult.data || []) as RecipientRow[]) {
     if (fresh(row.last_heartbeat_at, PRESENCE_TTL_SECONDS, now)) {
-      recipients.add(row.id);
+      recipientTargets.set(
+        row.id,
+        params.sessionId ? `/sessions/${params.sessionId}` : "/counsellor",
+      );
     }
   }
   for (const row of (doctorsResult.data || []) as RecipientRow[]) {
     if (fresh(row.last_heartbeat_at, DOCTOR_PRESENCE_TTL_SECONDS, now)) {
-      recipients.add(row.id);
+      recipientTargets.set(row.id, "/doctor");
     }
   }
 
-  if (recipients.size) {
+  if (recipientTargets.size) {
     const { error } = await db.from("care_notifications").insert(
-      [...recipients].map((recipientId) => ({
+      [...recipientTargets].map(([recipientId, href]) => ({
         recipient_id: recipientId,
         session_id: params.sessionId || null,
         event_type: "safety_alert",
@@ -89,7 +93,7 @@ export async function notifyCriticalSafetyAlert(params: {
         metadata: {
           severity: "critical",
           category: params.category,
-          href: params.sessionId ? `/sessions/${params.sessionId}` : "/admin/incidents",
+          href,
         },
       })),
     );
@@ -100,9 +104,9 @@ export async function notifyCriticalSafetyAlert(params: {
     sessionId: params.sessionId,
     incidentId,
     category: params.category,
-    recipients: recipients.size,
+    recipients: recipientTargets.size,
   });
-  return { incidentId, recipients: recipients.size };
+  return { incidentId, recipients: recipientTargets.size };
 }
 
 /**
