@@ -43,6 +43,7 @@ import {
   buildTranslationPrompt,
 } from "@/lib/localization";
 import { resolveChatLanguage } from "@/lib/chatLanguage";
+import { enforceMedicalOutputBoundary } from "@/lib/medicalSafety";
 import {
   ChatPipelineError,
   evaluateHandoffPolicy,
@@ -1423,13 +1424,44 @@ async function postChat(request: NextRequest) {
       clinicalGuidanceAllowed,
     });
 
-    let responseText = agentResult.response;
+    const medicalBoundary = enforceMedicalOutputBoundary(agentResult.response);
+    let responseText = medicalBoundary.text;
+
+    if (medicalBoundary.blocked) {
+      await emitEvent("agent.medical_output_blocked", {
+        userId,
+        conversationId:
+          typeof conversationId === "string" ? conversationId : undefined,
+        violations: medicalBoundary.violations,
+      });
+      actionStatuses.push({
+        key: "medical-safety",
+        label: "Unsafe medical instruction blocked",
+        state: "done",
+      });
+    }
 
     if (handoffText) {
       responseText += handoffText;
     }
 
-    const { localizedText, audio } = await localizeResponse(responseText);
+    const { localizedText: candidateLocalizedText, audio: candidateAudio } =
+      await localizeResponse(responseText);
+    const localizedBoundary = enforceMedicalOutputBoundary(
+      candidateLocalizedText,
+    );
+    const localizedText = localizedBoundary.text;
+    const audio = localizedBoundary.blocked ? undefined : candidateAudio;
+
+    if (localizedBoundary.blocked && !medicalBoundary.blocked) {
+      await emitEvent("agent.medical_output_blocked", {
+        userId,
+        conversationId:
+          typeof conversationId === "string" ? conversationId : undefined,
+        stage: "localized_output",
+        violations: localizedBoundary.violations,
+      });
+    }
 
     return NextResponse.json({
       response: localizedText,

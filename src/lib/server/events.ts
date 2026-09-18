@@ -16,6 +16,7 @@ export type DomainEventType =
   | "crisis.detected"
   | "crisis.escalation_triggered"
   | "counsellor.presence_changed"
+  | "agent.medical_output_blocked"
   | "agent.tool_executed";
 
 export async function emitEvent(
