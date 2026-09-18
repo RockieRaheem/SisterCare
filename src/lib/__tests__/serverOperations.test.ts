@@ -78,7 +78,7 @@ describe("server operations readiness", () => {
     mocks.rpc.mockResolvedValue({ error: null });
 
     await expect(getDatabaseReadiness()).resolves.toBe(true);
-    expect(mocks.from).toHaveBeenCalledTimes(22);
+    expect(mocks.from).toHaveBeenCalledTimes(23);
     expect(mocks.from).toHaveBeenCalledWith("session_audio_calls");
     expect(mocks.from).toHaveBeenCalledWith("doctors");
     expect(mocks.from).toHaveBeenCalledWith("doctor_appointments");

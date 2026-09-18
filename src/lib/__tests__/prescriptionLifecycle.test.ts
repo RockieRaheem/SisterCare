@@ -6,6 +6,7 @@ import { describeCareNotification } from "@/lib/careNotification";
 const migration = fs.readFileSync(path.join(process.cwd(), "supabase", "migrations", "20260825_0040_void_doctor_prescriptions.sql"), "utf8");
 const service = fs.readFileSync(path.join(process.cwd(), "src", "lib", "server", "doctorCare.ts"), "utf8");
 const route = fs.readFileSync(path.join(process.cwd(), "src", "app", "api", "doctor", "prescriptions", "route.ts"), "utf8");
+const operations = fs.readFileSync(path.join(process.cwd(), "src", "lib", "server", "operations.ts"), "utf8");
 
 describe("prescription withdrawal lifecycle", () => {
   it("preserves withdrawn records with an accountable reason", () => {
@@ -14,6 +15,7 @@ describe("prescription withdrawal lifecycle", () => {
     expect(migration).toContain("void_reason text");
     expect(service).toContain('.eq("doctor_id", params.doctorId)');
     expect(service).toContain('.eq("status", "issued")');
+    expect(operations).toContain('select("voided_at,voided_by,void_reason"');
   });
 
   it("notifies the member and exposes only an authenticated doctor endpoint", () => {

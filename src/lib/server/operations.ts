@@ -82,6 +82,7 @@ export async function getDatabaseReadiness(): Promise<boolean> {
       sessionColumns,
       audioColumns,
       articleColumns,
+      doctorPrescriptionColumns,
       matchingFunction,
     ] =
       await Promise.all([
@@ -108,6 +109,9 @@ export async function getDatabaseReadiness(): Promise<boolean> {
             "reviewed_by,reviewed_at,published_at,tags,cover_image_url",
             { head: true },
           ),
+        client
+          .from("doctor_prescriptions")
+          .select("voided_at,voided_by,void_reason", { head: true }),
         client.rpc("claim_counselling_session", {
           target_session_id: "00000000-0000-0000-0000-000000000000",
           target_counsellor_id: "00000000-0000-0000-0000-000000000000",
@@ -119,6 +123,7 @@ export async function getDatabaseReadiness(): Promise<boolean> {
       sessionColumns,
       audioColumns,
       articleColumns,
+      doctorPrescriptionColumns,
       matchingFunction,
     ];
     return checks.every((result) => !result.error);
