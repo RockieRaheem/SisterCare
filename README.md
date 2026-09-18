@@ -188,6 +188,33 @@ legacy aliases for deployments that have not yet moved to the current names.
 Do not prefix secrets with `NEXT_PUBLIC_`, commit them, paste them into issues,
 or expose them in browser logs.
 
+## Enable Google sign-in
+
+Google sign-in is configured in Supabase and Google Cloud; its client secret
+does not belong in Vercel or in this repository.
+
+1. In Supabase, open **Authentication > Providers > Google** and copy the
+   callback URL shown there.
+2. In Google Cloud Console, configure the OAuth consent screen, create an OAuth
+   2.0 Client ID for a **Web application**, add
+   `https://sister-care.vercel.app` as an authorised JavaScript origin, and add
+   the Supabase callback URL as an authorised redirect URI. It has this shape:
+   `https://<project-ref>.supabase.co/auth/v1/callback`.
+3. Copy the Google Client ID and Client Secret into Supabase's Google provider
+   settings, enable the provider, and save it.
+4. In Supabase **Authentication > URL Configuration**, set the Site URL to
+   `https://sister-care.vercel.app` and add this exact redirect URL:
+   `https://sister-care.vercel.app/auth/callback`.
+5. For local testing, add `http://localhost:3000` as a Google JavaScript origin
+   and allow `http://localhost:3000/auth/callback` in Supabase. Add a Vercel
+   preview wildcard only when preview deployments need authentication; keep
+   the production redirect exact.
+
+After changing authentication settings, test both **Sign in with Google** and
+**Create account with Google**. Existing accounts must return to their stored
+workspace role. A new counsellor selection records only an application intent;
+it never grants counsellor, doctor, or administrator privileges.
+
 ## Create the database
 
 1. Create a Supabase project with the Data API enabled and automatic Row Level
