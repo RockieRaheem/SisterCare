@@ -355,6 +355,71 @@ export interface CounsellorApplication {
   reviewNote?: string;
 }
 
+export type DoctorStatus = "available" | "busy" | "offline";
+export type DoctorVerificationStatus =
+  | "pending"
+  | "verified"
+  | "rejected"
+  | "suspended"
+  | "expired";
+
+export interface Doctor {
+  id: string;
+  professionalName: string;
+  title: string;
+  bio: string;
+  specializations: string[];
+  languages: string[];
+  yearsExperience: number;
+  photoURL: string;
+  status: DoctorStatus;
+  acceptingAppointments: boolean;
+  verificationStatus: DoctorVerificationStatus;
+}
+
+export type DoctorAppointmentStatus =
+  | "requested"
+  | "booked"
+  | "in_consultation"
+  | "completed"
+  | "declined"
+  | "cancelled";
+
+export interface DoctorAppointment {
+  id: string;
+  memberId: string;
+  doctorId: string | null;
+  doctorName?: string;
+  status: DoctorAppointmentStatus;
+  urgency: "routine" | "urgent" | "critical";
+  specialty: string;
+  memberSummary: string;
+  preferredLanguage: string;
+  scheduledFor?: Date;
+  requestedAt: Date;
+  respondedAt?: Date;
+  consultationStartedAt?: Date;
+  completedAt?: Date;
+}
+
+export interface DoctorPrescription {
+  id: string;
+  appointmentId: string;
+  memberId: string;
+  doctorId: string;
+  doctorName?: string;
+  medicineName: string;
+  strength: string;
+  dose: string;
+  route: string;
+  frequency: string;
+  duration: string;
+  quantity: string;
+  instructions: string;
+  status: "issued" | "voided";
+  issuedAt: Date;
+}
+
 // Subscription Types
 export interface Subscription {
   userId: string;
