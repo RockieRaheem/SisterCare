@@ -217,6 +217,7 @@ these newer files in this exact order:
 10. `20260824_0037_doctor_consultation_messaging.sql`
 11. `20260824_0038_medical_safety_incidents.sql`
 12. `20260824_0039_harden_doctor_operations.sql`
+13. `20260825_0040_void_doctor_prescriptions.sql`
 
 Run `0033` as its own SQL execution before `0034`; PostgreSQL enum additions
 must be committed before the new role is used by later schema statements. Run

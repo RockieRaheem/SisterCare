@@ -370,6 +370,7 @@ function prescription(row: Row): DoctorPrescription {
     medicineName: String(row.medicine_name), strength: String(row.strength), dose: String(row.dose), route: String(row.route),
     frequency: String(row.frequency), duration: String(row.duration), quantity: String(row.quantity), instructions: String(row.instructions || ""),
     status: row.status as DoctorPrescription["status"], issuedAt: asDate(row.issued_at) || new Date(),
+    voidedAt: asDate(row.voided_at), voidReason: row.void_reason ? String(row.void_reason) : undefined,
   };
 }
 
@@ -401,6 +402,40 @@ export async function listPrescriptions(params: { memberId?: string; doctorId?: 
   const { data, error } = await query;
   if (error) throw new Error(error.message);
   return (data || []).map((row) => prescription(row as Row));
+}
+
+export async function voidDoctorPrescription(params: {
+  doctorId: string;
+  prescriptionId: string;
+  reason: string;
+}): Promise<DoctorPrescription> {
+  const reason = params.reason.trim();
+  if (reason.length < 10 || reason.length > 500) {
+    throw new Error("Record a clear withdrawal reason between 10 and 500 characters");
+  }
+  const db = getSupabaseAdmin();
+  const { data, error } = await db
+    .from("doctor_prescriptions")
+    .update({
+      status: "voided",
+      voided_at: new Date().toISOString(),
+      voided_by: params.doctorId,
+      void_reason: reason,
+    })
+    .eq("id", params.prescriptionId)
+    .eq("doctor_id", params.doctorId)
+    .eq("status", "issued")
+    .select("*,doctors(professional_name)")
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Only your currently issued prescription can be withdrawn");
+  await db.from("audit_events").insert({
+    event_type: "doctor.prescription_voided",
+    actor_id: params.doctorId,
+    subject_id: params.prescriptionId,
+    metadata: { appointmentId: data.appointment_id, reasonRecorded: true },
+  });
+  return prescription(data as Row);
 }
 
 export interface DoctorMessage {

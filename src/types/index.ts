@@ -418,6 +418,8 @@ export interface DoctorPrescription {
   instructions: string;
   status: "issued" | "voided";
   issuedAt: Date;
+  voidedAt?: Date;
+  voidReason?: string;
 }
 
 // Subscription Types

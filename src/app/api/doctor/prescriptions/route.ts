@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest, authorizeDoctor, getAuthorizationFailure, isAuthEnforced } from "@/lib/serverAuth";
-import { issueDoctorPrescription, listPrescriptions, validatePrescriptionDraft } from "@/lib/server/doctorCare";
+import { issueDoctorPrescription, listPrescriptions, validatePrescriptionDraft, voidDoctorPrescription } from "@/lib/server/doctorCare";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -35,5 +35,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, data: { prescription } }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ success: false, error: error instanceof Error ? error.message : "Prescription could not be issued" }, { status: 409 });
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  const auth = await doctor(request);
+  if (!auth) return NextResponse.json({ success: false, error: "Verified doctor access required" }, { status: 403 });
+  const body = await request.json().catch(() => null) as { prescriptionId?: string; reason?: string } | null;
+  if (!body?.prescriptionId || !UUID.test(body.prescriptionId) || typeof body.reason !== "string") {
+    return NextResponse.json({ success: false, error: "Valid prescription and withdrawal reason required" }, { status: 400 });
+  }
+  try {
+    const prescription = await voidDoctorPrescription({ doctorId: auth.uid, prescriptionId: body.prescriptionId, reason: body.reason });
+    return NextResponse.json({ success: true, data: { prescription } });
+  } catch (error) {
+    return NextResponse.json({ success: false, error: error instanceof Error ? error.message : "Prescription could not be withdrawn" }, { status: 409 });
   }
 }
