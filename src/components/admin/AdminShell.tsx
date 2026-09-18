@@ -6,6 +6,7 @@ import SafetyDutyHeartbeat from "@/components/admin/SafetyDutyHeartbeat";
 const links: readonly OperationsNavItem[] = [
   { href: "/admin", label: "Overview", description: "Network priorities", icon: "space_dashboard" },
   { href: "/admin/counsellors", label: "Care network", description: "KYC, shifts and capacity", icon: "verified_user" },
+  { href: "/admin/doctors", label: "Doctor network", description: "Medical credentials and access", icon: "medical_services" },
   { href: "/admin/articles", label: "Clinical review", description: "Publication queue", icon: "edit_note" },
   { href: "/admin/crisis", label: "Crisis monitor", description: "Time-to-human response", icon: "emergency" },
   { href: "/admin/incidents", label: "Incidents", description: "Acknowledge and resolve", icon: "assignment_late" },
