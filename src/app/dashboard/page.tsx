@@ -78,6 +78,7 @@ export default function DashboardPage() {
         const role = (await auth.currentUser?.getIdTokenResult())?.claims.role;
         if (role === "admin") { router.replace("/admin"); return; }
         if (role === "counsellor") { router.replace("/counsellor"); return; }
+        if (role === "doctor") { router.replace("/doctor"); return; }
         if (authProfile?.registrationIntent === "counsellor") { router.replace("/counsellor/apply"); return; }
       } finally {
         setWorkspaceChecked(true);

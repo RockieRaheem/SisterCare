@@ -18,6 +18,7 @@ export default function BottomNav() {
     isMemberNavigationHiddenPath(pathname) ||
     userProfile?.role === "admin" ||
     userProfile?.role === "counsellor" ||
+    userProfile?.role === "doctor" ||
     userProfile?.registrationIntent === "counsellor"
   ) {
     return null;

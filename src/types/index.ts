@@ -16,7 +16,7 @@ export interface UserProfile {
   /** Sign-up path only; it never grants a privileged Supabase role. */
   registrationIntent?: "member" | "counsellor";
   /** Server-controlled Supabase role; never accepted from a browser update. */
-  role?: "member" | "counsellor" | "admin";
+  role?: "member" | "counsellor" | "doctor" | "admin";
   /** Self-attested adult consent for the current controlled pilot. */
   adultConfirmed: boolean;
   pilotConsentVersion: string | null;

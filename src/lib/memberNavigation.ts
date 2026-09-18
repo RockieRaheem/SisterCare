@@ -44,6 +44,8 @@ export function isMemberNavigationHiddenPath(pathname: string): boolean {
     pathname.startsWith("/auth/") ||
     pathname === "/counsellor" ||
     pathname.startsWith("/counsellor/") ||
+    pathname === "/doctor" ||
+    pathname.startsWith("/doctor/") ||
     pathname === "/admin" ||
     pathname.startsWith("/admin/")
   );

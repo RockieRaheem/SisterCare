@@ -1,4 +1,4 @@
-export type WorkspaceRole = "member" | "counsellor" | "admin";
+export type WorkspaceRole = "member" | "counsellor" | "doctor" | "admin";
 export type CounsellorApplicationStatus =
   | "pending"
   | "verified"
@@ -17,6 +17,7 @@ const MEMBER_WORKSPACE_PATHS = [
   "/settings",
   "/analytics",
   "/counsellors",
+  "/doctors",
   "/help",
 ] as const;
 
@@ -31,12 +32,16 @@ export function resolveRoleBoundaryRedirect(input: {
   onboardingCompleted?: boolean;
 }): string | null {
   const professionalPath = matchesPath(input.pathname, "/counsellor");
+  const doctorPath = matchesPath(input.pathname, "/doctor");
   const memberPath = MEMBER_WORKSPACE_PATHS.some((path) =>
     matchesPath(input.pathname, path),
   );
 
-  if (input.role === "admin" && (professionalPath || memberPath)) {
+  if (input.role === "admin" && (professionalPath || doctorPath || memberPath)) {
     return "/admin";
+  }
+  if (input.role === "doctor" && (professionalPath || memberPath)) {
+    return "/doctor";
   }
   const professionalAccount =
     input.role === "counsellor" ||
@@ -53,6 +58,9 @@ export function resolveRoleBoundaryRedirect(input: {
     (matchesPath(input.pathname, "/counsellor/support") ||
       matchesPath(input.pathname, "/counsellor/articles"))
   ) {
+    return input.onboardingCompleted ? "/dashboard" : "/onboarding";
+  }
+  if (input.role !== "doctor" && doctorPath) {
     return input.onboardingCompleted ? "/dashboard" : "/onboarding";
   }
   return null;
@@ -88,6 +96,7 @@ export function resolveWorkspaceRoute(input: {
   applicationStatus?: CounsellorApplicationStatus;
 }): string {
   if (input.role === "admin") return "/admin";
+  if (input.role === "doctor") return "/doctor";
   if (input.role === "counsellor") return "/counsellor";
   if (input.registrationIntent === "counsellor") {
     return input.applicationStatus ? "/counsellor" : "/counsellor/apply";
@@ -102,6 +111,7 @@ export function resolveWorkspaceHome(input: {
   onboardingCompleted?: boolean;
 }): string {
   if (input.role === "admin") return "/admin";
+  if (input.role === "doctor") return "/doctor";
   if (
     input.role === "counsellor" ||
     input.registrationIntent === "counsellor"

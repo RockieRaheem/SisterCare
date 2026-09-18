@@ -11,6 +11,7 @@ const MEMBER_WORKSPACES = [
   "/dashboard",
   "/chat",
   "/counsellors",
+  "/doctors",
   "/sessions",
   "/library",
   "/wellbeing",

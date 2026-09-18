@@ -15,7 +15,7 @@ export interface OperationsNavItem {
 
 interface OperationsShellProps {
   children: React.ReactNode;
-  mode: "admin" | "counsellor";
+  mode: "admin" | "counsellor" | "doctor";
   navigation: readonly OperationsNavItem[];
 }
 
@@ -47,7 +47,15 @@ export default function OperationsShell({
           restricted: "Restricted operations workspace",
           note: "Role, safety and publication decisions are recorded in the audit trail.",
         }
-      : {
+      : mode === "doctor"
+        ? {
+            icon: "medical_services",
+            name: "Doctor desk",
+            label: "Clinical care",
+            restricted: "Confidential clinical workspace",
+            note: "Assess each member before prescribing and keep clinical information inside SisterCare.",
+          }
+        : {
           icon: "support_agent",
           name: "Counsellor desk",
           label: "Professional care",
@@ -59,7 +67,7 @@ export default function OperationsShell({
     userProfile?.displayName?.trim() ||
     user?.displayName?.trim() ||
     user?.email?.split("@")[0] ||
-    (mode === "admin" ? "Administrator" : "Counsellor");
+    (mode === "admin" ? "Administrator" : mode === "doctor" ? "Doctor" : "Counsellor");
   const email = user?.email || "";
   const avatarText = initials(identity) || "SC";
   const activeItem = useMemo(
@@ -90,9 +98,9 @@ export default function OperationsShell({
   }, [mobileOpen]);
 
   const leave = async () => {
-    if (mode === "counsellor") {
+    if (mode === "counsellor" || mode === "doctor") {
       try {
-        await authenticatedFetch("/api/presence", {
+        await authenticatedFetch(mode === "doctor" ? "/api/doctor/presence" : "/api/presence", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status: "offline" }),

@@ -6,8 +6,8 @@ import {
 } from "./supabaseAdmin";
 import { resolveCounsellorAccessRole } from "./counsellorApplicationStatus";
 
-export type UserRole = "user" | "counsellor" | "admin";
-export const USER_ROLES: UserRole[] = ["user", "counsellor", "admin"];
+export type UserRole = "user" | "counsellor" | "doctor" | "admin";
+export const USER_ROLES: UserRole[] = ["user", "counsellor", "doctor", "admin"];
 export type AuthResult =
   | { status: "verified"; uid: string; token: { uid: string; email?: string; role?: UserRole } }
   | { status: "unauthenticated"; reason?: "missing_token" | "invalid_token" }
@@ -125,7 +125,7 @@ export function getAuthorizationFailure(
   if (role && !hasRole(auth, role)) {
     return {
       status: 403,
-      error: `${role === "admin" ? "Administrator" : "Counsellor"} access required`,
+      error: `${role === "admin" ? "Administrator" : role === "doctor" ? "Doctor" : "Counsellor"} access required`,
     };
   }
   return null;

@@ -23,6 +23,7 @@ describe("workspace routing", () => {
   it("returns every signed-in role to its own workspace", () => {
     expect(resolveWorkspaceHome({ role: "admin" })).toBe("/admin");
     expect(resolveWorkspaceHome({ role: "counsellor" })).toBe("/counsellor");
+    expect(resolveWorkspaceHome({ role: "doctor" })).toBe("/doctor");
     expect(
       resolveWorkspaceHome({
         role: "member",
@@ -53,6 +54,16 @@ describe("workspace routing", () => {
         registrationIntent: "member",
       }),
     ).toBe("/counsellor");
+  });
+
+  it("always routes verified doctors to their clinical workspace", () => {
+    expect(resolveWorkspaceRoute({ role: "doctor" })).toBe("/doctor");
+    expect(
+      resolveRoleBoundaryRedirect({ pathname: "/chat", role: "doctor" }),
+    ).toBe("/doctor");
+    expect(
+      resolveRoleBoundaryRedirect({ pathname: "/doctor", role: "member" }),
+    ).toBe("/onboarding");
   });
 
   it("routes submitted applicants to their application status portal", () => {

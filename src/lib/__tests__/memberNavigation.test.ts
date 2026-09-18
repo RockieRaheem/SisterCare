@@ -39,6 +39,7 @@ describe("member primary navigation", () => {
     expect(isMemberNavigationHiddenPath("/auth/login")).toBe(true);
     expect(isMemberNavigationHiddenPath("/admin")).toBe(true);
     expect(isMemberNavigationHiddenPath("/counsellor/profile")).toBe(true);
+    expect(isMemberNavigationHiddenPath("/doctor/prescriptions")).toBe(true);
   });
 
   it("drives both desktop and phone navigation from the same source", () => {
