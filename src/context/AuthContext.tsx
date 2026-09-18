@@ -9,12 +9,16 @@ import {
   ReactNode,
 } from "react";
 import { auth } from "@/lib/authClient";
-import { getUserProfile, updateUserProfile } from "@/lib/dataClient";
+import { getUserProfile } from "@/lib/dataClient";
 import { clearPrivateClientData } from "@/lib/privacy";
 import { UserProfile as FullUserProfile } from "@/types";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 import { markCounsellorOfflineBeforeSignOut } from "@/lib/presenceClient";
 import type { PilotConsent } from "@/lib/pilot";
+import {
+  clearOAuthTransaction,
+  readOAuthTransaction,
+} from "@/lib/oauthTransaction";
 
 interface UserProfile {
   uid: string;
@@ -54,6 +58,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   ) => {
     setProfileLoading(true);
     try {
+      const oauthTransaction = readOAuthTransaction(window.sessionStorage);
+      if (oauthTransaction) {
+        const { data } = await getSupabaseBrowserClient().auth.getSession();
+        const token = data.session?.access_token;
+        if (!token) throw new Error("Google authentication session is unavailable");
+        const response = await fetch("/api/auth/oauth-profile", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(oauthTransaction),
+        });
+        const result = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        if (!response.ok) {
+          throw new Error(
+            result?.error || "SisterCare could not finish your Google sign-in",
+          );
+        }
+        clearOAuthTransaction(window.sessionStorage);
+      }
+
       let profile = await getUserProfile(uid);
 
       // The auth-user trigger owns normal profile creation. Dashboard-created
@@ -72,15 +100,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!profile) throw new Error("Account profile was not created");
       }
 
-      const deferredIntent = window.localStorage.getItem("sistercare-registration-intent");
-      if (
-        deferredIntent === "counsellor" &&
-        profile.role === "member" &&
-        profile.registrationIntent !== "counsellor"
-      ) {
-        await updateUserProfile(uid, { registrationIntent: "counsellor" });
-        profile.registrationIntent = "counsellor";
-      }
       window.localStorage.removeItem("sistercare-registration-intent");
 
       setUserProfile(profile);

@@ -4,6 +4,11 @@
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "./supabase";
 import type { PilotConsent } from "./pilot";
+import {
+  clearOAuthTransaction,
+  createOAuthTransaction,
+  writeOAuthTransaction,
+} from "./oauthTransaction";
 
 export interface SisterCareAuthUser {
   uid: string;
@@ -85,6 +90,7 @@ class SupabaseAuthFacade {
     // A login is never a registration event. Clear any abandoned OAuth
     // signup intent before the authenticated profile listener runs.
     window.localStorage.removeItem("sistercare-registration-intent");
+    clearOAuthTransaction(window.sessionStorage);
     const { data, error } = await getSupabaseBrowserClient().auth.signInWithPassword({ email, password });
     if (error) throw error;
     await this.notify(data.session);
@@ -114,26 +120,29 @@ class SupabaseAuthFacade {
 
   async signInWithGoogle(
     registrationIntent?: "member" | "counsellor",
-    _pilotConsent?: PilotConsent,
+    pilotConsent?: PilotConsent,
   ) {
-    if (registrationIntent) {
-      window.localStorage.setItem(
-        "sistercare-registration-intent",
-        registrationIntent,
-      );
-    } else {
-      window.localStorage.removeItem("sistercare-registration-intent");
-    }
+    const transaction = createOAuthTransaction({
+      registrationIntent,
+      pilotConsent,
+    });
+    writeOAuthTransaction(window.sessionStorage, transaction);
+    window.localStorage.removeItem("sistercare-registration-intent");
     const { error } = await getSupabaseBrowserClient().auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/login?oauth=1`,
+        redirectTo: `${window.location.origin}/auth/callback`,
+        queryParams: { prompt: "select_account" },
       },
     });
-    if (error) throw error;
+    if (error) {
+      clearOAuthTransaction(window.sessionStorage);
+      throw error;
+    }
   }
 
   async signOut() {
+    clearOAuthTransaction(window.sessionStorage);
     const { error } = await getSupabaseBrowserClient().auth.signOut({
       scope: "local",
     });

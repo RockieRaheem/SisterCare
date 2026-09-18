@@ -43,3 +43,30 @@ export function getLoginErrorMessage(
   }
   return "Sign-in could not be completed. Check your details, try the correct sign-in method, or reset your password.";
 }
+
+export function getGoogleAuthErrorMessage(
+  errorCode?: string,
+  providerMessage?: string,
+): string {
+  if (errorCode === "over_request_rate_limit" || errorCode === "429") {
+    return "Google sign-in is receiving too many requests. Wait a moment, then try again.";
+  }
+  if (
+    errorCode === "provider_disabled" ||
+    errorCode === "oauth_provider_not_supported" ||
+    /provider.*(disabled|not enabled|unsupported)/i.test(providerMessage || "")
+  ) {
+    return "Google sign-in is not enabled for this SisterCare deployment. An administrator must enable the Google provider in Supabase.";
+  }
+  if (/network|fetch|offline/i.test(providerMessage || "")) {
+    return "SisterCare could not reach Google. Check your connection and try again.";
+  }
+  if (
+    providerMessage &&
+    providerMessage.length < 180 &&
+    !/token|secret|credential|client[_ -]?id/i.test(providerMessage)
+  ) {
+    return providerMessage;
+  }
+  return "Google sign-in could not be completed. Please try again or use email and password.";
+}

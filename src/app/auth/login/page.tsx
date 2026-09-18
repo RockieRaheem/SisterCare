@@ -9,7 +9,7 @@ import Button from "@/components/ui/Button";
 import AuthShell from "@/components/layout/AuthShell";
 import { resolveSignedInWorkspace } from "@/lib/workspaceClient";
 import { isOAuthWorkspaceReturn } from "@/lib/workspaceRouting";
-import { getLoginErrorMessage } from "@/lib/authErrors";
+import { getGoogleAuthErrorMessage, getLoginErrorMessage } from "@/lib/authErrors";
 
 // Email validation regex
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -127,13 +127,12 @@ export default function LoginPage() {
       await signInWithGoogle();
     } catch (err: unknown) {
       const errorCode = (err as { code?: string })?.code || "";
-      if (errorCode === "auth/popup-closed-by-user") {
-        setError("Sign in cancelled. Please try again.");
-      } else if (errorCode === "auth/popup-blocked") {
-        setError("Pop-up blocked. Please allow pop-ups and try again.");
-      } else {
-        setError("Failed to sign in with Google. Please try again.");
-      }
+      setError(
+        getGoogleAuthErrorMessage(
+          errorCode,
+          (err as { message?: string })?.message,
+        ),
+      );
     } finally {
       setLoading(false);
     }
@@ -325,6 +324,7 @@ export default function LoginPage() {
         {/* Social options */}
         <div className="grid grid-cols-2 gap-3">
           <button
+            type="button"
             onClick={handleGoogleSignIn}
             disabled={loading}
             className="touch-target flex h-12 items-center justify-center gap-2 rounded-xl border border-border-light bg-background-light transition-all hover:bg-white hover:shadow-soft disabled:opacity-50 dark:border-border-dark dark:bg-background-dark dark:hover:bg-border-dark"
