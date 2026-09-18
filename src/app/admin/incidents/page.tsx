@@ -19,7 +19,7 @@ interface Incident {
   type: string;
   severity: string;
   status: "open" | "acknowledged" | "resolved";
-  sessionId: string;
+  sessionId: string | null;
   waitingSecondsAtOpen: number;
   openedAt: string | null;
   acknowledgedAt?: string | null;
@@ -196,7 +196,7 @@ export default function IncidentsPage() {
                   <div className="flex flex-wrap items-center gap-2"><StatusBadge tone={statusTone}>{incident.status}</StatusBadge><StatusBadge tone={["critical", "high"].includes(incident.severity) ? "danger" : "warning"}>{incident.severity}</StatusBadge></div>
                   <h2 className="mt-3 font-extrabold text-slate-950 dark:text-white">{incident.type.replaceAll("_", " ")}</h2>
                   <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-                    <span>Session {incident.sessionId.slice(0, 8)}</span>
+                    {incident.sessionId && <span>Session {incident.sessionId.slice(0, 8)}</span>}
                     <span>Waiting at open: {duration(incident.waitingSecondsAtOpen)}</span>
                     {incident.openedAt && <span>Opened {new Date(incident.openedAt).toLocaleString()}</span>}
                     <span>{incident.assignedTo ? "Owner assigned" : "Unassigned — coverage required"}</span>
@@ -219,7 +219,7 @@ export default function IncidentsPage() {
         <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-950/50 backdrop-blur-[2px] sm:items-center sm:p-4">
           <div role="dialog" aria-modal="true" aria-labelledby="resolve-incident-title" className="w-full max-w-lg rounded-t-3xl bg-white p-6 shadow-2xl dark:bg-[#1b1922] sm:rounded-3xl">
             <div className="flex items-start justify-between gap-3">
-              <div><StatusBadge tone="warning">Accountable closure</StatusBadge><h2 id="resolve-incident-title" className="mt-3 text-xl font-extrabold text-slate-950 dark:text-white">Resolve incident</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Session {resolutionTarget.sessionId.slice(0, 8)}</p></div>
+              <div><StatusBadge tone="warning">Accountable closure</StatusBadge><h2 id="resolve-incident-title" className="mt-3 text-xl font-extrabold text-slate-950 dark:text-white">Resolve incident</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{resolutionTarget.sessionId ? `Session ${resolutionTarget.sessionId.slice(0, 8)}` : `Alert ${resolutionTarget.id.slice(0, 16)}`}</p></div>
               <button type="button" onClick={() => setResolutionTarget(null)} aria-label="Close resolution dialog" className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"><span className="material-symbols-outlined" aria-hidden="true">close</span></button>
             </div>
             <div className="mt-5"><OperationsNotice tone="warning">Record the action taken, the outcome and any required follow-up. Do not include unnecessary member health details.</OperationsNotice></div>

@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   if (!auth) return NextResponse.json({ success: false, error: "Authentication required" }, { status: 401 });
   const { data, error } = await getSupabaseAdmin()
     .from("care_notifications")
-    .select("id,session_id,event_type,created_at")
+    .select("id,session_id,event_type,metadata,created_at")
     .eq("recipient_id", auth.uid)
     .is("read_at", null)
     .order("created_at", { ascending: true })
@@ -25,6 +25,8 @@ export async function GET(request: NextRequest) {
     id: row.id,
     sessionId: row.session_id,
     type: row.event_type as CareNotificationType,
+    metadata:
+      row.metadata && typeof row.metadata === "object" ? row.metadata : {},
     createdAt: row.created_at,
   })) } }, { headers: { "Cache-Control": "private, no-store" } });
 }

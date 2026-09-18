@@ -7,7 +7,8 @@ export type CareNotificationType =
   | "session_escalated"
   | "session_message"
   | "follow_up_requested"
-  | "follow_up_started";
+  | "follow_up_started"
+  | "safety_alert";
 
 const CONTENT: Record<CareNotificationType, { title: string; message: string }> = {
   session_assigned: { title: "New care request", message: "A private care request has been assigned to you." },
@@ -19,6 +20,7 @@ const CONTENT: Record<CareNotificationType, { title: string; message: string }> 
   session_message: { title: "New private message", message: "A new message is waiting in your private care room." },
   follow_up_requested: { title: "Follow-up needs attention", message: "A member follow-up is assigned to you in the professional care workspace." },
   follow_up_started: { title: "Your follow-up is ready", message: "Your counsellor opened a private follow-up room for you." },
+  safety_alert: { title: "Critical safety alert", message: "A serious case needs immediate professional attention. Open the secure response workspace now." },
 };
 
 export function describeCareNotification(type: CareNotificationType) {

@@ -47,10 +47,11 @@ export default function SessionNotifier() {
   const { user, userProfile } = useAuth();
   const [sessionUpdate, setSessionUpdate] = useState<{
     id: string;
-    kind: "ready" | "declined" | "message";
+    kind: "ready" | "declined" | "message" | "safety";
     counsellorName?: string;
     title?: string;
     message: string;
+    href?: string;
   } | null>(null);
   const checkingRef = useRef(false);
   const checkingMessagesRef = useRef(false);
@@ -75,10 +76,13 @@ export default function SessionNotifier() {
         id: string;
         sessionId: string;
         type: CareNotificationType;
+        metadata?: { href?: string; severity?: string };
       }>;
       for (const update of updates) {
         const content = describeCareNotification(update.type);
-        const href = `/sessions/${update.sessionId}`;
+        const href = update.type === "safety_alert"
+          ? update.metadata?.href || (isCounsellor ? "/counsellor" : "/admin/incidents")
+          : `/sessions/${update.sessionId}`;
         storeNotification({
           id: `care-${update.id}`,
           type: "counsellor_update",
@@ -94,10 +98,11 @@ export default function SessionNotifier() {
           data: { href },
         });
         setSessionUpdate({
-          id: update.sessionId,
-          kind: update.type === "session_accepted" ? "ready" : update.type === "session_rematching" ? "declined" : "message",
+          id: update.sessionId || update.id,
+          kind: update.type === "safety_alert" ? "safety" : update.type === "session_accepted" ? "ready" : update.type === "session_rematching" ? "declined" : "message",
           title: content.title,
           message: content.message,
+          href,
         });
       }
       if (updates.length) {
@@ -113,7 +118,7 @@ export default function SessionNotifier() {
     } finally {
       checkingDurableRef.current = false;
     }
-  }, [user?.uid]);
+  }, [isCounsellor, user?.uid]);
 
   useEffect(() => {
     if (!user?.uid || !userProfile) return;
@@ -365,10 +370,10 @@ export default function SessionNotifier() {
   return (
     <aside
       role="status"
-      className="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+4.5rem)] z-[90] mx-auto flex max-w-lg items-center gap-3 rounded-2xl border border-fuchsia-200 bg-white p-3 shadow-2xl dark:border-fuchsia-800 dark:bg-card-dark"
+      className={`fixed inset-x-3 top-[calc(env(safe-area-inset-top)+4.5rem)] z-[90] mx-auto flex max-w-lg items-center gap-3 rounded-2xl border bg-white p-3 shadow-2xl dark:bg-card-dark ${sessionUpdate.kind === "safety" ? "border-red-400 ring-2 ring-red-500/20 dark:border-red-700" : "border-fuchsia-200 dark:border-fuchsia-800"}`}
     >
-      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary-dark">
-        <span className="material-symbols-outlined">support_agent</span>
+      <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${sessionUpdate.kind === "safety" ? "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300" : "bg-primary/10 text-primary-dark"}`}>
+        <span className="material-symbols-outlined">{sessionUpdate.kind === "safety" ? "emergency" : "support_agent"}</span>
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-extrabold text-text-primary dark:text-white">
@@ -385,11 +390,13 @@ export default function SessionNotifier() {
         </p>
       </div>
       <Link
-        href={`/sessions/${sessionUpdate.id}`}
+        href={sessionUpdate.href || `/sessions/${sessionUpdate.id}`}
         onClick={() => setSessionUpdate(null)}
         className="inline-flex min-h-10 shrink-0 items-center rounded-xl bg-primary-dark px-3 text-xs font-bold text-white"
       >
-        {sessionUpdate.kind === "ready"
+        {sessionUpdate.kind === "safety"
+          ? "Respond now"
+          : sessionUpdate.kind === "ready"
           ? "Open room"
           : sessionUpdate.kind === "message"
             ? "Open conversation"
