@@ -45,10 +45,15 @@ import {
 import { resolveChatLanguage } from "@/lib/chatLanguage";
 import {
   assessMedicalRequest,
+  assessMedicalUrgency,
   enforceMedicalOutputBoundary,
   inferDoctorSpecialty,
 } from "@/lib/medicalSafety";
 import { requestDoctorAppointment } from "@/lib/server/doctorCare";
+import {
+  CriticalSafetyCategory,
+  notifyCriticalSafetyAlert,
+} from "@/lib/server/safetyAlerts";
 import {
   ChatPipelineError,
   evaluateHandoffPolicy,
@@ -993,6 +998,16 @@ async function postChat(request: NextRequest) {
       }
     }
 
+    const medicalUrgency = assessMedicalUrgency(messageForAgent);
+    if (medicalUrgency.urgency === "critical") {
+      triage = { severity: "critical", reason: medicalUrgency.reason };
+    } else if (
+      medicalUrgency.urgency === "urgent" &&
+      (triage.severity === "low" || triage.severity === "medium")
+    ) {
+      triage = { severity: "high", reason: medicalUrgency.reason };
+    }
+
     if (userId && shouldActivatePregnancy) {
       const lastPeriodDate =
         pregnancyLmpFromConversation ||
@@ -1178,6 +1193,34 @@ async function postChat(request: NextRequest) {
         } catch (sessionError) {
           console.warn("Crisis-lane session creation failed:", sessionError);
         }
+        if (safetyAssessment.severity === "critical") {
+          const category: CriticalSafetyCategory =
+            safetyAssessment.crisisType === "selfHarm"
+              ? "self_harm"
+              : safetyAssessment.crisisType === "violence"
+                ? "violence"
+                : safetyAssessment.crisisType === "danger"
+                  ? "immediate_danger"
+                  : "abuse";
+          try {
+            const alert = await notifyCriticalSafetyAlert({
+              category,
+              sessionId: crisisSession?.id,
+            });
+            actionStatuses.push({
+              key: "critical-alert",
+              label: `${alert.recipients} safety responder${alert.recipients === 1 ? "" : "s"} alerted`,
+              state: "done",
+            });
+          } catch (alertError) {
+            console.error("Critical safety alert failed:", alertError);
+            actionStatuses.push({
+              key: "critical-alert",
+              label: "Safety alert delivery needs attention",
+              state: "failed",
+            });
+          }
+        }
       }
 
       const { localizedText, audio } = await localizeResponse(crisisResponse);
@@ -1212,7 +1255,14 @@ async function postChat(request: NextRequest) {
         | undefined;
       let response =
         "I can’t diagnose you, prescribe medicine, choose a dose, or tell you to start or stop treatment. A verified doctor can assess you safely. Would you like to choose an available doctor or request the best relevant doctor?";
-      if (medicalRequest === "doctor_request" && userId) {
+      let medicalSafetySession:
+        | { id: string; state: string; priority: string }
+        | undefined;
+      if (
+        (medicalRequest === "doctor_request" ||
+          medicalUrgency.urgency === "critical") &&
+        userId
+      ) {
         try {
           const created = await requestDoctorAppointment({
             memberId: userId,
@@ -1240,6 +1290,47 @@ async function postChat(request: NextRequest) {
             : "I could not create a doctor request, so no doctor has been notified. Open Medical care to retry or choose a verified doctor.";
         }
       }
+      if (medicalUrgency.urgency === "critical" && userId) {
+        response =
+          "What you described may need urgent in-person medical care. Do not wait for an online reply: go to the nearest appropriate health facility or contact local emergency help now. SisterCare has also alerted its safety team and opened professional support requests, but these do not replace emergency care.";
+        try {
+          const session = await createSessionRequest({
+            userId,
+            reason: "risk_detected",
+            priority: "critical",
+            summary: `Medical red flag detected: ${medicalUrgency.reason}`,
+            specialty: "Mental Health",
+            preferredLanguage:
+              SUPPORTED_LANGUAGES[userLanguage]?.name || undefined,
+            conversationId: conversationId || undefined,
+          });
+          medicalSafetySession = {
+            id: session.id,
+            state: session.state,
+            priority: session.priority,
+          };
+        } catch (sessionError) {
+          console.error("Medical safety support request failed:", sessionError);
+        }
+        try {
+          const category: CriticalSafetyCategory =
+            medicalUrgency.reason === "unsafe_procedure"
+              ? "unsafe_procedure"
+              : "medical_red_flag";
+          const alert = await notifyCriticalSafetyAlert({
+            category,
+            sessionId: medicalSafetySession?.id,
+            includeDoctors: true,
+          });
+          actionStatuses.push({
+            key: "critical-medical-alert",
+            label: `${alert.recipients} safety and medical responder${alert.recipients === 1 ? "" : "s"} alerted`,
+            state: "done",
+          });
+        } catch (alertError) {
+          console.error("Critical medical alert failed:", alertError);
+        }
+      }
       const { localizedText, audio } = await localizeResponse(response);
       return NextResponse.json({
         response: localizedText,
@@ -1258,6 +1349,7 @@ async function postChat(request: NextRequest) {
           specialty,
           appointment,
         },
+        session: medicalSafetySession,
         actionStatuses: [
           ...actionStatuses,
           {

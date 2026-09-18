@@ -12,6 +12,7 @@ function governedContentIds(): string[] {
     ...HEALTH_KNOWLEDGE_BASE.map((article) => article.id),
     ...Object.keys(CRISIS_RESPONSES).map((id) => `crisis.${id}`),
     "risk.crisis-patterns",
+    "risk.medical-red-flags",
   ];
 }
 

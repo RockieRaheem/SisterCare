@@ -114,6 +114,18 @@ export const CLINICAL_CONTENT_REGISTRY: ClinicalContentGovernance[] = [
     reviewStatus: "requires_clinical_review",
     changeSummary: "Baseline deterministic crisis lexicon",
   },
+  {
+    id: "risk.medical-red-flags",
+    kind: "risk_rule",
+    version: "1.0.0",
+    riskLevel: "critical",
+    country: "UG",
+    languages: ["en", "lg", "ach", "lgg", "nyn", "teo", "sw"],
+    ownerRole: "clinical-safety-owner",
+    evidenceSources: ARTICLE_EVIDENCE,
+    reviewStatus: "requires_clinical_review",
+    changeSummary: "Deterministic urgent medical escalation boundary",
+  },
 ];
 
 export interface GovernanceIssue {

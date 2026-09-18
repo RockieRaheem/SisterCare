@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   assessMedicalRequest,
   assessMedicalOutput,
+  assessMedicalUrgency,
   enforceMedicalOutputBoundary,
   inferDoctorSpecialty,
   SAFE_MEDICAL_BOUNDARY_RESPONSE,
@@ -68,5 +69,23 @@ describe("medical output safety boundary", () => {
     expect(inferDoctorSpecialty("I need a general doctor")).toBe(
       "General Practice",
     );
+  });
+
+  it.each([
+    "I took too many pills",
+    "I cannot breathe",
+    "I am pregnant with severe pain and heavy bleeding",
+    "I have heavy bleeding and fainted",
+    "Someone is forcing me to abort",
+  ])("recognizes a clinically governed red flag: %s", (message) => {
+    expect(assessMedicalUrgency(message).urgency).toBe("critical");
+  });
+
+  it.each([
+    "What is abortion?",
+    "I want general information about contraception",
+    "Record that I had a mild headache",
+  ])("does not turn a topic mention into a crisis: %s", (message) => {
+    expect(assessMedicalUrgency(message).urgency).toBe("routine");
   });
 });

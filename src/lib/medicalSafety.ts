@@ -23,6 +23,11 @@ export type MedicalRequestKind =
   | "prescription"
   | "medical_guidance";
 
+export interface MedicalUrgencyAssessment {
+  urgency: "routine" | "urgent" | "critical";
+  reason: string;
+}
+
 const DOSE_INSTRUCTION =
   /\b\d+(?:[.,]\d+)?\s*(?:mcg|μg|ug|mg|g|ml|mL|iu|units?|tablets?|tabs?|capsules?|caps?|pills?|drops?)\b/i;
 
@@ -91,4 +96,32 @@ export function inferDoctorSpecialty(text: string): string {
     return "Sexual & Reproductive Health";
   }
   return "General Practice";
+}
+
+/**
+ * Conservative red flags for immediate escalation. These rules must be
+ * clinically reviewed and versioned; mentioning a topic such as abortion is
+ * never, by itself, classified as a crisis.
+ */
+export function assessMedicalUrgency(text: string): MedicalUrgencyAssessment {
+  const normalized = text.toLowerCase();
+  if (/\b(?:overdose|poison(?:ed|ing)?|swallowed poison|took too many pills)\b/i.test(normalized)) {
+    return { urgency: "critical", reason: "poisoning_or_overdose" };
+  }
+  if (/\b(?:cannot breathe|can't breathe|cant breathe|difficulty breathing|unconscious|not waking|seizure|convulsion)\b/i.test(normalized)) {
+    return { urgency: "critical", reason: "airway_or_consciousness" };
+  }
+  if (/\b(?:heavy|uncontrolled|soaking|pouring)\b[\s\S]{0,35}\b(?:bleed|bleeding|blood)\b|\b(?:bleed|bleeding)\b[\s\S]{0,35}\b(?:faint|collapsed|unconscious)\b/i.test(normalized)) {
+    return { urgency: "critical", reason: "severe_bleeding" };
+  }
+  if (/\b(?:pregnan\w*|positive pregnancy test)\b[\s\S]{0,90}\b(?:severe pain|heavy bleeding|faint|collapsed)\b/i.test(normalized)) {
+    return { urgency: "critical", reason: "pregnancy_red_flag" };
+  }
+  if (/\b(?:forced abortion|forcing me to abort|inserted an object|heavy bleeding after (?:an )?abortion|unsafe abortion)\b/i.test(normalized)) {
+    return { urgency: "critical", reason: "unsafe_procedure" };
+  }
+  if (/\b(?:severe pain|rapidly worsening|high fever|persistent vomiting)\b/i.test(normalized)) {
+    return { urgency: "urgent", reason: "urgent_symptoms" };
+  }
+  return { urgency: "routine", reason: "no_red_flag_detected" };
 }
