@@ -106,7 +106,7 @@ export const AGENT_TOOLS = [
   {
     name: "set_reminder",
     description:
-      "Set a health reminder for the user. Use this to schedule period reminders, medication reminders, symptom logging reminders, or appointment reminders.",
+      "Set a non-medication SisterCare reminder for period tracking, symptom logging, or a general check-in. Never create a medicine, dose, treatment, or appointment reminder.",
     parameters: {
       type: "object",
       properties: {
@@ -120,8 +120,6 @@ export const AGENT_TOOLS = [
             "period_coming",
             "period_start",
             "log_symptoms",
-            "medication",
-            "appointment",
             "check_in",
           ],
           description: "Type of reminder",

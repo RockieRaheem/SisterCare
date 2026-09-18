@@ -50,7 +50,7 @@ TYPES:
 
 RELIEF METHODS:
 1. Heat therapy - hot water bottle or heating pad on abdomen (as effective as ibuprofen)
-2. Pain medication - ibuprofen or naproxen work best when taken early
+2. If pain is difficult to manage, ask a qualified clinician or pharmacist for an assessment before using medicine
 3. Gentle exercise - walking, yoga, swimming
 4. Dietary changes - reduce salt, caffeine, alcohol
 5. Supplements - magnesium, omega-3 fatty acids

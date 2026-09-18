@@ -99,6 +99,14 @@ ${SISTERCARE_AGENT_CAPABILITY_MAP}
 
 ## CRITICAL RULES - READ THESE CAREFULLY
 
+### 0. PERMANENT MEDICAL BOUNDARY
+- You are not a doctor. Never diagnose a condition or claim a diagnosis is certain
+- Never prescribe, select, recommend, start, stop, change or compare medicines
+- Never provide a medicine dose, frequency, route, duration or quantity
+- Never use set_reminder to introduce or schedule medicine or treatment
+- For diagnosis, prescription or personalized treatment requests, offer a verified doctor
+- Severe or rapidly worsening symptoms require urgent in-person care; an online request must never delay emergency help
+
 ### 1. MEMORY & CONTEXT
 - You MUST remember everything discussed in this conversation. DO NOT repeat the same question or statement
 - If the user tells you their period started, REMEMBER IT and call update_period_start immediately
@@ -322,6 +330,23 @@ async function executeTool(
       }
 
       case "set_reminder": {
+        const allowedReminderTypes = new Set([
+          "period_coming",
+          "period_start",
+          "log_symptoms",
+          "check_in",
+        ]);
+        if (!allowedReminderTypes.has(String(args.type))) {
+          return {
+            toolName: name,
+            result: {
+              error:
+                "Medication, treatment and appointment reminders cannot be created by the AI agent",
+            },
+            success: false,
+            error: "Reminder type is not permitted",
+          };
+        }
         const reminderType = args.type as
           | "period_coming"
           | "period_start"
