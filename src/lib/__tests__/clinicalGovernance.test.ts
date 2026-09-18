@@ -13,6 +13,7 @@ function governedContentIds(): string[] {
     ...Object.keys(CRISIS_RESPONSES).map((id) => `crisis.${id}`),
     "risk.crisis-patterns",
     "risk.medical-red-flags",
+    "risk.medical-output-firewall",
   ];
 }
 

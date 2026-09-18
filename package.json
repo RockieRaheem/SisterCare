@@ -14,7 +14,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:safety": "vitest run src/lib/__tests__/safety.test.ts src/lib/__tests__/safetyEvaluation.test.ts src/lib/__tests__/clinicalGovernance.test.ts",
+    "test:safety": "vitest run src/lib/__tests__/safety.test.ts src/lib/__tests__/safetyEvaluation.test.ts src/lib/__tests__/clinicalGovernance.test.ts src/lib/__tests__/medicalSafety.test.ts src/lib/__tests__/medicalSafetyEvaluation.test.ts src/lib/__tests__/medicalSafetyIncidents.test.ts",
     "test:watch": "vitest",
     "pilot:verify": "npm run lint && npm run typecheck && npm run test:coverage && npm run build",
     "pilot:smoke": "node scripts/pilot-smoke.mjs",

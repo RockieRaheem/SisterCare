@@ -34,7 +34,7 @@ const DOSE_INSTRUCTION =
 // These patterns intentionally include the common medical words used in the
 // supported languages. The unit-based rule above remains language-independent.
 const PRESCRIPTION_INSTRUCTION =
-  /\b(?:take|swallow|inject|apply|use|drink|insert|buy|meza|tumia)\b[\s\S]{0,80}\b(?:medicine|medication|drug|antibiotic|tablet|capsule|pill|dose|dawa|kidonge|vidonge|eddagala|omubazi|yat)\b|\b(?:niandikie|andika|mpandiikire|prescribe|i prescribe|you should take|you need to take|i recommend taking)\b/i;
+  /\b(?:take|swallow|inject|apply|use|drink|insert|buy|meza|mira|tumia)\b[\s\S]{0,80}\b(?:medicine|medication|drug|antibiotic|tablet|capsule|pill|dose|dawa|kidonge|vidonge|eddagala|omubazi|yat)\b|\b(?:niandikie|andika|mpandiikire|prescribe|i prescribe|you should take|you need to take|i recommend taking)\b/i;
 
 const MEDICATION_CHANGE =
   /\b(?:start|stop|continue|increase|reduce|decrease|double|halve|switch|change)\b[\s\S]{0,55}\b(?:medicine|medication|drug|antibiotic|tablet|capsule|pill|dose|dawa|kidonge|vidonge|eddagala|omubazi|yat)\b/i;

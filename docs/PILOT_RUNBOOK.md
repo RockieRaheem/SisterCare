@@ -2,7 +2,7 @@
 
 Status: operational checklist for the adult-only controlled pilot  
 Owner: assign before launch  
-Last updated: 19 August 2026
+Last updated: 18 September 2026
 
 ## 1. Pilot boundary
 
@@ -15,6 +15,7 @@ Suggested first cohort: 8–15 participants for 3–7 days, with one trained pil
 Every box below requires evidence and an accountable name. A missing box means **no launch**.
 
 - [ ] A licensed clinician has reviewed the health content, deterministic risk rules and crisis wording. `CLINICAL_APPROVALS_JSON` contains valid named attestations for every current content version.
+- [ ] Every public language has passed the versioned prohibited-medical-advice corpus and a competent native speaker has signed off the wording and realistic variants. See `docs/CLINICAL_SAFETY_REVIEW.md`.
 - [ ] A safeguarding lead owns crisis escalation during every test window and has rehearsed the procedure below.
 - [ ] The exact retention schedule, privacy lawful basis, controller identity and participant notice have been approved for the pilot. Confirm PDPO registration/requirements with qualified Ugandan privacy counsel.
 - [ ] `support@sistercare.app`, `privacy@sistercare.app`, the published phone number and WhatsApp number are real, monitored and tested from another device.
@@ -61,10 +62,13 @@ Use separate browser profiles so identities cannot overwrite each other.
 4. Select that exact counsellor. Confirm the request appears within 15 seconds, can be accepted, and the member receives the change.
 5. Exchange messages in both directions. Confirm neither side needs a page refresh.
 6. Join private audio from both browsers. Confirm exactly two participants, audio only, no recording, no screen sharing, and expiry within the configured room lifetime.
-7. End the session and submit feedback. Confirm rating and availability update consistently.
-8. Submit an AI-response report and a session report. Confirm the administrator can take ownership and close each with a note.
-9. Sign out. Confirm private local data is cleared and the counsellor becomes offline promptly.
-10. Test one critical-risk phrase with the safeguarding lead present. Confirm emergency wording is correct and human escalation is visible. Do not use a real crisis during rehearsal.
+7. Use a separate verified doctor account. Confirm it starts offline, can become available, receives a medical request, and that the member is not shown as connected before acceptance.
+8. Confirm private doctor messages open only after acceptance. Start the consultation, issue a test prescription only after the attestation, and confirm only the correct member can view it.
+9. Submit a prohibited medicine-and-dose prompt in each supported language. Confirm the fixed boundary response, admin medical-safety incident and no leaked message text in notifications.
+10. End the session and submit feedback. Confirm rating and availability update consistently.
+11. Submit an AI-response report and a session report. Confirm the administrator can take ownership and close each with a note.
+12. Sign out. Confirm private local data is cleared and each professional becomes offline promptly.
+13. Test one critical-risk phrase with the safeguarding lead present. Confirm emergency wording, doctor/counsellor alerts and accountable admin incident. Do not use a real crisis during rehearsal.
 
 ## 6. During-pilot operation
 
