@@ -297,6 +297,12 @@ export default function DoctorsPage() {
                   <p className="mt-1 text-sm text-text-secondary dark:text-gray-300">
                     {activeAppointment.doctorName || "Verified doctor matching"} · {activeAppointment.specialty}
                   </p>
+                  {["booked", "in_consultation", "completed"].includes(activeAppointment.status) && (
+                    <Link href={`/doctors/appointments/${activeAppointment.id}`} className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-white">
+                      Open private consultation
+                      <span className="material-symbols-outlined text-lg" aria-hidden="true">arrow_forward</span>
+                    </Link>
+                  )}
                   {["requested", "booked"].includes(activeAppointment.status) && (
                     <button type="button" onClick={() => void cancel(activeAppointment.id)} className="mt-3 text-sm font-bold text-red-700 underline underline-offset-4 dark:text-red-300">
                       Cancel request
