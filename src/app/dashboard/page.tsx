@@ -759,7 +759,7 @@ export default function DashboardPage() {
               <p className="mb-5 text-sm leading-6 text-white/90">
                 {t.dashboard.supportMessage}
               </p>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+              <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
                 <Link
                   href="/chat"
                   className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-bold text-primary transition-colors hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary"
@@ -777,6 +777,15 @@ export default function DashboardPage() {
                     groups
                   </span>
                   {t.dashboard.chooseCounsellor}
+                </Link>
+                <Link
+                  href="/doctors"
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-white/35 bg-white/10 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary"
+                >
+                  <span className="material-symbols-outlined text-lg" aria-hidden="true">
+                    medical_services
+                  </span>
+                  Doctor
                 </Link>
               </div>
             </section>

@@ -109,6 +109,7 @@ export default function Header({ variant = "landing" }: HeaderProps) {
   // Get current page title
   const getCurrentPageTitle = () => {
     if (pathname.startsWith("/admin")) return "Admin";
+    if (pathname.startsWith("/doctors")) return "Doctors";
     const currentLink = MEMBER_PRIMARY_NAVIGATION.find((link) => isActive(link.href));
     if (currentLink) return getNavLabel(currentLink.labelKey);
     if (pathname.startsWith("/library")) return t.nav.library;

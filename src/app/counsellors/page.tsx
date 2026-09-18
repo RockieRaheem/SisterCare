@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import Link from "next/link";
 import Header from "@/components/layout/Header";
 import CounsellorCard from "@/components/features/CounsellorCard";
 import { Counsellor, CounsellorSpecialty, CounsellorStatus } from "@/types";
@@ -171,6 +172,13 @@ export default function CounsellorsPage() {
               availability. Messages, calls and personal details stay inside
               SisterCare.
             </p>
+            <Link
+              href="/doctors"
+              className="mb-5 inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-extrabold text-primary shadow-sm transition hover:bg-white/90 sm:mb-6"
+            >
+              <span className="material-symbols-outlined text-lg">medical_services</span>
+              Need medical advice or a prescription? Find a doctor
+            </Link>
 
             {/* Stats */}
             <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-3 sm:gap-4 sm:text-base">
