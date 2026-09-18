@@ -26,6 +26,7 @@ before they can use the software.
 - Product contract: [Product Requirements](docs/PRODUCT_REQUIREMENTS.md)
 - Pilot operations: [Pilot Runbook](docs/PILOT_RUNBOOK.md)
 - Current gaps: [Production Readiness Audit](docs/PRODUCTION_READINESS_AUDIT.md)
+- Clinical review protocol: [Clinical Safety Review](docs/CLINICAL_SAFETY_REVIEW.md)
 
 ## What the application does
 
@@ -45,6 +46,8 @@ before they can use the software.
   replies, completes a session, or needs to follow up.
 - Retries unsent private messages without creating duplicates.
 - Offers governed library content and clear routes to urgent human help.
+- Routes requests for diagnosis, treatment or prescriptions to verified
+  doctors instead of allowing the AI to provide clinical instructions.
 
 ### For counsellors
 
@@ -59,9 +62,26 @@ before they can use the software.
 - Allows verified counsellors to maintain their professional profile and submit
   educational content for review.
 
+### For doctors
+
+- Keeps doctor access separate from member and counsellor workspaces and
+  requires administrator verification of current professional credentials.
+- Shows server-derived live availability and assigned routine, urgent and
+  critical medical requests.
+- Keeps the member in a truthful waiting state until the assigned doctor
+  explicitly accepts the request.
+- Opens a private, participant-authorised consultation channel after
+  acceptance.
+- Permits a prescription only after the assigned doctor starts the
+  consultation and records a clinical assessment attestation.
+- Gives the member a private, read-only prescription record tied to that
+  consultation.
+
 ### For administrators
 
 - Reviews counsellor identity and professional credentials.
+- Registers and verifies doctors, licensing bodies, credential evidence and
+  credential expiry before clinical access is granted.
 - Manages eligibility, capacity, availability, and editorial approvals.
 - Monitors waiting members, active sessions, safety incidents, and service
   health without exposing unnecessary personal data.
@@ -190,6 +210,19 @@ these newer files in this exact order:
 3. `20260822_0030_durable_care_notifications.sql`
 4. `20260822_0031_idempotent_session_messages.sql`
 5. `20260822_0032_care_outcomes_and_followups.sql`
+6. `20260824_0033_add_doctor_role.sql`
+7. `20260824_0034_doctor_care.sql`
+8. `20260824_0035_critical_safety_alerts.sql`
+9. `20260824_0036_doctor_verification_evidence.sql`
+10. `20260824_0037_doctor_consultation_messaging.sql`
+11. `20260824_0038_medical_safety_incidents.sql`
+12. `20260824_0039_harden_doctor_operations.sql`
+
+Run `0033` as its own SQL execution before `0034`; PostgreSQL enum additions
+must be committed before the new role is used by later schema statements. Run
+all remaining files one at a time in the listed order. Do not register a doctor
+between `0034` and `0036`, because the latter adds the mandatory verification
+evidence controls.
 
 Migration `0028` may return a small JSON summary such as `fallbacks`,
 `incidents`, `rematched`, and `expired`. Those values describe work found by
@@ -278,9 +311,15 @@ Preview and Production environments, deploy the application, and then verify:
    intended member's request.
 4. Both participants can exchange messages and join the same private audio
    room.
-5. AI responses, safety escalation, local-language speech, and provider fallback
+5. An administrator can register a credential-current doctor; the doctor can
+   go available, accept the intended member, start a private consultation and
+   issue a prescription only after attestation.
+6. A prescription or dose request is blocked from AI generation and routed to
+   a verified doctor; a prohibited generated instruction creates an admin
+   safety incident without copying the private conversation into the alert.
+7. AI responses, safety escalation, local-language speech, and provider fallback
    behave as expected.
-6. The admin portal shows current availability, waiting requests, incidents,
+8. The admin portal shows current availability, waiting requests, incidents,
    and service health.
 
 The two cron expressions in [vercel.json](vercel.json) run once daily so they
@@ -322,6 +361,12 @@ environment variable changed.
   text.
 - Sensitive routes use explicit authorization, private caching rules, and
   privacy-safe telemetry.
+- The AI cannot diagnose, prescribe, select a dose, change medication or create
+  medication reminders. Generated and translated output both pass through a
+  deterministic post-generation medical firewall.
+- A blocked medical output opens a high-severity administrator incident. It
+  stores violation classes and workflow identifiers, not the member's message
+  or the unsafe generated answer.
 - Pilot access can be stopped with `PILOT_PAUSED` if a safety or operational
   issue makes continued use inappropriate.
 
