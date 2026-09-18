@@ -109,6 +109,11 @@ interface ChatApiResponse {
     whatsappNumber: string;
     profileUrl: string;
   };
+  doctorReferral?: {
+    href: "/doctors";
+    specialty: string;
+    appointment?: { id: string; status: string; doctorName?: string };
+  };
 }
 
 const CHAT_LANGUAGE_OPTIONS: SupportedLanguageCode[] = [
@@ -373,6 +378,7 @@ export default function ChatPage() {
   const [agentActionStatuses, setAgentActionStatuses] = useState<AgentActionStatus[]>([]);
   const [counsellorProfile, setCounsellorProfile] = useState<ChatApiResponse["counsellorProfile"] | null>(null);
   const [activeSessionCard, setActiveSessionCard] = useState<ChatApiResponse["session"] | null>(null);
+  const [doctorReferral, setDoctorReferral] = useState<ChatApiResponse["doctorReferral"] | null>(null);
   const [userLanguage, setUserLanguage] = useState<SupportedLanguageCode>("eng");
   const languageInitializedForUserRef = useRef<string | null>(null);
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
@@ -964,6 +970,7 @@ export default function ChatPage() {
       setAgentActionStatuses([]);
       setCounsellorProfile(null);
       setActiveSessionCard(null);
+      setDoctorReferral(null);
       setError(null);
       setSidebarOpen(false);
       setConversationMenuOpen(null);
@@ -1393,6 +1400,7 @@ export default function ChatPage() {
 
         setAgentActionStatuses(data.actionStatuses || []);
         setCounsellorProfile(data.counsellorProfile || null);
+        setDoctorReferral(data.doctorReferral || null);
         if (data.session) {
           setActiveSessionCard(data.session);
         }
@@ -2209,6 +2217,37 @@ export default function ChatPage() {
                         <span className="material-symbols-outlined text-lg">arrow_forward</span>
                         View counsellor page
                       </Link>
+                    </div>
+                  </div>
+                )}
+                {doctorReferral && (
+                  <div className="mb-4 animate-fade-in rounded-2xl border border-primary/20 bg-white p-4 shadow-soft dark:border-primary/30 dark:bg-card-dark sm:p-5">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                        <span className="material-symbols-outlined">medical_services</span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest text-primary">
+                          Doctor review
+                        </p>
+                        <h3 className="mt-1 font-extrabold text-text-primary dark:text-white">
+                          {doctorReferral.appointment
+                            ? "Your medical request is recorded"
+                            : "Choose safe medical care"}
+                        </h3>
+                        <p className="mt-1 text-sm leading-6 text-text-secondary dark:text-gray-300">
+                          {doctorReferral.appointment?.doctorName
+                            ? `${doctorReferral.appointment.doctorName} received the request.`
+                            : `${doctorReferral.specialty} is the suggested specialty. Only a verified doctor can diagnose or prescribe.`}
+                        </p>
+                        <Link
+                          href={doctorReferral.href}
+                          className="mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-extrabold text-white transition hover:bg-primary-dark"
+                        >
+                          <span className="material-symbols-outlined text-lg">arrow_forward</span>
+                          {doctorReferral.appointment ? "View request" : "Choose a doctor"}
+                        </Link>
+                      </div>
                     </div>
                   </div>
                 )}

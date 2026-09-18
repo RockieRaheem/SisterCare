@@ -17,6 +17,12 @@ export interface MedicalOutputAssessment {
   violations: MedicalOutputViolation[];
 }
 
+export type MedicalRequestKind =
+  | "none"
+  | "doctor_request"
+  | "prescription"
+  | "medical_guidance";
+
 const DOSE_INSTRUCTION =
   /\b\d+(?:[.,]\d+)?\s*(?:mcg|μg|ug|mg|g|ml|mL|iu|units?|tablets?|tabs?|capsules?|caps?|pills?|drops?)\b/i;
 
@@ -58,4 +64,31 @@ export function enforceMedicalOutputBoundary(text: string): {
         blocked: true,
         violations: assessment.violations,
       };
+}
+
+const DOCTOR_REQUEST =
+  /\b(?:connect|book|find|see|speak|talk|take|refer)\b[\s\S]{0,45}\b(?:doctor|physician|medical officer|clinic|hospital)\b|\b(?:doctor|physician)\b[\s\S]{0,35}\b(?:appointment|consultation|booking)\b/i;
+const PRESCRIPTION_REQUEST =
+  /\b(?:prescri(?:be|ption)|dosage?|dose|which medicine|what medicine|which drug|what drug|medicine should i|medication should i|antibiotic|niandikie dawa|mpandiikire eddagala)\b/i;
+const MEDICAL_GUIDANCE_REQUEST =
+  /\b(?:what should i do|how do i treat|how can i treat|what treatment|what causes|could this be|is this serious|medical advice|health advice)\b[\s\S]{0,80}\b(?:pain|bleed|bleeding|fever|vomit|dizzy|faint|infection|discharge|pregnan|symptom|headache|cramp|swelling|rash|wound)\w*|\b(?:pain|bleed|bleeding|fever|vomit|dizzy|faint|infection|discharge|pregnan|symptom|headache|cramp|swelling|rash|wound)\w*[\s\S]{0,80}\b(?:what should i do|how do i treat|what treatment|medical advice|health advice)\b/i;
+
+export function assessMedicalRequest(text: string): MedicalRequestKind {
+  if (DOCTOR_REQUEST.test(text)) return "doctor_request";
+  if (PRESCRIPTION_REQUEST.test(text)) return "prescription";
+  if (MEDICAL_GUIDANCE_REQUEST.test(text)) return "medical_guidance";
+  return "none";
+}
+
+export function inferDoctorSpecialty(text: string): string {
+  if (/pregnan|pelvic|period|menstru|vaginal|uter|ovari|contracept|abortion/i.test(text)) {
+    return "Obstetrics & Gynaecology";
+  }
+  if (/mental|psychiatr|panic|hallucinat|depress|anxiety medication/i.test(text)) {
+    return "Psychiatry";
+  }
+  if (/sexual|sti|std|hiv|reproductive/i.test(text)) {
+    return "Sexual & Reproductive Health";
+  }
+  return "General Practice";
 }

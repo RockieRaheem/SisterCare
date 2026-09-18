@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  assessMedicalRequest,
   assessMedicalOutput,
   enforceMedicalOutputBoundary,
+  inferDoctorSpecialty,
   SAFE_MEDICAL_BOUNDARY_RESPONSE,
 } from "@/lib/medicalSafety";
 
@@ -46,5 +48,25 @@ describe("medical output safety boundary", () => {
       blocked: true,
       violations: ["dose_instruction"],
     });
+  });
+
+  it.each([
+    ["Please connect me to a doctor", "doctor_request"],
+    ["Which medicine and dose should I take?", "prescription"],
+    ["Niandikie dawa ya maumivu", "prescription"],
+    ["Mpandiikire eddagala ly'omutwe", "prescription"],
+    ["I have severe cramps, what should I do?", "medical_guidance"],
+    ["Record my headache for today", "none"],
+  ])("routes medical intent without model discretion: %s", (message, kind) => {
+    expect(assessMedicalRequest(message)).toBe(kind);
+  });
+
+  it("selects a relevant doctor specialty without diagnosing", () => {
+    expect(inferDoctorSpecialty("I need help with vaginal bleeding")).toBe(
+      "Obstetrics & Gynaecology",
+    );
+    expect(inferDoctorSpecialty("I need a general doctor")).toBe(
+      "General Practice",
+    );
   });
 });

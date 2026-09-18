@@ -43,7 +43,12 @@ import {
   buildTranslationPrompt,
 } from "@/lib/localization";
 import { resolveChatLanguage } from "@/lib/chatLanguage";
-import { enforceMedicalOutputBoundary } from "@/lib/medicalSafety";
+import {
+  assessMedicalRequest,
+  enforceMedicalOutputBoundary,
+  inferDoctorSpecialty,
+} from "@/lib/medicalSafety";
+import { requestDoctorAppointment } from "@/lib/server/doctorCare";
 import {
   ChatPipelineError,
   evaluateHandoffPolicy,
@@ -1195,6 +1200,77 @@ async function postChat(request: NextRequest) {
       });
     }
 
+    const requestPolicy = assessAgentRequestPolicy(messageForAgent);
+    const medicalRequest = assessMedicalRequest(messageForAgent);
+    if (
+      medicalRequest !== "none" ||
+      requestPolicy.kind === "clinical_guidance"
+    ) {
+      const specialty = inferDoctorSpecialty(messageForAgent);
+      let appointment:
+        | { id: string; status: string; doctorName?: string }
+        | undefined;
+      let response =
+        "I can’t diagnose you, prescribe medicine, choose a dose, or tell you to start or stop treatment. A verified doctor can assess you safely. Would you like to choose an available doctor or request the best relevant doctor?";
+      if (medicalRequest === "doctor_request" && userId) {
+        try {
+          const created = await requestDoctorAppointment({
+            memberId: userId,
+            specialty,
+            summary: messageForAgent.substring(0, 500),
+            preferredLanguage:
+              SUPPORTED_LANGUAGES[userLanguage]?.name || "English",
+            urgency: triage.severity === "critical" ? "critical" :
+              triage.severity === "high" ? "urgent" : "routine",
+          });
+          appointment = {
+            id: created.id,
+            status: created.status,
+            doctorName: created.doctorName,
+          };
+          response = created.doctorName
+            ? `Your private medical request was sent to ${created.doctorName}. A request is not a diagnosis or prescription; wait for the doctor to assess you.`
+            : "Your private request is waiting for a verified doctor. A request is not a diagnosis or prescription; SisterCare will show an update when a doctor responds.";
+        } catch (doctorError) {
+          const message = doctorError instanceof Error
+            ? doctorError.message
+            : "Doctor request failed";
+          response = message.includes("already exists")
+            ? "You already have an active doctor request. Open Medical care to check its status."
+            : "I could not create a doctor request, so no doctor has been notified. Open Medical care to retry or choose a verified doctor.";
+        }
+      }
+      const { localizedText, audio } = await localizeResponse(response);
+      return NextResponse.json({
+        response: localizedText,
+        language: userLanguage,
+        languageName: SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
+        audio,
+        translationApplied,
+        source: "medical_boundary",
+        type: "agent",
+        code: "DOCTOR_REVIEW_REQUIRED",
+        toolsUsed: appointment ? ["doctor_appointment_request"] : [],
+        actions: appointment ? ["Created a private doctor request"] : [],
+        triage,
+        doctorReferral: {
+          href: "/doctors",
+          specialty,
+          appointment,
+        },
+        actionStatuses: [
+          ...actionStatuses,
+          {
+            key: "medical-boundary",
+            label: appointment
+              ? "Verified doctor request created"
+              : "Medical advice routed to a verified doctor",
+            state: "done",
+          },
+        ],
+      });
+    }
+
     let handoffText = "";
     let sessionInfo:
       | { id: string; state: string; priority: string }
@@ -1307,7 +1383,6 @@ async function postChat(request: NextRequest) {
         "\n\nI am concerned by what you shared. I can connect you to a professional counsellor right now. Reply: 'Connect me to a counsellor'.";
     }
 
-    const requestPolicy = assessAgentRequestPolicy(messageForAgent);
     if (requestPolicy.kind === "blocked_action") {
       const { localizedText, audio } = await localizeResponse(
         requestPolicy.warning,
@@ -1337,36 +1412,6 @@ async function postChat(request: NextRequest) {
 
     const clinicalRuntimeIssues = getClinicalRuntimeIssues();
     const clinicalGuidanceAllowed = clinicalRuntimeIssues.length === 0;
-    if (
-      !clinicalGuidanceAllowed &&
-      requestPolicy.kind === "clinical_guidance"
-    ) {
-      const { localizedText, audio } = await localizeResponse(
-        "I can record what you are experiencing and help you contact a verified counsellor, but I can’t provide clinical causes, diagnosis, medication, or treatment guidance until SisterCare’s clinical content has completed documented professional review. If your symptoms are severe, rapidly worsening, involve heavy bleeding, fainting, breathing difficulty, or immediate danger, seek urgent in-person care now.",
-      );
-      return NextResponse.json({
-        response: localizedText,
-        language: userLanguage,
-        languageName: SUPPORTED_LANGUAGES[userLanguage]?.name || userLanguage,
-        audio,
-        translationApplied,
-        source: "clinical_limit",
-        type: "agent",
-        code: "CLINICAL_REVIEW_REQUIRED",
-        toolsUsed: [],
-        actions: [],
-        triage,
-        actionStatuses: [
-          ...actionStatuses,
-          {
-            key: "clinical-governance",
-            label: "Clinical guidance limited pending professional review",
-            state: "failed",
-          },
-        ],
-      });
-    }
-
     if (!hasConfiguredAgentProvider()) {
       console.warn("No agent model provider is configured");
       return NextResponse.json(
