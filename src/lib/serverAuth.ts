@@ -106,6 +106,50 @@ export async function authorizeCounsellor(
     return { status: "unavailable" };
   }
 }
+
+export type DoctorAuthorization =
+  | { status: "authorized"; role: "doctor" | "admin"; repaired: boolean }
+  | { status: "denied" }
+  | { status: "unavailable" };
+
+export async function authorizeDoctor(
+  auth: AuthResult,
+): Promise<DoctorAuthorization> {
+  if (auth.status !== "verified") return { status: "denied" };
+  if (hasRole(auth, "admin")) {
+    return { status: "authorized", role: "admin", repaired: false };
+  }
+  try {
+    const db = getSupabaseAdmin();
+    const { data, error } = await db
+      .from("doctors")
+      .select("verification_status,credential_expires_at")
+      .eq("id", auth.uid)
+      .maybeSingle();
+    if (error) return { status: "unavailable" };
+    if (
+      !data ||
+      data.verification_status !== "verified" ||
+      new Date(`${data.credential_expires_at}T23:59:59.999Z`).getTime() < Date.now()
+    ) {
+      return { status: "denied" };
+    }
+    if (!hasRole(auth, "doctor")) {
+      const { error: repairError } = await db
+        .from("profiles")
+        .update({ role: "doctor" })
+        .eq("id", auth.uid)
+        .eq("role", "member");
+      if (repairError) return { status: "unavailable" };
+      auth.token.role = "doctor";
+      return { status: "authorized", role: "doctor", repaired: true };
+    }
+    return { status: "authorized", role: "doctor", repaired: false };
+  } catch (error) {
+    console.warn("Doctor authorization lookup failed:", error);
+    return { status: "unavailable" };
+  }
+}
 export function getAuthorizationFailure(
   auth: AuthResult,
   role?: UserRole,
