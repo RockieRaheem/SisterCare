@@ -8,7 +8,11 @@ export type CareNotificationType =
   | "session_message"
   | "follow_up_requested"
   | "follow_up_started"
-  | "safety_alert";
+  | "safety_alert"
+  | "doctor_request"
+  | "doctor_status"
+  | "doctor_message"
+  | "prescription_issued";
 
 const CONTENT: Record<CareNotificationType, { title: string; message: string }> = {
   session_assigned: { title: "New care request", message: "A private care request has been assigned to you." },
@@ -21,6 +25,10 @@ const CONTENT: Record<CareNotificationType, { title: string; message: string }> 
   follow_up_requested: { title: "Follow-up needs attention", message: "A member follow-up is assigned to you in the professional care workspace." },
   follow_up_started: { title: "Your follow-up is ready", message: "Your counsellor opened a private follow-up room for you." },
   safety_alert: { title: "Critical safety alert", message: "A serious case needs immediate professional attention. Open the secure response workspace now." },
+  doctor_request: { title: "New medical request", message: "A member is waiting for your response in the private clinical workspace." },
+  doctor_status: { title: "Doctor request updated", message: "Your verified doctor request has a new status." },
+  doctor_message: { title: "New private medical message", message: "A new message is waiting in your private doctor consultation." },
+  prescription_issued: { title: "Prescription available", message: "Your doctor issued a prescription after the consultation. Review it carefully in SisterCare." },
 };
 
 export function describeCareNotification(type: CareNotificationType) {

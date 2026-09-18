@@ -382,3 +382,87 @@ export async function listPrescriptions(params: { memberId?: string; doctorId?: 
   if (error) throw new Error(error.message);
   return (data || []).map((row) => prescription(row as Row));
 }
+
+export interface DoctorMessage {
+  id: string;
+  appointmentId: string;
+  senderId: string;
+  senderRole: "member" | "doctor";
+  text: string;
+  createdAt: Date;
+}
+
+async function doctorAppointmentParticipant(appointmentId: string, uid: string) {
+  const { data, error } = await getSupabaseAdmin()
+    .from("doctor_appointments")
+    .select("id,member_id,doctor_id,status")
+    .eq("id", appointmentId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data || (data.member_id !== uid && data.doctor_id !== uid)) {
+    throw new Error("Doctor appointment not found");
+  }
+  return {
+    ...data,
+    role: data.doctor_id === uid ? "doctor" as const : "member" as const,
+  };
+}
+
+export async function listDoctorMessages(
+  appointmentId: string,
+  uid: string,
+): Promise<DoctorMessage[]> {
+  await doctorAppointmentParticipant(appointmentId, uid);
+  const { data, error } = await getSupabaseAdmin()
+    .from("doctor_messages")
+    .select("id,appointment_id,sender_id,sender_role,text,created_at")
+    .eq("appointment_id", appointmentId)
+    .order("created_at", { ascending: true })
+    .limit(500);
+  if (error) throw new Error(error.message);
+  return (data || []).map((row) => ({
+    id: row.id,
+    appointmentId: row.appointment_id,
+    senderId: row.sender_id,
+    senderRole: row.sender_role as "member" | "doctor",
+    text: row.text,
+    createdAt: new Date(row.created_at),
+  }));
+}
+
+export async function sendDoctorMessage(params: {
+  appointmentId: string;
+  uid: string;
+  text: string;
+  clientMessageId: string;
+}): Promise<DoctorMessage> {
+  const participant = await doctorAppointmentParticipant(
+    params.appointmentId,
+    params.uid,
+  );
+  if (!["booked", "in_consultation"].includes(participant.status)) {
+    throw new Error("Messaging opens after the doctor accepts the request");
+  }
+  const text = params.text.trim().slice(0, 2000);
+  if (!text) throw new Error("Message text is required");
+  const { data, error } = await getSupabaseAdmin()
+    .from("doctor_messages")
+    .upsert({
+      appointment_id: params.appointmentId,
+      sender_id: params.uid,
+      sender_role: participant.role,
+      text,
+      client_message_id: params.clientMessageId.slice(0, 120),
+    }, { onConflict: "appointment_id,sender_id,client_message_id" })
+    .select("id,appointment_id,sender_id,sender_role,text,created_at")
+    .single();
+  if (error) throw new Error(error.message);
+  return {
+    id: data.id,
+    appointmentId: data.appointment_id,
+    senderId: data.sender_id,
+    senderRole: data.sender_role as "member" | "doctor",
+    text: data.text,
+    createdAt: new Date(data.created_at),
+  };
+}

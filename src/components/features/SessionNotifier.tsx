@@ -60,10 +60,12 @@ export default function SessionNotifier() {
   const isMember =
     userProfile?.role !== "admin" &&
     userProfile?.role !== "counsellor" &&
+    userProfile?.role !== "doctor" &&
     userProfile?.registrationIntent !== "counsellor";
   const isCounsellor =
     userProfile?.role === "counsellor" ||
     userProfile?.registrationIntent === "counsellor";
+  const isDoctor = userProfile?.role === "doctor";
 
   const checkDurableUpdates = useCallback(async () => {
     if (!user?.uid || checkingDurableRef.current) return;
@@ -80,9 +82,9 @@ export default function SessionNotifier() {
       }>;
       for (const update of updates) {
         const content = describeCareNotification(update.type);
-        const href = update.type === "safety_alert"
-          ? update.metadata?.href || (isCounsellor ? "/counsellor" : "/admin/incidents")
-          : `/sessions/${update.sessionId}`;
+        const href = update.metadata?.href || (update.type === "safety_alert"
+          ? isCounsellor ? "/counsellor" : isDoctor ? "/doctor" : "/admin/incidents"
+          : `/sessions/${update.sessionId}`);
         storeNotification({
           id: `care-${update.id}`,
           type: "counsellor_update",
@@ -118,7 +120,7 @@ export default function SessionNotifier() {
     } finally {
       checkingDurableRef.current = false;
     }
-  }, [isCounsellor, user?.uid]);
+  }, [isCounsellor, isDoctor, user?.uid]);
 
   useEffect(() => {
     if (!user?.uid || !userProfile) return;
