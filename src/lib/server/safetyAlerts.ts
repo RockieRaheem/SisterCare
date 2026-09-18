@@ -104,3 +104,60 @@ export async function notifyCriticalSafetyAlert(params: {
   });
   return { incidentId, recipients: recipients.size };
 }
+
+/**
+ * Records a blocked AI medical instruction as an accountable safety incident.
+ * Only administrators are notified and no conversation text is copied into
+ * either the incident or notification.
+ */
+export async function notifyMedicalSafetyBlock(params: {
+  conversationId?: string;
+  stage: "model_output" | "localized_output";
+  violations: string[];
+}): Promise<{ incidentId: string; recipients: number }> {
+  const db = getSupabaseAdmin();
+  const incidentId = `medical-ai-${randomUUID()}`;
+  const now = new Date().toISOString();
+  const { error: incidentError } = await db.from("incidents").insert({
+    id: incidentId,
+    type: "ai_medical_output_blocked",
+    severity: "high",
+    status: "open",
+    session_id: null,
+    waiting_seconds_at_open: 0,
+    updated_at: now,
+  });
+  if (incidentError) throw new Error(incidentError.message);
+
+  const { data: admins, error: adminError } = await db
+    .from("profiles")
+    .select("id")
+    .eq("role", "admin");
+  if (adminError) throw new Error(adminError.message);
+  const recipients = ((admins || []) as RecipientRow[]).map((row) => row.id);
+  if (recipients.length) {
+    const { error } = await db.from("care_notifications").insert(
+      recipients.map((recipientId) => ({
+        recipient_id: recipientId,
+        event_type: "medical_safety_block",
+        event_key: `medical-safety:${incidentId}:${recipientId}`,
+        metadata: {
+          severity: "high",
+          incidentId,
+          stage: params.stage,
+          violationClasses: params.violations,
+          href: "/admin/incidents",
+        },
+      })),
+    );
+    if (error) throw new Error(error.message);
+  }
+  await emitEvent("agent.medical_output_blocked", {
+    incidentId,
+    conversationId: params.conversationId,
+    stage: params.stage,
+    violations: params.violations,
+    recipients: recipients.length,
+  });
+  return { incidentId, recipients: recipients.length };
+}

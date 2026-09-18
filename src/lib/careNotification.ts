@@ -12,7 +12,8 @@ export type CareNotificationType =
   | "doctor_request"
   | "doctor_status"
   | "doctor_message"
-  | "prescription_issued";
+  | "prescription_issued"
+  | "medical_safety_block";
 
 const CONTENT: Record<CareNotificationType, { title: string; message: string }> = {
   session_assigned: { title: "New care request", message: "A private care request has been assigned to you." },
@@ -29,6 +30,7 @@ const CONTENT: Record<CareNotificationType, { title: string; message: string }> 
   doctor_status: { title: "Doctor request updated", message: "Your verified doctor request has a new status." },
   doctor_message: { title: "New private medical message", message: "A new message is waiting in your private doctor consultation." },
   prescription_issued: { title: "Prescription available", message: "Your doctor issued a prescription after the consultation. Review it carefully in SisterCare." },
+  medical_safety_block: { title: "AI medical safety block", message: "SisterCare blocked a prohibited medical instruction. Review the safety incident and model behavior." },
 };
 
 export function describeCareNotification(type: CareNotificationType) {

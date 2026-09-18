@@ -53,6 +53,7 @@ import { requestDoctorAppointment } from "@/lib/server/doctorCare";
 import {
   CriticalSafetyCategory,
   notifyCriticalSafetyAlert,
+  notifyMedicalSafetyBlock,
 } from "@/lib/server/safetyAlerts";
 import {
   ChatPipelineError,
@@ -1565,12 +1566,23 @@ async function postChat(request: NextRequest) {
     let responseText = medicalBoundary.text;
 
     if (medicalBoundary.blocked) {
-      await emitEvent("agent.medical_output_blocked", {
-        userId,
-        conversationId:
-          typeof conversationId === "string" ? conversationId : undefined,
-        violations: medicalBoundary.violations,
-      });
+      try {
+        await notifyMedicalSafetyBlock({
+          conversationId:
+            typeof conversationId === "string" ? conversationId : undefined,
+          stage: "model_output",
+          violations: medicalBoundary.violations,
+        });
+      } catch (incidentError) {
+        console.error("Medical safety incident recording failed:", incidentError);
+        await emitEvent("agent.medical_output_blocked", {
+          conversationId:
+            typeof conversationId === "string" ? conversationId : undefined,
+          stage: "model_output",
+          violations: medicalBoundary.violations,
+          incidentRecordingFailed: true,
+        });
+      }
       actionStatuses.push({
         key: "medical-safety",
         label: "Unsafe medical instruction blocked",
@@ -1591,13 +1603,23 @@ async function postChat(request: NextRequest) {
     const audio = localizedBoundary.blocked ? undefined : candidateAudio;
 
     if (localizedBoundary.blocked && !medicalBoundary.blocked) {
-      await emitEvent("agent.medical_output_blocked", {
-        userId,
-        conversationId:
-          typeof conversationId === "string" ? conversationId : undefined,
-        stage: "localized_output",
-        violations: localizedBoundary.violations,
-      });
+      try {
+        await notifyMedicalSafetyBlock({
+          conversationId:
+            typeof conversationId === "string" ? conversationId : undefined,
+          stage: "localized_output",
+          violations: localizedBoundary.violations,
+        });
+      } catch (incidentError) {
+        console.error("Localized medical safety incident recording failed:", incidentError);
+        await emitEvent("agent.medical_output_blocked", {
+          conversationId:
+            typeof conversationId === "string" ? conversationId : undefined,
+          stage: "localized_output",
+          violations: localizedBoundary.violations,
+          incidentRecordingFailed: true,
+        });
+      }
     }
 
     return NextResponse.json({
