@@ -19,6 +19,10 @@ const REQUIRED_TABLES = [
   "care_notifications",
   "care_outcomes",
   "care_followups",
+  "doctors",
+  "doctor_appointments",
+  "doctor_prescriptions",
+  "doctor_messages",
 ] as const;
 
 export async function recordMaintenanceRun(

@@ -38,9 +38,17 @@ export default function DoctorPortalPage() {
   const refresh = useCallback(async () => {
     if (!user) return;
     try {
-      const response = await authenticatedFetch("/api/doctor/appointments", { cache: "no-store" });
-      const result = await response.json().catch(() => ({}));
+      const [response, presenceResponse] = await Promise.all([
+        authenticatedFetch("/api/doctor/appointments", { cache: "no-store" }),
+        authenticatedFetch("/api/doctor/presence", { cache: "no-store" }),
+      ]);
+      const [result, presenceResult] = await Promise.all([
+        response.json().catch(() => ({})),
+        presenceResponse.json().catch(() => ({})),
+      ]);
       if (!response.ok) throw new Error(result.error || "Clinical requests could not be loaded");
+      if (!presenceResponse.ok) throw new Error(presenceResult.error || "Clinical availability could not be loaded");
+      setPresence(presenceResult.data?.status || "offline");
       const next = (result.data?.appointments || []).map(appointmentDates);
       setAppointments(next);
       setSelectedId((current) => {

@@ -245,6 +245,26 @@ export async function updateDoctorPresence(
   return effective;
 }
 
+export async function getDoctorPresence(
+  doctorId: string,
+): Promise<"available" | "busy" | "offline"> {
+  const now = new Date();
+  const { data, error } = await getSupabaseAdmin()
+    .from("doctors")
+    .select("verification_status,credential_expires_at,status,accepting_appointments,last_heartbeat_at")
+    .eq("id", doctorId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data || data.verification_status !== "verified") return "offline";
+  const expiresAt = asDate(data.credential_expires_at);
+  const heartbeat = asDate(data.last_heartbeat_at);
+  if (!expiresAt || expiresAt.getTime() < now.getTime() || !heartbeat || now.getTime() - heartbeat.getTime() > DOCTOR_PRESENCE_TTL_SECONDS * 1000) {
+    return "offline";
+  }
+  if (data.status === "busy") return "busy";
+  return doctorIsAvailable(data as Row, now) ? "available" : "offline";
+}
+
 export async function listDoctorAppointments(
   doctorId: string,
 ): Promise<DoctorAppointment[]> {
