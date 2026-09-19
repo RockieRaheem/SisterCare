@@ -17,7 +17,6 @@ const nextConfig = {
       "frame-src https://*.daily.co",
       "worker-src 'self' blob:",
       "manifest-src 'self'",
-      "upgrade-insecure-requests",
     ].join("; ");
     const securityHeaders = [
       { key: "X-Content-Type-Options", value: "nosniff" },

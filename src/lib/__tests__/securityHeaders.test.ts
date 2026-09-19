@@ -13,6 +13,7 @@ describe("browser security headers", () => {
     expect(policy).toContain("object-src 'none'");
     expect(policy).toContain("frame-ancestors 'none'");
     expect(policy).not.toContain("default-src *");
+    expect(policy).not.toContain("upgrade-insecure-requests");
   });
 
   it("prevents private support pages from being cached", async () => {
