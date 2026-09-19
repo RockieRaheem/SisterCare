@@ -2,6 +2,7 @@ const PAUSED_WORKSPACE_PREFIXES = [
   "/dashboard",
   "/chat",
   "/counsellors",
+  "/doctors",
   "/wellbeing",
   "/analytics",
   "/library",
@@ -18,6 +19,7 @@ const PAUSED_API_PREFIXES = [
   "/api/wellbeing",
   "/api/counsellors",
   "/api/presence",
+  "/api/doctors",
   "/api/language",
   "/api/reports",
 ];
@@ -33,16 +35,24 @@ export function isPilotPaused(env: Record<string, string | undefined> = process.
 
 export function shouldPauseWorkspacePath(pathname: string): boolean {
   if (pathname === "/counsellor") return false;
+  // An already accepted medical consultation must remain reachable for
+  // continuity and cancellation; only new directory/request entry is paused.
+  if (pathname.startsWith("/doctors/appointments/")) return false;
   return PAUSED_WORKSPACE_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
 }
 
 export function shouldPauseApiPath(pathname: string, method = "GET"): boolean {
+  const action = method.toUpperCase();
   if (RECOVERY_API_PATHS.has(pathname) || pathname.startsWith("/api/admin/")) return false;
-  if (pathname === "/api/sessions") return method.toUpperCase() !== "GET";
+  if (pathname === "/api/doctor-appointments") return action === "POST";
+  // Existing prescriptions must remain readable and withdrawable even while
+  // the service stops issuing new ones.
+  if (pathname === "/api/doctor/prescriptions") return action === "POST";
+  if (pathname === "/api/sessions") return action !== "GET";
   if (pathname.startsWith("/api/sessions/")) return false;
-  if (pathname === "/api/care-followups") return method.toUpperCase() !== "GET";
+  if (pathname === "/api/care-followups") return action !== "GET";
   return PAUSED_API_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );

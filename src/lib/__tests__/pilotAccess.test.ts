@@ -29,4 +29,15 @@ describe("pilot emergency pause", () => {
     expect(shouldPauseApiPath("/api/admin/incidents")).toBe(false);
     expect(shouldPauseApiPath("/api/sessions/sweep")).toBe(false);
   });
+
+  it("stops new doctor care while preserving existing records and safety corrections", () => {
+    expect(shouldPauseWorkspacePath("/doctors")).toBe(true);
+    expect(shouldPauseWorkspacePath("/doctors/appointments/visit")).toBe(false);
+    expect(shouldPauseApiPath("/api/doctor-appointments", "POST")).toBe(true);
+    expect(shouldPauseApiPath("/api/doctor-appointments", "GET")).toBe(false);
+    expect(shouldPauseApiPath("/api/doctor-appointments", "DELETE")).toBe(false);
+    expect(shouldPauseApiPath("/api/doctor/prescriptions", "POST")).toBe(true);
+    expect(shouldPauseApiPath("/api/doctor/prescriptions", "GET")).toBe(false);
+    expect(shouldPauseApiPath("/api/doctor/prescriptions", "PATCH")).toBe(false);
+  });
 });
