@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest, authorizeDoctor, getAuthorizationFailure, isAuthEnforced } from "@/lib/serverAuth";
+import { getClinicalRuntimeIssues } from "@/lib/clinicalGovernance";
 import { issueDoctorPrescription, listPrescriptions, validatePrescriptionDraft, voidDoctorPrescription } from "@/lib/server/doctorCare";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -25,6 +26,12 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const auth = await doctor(request);
   if (!auth) return NextResponse.json({ success: false, error: "Verified doctor access required" }, { status: 403 });
+  if (getClinicalRuntimeIssues().length > 0) {
+    return NextResponse.json(
+      { success: false, error: "Prescription issuance is paused until the clinical release review is complete" },
+      { status: 503 },
+    );
+  }
   const body = await request.json().catch(() => null) as Record<string, unknown> | null;
   const appointmentId = typeof body?.appointmentId === "string" ? body.appointmentId : "";
   if (!UUID.test(appointmentId)) return NextResponse.json({ success: false, error: "Valid consultation required" }, { status: 400 });

@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import { getClinicalRuntimeIssues } from "@/lib/clinicalGovernance";
 import { Doctor, DoctorAppointment, DoctorAppointmentStatus, DoctorPrescription } from "@/types";
 
 export const DOCTOR_PRESENCE_TTL_SECONDS = 120;
@@ -386,6 +387,9 @@ export async function issueDoctorPrescription(params: {
   appointmentId: string;
   draft: PrescriptionDraft;
 }): Promise<DoctorPrescription> {
+  if (getClinicalRuntimeIssues().length > 0) {
+    throw new Error("Prescription issuance is paused until the clinical release review is complete");
+  }
   const db = getSupabaseAdmin();
   const { data: visit, error } = await db.from("doctor_appointments").select("member_id,status").eq("id", params.appointmentId).eq("doctor_id", params.doctorId).maybeSingle();
   if (error) throw new Error(error.message);
