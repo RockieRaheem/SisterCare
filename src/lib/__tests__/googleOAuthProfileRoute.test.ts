@@ -108,6 +108,16 @@ describe("POST /api/auth/oauth-profile", () => {
     expect((await POST(request({ ...signupBody, pilotConsent: null }))).status).toBe(400);
   });
 
+  it("treats a verifier outage as retryable without claiming the Google session is invalid", async () => {
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    mocks.authenticate.mockResolvedValueOnce({ status: "unavailable", reason: "token_verifier" });
+    const response = await POST(request(signupBody));
+    expect(response.status).toBe(503);
+    expect((await response.json()).error).toContain("Please retry");
+    expect(mocks.profileUpdate).not.toHaveBeenCalled();
+    warning.mockRestore();
+  });
+
   it("records consent and counsellor intent for a new Google account", async () => {
     const response = await POST(request(signupBody));
     expect(response.status).toBe(200);

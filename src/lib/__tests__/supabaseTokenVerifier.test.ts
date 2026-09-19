@@ -32,16 +32,38 @@ describe("Supabase access-token verification", () => {
   });
 
   it("returns a rejected token without treating it as a server outage", async () => {
+    const verifyUser = vi.fn().mockResolvedValue({
+      data: { user: null },
+      error: Object.assign(new Error("invalid JWT"), { status: 401 }),
+    });
     const result = await verifySupabaseAccessToken(
       "invalid-user-jwt",
       vi.fn().mockResolvedValue({
         data: null,
         error: new Error("invalid JWT"),
       }),
+      verifyUser,
     );
 
     expect(result.user).toBeNull();
     expect(result.error?.message).toBe("invalid JWT");
+    expect(verifyUser).toHaveBeenCalledWith("invalid-user-jwt");
+  });
+
+  it("recovers a valid fresh session through the issuing Auth server", async () => {
+    const verifyUser = vi.fn().mockResolvedValue({
+      data: { user: { id: "doctor-1", email: "doctor@example.test" } },
+      error: null,
+    });
+    const result = await verifySupabaseAccessToken(
+      "fresh-user-jwt",
+      vi.fn().mockRejectedValue(new Error("JWKS temporarily unavailable")),
+      verifyUser,
+    );
+
+    expect(result.error).toBeNull();
+    expect(result.user?.id).toBe("doctor-1");
+    expect(verifyUser).toHaveBeenCalledWith("fresh-user-jwt");
   });
 
   it("distinguishes verifier outages from rejected credentials", async () => {
@@ -49,6 +71,7 @@ describe("Supabase access-token verification", () => {
       verifySupabaseAccessToken(
         "temporarily-unverifiable-jwt",
         vi.fn().mockRejectedValue(new Error("fetch failed")),
+        vi.fn().mockRejectedValue(new Error("Auth server unavailable")),
       ),
     ).rejects.toBeInstanceOf(SupabaseVerificationUnavailableError);
   });

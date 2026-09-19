@@ -18,9 +18,16 @@ const NEW_ACCOUNT_WINDOW_MS = 15 * 60 * 1000;
 async function finalizeOAuthProfile(request: NextRequest) {
   const auth = await authenticateRequest(request);
   if (auth.status !== "verified") {
+    if (auth.status === "unavailable") {
+      console.warn("Google OAuth profile verification temporarily unavailable:", auth.reason);
+      return NextResponse.json(
+        { success: false, error: "Your Google account is signed in, but SisterCare could not verify it right now. Please retry." },
+        { status: 503 },
+      );
+    }
     return NextResponse.json(
       { success: false, error: "Your Google session could not be verified. Please sign in again." },
-      { status: auth.status === "unavailable" ? 503 : 401 },
+      { status: 401 },
     );
   }
 

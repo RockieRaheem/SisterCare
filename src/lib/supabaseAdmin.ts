@@ -90,32 +90,44 @@ export function getSupabaseAdmin(): SupabaseClient {
 type ClaimsResult = Awaited<
   ReturnType<SupabaseClient["auth"]["getClaims"]>
 >;
+type UserResult = Awaited<ReturnType<SupabaseClient["auth"]["getUser"]>>;
 
-/** Verify an end-user JWT using cached JWKS where the project supports it. */
+/** Verify an end-user JWT locally when possible, then with Supabase Auth. */
 export async function verifySupabaseAccessToken(
   accessToken: string,
   verifyClaims: (token: string) => Promise<ClaimsResult> = (token) =>
     getSupabaseAdmin().auth.getClaims(token),
+  verifyUser: (token: string) => Promise<UserResult> = (token) =>
+    getSupabaseAdmin().auth.getUser(token),
 ): Promise<{ user: User | null; error: Error | null }> {
   try {
     const result = await verifyClaims(accessToken);
-    if (result.error || !result.data?.claims?.sub) {
+    if (!result.error && result.data?.claims?.sub) {
       return {
-        user: null,
-        error: new Error(result.error?.message || "Supabase rejected the access token"),
+        user: {
+          id: result.data.claims.sub,
+          email:
+            typeof result.data.claims.email === "string"
+              ? result.data.claims.email
+              : undefined,
+        } as User,
+        error: null,
       };
     }
-    return {
-      user: {
-        id: result.data.claims.sub,
-        email:
-          typeof result.data.claims.email === "string"
-            ? result.data.claims.email
-            : undefined,
-      } as User,
-      error: null,
-    };
+  } catch {
+    // A JWKS fetch or fresh-token timing failure is not proof that the bearer
+    // token is invalid. Ask the issuing Auth server to verify it instead.
+  }
+
+  try {
+    const { data, error } = await verifyUser(accessToken);
+    if (!error && data.user?.id) return { user: data.user, error: null };
+    if (error && [400, 401, 403].includes(error.status || 0)) {
+      return { user: null, error: new Error(error.message) };
+    }
+    throw new SupabaseVerificationUnavailableError(error?.message);
   } catch (error) {
+    if (error instanceof SupabaseVerificationUnavailableError) throw error;
     throw new SupabaseVerificationUnavailableError(
       error instanceof Error ? error.message : undefined,
     );
