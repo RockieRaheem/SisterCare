@@ -333,23 +333,55 @@ export default function CounsellorPortalPage() {
 
   useEffect(() => {
     if (!isCounsellor || presenceInitializedRef.current) return;
+    let cancelled = false;
     presenceInitializedRef.current = true;
     setPresenceBusy(true);
     listCounsellorSessions()
       .then(async (data) => {
+        if (cancelled) return;
+        const hasLiveAssignment = data.assigned.some((session) =>
+          ["accepted", "active"].includes(session.state),
+        );
         // A verified counsellor opening the live care desk is available only
         // after the server confirms standing, capacity and safety coverage.
-        const effectiveStatus = await sendPresence("available");
+        const effectiveStatus = await sendPresence(
+          hasLiveAssignment || (document.visibilityState === "visible" && navigator.onLine)
+            ? "available"
+            : "offline",
+        );
+        if (cancelled) {
+          await sendPresence("offline").catch(() => undefined);
+          return;
+        }
         setPresence(effectiveStatus);
         setAssigned(data.assigned);
         setOpenCritical(data.openCritical);
         setLastSyncedAt(new Date());
       })
       .catch((presenceError) => {
+        if (cancelled) return;
         setPresence("offline");
         setError(presenceError instanceof Error ? presenceError.message : "Your care desk could not go available. Retry when care coverage is ready.");
       })
-      .finally(() => setPresenceBusy(false));
+      .finally(() => {
+        if (!cancelled) setPresenceBusy(false);
+      });
+    return () => {
+      cancelled = true;
+      presenceInitializedRef.current = false;
+    };
+  }, [isCounsellor]);
+
+  useEffect(() => {
+    if (!isCounsellor) return;
+    // Client-side route changes do not emit beforeunload. Withdraw the live
+    // signal when the care desk unmounts so the directory cannot advertise an
+    // unattended professional until the heartbeat TTL expires.
+    return () => {
+      if (presenceRef.current !== "offline") {
+        void sendPresence("offline").catch(() => undefined);
+      }
+    };
   }, [isCounsellor]);
 
   useEffect(() => {
