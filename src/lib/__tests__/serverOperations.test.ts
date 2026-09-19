@@ -84,7 +84,7 @@ describe("server operations readiness", () => {
     mocks.rpc.mockResolvedValue({ error: null });
 
     await expect(getDatabaseReadiness()).resolves.toBe(true);
-    expect(mocks.from).toHaveBeenCalledTimes(23);
+    expect(mocks.from).toHaveBeenCalledTimes(24);
     expect(mocks.from).toHaveBeenCalledWith("session_audio_calls");
     expect(mocks.from).toHaveBeenCalledWith("doctors");
     expect(mocks.from).toHaveBeenCalledWith("doctor_appointments");
@@ -119,6 +119,22 @@ describe("server operations readiness", () => {
     await expect(getDatabaseReadinessReport()).resolves.toEqual({
       ready: false,
       failedChecks: ["table:incidents"],
+    });
+  });
+
+  it("flags a broken doctor profile relationship even when the doctors table exists", async () => {
+    mocks.from.mockImplementation(() => ({
+      select: vi.fn().mockImplementation((columns: string) => Promise.resolve({
+        error: columns.includes("profiles!doctors_id_fkey")
+          ? { message: "ambiguous or missing relationship" }
+          : null,
+      })),
+    }));
+    mocks.rpc.mockResolvedValue({ error: null });
+
+    await expect(getDatabaseReadinessReport()).resolves.toEqual({
+      ready: false,
+      failedChecks: ["relationship:doctors_profile"],
     });
   });
 });

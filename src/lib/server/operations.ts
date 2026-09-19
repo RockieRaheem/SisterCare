@@ -127,6 +127,12 @@ export async function getDatabaseReadinessReport(): Promise<{
           .select("voided_at,voided_by,void_reason", { head: true }),
       },
       {
+        name: "relationship:doctors_profile",
+        run: () => client
+          .from("doctors")
+          .select("id,profiles:profiles!doctors_id_fkey(email)", { head: true }),
+      },
+      {
         name: "function:claim_counselling_session",
         run: () => client.rpc("claim_counselling_session", {
           target_session_id: "00000000-0000-0000-0000-000000000000",
