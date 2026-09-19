@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
 import {
   OperationsEmptyState,
@@ -18,6 +19,12 @@ type ApiResult<T> = { success?: boolean; data?: T; error?: string };
 type Health = {
   status: "ready" | "not_ready";
   checks: Record<string, boolean>;
+};
+type ReadinessDiagnostics = {
+  database: { ready: boolean; failedChecks: string[] };
+  maintenance: { ready: boolean; failedJobs: string[] };
+  safetyCoverage: boolean;
+  clinicalIssues: Array<{ id: string; code: string }>;
 };
 
 const METRIC_LABELS: Record<string, { label: string; icon: string; tone: "neutral" | "primary" | "success" | "warning" | "danger" | "info" }> = {
@@ -53,7 +60,10 @@ function trend(current: number, previous: number | undefined) {
 export default function OperationsDashboardPage() {
   const [days, setDays] = useState<MetricDay[]>([]);
   const [health, setHealth] = useState<Health | null>(null);
+  const [readiness, setReadiness] = useState<ReadinessDiagnostics | null>(null);
   const [error, setError] = useState("");
+  const [maintenanceNotice, setMaintenanceNotice] = useState("");
+  const [runningMaintenance, setRunningMaintenance] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedMetric, setSelectedMetric] = useState("");
@@ -64,19 +74,29 @@ export default function OperationsDashboardPage() {
     try {
       const token = await auth.currentUser?.getIdToken();
       if (!token) throw new Error("Your secure session expired. Sign in again.");
-      const [metricsResponse, healthResponse] = await Promise.all([
+      const [metricsResponse, healthResponse, readinessResponse] = await Promise.all([
         fetch("/api/admin/metrics", { headers: { Authorization: `Bearer ${token}` } }),
         fetch("/api/health", { cache: "no-store" }),
+        fetch("/api/admin/readiness", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
       ]);
-      const [metricsResult, healthResult] = await Promise.all([
-        readApiResponse<ApiResult<{ days: MetricDay[] }>>(metricsResponse),
-        readApiResponse<Health>(healthResponse),
+      const [metricsResult, healthResult, readinessResult] = await Promise.all([
+        readApiResponse<ApiResult<{ days: MetricDay[] }>>(metricsResponse).catch(() => null),
+        readApiResponse<Health>(healthResponse).catch(() => null),
+        readApiResponse<ApiResult<ReadinessDiagnostics>>(readinessResponse).catch(() => null),
       ]);
-      if (!metricsResponse.ok) throw new Error(metricsResult.error || "Could not load service metrics");
-      setDays(metricsResult.data?.days || []);
-      setHealth(healthResult);
+      setDays(metricsResponse.ok ? metricsResult?.data?.days || [] : []);
+      setHealth(healthResult?.checks ? healthResult : null);
+      setReadiness(readinessResponse.ok ? readinessResult?.data || null : null);
       setLastUpdated(new Date());
-      setError("");
+      setError(
+        !healthResult?.checks
+          ? "The readiness check could not be read. Please retry."
+          : !metricsResponse.ok
+            ? metricsResult?.error || "Service metrics could not be loaded"
+            : !readinessResponse.ok
+              ? readinessResult?.error || "Detailed readiness checks could not be loaded"
+              : "",
+      );
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Could not load service health");
     } finally {
@@ -84,6 +104,32 @@ export default function OperationsDashboardPage() {
       setRefreshing(false);
     }
   }, []);
+
+  const runMaintenance = async () => {
+    if (!readiness?.database.ready || runningMaintenance) return;
+    setRunningMaintenance(true);
+    setMaintenanceNotice("");
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("Your secure session expired. Sign in again.");
+      for (const path of ["/api/sessions/sweep", "/api/counsellors/sync-availability"]) {
+        const response = await fetch(path, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const result = await readApiResponse<ApiResult<unknown> & { errors?: number }>(response);
+        if (!response.ok || result.success !== true || (result.errors || 0) > 0) {
+          throw new Error(result.error || `${path} could not complete cleanly`);
+        }
+      }
+      setMaintenanceNotice("Both maintenance jobs completed. Readiness has been refreshed.");
+      await load(true);
+    } catch (runError) {
+      setMaintenanceNotice(runError instanceof Error ? runError.message : "Maintenance could not complete");
+    } finally {
+      setRunningMaintenance(false);
+    }
+  };
 
   useEffect(() => {
     void load();
@@ -172,6 +218,33 @@ export default function OperationsDashboardPage() {
                 ))}
               </div>
             )}
+          </section>
+
+          <section className="mt-5 rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-[#1b1922] sm:p-6" aria-labelledby="readiness-recovery-heading">
+            <h2 id="readiness-recovery-heading" className="text-lg font-extrabold text-slate-950 dark:text-white">What needs attention</h2>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Only administrators can see these probe names. An unresolved check must not be marked ready manually.</p>
+            {readiness ? (
+              <div className="mt-5 grid gap-4 lg:grid-cols-2">
+                <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
+                  <h3 className="font-bold text-slate-900 dark:text-white">Database</h3>
+                  {readiness.database.ready ? <p className="mt-2 text-sm text-emerald-700">All required schema probes passed.</p> : <><p className="mt-2 text-sm text-red-700 dark:text-red-300">Apply the missing Supabase migrations in order. Do not bypass database checks.</p><ul className="mt-3 flex flex-wrap gap-2">{readiness.database.failedChecks.map((name) => <li key={name} className="rounded-lg bg-red-50 px-2 py-1 font-mono text-xs text-red-800 dark:bg-red-950/30 dark:text-red-200">{name}</li>)}</ul></>}
+                </div>
+                <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
+                  <h3 className="font-bold text-slate-900 dark:text-white">Maintenance</h3>
+                  {readiness.maintenance.ready ? <p className="mt-2 text-sm text-emerald-700">Both scheduled jobs have recent successful heartbeats.</p> : <><p className="mt-2 text-sm text-red-700 dark:text-red-300">Missing or stale: {readiness.maintenance.failedJobs.join(", ")}.</p><button type="button" onClick={() => void runMaintenance()} disabled={!readiness.database.ready || runningMaintenance} className="mt-3 min-h-11 rounded-xl bg-slate-950 px-4 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-slate-950">{runningMaintenance ? "Running checks…" : "Run maintenance now"}</button><p className="mt-1 text-xs text-slate-500">Requires a healthy database; daily scheduled runs remain necessary.</p></>}
+                  {maintenanceNotice && <p role="status" className="mt-2 text-sm text-slate-700 dark:text-slate-200">{maintenanceNotice}</p>}
+                </div>
+                <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
+                  <h3 className="font-bold text-slate-900 dark:text-white">Clinical review</h3>
+                  {readiness.clinicalIssues.length ? <p className="mt-2 text-sm text-red-700 dark:text-red-300">{readiness.clinicalIssues.length} governed item{readiness.clinicalIssues.length === 1 ? " needs" : "s need"} qualified, documented approval. Engineering cannot approve its own clinical rules.</p> : <p className="mt-2 text-sm text-emerald-700">Current registered versions have valid attestations.</p>}
+                </div>
+                <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
+                  <h3 className="font-bold text-slate-900 dark:text-white">Safety coverage</h3>
+                  <p className={`mt-2 text-sm ${readiness.safetyCoverage ? "text-emerald-700" : "text-red-700 dark:text-red-300"}`}>{readiness.safetyCoverage ? "A safety responder is on duty." : "No authorised responder has a fresh duty heartbeat."}</p>
+                  {!readiness.safetyCoverage && <Link href="/admin/incidents" className="mt-3 inline-flex min-h-11 items-center font-bold text-primary hover:underline">Open safety duty <span className="material-symbols-outlined ml-1 text-lg" aria-hidden="true">arrow_forward</span></Link>}
+                </div>
+              </div>
+            ) : <p className="mt-4 text-sm text-slate-500">Detailed diagnostics are unavailable. Refresh after administrator authentication and database access recover.</p>}
           </section>
 
           <section className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
