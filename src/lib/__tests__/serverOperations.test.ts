@@ -14,7 +14,9 @@ vi.mock("../supabaseAdmin", () => ({
 
 import {
   getDatabaseReadiness,
+  getDatabaseReadinessReport,
   getMaintenanceReadiness,
+  getMaintenanceReadinessReport,
   getSafetyCoverageReadiness,
   recordMaintenanceRun,
 } from "../server/operations";
@@ -69,6 +71,10 @@ describe("server operations readiness", () => {
     });
 
     await expect(getMaintenanceReadiness(now)).resolves.toBe(false);
+    await expect(getMaintenanceReadinessReport(now)).resolves.toEqual({
+      ready: false,
+      failedJobs: ["availability_sync"],
+    });
   });
 
   it("requires every critical table, column set and matching function", async () => {
@@ -110,5 +116,9 @@ describe("server operations readiness", () => {
     mocks.rpc.mockResolvedValue({ error: null });
 
     await expect(getDatabaseReadiness()).resolves.toBe(false);
+    await expect(getDatabaseReadinessReport()).resolves.toEqual({
+      ready: false,
+      failedChecks: ["table:incidents"],
+    });
   });
 });
