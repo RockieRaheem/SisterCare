@@ -62,6 +62,7 @@ export default function SettingsPage() {
       "ask_each_time",
     );
   const [sharedDeviceLockMinutes, setSharedDeviceLockMinutes] = useState(5);
+  const [sharedDeviceAutoSignOut, setSharedDeviceAutoSignOut] = useState(false);
   const [supportResponseStyle, setSupportResponseStyle] =
     useState<UserPrivacyPreferences["supportResponseStyle"]>("listen_first");
   const [browserNotificationStatus, setBrowserNotificationStatus] = useState<
@@ -101,6 +102,9 @@ export default function SettingsPage() {
         );
         setSharedDeviceLockMinutes(
           profile.privacyPreferences.sharedDeviceLockMinutes,
+        );
+        setSharedDeviceAutoSignOut(
+          profile.privacyPreferences.sharedDeviceAutoSignOut,
         );
         setSupportResponseStyle(profile.privacyPreferences.supportResponseStyle);
       }
@@ -159,6 +163,7 @@ export default function SettingsPage() {
           ...current.privacyPreferences,
           conversationRetention,
           counsellorContextSharing,
+          sharedDeviceAutoSignOut,
           sharedDeviceLockMinutes,
           supportResponseStyle,
         },
@@ -942,18 +947,23 @@ export default function SettingsPage() {
 
           <Card>
             <label htmlFor="shared-device-timeout" className="block text-sm font-bold text-text-primary dark:text-white sm:text-base">
-              Shared-device privacy timeout
+              Automatic sign-out
             </label>
             <p className="mt-1 text-xs leading-relaxed text-text-secondary sm:text-sm">
-              SisterCare signs you out after this much inactivity and clears private data stored by this browser. Active counselling call pages are not interrupted.
+              Off by default. If you share this device, you can choose an inactivity timeout. Active counselling call pages are not interrupted.
             </p>
             <select
               id="shared-device-timeout"
-              value={sharedDeviceLockMinutes}
-              onChange={(event) => setSharedDeviceLockMinutes(Number(event.target.value))}
+              value={sharedDeviceAutoSignOut ? sharedDeviceLockMinutes : 0}
+              onChange={(event) => {
+                const minutes = Number(event.target.value);
+                setSharedDeviceAutoSignOut(minutes > 0);
+                if (minutes > 0) setSharedDeviceLockMinutes(minutes);
+              }}
               className="mt-3 h-11 w-full rounded-xl border-2 border-gray-200 bg-white px-4 text-base text-text-primary focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-gray-700 dark:bg-card-dark dark:text-white"
             >
-              <option value={5}>5 minutes</option>
+              <option value={0}>Off - stay signed in until I sign out</option>
+              <option value={5}>After 5 minutes</option>
               <option value={15}>15 minutes</option>
               <option value={30}>30 minutes</option>
               <option value={60}>60 minutes</option>

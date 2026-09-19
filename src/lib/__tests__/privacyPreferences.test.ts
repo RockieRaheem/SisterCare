@@ -12,6 +12,7 @@ describe("member privacy preferences", () => {
       DEFAULT_PRIVACY_PREFERENCES,
     );
     expect(DEFAULT_PRIVACY_PREFERENCES.notificationPreviews).toBe(false);
+    expect(DEFAULT_PRIVACY_PREFERENCES.sharedDeviceAutoSignOut).toBe(false);
     expect(DEFAULT_PRIVACY_PREFERENCES.supportResponseStyle).toBe("listen_first");
     expect(
       DEFAULT_PRIVACY_PREFERENCES.counsellorContextSharing,
@@ -25,6 +26,7 @@ describe("member privacy preferences", () => {
         counsellorContextSharing: "never",
         discreetNotifications: false,
         notificationPreviews: true,
+        sharedDeviceAutoSignOut: true,
         sharedDeviceLockMinutes: 12.4,
         supportResponseStyle: "direct_options",
       }),
@@ -33,6 +35,7 @@ describe("member privacy preferences", () => {
       counsellorContextSharing: "never",
       discreetNotifications: false,
       notificationPreviews: true,
+      sharedDeviceAutoSignOut: true,
       sharedDeviceLockMinutes: 12,
       supportResponseStyle: "direct_options",
     });
@@ -44,6 +47,10 @@ describe("member privacy preferences", () => {
         sharedDeviceLockMinutes: 0,
       }),
     ).toEqual(DEFAULT_PRIVACY_PREFERENCES);
+  });
+
+  it("does not silently enable the old five-minute timeout on existing accounts", () => {
+    expect(normalizePrivacyPreferences({ sharedDeviceLockMinutes: 5 }).sharedDeviceAutoSignOut).toBe(false);
   });
 
   it("normalizes aliases without exposing account identifiers", () => {

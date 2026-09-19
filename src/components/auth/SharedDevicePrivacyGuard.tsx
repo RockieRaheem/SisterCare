@@ -28,12 +28,13 @@ export default function SharedDevicePrivacyGuard() {
   const routerRef = useRef(router);
   const [warning, setWarning] = useState(false);
   const uid = user?.uid;
+  const enabled = userProfile?.privacyPreferences.sharedDeviceAutoSignOut === true;
   const timeoutMinutes = userProfile?.privacyPreferences.sharedDeviceLockMinutes;
   signOutRef.current = signOut;
   routerRef.current = router;
 
   useEffect(() => {
-    if (!uid || !timeoutMinutes || pathname.startsWith("/sessions/")) {
+    if (!uid || !enabled || !timeoutMinutes || pathname.startsWith("/sessions/")) {
       lastActivity.current = Date.now();
       setWarning(false);
       if (!uid) signingOut.current = false;
@@ -95,7 +96,7 @@ export default function SharedDevicePrivacyGuard() {
       document.removeEventListener("visibilitychange", onVisibilityChange);
       window.clearInterval(timer);
     };
-  }, [pathname, timeoutMinutes, uid]);
+  }, [enabled, pathname, timeoutMinutes, uid]);
 
   return warning ? (
     <div role="alert" className="fixed bottom-[calc(env(safe-area-inset-bottom)+5rem)] right-4 z-[100] max-w-sm rounded-2xl border border-primary/20 bg-white p-4 text-sm text-text-primary shadow-xl dark:bg-card-dark dark:text-white md:bottom-4">

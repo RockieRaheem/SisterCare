@@ -8,6 +8,7 @@ export const DEFAULT_PRIVACY_PREFERENCES: UserPrivacyPreferences = {
   counsellorContextSharing: "ask_each_time",
   discreetNotifications: true,
   notificationPreviews: false,
+  sharedDeviceAutoSignOut: false,
   sharedDeviceLockMinutes: 5,
   supportResponseStyle: "listen_first",
 };
@@ -57,6 +58,9 @@ export function normalizePrivacyPreferences(
     discreetNotifications:
       candidate.discreetNotifications !== false,
     notificationPreviews: candidate.notificationPreviews === true,
+    // Existing profiles only stored a five-minute default. Treat that old
+    // value as off unless the member explicitly opted into automatic sign-out.
+    sharedDeviceAutoSignOut: candidate.sharedDeviceAutoSignOut === true,
     sharedDeviceLockMinutes:
       Number.isFinite(lockMinutes) && lockMinutes >= 1 && lockMinutes <= 60
         ? Math.round(lockMinutes)

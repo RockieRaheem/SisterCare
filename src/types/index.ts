@@ -39,6 +39,7 @@ export interface UserPrivacyPreferences {
     | "never";
   discreetNotifications: boolean;
   notificationPreviews: boolean;
+  sharedDeviceAutoSignOut: boolean;
   sharedDeviceLockMinutes: number;
   supportResponseStyle: "listen_first" | "gentle_steps" | "direct_options";
 }

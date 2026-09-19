@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   signOut: vi.fn(),
   replace: vi.fn(),
+  enabled: true,
 }));
 
 vi.mock("next/navigation", () => ({
@@ -14,7 +15,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/context/AuthContext", () => ({
   useAuth: () => ({
     user: { uid: "member-1" },
-    userProfile: { privacyPreferences: { sharedDeviceLockMinutes: 5 } },
+    userProfile: { privacyPreferences: { sharedDeviceAutoSignOut: mocks.enabled, sharedDeviceLockMinutes: 5 } },
     signOut: mocks.signOut,
   }),
 }));
@@ -41,6 +42,7 @@ describe("shared-device privacy guard", () => {
     });
     mocks.signOut.mockReset().mockResolvedValue(undefined);
     mocks.replace.mockReset();
+    mocks.enabled = true;
   });
 
   afterEach(() => {
@@ -71,5 +73,14 @@ describe("shared-device privacy guard", () => {
     fireEvent.click(screen.getByRole("button", { name: "Stay signed in" }));
     await act(async () => { await vi.advanceTimersByTimeAsync(2 * 60_000); });
     expect(mocks.signOut).not.toHaveBeenCalled();
+  });
+
+  it("never schedules inactivity sign-out without an explicit opt-in", async () => {
+    mocks.enabled = false;
+    render(<SharedDevicePrivacyGuard />);
+    expect(vi.getTimerCount()).toBe(0);
+    await act(async () => { await vi.advanceTimersByTimeAsync(60 * 60_000); });
+    expect(mocks.signOut).not.toHaveBeenCalled();
+    expect(mocks.replace).not.toHaveBeenCalled();
   });
 });
