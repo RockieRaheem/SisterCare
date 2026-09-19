@@ -30,4 +30,12 @@ describe("medical safety incident response", () => {
     expect(describeCareNotification("medical_safety_block").title).toBe("AI medical safety block");
     expect(notifier).toContain('update.type === "medical_safety_block" ? "safety"');
   });
+
+  it("also guards translated replies from early-return safety and referral lanes", () => {
+    const helper = route.split("async function prepareSpokenAgentResponse(")[1]
+      .split("/**\n * POST /api/chat")[0];
+    expect(helper).toContain("enforceMedicalOutputBoundary(localizedText)");
+    expect(helper).toContain('stage: "localized_output"');
+    expect(helper).toContain("localizedText: medicalBoundary.text");
+  });
 });

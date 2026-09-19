@@ -590,9 +590,29 @@ async function prepareSpokenAgentResponse(
     language,
     geminiApiKey,
   );
+  // Every response lane uses this helper, including deterministic crisis,
+  // pregnancy, navigation and doctor-referral replies. A translation model
+  // must not be able to add prescribing advice after those lanes branch away
+  // from the main agent's post-generation firewall.
+  const medicalBoundary = enforceMedicalOutputBoundary(localizedText);
+  if (medicalBoundary.blocked) {
+    try {
+      await notifyMedicalSafetyBlock({
+        stage: "localized_output",
+        violations: medicalBoundary.violations,
+      });
+    } catch (incidentError) {
+      console.error("Localized medical safety incident recording failed:", incidentError);
+      await emitEvent("agent.medical_output_blocked", {
+        stage: "localized_output",
+        violations: medicalBoundary.violations,
+        incidentRecordingFailed: true,
+      });
+    }
+  }
   // Speech is generated on demand by /api/language/speak so the member's
   // explicitly selected voice is stable and chat text is never delayed by TTS.
-  return { localizedText, audio: undefined };
+  return { localizedText: medicalBoundary.text, audio: undefined };
 }
 
 /**
