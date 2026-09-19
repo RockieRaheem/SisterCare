@@ -3,6 +3,7 @@ const publicOnly = args.includes("--public-only");
 const suppliedBase = args.find((value) => !value.startsWith("--"));
 const baseUrl = new URL(suppliedBase || process.env.PILOT_BASE_URL || "http://localhost:3000");
 const failures = [];
+let healthReady = false;
 
 async function request(path) {
   const url = new URL(path, baseUrl);
@@ -24,6 +25,7 @@ async function request(path) {
 async function checkPage(path, options = {}) {
   const result = await request(path);
   if (!result) return;
+  const failuresBefore = failures.length;
   const { response, durationMs } = result;
   const allowed = options.allowedStatus || [200];
   if (!allowed.includes(response.status)) failures.push(`${path}: expected ${allowed.join("/")}, received ${response.status}`);
@@ -32,13 +34,15 @@ async function checkPage(path, options = {}) {
   const csp = response.headers.get("content-security-policy-report-only");
   if (response.status === 200 && !csp?.includes("default-src 'self'")) failures.push(`${path}: content security policy reporting is missing`);
   if (baseUrl.protocol === "https:" && response.status === 200 && !response.headers.get("strict-transport-security")) failures.push(`${path}: HSTS is missing`);
-  console.log(`PASS ${path} ${response.status} ${durationMs}ms`);
+  console.log(`${failures.length === failuresBefore ? "PASS" : "FAIL"} ${path} ${response.status} ${durationMs}ms`);
 }
 
-for (const path of ["/", "/auth/login", "/privacy", "/terms", "/help", "/pilot-paused"]) {
+for (const path of ["/", "/auth/login", "/auth/signup", "/privacy", "/terms", "/help", "/pilot-paused", "/doctors", "/library", "/doctor"]) {
   await checkPage(path);
 }
-await checkPage("/chat", { privatePage: true });
+for (const path of ["/chat", "/dashboard", "/counsellors", "/wellbeing", "/admin"]) {
+  await checkPage(path, { privatePage: true });
+}
 
 const health = await request("/api/health");
 if (health) {
@@ -50,12 +54,16 @@ if (health) {
     for (const key of expectedChecks) {
       if (typeof body.checks[key] !== "boolean") failures.push(`/api/health: missing ${key} check`);
     }
-    if (!publicOnly && (health.response.status !== 200 || body.status !== "ready" || expectedChecks.some((key) => body.checks[key] !== true))) {
+    healthReady = health.response.status === 200 && body.status === "ready" && expectedChecks.every((key) => body.checks[key] === true);
+    if (!publicOnly && !healthReady) {
       failures.push(`/api/health: pilot is not ready (${JSON.stringify(body.checks)})`);
     }
     if (publicOnly && ![200, 503].includes(health.response.status)) failures.push(`/api/health: unexpected status ${health.response.status}`);
+    if (!healthReady) {
+      console.log(`NOT READY checks: ${expectedChecks.filter((key) => body.checks[key] !== true).join(", ")}`);
+    }
   }
-  console.log(`${publicOnly ? "INFO" : "PASS"} /api/health ${health.response.status} ${health.durationMs}ms`);
+  console.log(`${healthReady ? "PASS" : "NOT READY"} /api/health ${health.response.status} ${health.durationMs}ms`);
 }
 
 if (failures.length) {
@@ -63,5 +71,7 @@ if (failures.length) {
   for (const failure of failures) console.error(`- ${failure}`);
   process.exitCode = 1;
 } else {
-  console.log(`\nPilot smoke checks passed for ${baseUrl.origin}${publicOnly ? " (public-only mode)" : ""}.`);
+  console.log(publicOnly && !healthReady
+    ? `\nPublic route checks passed for ${baseUrl.origin}, but pilot readiness is NOT confirmed.`
+    : `\nPilot smoke checks passed for ${baseUrl.origin}${publicOnly ? " (public-only mode)" : ""}.`);
 }
