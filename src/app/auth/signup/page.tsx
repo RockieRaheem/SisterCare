@@ -464,13 +464,13 @@ export default function SignupPage() {
           <div className="flex-1 border-t border-border-light dark:border-border-dark" />
         </div>
 
-        {/* Social options */}
-        <div className="grid grid-cols-2 gap-3">
+        {/* Google is the only alternative to the email form. */}
+        <div>
           <button
             type="button"
             onClick={handleGoogleSignIn}
             disabled={loading}
-            className="touch-target flex h-12 items-center justify-center gap-2 rounded-xl border border-border-light bg-background-light transition-all hover:bg-white hover:shadow-soft disabled:opacity-50 dark:border-border-dark dark:bg-background-dark dark:hover:bg-border-dark"
+            className="touch-target flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-border-light bg-background-light transition-all hover:bg-white hover:shadow-soft disabled:opacity-50 dark:border-border-dark dark:bg-background-dark dark:hover:bg-border-dark"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24">
               <path
@@ -492,17 +492,6 @@ export default function SignupPage() {
             </svg>
             <span className="text-sm font-semibold text-text-primary dark:text-white">
               Google
-            </span>
-          </button>
-          <button
-            disabled={loading}
-            className="touch-target flex h-12 items-center justify-center gap-2 rounded-xl border border-border-light bg-background-light transition-all hover:bg-white hover:shadow-soft disabled:opacity-50 dark:border-border-dark dark:bg-background-dark dark:hover:bg-border-dark"
-          >
-            <span className="material-symbols-outlined text-text-primary dark:text-white">
-              phone_iphone
-            </span>
-            <span className="text-sm font-semibold text-text-primary dark:text-white">
-              Phone
             </span>
           </button>
         </div>
