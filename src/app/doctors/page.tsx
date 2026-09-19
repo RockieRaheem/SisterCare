@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
+import HelpLink from "@/components/features/HelpLink";
 import { AppShellSkeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/context/AuthContext";
 import { authenticatedFetch } from "@/lib/authenticatedFetch";
@@ -42,6 +43,9 @@ export default function DoctorsPage() {
   const [loadingData, setLoadingData] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [directoryError, setDirectoryError] = useState("");
+  const [appointmentsError, setAppointmentsError] = useState("");
+  const [directoryLoaded, setDirectoryLoaded] = useState(false);
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
@@ -59,32 +63,38 @@ export default function DoctorsPage() {
         directoryResponse.json().catch(() => ({})),
         appointmentsResponse.json().catch(() => ({})),
       ]);
-      if (!directoryResponse.ok) {
-        throw new Error(directoryResult.error || "Doctors could not be loaded");
+      if (directoryResponse.ok) {
+        setDoctors(directoryResult.data?.doctors || []);
+        setDirectoryLoaded(true);
+        setDirectoryError("");
+      } else {
+        setDirectoryLoaded(false);
+        setDoctors([]);
+        setDirectoryError(directoryResult.error || "Doctor availability could not be refreshed");
       }
-      if (!appointmentsResponse.ok) {
-        throw new Error(
-          appointmentsResult.error || "Appointments could not be loaded",
+      if (appointmentsResponse.ok) {
+        setAppointments(
+          (appointmentsResult.data?.appointments || []).map(
+            (item: DoctorAppointment & { requestedAt: string }) => ({
+              ...item,
+              requestedAt: new Date(item.requestedAt),
+              scheduledFor: item.scheduledFor
+                ? new Date(item.scheduledFor)
+                : undefined,
+            }),
+          ),
         );
+        setAppointmentsError("");
+      } else {
+        setAppointmentsError(appointmentsResult.error || "Appointments could not be loaded");
       }
-      setDoctors(directoryResult.data?.doctors || []);
-      setAppointments(
-        (appointmentsResult.data?.appointments || []).map(
-          (item: DoctorAppointment & { requestedAt: string }) => ({
-            ...item,
-            requestedAt: new Date(item.requestedAt),
-            scheduledFor: item.scheduledFor
-              ? new Date(item.scheduledFor)
-              : undefined,
-          }),
-        ),
-      );
-      setError("");
     } catch (loadError) {
-      setError(
+      setDirectoryLoaded(false);
+      setDoctors([]);
+      setDirectoryError(
         loadError instanceof Error
           ? loadError.message
-          : "Medical care could not be loaded",
+          : "Doctor availability could not be refreshed",
       );
     } finally {
       setLoadingData(false);
@@ -179,12 +189,14 @@ export default function DoctorsPage() {
               can assess you and decide whether a prescription is appropriate.
             </p>
             <div className="mt-5 flex flex-wrap gap-2 text-sm font-semibold">
-              <span className="rounded-xl bg-white/15 px-3 py-2">
-                {availableDoctors.length} available now
-              </span>
-              <span className="rounded-xl bg-white/15 px-3 py-2">
-                {doctors.length} credential-current doctors
-              </span>
+              {directoryLoaded ? <>
+                <span className="rounded-xl bg-white/15 px-3 py-2">
+                  {availableDoctors.length} available now
+                </span>
+                <span className="rounded-xl bg-white/15 px-3 py-2">
+                  {doctors.length} credential-current doctors
+                </span>
+              </> : <span className="rounded-xl bg-white/15 px-3 py-2">Availability not confirmed</span>}
             </div>
           </div>
         </section>
@@ -199,23 +211,23 @@ export default function DoctorsPage() {
                 severe rapidly worsening pain, or immediate danger needs urgent
                 in-person care now.
               </p>
-              <Link href="/help" className="mt-2 inline-flex font-bold underline underline-offset-4">
+              <HelpLink className="mt-2 inline-flex font-bold underline underline-offset-4">
                 View urgent support options
-              </Link>
+              </HelpLink>
             </div>
           </div>
         </section>
 
-        {(error || notice) && (
+        {(error || notice || directoryError || appointmentsError) && (
           <div
             role="status"
             className={`mt-5 rounded-2xl border p-4 text-sm ${
-              error
+              error || directoryError || appointmentsError
                 ? "border-red-200 bg-red-50 text-red-800"
                 : "border-emerald-200 bg-emerald-50 text-emerald-800"
             }`}
           >
-            {error || notice}
+            {error || directoryError || appointmentsError || notice}
           </div>
         )}
 
@@ -232,6 +244,7 @@ export default function DoctorsPage() {
                 Refresh
               </button>
             </div>
+            {directoryError && <p className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm leading-6 text-rose-900 dark:border-rose-900 dark:bg-rose-950/20 dark:text-rose-100">We cannot confirm doctor availability right now. Please retry. For urgent symptoms, use the emergency options above instead of waiting for this page.</p>}
             <div className="grid gap-4 sm:grid-cols-2">
               {doctors.map((doctor) => {
                 const selected = selectedDoctorId === doctor.id;
@@ -276,7 +289,7 @@ export default function DoctorsPage() {
                   </article>
                 );
               })}
-              {!doctors.length && !error && (
+              {!doctors.length && directoryLoaded && (
                 <div className="col-span-full rounded-2xl border border-dashed border-border-light p-8 text-center dark:border-border-dark">
                   <span className="material-symbols-outlined text-4xl text-text-secondary">medical_services</span>
                   <h3 className="mt-2 font-bold">No verified doctors are listed yet</h3>
@@ -326,7 +339,7 @@ export default function DoctorsPage() {
                     <textarea value={summary} onChange={(event) => setSummary(event.target.value)} maxLength={500} rows={4} placeholder="Share only what the doctor needs to prepare. Do not include passwords or payment details." className="mt-2 w-full resize-none rounded-xl border-border-light bg-background-light text-base dark:border-border-dark dark:bg-background-dark" />
                     <span className="mt-1 block text-right text-xs font-normal text-text-secondary">{summary.length}/500</span>
                   </label>
-                  <button disabled={submitting} className="min-h-12 w-full rounded-xl bg-primary px-4 font-extrabold text-white transition hover:bg-primary-dark disabled:cursor-wait disabled:opacity-60">
+                  <button disabled={submitting || !directoryLoaded || Boolean(appointmentsError)} className="min-h-12 w-full rounded-xl bg-primary px-4 font-extrabold text-white transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60">
                     {submitting ? "Sending securely…" : selectedDoctorId ? "Send to selected doctor" : "Match me with a doctor"}
                   </button>
                 </form>

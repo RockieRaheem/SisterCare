@@ -115,14 +115,15 @@ export async function listVerifiedDoctors(): Promise<Doctor[]> {
   const now = new Date();
   const { data, error } = await getSupabaseAdmin()
     .from("doctors")
-    .select(
-      "id,professional_name,title,bio,specializations,languages,years_experience,verification_status,status,accepting_appointments,last_heartbeat_at,credential_expires_at",
-    )
-    .eq("verification_status", "verified")
-    .gte("credential_expires_at", now.toISOString().slice(0, 10))
-    .order("professional_name");
-  if (error) throw new Error(error.message);
-  return (data || []).map((row) => publicDoctor(row as Row, now));
+    .select("*")
+    .eq("verification_status", "verified");
+  if (error) throw new Error(`Doctor directory query failed (${error.code || "unknown"}): ${error.message}`);
+  // PostgREST can reject an explicit projection when an optional profile field
+  // is absent on an older schema. Only the public shape is returned to callers.
+  return (data || [])
+    .filter((row) => credentialIsCurrent(row.credential_expires_at, now))
+    .map((row) => publicDoctor(row as Row, now))
+    .sort((left, right) => left.professionalName.localeCompare(right.professionalName));
 }
 
 export async function listMemberDoctorAppointments(
