@@ -13,6 +13,15 @@ function asDate(value: unknown): Date | undefined {
   return value ? new Date(String(value)) : undefined;
 }
 
+/** PostgreSQL date credentials remain valid through their stated UTC day. */
+function credentialIsCurrent(value: unknown, now: Date): boolean {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+  const expiry = new Date(`${value}T23:59:59.999Z`);
+  return !Number.isNaN(expiry.getTime()) && expiry.getTime() >= now.getTime();
+}
+
 export function doctorIsAvailable(
   row: Row,
   now = new Date(),
@@ -25,8 +34,7 @@ export function doctorIsAvailable(
       heartbeat &&
       now.getTime() - heartbeat.getTime() <=
         DOCTOR_PRESENCE_TTL_SECONDS * 1000 &&
-      asDate(row.credential_expires_at) &&
-      asDate(row.credential_expires_at)!.getTime() >= now.getTime(),
+      credentialIsCurrent(row.credential_expires_at, now),
   );
 }
 
@@ -256,9 +264,8 @@ export async function getDoctorPresence(
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data || data.verification_status !== "verified") return "offline";
-  const expiresAt = asDate(data.credential_expires_at);
   const heartbeat = asDate(data.last_heartbeat_at);
-  if (!expiresAt || expiresAt.getTime() < now.getTime() || !heartbeat || now.getTime() - heartbeat.getTime() > DOCTOR_PRESENCE_TTL_SECONDS * 1000) {
+  if (!credentialIsCurrent(data.credential_expires_at, now) || !heartbeat || now.getTime() - heartbeat.getTime() > DOCTOR_PRESENCE_TTL_SECONDS * 1000) {
     return "offline";
   }
   if (data.status === "busy") return "busy";

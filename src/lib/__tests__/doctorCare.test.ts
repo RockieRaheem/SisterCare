@@ -40,6 +40,18 @@ describe("doctor availability", () => {
     ).toBe(true);
   });
 
+  it("keeps a doctor available through the credential expiry date, not just midnight", () => {
+    const row = {
+      verification_status: "verified",
+      accepting_appointments: true,
+      status: "available",
+      last_heartbeat_at: "2026-08-24T11:59:00.000Z",
+      credential_expires_at: "2026-08-24",
+    };
+    expect(doctorIsAvailable(row, now)).toBe(true);
+    expect(doctorIsAvailable(row, new Date("2026-08-25T00:00:00.000Z"))).toBe(false);
+  });
+
   it.each([
     { verification_status: "pending" },
     { accepting_appointments: false },
