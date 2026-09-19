@@ -8,6 +8,8 @@ import {
 import { validateDoctorVerification } from "@/lib/doctorVerification";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { withApiObservability } from "@/lib/observability";
+import { doctorLiveStatus } from "@/lib/server/doctorCare";
+import { resolveDoctorPhotoUrl } from "@/lib/server/doctorPhotos";
 
 async function admin(request: NextRequest) {
   if (!isAuthEnforced()) return null;
@@ -19,17 +21,24 @@ async function admin(request: NextRequest) {
 async function getDoctors(request: NextRequest) {
   const auth = await admin(request);
   if (!auth) return NextResponse.json({ success: false, error: "Administrator access required" }, { status: 401 });
-  const { data, error } = await getSupabaseAdmin()
+  const db = getSupabaseAdmin();
+  const { data, error } = await db
     .from("doctors")
     // doctors has two profile FKs (id and verified_by); disambiguate the
     // professional account so PostgREST does not reject the embed.
-    .select("id,professional_name,title,specializations,languages,registration_number,licensing_body,credential_expires_at,verification_status,status,accepting_appointments,last_heartbeat_at,verified_at,profiles:profiles!doctors_id_fkey(email)")
+    .select("id,professional_name,title,specializations,languages,registration_number,licensing_body,credential_expires_at,verification_status,status,accepting_appointments,last_heartbeat_at,profile_photo_path,verified_at,profiles:profiles!doctors_id_fkey(email)")
     .order("created_at", { ascending: false });
   if (error) {
     console.warn("Doctor directory query failed:", error.code, error.message);
     return NextResponse.json({ success: false, error: "Doctor records could not be loaded" }, { status: 503 });
   }
-  return NextResponse.json({ success: true, data: { doctors: data || [] } }, { headers: { "Cache-Control": "private, no-store" } });
+  const doctors = await Promise.all((data || []).map(async (row) => ({
+    ...row,
+    status: doctorLiveStatus(row),
+    profile_photo_path: undefined,
+    photoURL: await resolveDoctorPhotoUrl(db, row.id, row.profile_photo_path),
+  })));
+  return NextResponse.json({ success: true, data: { doctors } }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 async function verifyDoctor(request: NextRequest) {

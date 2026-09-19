@@ -9,6 +9,7 @@ describe("doctor API boundaries", () => {
     ["src", "app", "api", "doctor", "presence", "route.ts"],
     ["src", "app", "api", "doctor", "appointments", "route.ts"],
     ["src", "app", "api", "doctor", "prescriptions", "route.ts"],
+    ["src", "app", "api", "doctor", "profile", "photo", "route.ts"],
   ])("requires verified doctor authorization for %s", (...parts) => {
     const source = read(...parts);
     expect(source).toContain("authorizeDoctor");

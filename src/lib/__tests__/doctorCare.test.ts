@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   doctorIsAvailable,
+  doctorLiveStatus,
   rankDoctors,
 } from "@/lib/server/doctorCare";
 import { Doctor } from "@/types";
@@ -72,6 +73,19 @@ describe("doctor availability", () => {
         now,
       ),
     ).toBe(false);
+  });
+
+  it("does not trust a stale database status in the admin or member directory", () => {
+    const row = {
+      verification_status: "verified",
+      accepting_appointments: true,
+      status: "available",
+      last_heartbeat_at: "2026-08-24T11:55:00.000Z",
+      credential_expires_at: "2030-01-01",
+    };
+    expect(doctorLiveStatus(row, now)).toBe("offline");
+    expect(doctorLiveStatus({ ...row, status: "busy", last_heartbeat_at: "2026-08-24T11:59:00.000Z" }, now)).toBe("busy");
+    expect(doctorLiveStatus({ ...row, last_heartbeat_at: "2026-08-24T11:59:00.000Z" }, now)).toBe("available");
   });
 });
 

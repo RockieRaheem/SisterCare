@@ -32,6 +32,7 @@ export async function deleteUserData(uid: string): Promise<{
   const fileCounts = await Promise.all([
     removeStoragePrefix("counsellor-profile", uid),
     removeStoragePrefix("counsellor-kyc", uid),
+    removeStoragePrefix("doctor-profile", uid),
   ]);
   return {
     deletedDocuments,

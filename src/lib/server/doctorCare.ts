@@ -1,6 +1,7 @@
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getClinicalRuntimeIssues } from "@/lib/clinicalGovernance";
 import { Doctor, DoctorAppointment, DoctorAppointmentStatus, DoctorPrescription } from "@/types";
+import { resolveDoctorPhotoUrl } from "@/lib/server/doctorPhotos";
 
 export const DOCTOR_PRESENCE_TTL_SECONDS = 120;
 const ACTIVE_APPOINTMENT_STATES = [
@@ -39,6 +40,15 @@ export function doctorIsAvailable(
   );
 }
 
+export function doctorLiveStatus(row: Row, now = new Date()): Doctor["status"] {
+  const heartbeat = asDate(row.last_heartbeat_at);
+  if (row.verification_status !== "verified" ||
+      !credentialIsCurrent(row.credential_expires_at, now) ||
+      !heartbeat || now.getTime() - heartbeat.getTime() > DOCTOR_PRESENCE_TTL_SECONDS * 1000) return "offline";
+  if (row.status === "busy") return "busy";
+  return doctorIsAvailable(row, now) ? "available" : "offline";
+}
+
 function publicDoctor(row: Row, now = new Date()): Doctor {
   return {
     id: String(row.id),
@@ -54,7 +64,7 @@ function publicDoctor(row: Row, now = new Date()): Doctor {
     yearsExperience:
       typeof row.years_experience === "number" ? row.years_experience : 0,
     photoURL: "",
-    status: doctorIsAvailable(row, now) ? "available" : "offline",
+    status: doctorLiveStatus(row, now),
     acceptingAppointments:
       row.accepting_appointments === true &&
       row.verification_status === "verified",
@@ -120,10 +130,14 @@ export async function listVerifiedDoctors(): Promise<Doctor[]> {
   if (error) throw new Error(`Doctor directory query failed (${error.code || "unknown"}): ${error.message}`);
   // PostgREST can reject an explicit projection when an optional profile field
   // is absent on an older schema. Only the public shape is returned to callers.
-  return (data || [])
+  const db = getSupabaseAdmin();
+  const doctors = await Promise.all((data || [])
     .filter((row) => credentialIsCurrent(row.credential_expires_at, now))
-    .map((row) => publicDoctor(row as Row, now))
-    .sort((left, right) => left.professionalName.localeCompare(right.professionalName));
+    .map(async (row) => ({
+      ...publicDoctor(row as Row, now),
+      photoURL: await resolveDoctorPhotoUrl(db, String(row.id), row.profile_photo_path),
+    })));
+  return doctors.sort((left, right) => left.professionalName.localeCompare(right.professionalName));
 }
 
 export async function listMemberDoctorAppointments(

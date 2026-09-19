@@ -20,7 +20,7 @@ describe("account data deletion", () => {
     mocks.storageFrom.mockReset();
   });
 
-  it("removes user-owned documents and both private storage prefixes", async () => {
+  it("removes user-owned documents and professional storage prefixes", async () => {
     const articleEq = vi.fn().mockResolvedValue({ error: null, count: 2 });
     const auditOr = vi.fn().mockResolvedValue({ error: null, count: 3 });
     mocks.table.mockImplementation((name: string) => ({
@@ -36,7 +36,9 @@ describe("account data deletion", () => {
         data:
           bucket === "counsellor-profile"
             ? [{ name: "portrait.webp" }]
-            : [{ name: "licence.pdf" }, { name: "identity.png" }],
+            : bucket === "counsellor-kyc"
+              ? [{ name: "licence.pdf" }, { name: "identity.png" }]
+              : [{ name: "doctor.jpg" }],
         error: null,
       }),
       remove: vi.fn(async (paths: string[]) => {
@@ -47,7 +49,7 @@ describe("account data deletion", () => {
 
     await expect(deleteUserData("user-123")).resolves.toEqual({
       deletedDocuments: 5,
-      deletedFiles: 3,
+      deletedFiles: 4,
     });
     expect(articleEq).toHaveBeenCalledWith("author_id", "user-123");
     expect(auditOr).toHaveBeenCalledWith(
@@ -56,6 +58,7 @@ describe("account data deletion", () => {
     expect(removals).toEqual([
       ["user-123/portrait.webp"],
       ["user-123/licence.pdf", "user-123/identity.png"],
+      ["user-123/doctor.jpg"],
     ]);
   });
 

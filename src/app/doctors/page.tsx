@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
 import HelpLink from "@/components/features/HelpLink";
@@ -64,7 +65,9 @@ export default function DoctorsPage() {
         appointmentsResponse.json().catch(() => ({})),
       ]);
       if (directoryResponse.ok) {
-        setDoctors(directoryResult.data?.doctors || []);
+        const listedDoctors: Doctor[] = directoryResult.data?.doctors || [];
+        setDoctors(listedDoctors);
+        setSelectedDoctorId((current) => listedDoctors.some((doctor) => doctor.id === current) ? current : "");
         setDirectoryLoaded(true);
         setDirectoryError("");
       } else {
@@ -249,22 +252,24 @@ export default function DoctorsPage() {
               {doctors.map((doctor) => {
                 const selected = selectedDoctorId === doctor.id;
                 return (
-                  <article key={doctor.id} className={`rounded-2xl border bg-white p-5 shadow-soft transition dark:bg-card-dark ${selected ? "border-primary ring-2 ring-primary/15" : "border-border-light dark:border-border-dark"}`}>
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-lg font-black text-primary">
-                        {doctor.professionalName.slice(0, 1).toUpperCase()}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="font-extrabold">{doctor.professionalName}</h3>
-                          <span className="material-symbols-outlined text-lg text-primary" title="Verified doctor">verified</span>
-                        </div>
-                        <p className="text-sm text-text-secondary dark:text-gray-300">{doctor.title}</p>
-                      </div>
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${doctor.status === "available" ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"}`}>
-                        {doctor.status === "available" ? "Available" : "Booking only"}
+                  <article key={doctor.id} className={`min-w-0 overflow-hidden rounded-[22px] border bg-white shadow-soft transition hover:-translate-y-0.5 hover:shadow-soft-lg dark:bg-card-dark ${selected ? "border-primary ring-2 ring-primary/15" : "border-border-light dark:border-border-dark"}`}>
+                    <div className="relative h-16 bg-gradient-to-r from-primary/15 via-rose-50 to-white dark:from-primary/20 dark:via-card-dark dark:to-card-dark">
+                      <span className="absolute right-4 top-3 inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-primary shadow-sm dark:bg-card-dark">
+                        <span className="material-symbols-outlined text-sm" aria-hidden="true">verified</span>
+                        Verified doctor
                       </span>
                     </div>
+                    <div className="px-5 pb-5">
+                    <div className="-mt-7 flex items-end justify-between gap-3">
+                      <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-4 border-white bg-primary/10 text-2xl font-black text-primary shadow-sm dark:border-card-dark" aria-label={doctor.photoURL ? undefined : `No profile photo for ${doctor.professionalName}`}>
+                        {doctor.photoURL ? <Image src={doctor.photoURL} alt={`${doctor.professionalName} profile photo`} fill sizes="80px" unoptimized className="object-cover" /> : doctor.professionalName.slice(0, 1).toUpperCase()}
+                      </div>
+                      <span className={`mb-1 rounded-full px-2.5 py-1 text-xs font-bold ${doctor.status === "available" ? "bg-emerald-100 text-emerald-800" : doctor.status === "busy" ? "bg-amber-100 text-amber-900" : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"}`}>
+                        {doctor.status === "available" ? "Available now" : doctor.status === "busy" ? "In consultation" : "Offline · booking only"}
+                      </span>
+                    </div>
+                    <h3 className="mt-3 break-words text-lg font-extrabold">{doctor.professionalName}</h3>
+                    <p className="text-sm text-text-secondary dark:text-gray-300">{doctor.title}</p>
                     {doctor.bio && <p className="mt-3 line-clamp-3 text-sm leading-6 text-text-secondary dark:text-gray-300">{doctor.bio}</p>}
                     <div className="mt-3 flex flex-wrap gap-1.5">
                       {doctor.specializations.slice(0, 3).map((item) => (
@@ -286,6 +291,7 @@ export default function DoctorsPage() {
                     >
                       {selected ? "Selected" : doctor.status === "available" ? "Request this doctor" : "Request a booking"}
                     </button>
+                    </div>
                   </article>
                 );
               })}

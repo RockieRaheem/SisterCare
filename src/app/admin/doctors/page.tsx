@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import AdminShell from "@/components/admin/AdminShell";
 import { OperationsNotice, OperationsPageHeader, OperationsSkeleton, StatusBadge } from "@/components/operations/OperationsUI";
 import { authenticatedFetch } from "@/lib/authenticatedFetch";
@@ -16,6 +17,7 @@ type DoctorRow = {
   status: string;
   accepting_appointments: boolean;
   last_heartbeat_at: string | null;
+  photoURL?: string;
   profiles?: { email?: string } | null;
 };
 
@@ -47,7 +49,13 @@ export default function AdminDoctorsPage() {
     } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void load();
+    }, 15_000);
+    return () => window.clearInterval(timer);
+  }, [load]);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault(); setSaving(true); setError(""); setNotice("");
@@ -92,7 +100,26 @@ export default function AdminDoctorsPage() {
       <section>
         <h2 className="text-lg font-extrabold">Verified clinical accounts</h2>
         <p className="mt-1 text-sm text-slate-500">Availability still requires the doctor to sign in and send a current heartbeat.</p>
-        <div className="mt-4 space-y-3">{loading ? <OperationsSkeleton rows={4} /> : doctors.length ? doctors.map((doctor) => <article key={doctor.id} className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-[#1b1922]"><div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex items-center gap-2"><h3 className="font-extrabold">{doctor.professional_name}</h3><StatusBadge tone={doctor.verification_status === "verified" ? "success" : "danger"}>{doctor.verification_status}</StatusBadge></div><p className="mt-1 text-sm text-slate-500">{doctor.title} · {doctor.profiles?.email || "Account email protected"}</p><p className="mt-2 text-xs text-slate-500">{doctor.licensing_body} · {doctor.registration_number} · expires {new Date(doctor.credential_expires_at).toLocaleDateString()}</p><p className="mt-1 text-xs font-bold text-slate-500">Live status: {doctor.status}</p></div><button onClick={() => void update(doctor.id, doctor.verification_status === "verified" ? "suspend" : "restore")} className={`min-h-10 rounded-xl px-4 text-sm font-bold text-white ${doctor.verification_status === "verified" ? "bg-red-700" : "bg-emerald-700"}`}>{doctor.verification_status === "verified" ? "Suspend" : "Restore"}</button></div></article>) : <OperationsNotice>No doctor accounts have been verified yet.</OperationsNotice>}</div>
+        <div className="mt-4 space-y-3">
+          {loading ? <OperationsSkeleton rows={4} /> : doctors.length ? doctors.map((doctor) => (
+            <article key={doctor.id} className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-[#1b1922]">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex min-w-0 items-start gap-3">
+                  <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary/10 text-lg font-bold text-primary">
+                    {doctor.photoURL ? <Image src={doctor.photoURL} alt={`${doctor.professional_name} profile photo`} fill sizes="56px" unoptimized className="object-cover" /> : doctor.professional_name.slice(0, 1).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2"><h3 className="break-words font-extrabold">{doctor.professional_name}</h3><StatusBadge tone={doctor.verification_status === "verified" ? "success" : "danger"}>{doctor.verification_status}</StatusBadge></div>
+                    <p className="mt-1 break-words text-sm text-slate-500">{doctor.title} · {doctor.profiles?.email || "Account email protected"}</p>
+                    <p className="mt-2 text-xs text-slate-500">{doctor.licensing_body} · {doctor.registration_number} · expires {new Date(doctor.credential_expires_at).toLocaleDateString()}</p>
+                    <p className="mt-1 text-xs font-bold text-slate-500">Live status: {doctor.status}</p>
+                  </div>
+                </div>
+                <button onClick={() => void update(doctor.id, doctor.verification_status === "verified" ? "suspend" : "restore")} className={`min-h-10 rounded-xl px-4 text-sm font-bold text-white ${doctor.verification_status === "verified" ? "bg-red-700" : "bg-emerald-700"}`}>{doctor.verification_status === "verified" ? "Suspend" : "Restore"}</button>
+              </div>
+            </article>
+          )) : <OperationsNotice>No doctor accounts have been verified yet.</OperationsNotice>}
+        </div>
       </section>
     </div>
   </AdminShell>;

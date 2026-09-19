@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import DoctorShell from "@/components/doctor/DoctorShell";
+import DoctorProfilePhoto from "@/components/doctor/DoctorProfilePhoto";
 import { OperationsEmptyState, OperationsNotice, OperationsPageHeader, OperationsSkeleton, OperationsStat, StatusBadge } from "@/components/operations/OperationsUI";
 import { useAuth } from "@/context/AuthContext";
 import { authenticatedFetch } from "@/lib/authenticatedFetch";
@@ -140,6 +141,7 @@ export default function DoctorPortalPage() {
 
   return <DoctorShell>
     <OperationsPageHeader eyebrow="Clinical care" title="Doctor clinical desk" description="Accept only cases you can assess promptly. SisterCare never authorises the AI to diagnose or prescribe." />
+    <DoctorProfilePhoto />
     {(error || notice) && <div className="mt-5"><OperationsNotice tone={error ? "danger" : "success"} title={error ? "Action needed" : "Update saved"}>{error || notice}</OperationsNotice></div>}
     {urgent.length > 0 && <div className="mt-5"><OperationsNotice tone="danger" title={`${urgent.length} urgent medical ${urgent.length === 1 ? "request needs" : "requests need"} review`}>Online consultation must not delay emergency in-person care.</OperationsNotice></div>}
     <div className="mt-6 grid gap-4 sm:grid-cols-3"><OperationsStat label="Awaiting response" value={appointments.filter((item) => item.status === "requested").length} icon="notification_important" tone="warning" /><OperationsStat label="In consultation" value={appointments.filter((item) => item.status === "in_consultation").length} icon="stethoscope" tone="success" /><OperationsStat label="Completed" value={appointments.filter((item) => item.status === "completed").length} icon="task_alt" /></div>
