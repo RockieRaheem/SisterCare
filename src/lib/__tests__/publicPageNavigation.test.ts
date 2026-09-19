@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { helpHref, resolveHelpReturnPath } from "@/lib/helpNavigation";
 
 const read = (...segments: string[]) =>
   readFileSync(path.join(process.cwd(), ...segments), "utf8");
@@ -16,8 +17,17 @@ describe("public information page navigation", () => {
     expect(shell).toContain('user\n    ? authenticatedReturnLabel || "Back to workspace"');
   });
 
-  it("returns member help visitors directly to their conversation", () => {
-    expect(help).toContain('authenticatedReturnHref="/chat"');
-    expect(help).toContain('authenticatedReturnLabel="Back to conversation"');
+  it("uses the source page for the Help Centre return link", () => {
+    expect(help).toContain("resolveHelpReturnPath((await searchParams).from)");
+    expect(help).toContain("authenticatedReturnHref={returnPath || undefined}");
+  });
+
+  it("preserves member pages without permitting open or role-crossing redirects", () => {
+    expect(helpHref("/doctors")).toBe("/help?from=%2Fdoctors");
+    expect(helpHref("/chat")).toBe("/help?from=%2Fchat");
+    expect(resolveHelpReturnPath("/doctors/appointments/123")).toBe("/doctors/appointments/123");
+    for (const unsafe of ["//evil.example", "/admin", "/counsellor", "/doctor", "/doctors/../admin", "/doctors%2F..%2Fadmin", "/chat?x=1", "https://evil.example"]) {
+      expect(resolveHelpReturnPath(unsafe)).toBeNull();
+    }
   });
 });

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import PublicPageShell from "@/components/layout/PublicPageShell";
 import UrgentSupportPanel from "@/components/features/UrgentSupportPanel";
+import { resolveHelpReturnPath } from "@/lib/helpNavigation";
 
 const FAQS = [
   {
@@ -25,19 +26,27 @@ const FAQS = [
   },
 ];
 
-export default function HelpPage() {
+export default async function HelpPage({ searchParams }: {
+  searchParams: Promise<{ from?: string }>;
+}) {
+  const returnPath = resolveHelpReturnPath((await searchParams).from);
   return (
     <PublicPageShell
       eyebrow="Help centre"
-      title="Find an answer or reach someone who can help."
-      description="Start with common questions, continue with Sister, or connect with a verified counsellor."
-      authenticatedReturnHref="/chat"
-      authenticatedReturnLabel="Back to conversation"
+      title="Get the right help, at the right time."
+      description="If you or someone else may be in danger, use the immediate help options below. For other questions, you can reach SisterCare support or a verified professional."
+      authenticatedReturnHref={returnPath || undefined}
+      authenticatedReturnLabel={returnPath ? "Back to previous page" : undefined}
     >
-      <section className="mb-10 grid gap-4 sm:grid-cols-3">
+      <div className="mb-8"><UrgentSupportPanel /></div>
+      <section aria-labelledby="next-steps-heading" className="mb-10">
+        <h2 id="next-steps-heading" className="text-2xl font-bold text-text-primary dark:text-white">When it is not an emergency</h2>
+        <p className="mt-2 text-sm leading-6 text-text-secondary dark:text-gray-300">An online request is not emergency care. A counsellor or doctor may not be available immediately.</p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          ["forum", "Ask Sister", "Private guidance, any time", "/chat"],
-          ["support_agent", "Find a counsellor", "Verified human support", "/counsellors"],
+          ["forum", "Ask Sister", "Private conversation, not emergency help", "/chat"],
+          ["support_agent", "Find a counsellor", "Emotional support when someone is available", "/counsellors"],
+          ["medical_services", "Find a doctor", "Medical advice and appointment requests", "/doctors"],
           ["menu_book", "Browse the library", "Practical health education", "/library"],
         ].map(([icon, title, text, href]) => (
           <Link key={title} href={href} className="surface group p-5 transition hover:-translate-y-0.5 hover:border-primary/30">
@@ -46,6 +55,7 @@ export default function HelpPage() {
             <p className="mt-1 text-sm text-text-secondary dark:text-gray-400">{text}</p>
           </Link>
         ))}
+        </div>
       </section>
 
       <div className="grid gap-10 lg:grid-cols-[1fr_300px]">
@@ -71,7 +81,6 @@ export default function HelpPage() {
         </section>
 
         <aside className="space-y-4">
-          <UrgentSupportPanel />
           <div className="surface p-5">
             <h2 className="font-bold text-text-primary dark:text-white">
               Product support

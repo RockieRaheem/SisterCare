@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import HelpLink from "@/components/features/HelpLink";
 import { useState } from "react";
 import WellbeingGrounding from "@/components/features/WellbeingGrounding";
 
@@ -27,10 +28,10 @@ export default function WellbeingCareChoices() {
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/[0.08] text-primary"><span className="material-symbols-outlined" aria-hidden="true">support_agent</span></span>
           <span><span className="block text-sm font-extrabold text-text-primary dark:text-white">Talk to a person</span><span className="mt-0.5 block text-xs leading-4 text-text-secondary">Choose a verified counsellor</span></span>
         </Link>
-        <Link href="/help" className="group flex min-h-[82px] items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-3 transition hover:border-rose-300 dark:border-rose-900/60 dark:bg-rose-950/25">
+        <HelpLink className="group flex min-h-[82px] items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-3 transition hover:border-rose-300 dark:border-rose-900/60 dark:bg-rose-950/25">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-200"><span className="material-symbols-outlined" aria-hidden="true">emergency_home</span></span>
           <span><span className="block text-sm font-extrabold text-rose-900 dark:text-rose-100">I may not be safe</span><span className="mt-0.5 block text-xs leading-4 text-rose-800 dark:text-rose-200">See immediate support options</span></span>
-        </Link>
+        </HelpLink>
       </div>
     </div>
   );

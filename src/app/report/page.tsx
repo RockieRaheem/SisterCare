@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import HelpLink from "@/components/features/HelpLink";
 import { useSearchParams } from "next/navigation";
 import Header from "@/components/layout/Header";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
@@ -144,7 +145,7 @@ function ReportPageContent() {
                 )) : <p className="text-sm leading-6 text-text-secondary">No reports submitted from this account.</p>}
               </div>
             </div>
-            <Link href="/help" className="inline-flex min-h-11 items-center gap-2 px-2 text-sm font-bold text-primary"><span className="material-symbols-outlined" aria-hidden="true">help</span>Open help centre</Link>
+            <HelpLink className="inline-flex min-h-11 items-center gap-2 px-2 text-sm font-bold text-primary"><span className="material-symbols-outlined" aria-hidden="true">help</span>Open help centre</HelpLink>
           </aside>
         </div>
       </main>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import HelpLink from "@/components/features/HelpLink";
 import UrgentSupportPanel from "@/components/features/UrgentSupportPanel";
 
 interface FooterProps {
@@ -29,9 +30,9 @@ export default function Footer({ variant = "landing" }: FooterProps) {
             >
               Terms of Service
             </Link>
-            <Link href="/help" className="hover:text-primary transition-colors">
+            <HelpLink className="hover:text-primary transition-colors">
               Help Center
-            </Link>
+            </HelpLink>
             <a
               href="tel:116"
               className="hover:text-primary transition-colors flex items-center gap-1"
@@ -111,12 +112,9 @@ export default function Footer({ variant = "landing" }: FooterProps) {
               </Link>
             </li>
             <li>
-              <Link
-                href="/help"
-                className="hover:text-primary transition-colors"
-              >
+              <HelpLink className="hover:text-primary transition-colors">
                 Help Center
-              </Link>
+              </HelpLink>
             </li>
             <li>
               <a

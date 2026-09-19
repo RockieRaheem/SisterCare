@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import HelpLink from "@/components/features/HelpLink";
 import { useAuth } from "@/context/AuthContext";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 import { readApiResponse } from "@/lib/apiResponse";
@@ -2523,7 +2524,7 @@ export default function ChatPage() {
               <div className="mt-2 flex items-start justify-between gap-2 px-1">
                 <p className="max-w-xl text-[9px] leading-4 text-text-secondary/70 dark:text-gray-400 sm:text-[10px]">
                   Sister is an AI companion, not an emergency service.{" "}
-                  <Link href="/help" className="font-bold text-primary hover:underline">Urgent human help</Link>
+                  <HelpLink className="font-bold text-primary hover:underline">Urgent human help</HelpLink>
                 </p>
                 <div className="flex items-center gap-3">
                   {inputValue.length > MAX_MESSAGE_LENGTH - 200 && (
