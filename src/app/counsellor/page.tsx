@@ -278,7 +278,7 @@ export default function CounsellorPortalPage() {
       setOpenCritical(data.openCritical);
       setFollowUps(followUpPayload.data?.followUps || []);
       const hasLiveAssignment = data.assigned.some((session) =>
-        ["matched", "accepted", "active"].includes(session.state),
+        ["accepted", "active"].includes(session.state),
       );
       setPresence((current) =>
         hasLiveAssignment ? "in_session" : current === "in_session" ? "available" : current,
@@ -298,7 +298,7 @@ export default function CounsellorPortalPage() {
     }
   }, []);
 
-  const isCounsellor = role === "counsellor" || role === "admin";
+  const isCounsellor = role === "counsellor";
   const portalState = resolveCounsellorPortalState(role, application?.status || null);
 
   useEffect(() => {
@@ -337,20 +337,17 @@ export default function CounsellorPortalPage() {
     setPresenceBusy(true);
     listCounsellorSessions()
       .then(async (data) => {
-        const hasLiveAssignment = data.assigned.some((session) =>
-          ["matched", "accepted", "active"].includes(session.state),
-        );
-        const effectiveStatus = await sendPresence(
-          hasLiveAssignment ? "available" : "offline",
-        );
+        // A verified counsellor opening the live care desk is available only
+        // after the server confirms standing, capacity and safety coverage.
+        const effectiveStatus = await sendPresence("available");
         setPresence(effectiveStatus);
         setAssigned(data.assigned);
         setOpenCritical(data.openCritical);
         setLastSyncedAt(new Date());
       })
-      .catch(() => {
+      .catch((presenceError) => {
         setPresence("offline");
-        setError("Your care desk started offline. Choose Available only when you are ready to receive a member.");
+        setError(presenceError instanceof Error ? presenceError.message : "Your care desk could not go available. Retry when care coverage is ready.");
       })
       .finally(() => setPresenceBusy(false));
   }, [isCounsellor]);
