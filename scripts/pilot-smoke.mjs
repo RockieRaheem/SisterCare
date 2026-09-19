@@ -43,7 +43,7 @@ await checkPage("/chat", { privatePage: true });
 const health = await request("/api/health");
 if (health) {
   const body = await health.response.json().catch(() => null);
-  const expectedChecks = ["security", "database", "clinicalGovernance", "maintenance", "pilotAccess"];
+  const expectedChecks = ["security", "database", "clinicalGovernance", "maintenance", "safetyCoverage", "pilotAccess"];
   if (!body || body.service !== "sistercare" || !body.checks) {
     failures.push("/api/health: invalid health payload");
   } else {
