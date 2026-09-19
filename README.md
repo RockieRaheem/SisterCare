@@ -293,7 +293,8 @@ result as the server-only `CLINICAL_APPROVALS_JSON` environment variable:
 The example shows the format, not a completed approval list. Production
 requires an entry for every registered resource. Do not invent a reviewer,
 reuse an approval for changed content, or treat an engineering test as a
-clinical sign-off.
+clinical sign-off. New doctor prescriptions are blocked until this gate passes;
+existing prescriptions remain readable and withdrawable.
 
 ## Cover safety duty
 
@@ -369,7 +370,14 @@ depend on a frequent cron job.
 
 A `not_ready` response is a protective result, not permission to bypass the
 failed check. Correct the named operational condition and redeploy only when an
-environment variable changed.
+environment variable changed. An administrator can open `/admin/operations` to
+see which database probes and maintenance jobs need attention. The protected
+`GET /api/admin/readiness` endpoint provides the same diagnostic names without
+exposing patient data or raw database errors. Once the schema is healthy, the
+operations page can run the existing maintenance jobs and refresh their status;
+it cannot substitute for a missing migration, clinical approval, or safety-duty
+coverage. `PILOT_PAUSED=true` stops new doctor requests and prescriptions while
+leaving existing appointments and prescriptions accessible.
 
 ## Safety and privacy boundaries
 
