@@ -53,6 +53,7 @@ function toUser(session: Session | null): SisterCareAuthUser | null {
 class SupabaseAuthFacade {
   private cachedUser: SisterCareAuthUser | null = null;
   private initialized = false;
+  private hasAuthEvent = false;
   private listeners = new Set<AuthListener>();
 
   get currentUser() { return this.cachedUser; }
@@ -73,8 +74,11 @@ class SupabaseAuthFacade {
     if (this.initialized) return;
     this.initialized = true;
     const supabase = getSupabaseBrowserClient();
-    void supabase.auth.getSession().then(({ data }) => this.notify(data.session));
-    supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session) => {
+    // Supabase emits INITIAL_SESSION itself. A second getSession request can
+    // resolve after a fresh sign-in and replace it with an older null result.
+    supabase.auth.onAuthStateChange((event: AuthChangeEvent, session) => {
+      if (event === "INITIAL_SESSION" && this.hasAuthEvent) return;
+      if (event !== "INITIAL_SESSION") this.hasAuthEvent = true;
       void this.notify(session);
     });
   }
