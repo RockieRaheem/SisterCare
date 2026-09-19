@@ -21,9 +21,14 @@ async function getDoctors(request: NextRequest) {
   if (!auth) return NextResponse.json({ success: false, error: "Administrator access required" }, { status: 401 });
   const { data, error } = await getSupabaseAdmin()
     .from("doctors")
-    .select("id,professional_name,title,specializations,languages,registration_number,licensing_body,credential_expires_at,verification_status,status,accepting_appointments,last_heartbeat_at,verified_at,profiles(email)")
+    // doctors has two profile FKs (id and verified_by); disambiguate the
+    // professional account so PostgREST does not reject the embed.
+    .select("id,professional_name,title,specializations,languages,registration_number,licensing_body,credential_expires_at,verification_status,status,accepting_appointments,last_heartbeat_at,verified_at,profiles:profiles!doctors_id_fkey(email)")
     .order("created_at", { ascending: false });
-  if (error) return NextResponse.json({ success: false, error: "Doctor records could not be loaded" }, { status: 503 });
+  if (error) {
+    console.warn("Doctor directory query failed:", error.code, error.message);
+    return NextResponse.json({ success: false, error: "Doctor records could not be loaded" }, { status: 503 });
+  }
   return NextResponse.json({ success: true, data: { doctors: data || [] } }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
