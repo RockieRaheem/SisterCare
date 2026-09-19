@@ -44,6 +44,7 @@ export const lg: TranslationKeys = {
     settings: "Entegeka",
     profile: "Ebikukwatako",
     counsellors: "Ababuulirizi",
+    doctors: "Abasawo",
     help: "Obuyambi",
     logout: "Vvaamu",
     login: "Yingira",

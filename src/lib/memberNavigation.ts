@@ -15,14 +15,14 @@ export const MEMBER_PRIMARY_NAVIGATION = [
     labelKey: "counsellors",
   },
   {
+    href: "/doctors",
+    icon: "medical_services",
+    labelKey: "doctors",
+  },
+  {
     href: "/analytics",
     icon: "monitoring",
     labelKey: "analytics",
-  },
-  {
-    href: "/profile",
-    icon: "person",
-    labelKey: "profile",
   },
 ] as const;
 

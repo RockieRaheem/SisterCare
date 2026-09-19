@@ -38,6 +38,7 @@ export const en = {
     settings: "Settings",
     profile: "You",
     counsellors: "Counsellors",
+    doctors: "Doctors",
     help: "Help",
     logout: "Logout",
     login: "Login",

@@ -131,6 +131,7 @@ const CHAT_WORKSPACE_NAVIGATION = [
   { href: "/dashboard", icon: "home", label: "Home" },
   { href: "/analytics", icon: "timeline", label: "Track" },
   { href: "/counsellors", icon: "support_agent", label: "Counsellors" },
+  { href: "/doctors", icon: "medical_services", label: "Doctors" },
   { href: "/library", icon: "menu_book", label: "Library" },
   { href: "/profile", icon: "person", label: "Profile" },
 ] as const;

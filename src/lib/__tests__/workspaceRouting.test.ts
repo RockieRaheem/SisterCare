@@ -66,6 +66,19 @@ describe("workspace routing", () => {
     ).toBe("/onboarding");
   });
 
+  it("lets members open the doctor directory without entering the doctor workspace", () => {
+    expect(resolveRoleBoundaryRedirect({
+      pathname: "/doctors",
+      role: "member",
+      onboardingCompleted: true,
+    })).toBeNull();
+    expect(resolveRoleBoundaryRedirect({
+      pathname: "/doctors/appointments/example",
+      role: "member",
+      onboardingCompleted: true,
+    })).toBeNull();
+  });
+
   it("routes submitted applicants to their application status portal", () => {
     expect(
       resolveWorkspaceRoute({

@@ -8,13 +8,13 @@ import {
 } from "../memberNavigation";
 
 describe("member primary navigation", () => {
-  it("contains the five product destinations in their intended order", () => {
+  it("keeps the five primary destinations focused on support and tracking", () => {
     expect(MEMBER_PRIMARY_NAVIGATION.map(({ labelKey }) => labelKey)).toEqual([
       "home",
       "chat",
       "counsellors",
+      "doctors",
       "analytics",
-      "profile",
     ]);
   });
 
@@ -22,6 +22,7 @@ describe("member primary navigation", () => {
     const destinations = MEMBER_PRIMARY_NAVIGATION.map(({ href }) => href);
 
     expect(destinations).toContain("/counsellors");
+    expect(destinations).toContain("/doctors");
     expect(destinations).not.toContain("/library");
   });
 
@@ -29,7 +30,8 @@ describe("member primary navigation", () => {
     expect(isMemberPrimaryDestination("/dashboard")).toBe(true);
     expect(isMemberPrimaryDestination("/chat/history")).toBe(true);
     expect(isMemberPrimaryDestination("/analytics")).toBe(true);
-    expect(isMemberPrimaryDestination("/profile")).toBe(true);
+    expect(isMemberPrimaryDestination("/doctors/appointments/example")).toBe(true);
+    expect(isMemberPrimaryDestination("/profile")).toBe(false);
     expect(isMemberPrimaryDestination("/library")).toBe(false);
   });
 
