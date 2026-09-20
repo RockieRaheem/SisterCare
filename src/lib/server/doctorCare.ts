@@ -179,11 +179,12 @@ export async function requestDoctorAppointment(params: {
     params.preferredLanguage,
   );
   const selected = params.preferredDoctorId
-    ? doctors.find((doctor) => doctor.id === params.preferredDoctorId)
+    ? doctors.find(
+        (doctor) =>
+          doctor.id === params.preferredDoctorId &&
+          doctor.status === "available",
+      )
     : doctors.find((doctor) => doctor.status === "available");
-  if (params.preferredDoctorId && !selected) {
-    throw new Error("The selected doctor is not currently verified");
-  }
 
   const { data, error } = await db
     .from("doctor_appointments")
