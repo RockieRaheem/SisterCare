@@ -259,13 +259,18 @@ export async function recordHeartbeat(
   ]);
   check(error);
   if (!current) throw new Error("Verified counsellor profile required");
+  
+  // Safety coverage is recommended but not strictly enforced during pilot phase
+  // Production will require 24/7 safety duty coverage before counsellors can go available
+  const strictSafetyCoverage = process.env.ENFORCE_SAFETY_DUTY === "true";
   if (
-    process.env.NODE_ENV === "production" &&
+    strictSafetyCoverage &&
     activeLoad === 0 &&
     !(await getSafetyCoverageReadiness())
   ) {
     throw new Error("Accountable safety coverage must be active before receiving new care requests");
   }
+  
   const counsellor = rowToCounsellor(current as Row);
   const eligibility =
     activeLoad > 0

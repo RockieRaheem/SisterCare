@@ -5,15 +5,14 @@ const nextConfig = require("../../../next.config.js") as {
 };
 
 describe("browser security headers", () => {
-  it("monitors a restrictive content policy before enforcement", async () => {
+  it("enforces Content Security Policy to prevent XSS and injection attacks", async () => {
     const rules = await nextConfig.headers();
     const global = rules.find((rule) => rule.source === "/:path*");
-    const policy = global?.headers.find((header) => header.key === "Content-Security-Policy-Report-Only")?.value || "";
+    const policy = global?.headers.find((header) => header.key === "Content-Security-Policy")?.value || "";
     expect(policy).toContain("default-src 'self'");
     expect(policy).toContain("object-src 'none'");
     expect(policy).toContain("frame-ancestors 'none'");
     expect(policy).not.toContain("default-src *");
-    expect(policy).not.toContain("upgrade-insecure-requests");
   });
 
   it("prevents private support pages from being cached", async () => {
