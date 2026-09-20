@@ -1,222 +1,208 @@
-# SisterCare Deployment Checklist
+# ✅ Deployment Checklist
 
-## ✅ Critical Fixes Applied - Ready for Pilot
+## Pre-Deployment (Local)
+- [x] CSP changed from report-only to enforced
+- [x] Safety duty made optional via ENFORCE_SAFETY_DUTY
+- [x] Code changes committed locally
+- [ ] Code pushed to GitHub
+  ```bash
+  cd "C:\Users\Raheem\Desktop\SisterCare"
+  git add .
+  git commit -m "fix: CSP enforcement, optional safety duty, doctor workflow"
+  git push origin main
+  ```
 
-### Issues Resolved
+## Database Migration (Supabase)
+- [ ] Opened Supabase SQL Editor
+- [ ] Copied `RUN_THIS_IN_SUPABASE.sql` contents
+- [ ] Pasted into SQL Editor
+- [ ] Clicked "Run" button
+- [ ] Verified success messages at bottom
+- [ ] Tested: `SELECT COUNT(*) FROM doctors;` returns 0 (not error)
 
-1. **Content Security Policy** ✅
-   - Changed from report-only to enforced mode
-   - XSS and injection attacks now actively blocked
+## Environment Variables (Vercel)
+- [ ] Checked `NEXT_PUBLIC_SUPABASE_URL` exists
+- [ ] Checked `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` exists
+- [ ] Checked `SUPABASE_SECRET_KEY` exists (service_role key)
+- [ ] Added `ENFORCE_SAFETY_DUTY=false`
+- [ ] Clicked "Save"
+- [ ] Redeployed application
 
-2. **Counsellor Availability** ✅
-   - Safety duty no longer blocks pilot operations
-   - Set `ENFORCE_SAFETY_DUTY=false` for pilot
-   - Set `ENFORCE_SAFETY_DUTY=true` for production (after 24/7 coverage established)
+## Deployment (Vercel)
+- [ ] Vercel auto-deployed after push
+- [ ] Deployment status shows "Ready" (not "Building" or "Error")
+- [ ] Checked deployment URL matches production URL
+- [ ] Waited 2-3 minutes for deployment to complete
 
-3. **Doctor Creation** ✅
-   - Admin can verify doctors via `/admin/doctors`
-   - No general user KYC required
-   - Professional credential verification workflow functional
+## Post-Deployment Verification
 
-4. **Session Management** ✅
-   - 409 conflicts are expected (concurrent access protection)
-   - Proper state machine enforcement working
+### Test 1: CSP Enforcement
+- [ ] Opened https://sister-care.vercel.app
+- [ ] Opened browser DevTools (F12)
+- [ ] Checked Console tab
+- [ ] Confirmed: NO "Content-Security-Policy-Report-Only" messages
+- [ ] Result: ✅ CSP enforced / ❌ Still report-only
 
-### Environment Setup
+### Test 2: API Health Check
+- [ ] Visited https://sister-care.vercel.app/api/health
+- [ ] Confirmed `"database": true`
+- [ ] Confirmed `"status": "ready"`
+- [ ] Result: ✅ Healthy / ❌ Issues found
 
-**Required .env.local variables:**
+### Test 3: Admin Doctors API
+- [ ] Logged in as admin
+- [ ] Visited https://sister-care.vercel.app/admin/doctors
+- [ ] Page loaded without 503 errors
+- [ ] Browser console shows NO errors
+- [ ] Result: ✅ Working / ❌ Still 503
 
-```env
-# Existing variables remain unchanged
+### Test 4: Doctor Creation Workflow
+- [ ] Filled doctor verification form
+- [ ] Submitted form
+- [ ] Success message appeared
+- [ ] Doctor appears in list
+- [ ] Result: ✅ Working / ❌ Failed
 
-# NEW: Safety duty enforcement (add this)
-ENFORCE_SAFETY_DUTY=false
-```
+### Test 5: Counsellor Availability
+- [ ] Logged in as counsellor
+- [ ] Tried to go "available"
+- [ ] NO "safety duty" error
+- [ ] Status changed to available
+- [ ] Result: ✅ Working / ❌ Still blocked
 
-### Pre-Deployment Tests
+## Issue Resolution
 
-Run these commands before deploying:
+### If CSP Still Report-Only
+- [ ] Verified code was pushed: `git log -1`
+- [ ] Checked Vercel deployment time is recent
+- [ ] Forced hard refresh: Ctrl+Shift+R
+- [ ] Cleared browser cache
+- [ ] Redeployed with cache cleared
 
-```bash
-# Check for TypeScript errors
-npm run typecheck
+### If API Returns 503
+- [ ] Checked SUPABASE_SECRET_KEY in Vercel
+- [ ] Verified it's service_role key (not anon)
+- [ ] Checked Vercel function logs
+- [ ] Verified doctors table exists in Supabase
+- [ ] Redeployed after fixing env vars
 
-# Run all tests
-npm run test
+### If Doctor Table Missing
+- [ ] Re-ran `RUN_THIS_IN_SUPABASE.sql`
+- [ ] Checked for SQL errors in Supabase
+- [ ] Verified: `SELECT * FROM doctors LIMIT 1;` works
 
-# Run safety-critical tests
-npm run test:safety
-
-# Build production bundle
-npm run build
-```
-
-Note: If you encounter PowerShell execution policy errors on Windows, you can:
-1. Run commands in Git Bash instead
-2. Or temporarily allow scripts: `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`
-
-### Deployment Steps
-
-1. **Push Code Changes**
-   ```bash
-   git add .
-   git commit -m "fix: Enable CSP enforcement, make safety duty optional for pilot, fix doctor workflow"
-   git push
-   ```
-
-2. **Update Vercel Environment Variables**
-   - Go to Vercel project settings
-   - Add: `ENFORCE_SAFETY_DUTY=false`
-   - Keep all existing variables unchanged
-
-3. **Deploy to Production**
-   - Vercel will auto-deploy on push
-   - Or manually trigger deploy in Vercel dashboard
-
-4. **Verify Health Check**
-   ```
-   GET https://sister-care.vercel.app/api/health
-   
-   Expected: HTTP 200
-   {
-     "status": "ready",
-     "checks": {
-       "security": true,
-       "database": true,
-       "clinicalGovernance": true,
-       "maintenance": true,
-       "safetyCoverage": false,  // OK during pilot
-       "pilotAccess": true
-     }
-   }
-   ```
-
-5. **Test Critical Flows**
-   - ✅ User can signup/login
-   - ✅ Counsellor can go available (no 503 error)
-   - ✅ Admin can create doctors
-   - ✅ Chat works with crisis detection
-   - ✅ Sessions can be created and transitioned
-
-### Post-Deployment Monitoring
-
-**Check Browser Console:**
-- Should NOT see "Content-Security-Policy-Report-Only" messages
-- CSP violations should be blocked (if any occur)
-- Auth 400 errors during failed logins are normal
-
-**Check Admin Portal:**
-- `/admin` - Operations overview
-- `/admin/counsellors` - Counsellor management
-- `/admin/doctors` - Doctor verification
-- `/admin/incidents` - Safety duty status (can be offline during pilot)
-- `/admin/operations` - Service health
-
-### Known Acceptable Behaviors
-
-1. **Safety Coverage Check Returns False**
-   - Expected during pilot with `ENFORCE_SAFETY_DUTY=false`
-   - Will be required for production launch
-
-2. **Session Transition 409 Errors**
-   - Normal for concurrent access scenarios
-   - Indicates proper state machine protection
-   - Client should refresh and show current state
-
-3. **Auth Token 400 Errors**
-   - Normal for failed login attempts
-   - Not affecting valid authenticated users
-
-### Production Launch Requirements (Not Yet Complete)
-
-Before removing `ENFORCE_SAFETY_DUTY=false`:
-
-- [ ] Establish 24/7 admin safety duty rotation
-- [ ] Complete all clinical content approvals (`CLINICAL_APPROVALS_JSON`)
-- [ ] Verify emergency contacts for Uganda
-- [ ] Document pilot evidence and feedback
-- [ ] Professional accessibility audit
-- [ ] Legal review for data retention policy
-- [ ] Set up monitoring and alerting
-
-### Rollback Plan
-
-If issues occur after deployment:
-
-1. **Immediate:** Set `PILOT_PAUSED=true` in Vercel
-2. **Revert code:** Deploy previous git commit
-3. **Check logs:** Vercel function logs for errors
-4. **Restore env:** Ensure all environment variables correct
-
-### Support Contacts
-
-**For operational issues:**
-- Check `/admin/operations` for diagnostics
-- Review Supabase logs for database errors
-- Check Vercel function logs for API failures
-
-**For security concerns:**
-- Review CSP violations in browser console
-- Check `/api/health` for security gate status
-- Verify RLS policies in Supabase
-
----
+### If Permission Errors
+- [ ] Ran grant permissions:
+  ```sql
+  GRANT ALL ON public.doctors TO service_role;
+  GRANT ALL ON public.doctor_appointments TO service_role;
+  GRANT ALL ON public.doctor_prescriptions TO service_role;
+  GRANT ALL ON public.doctor_messages TO service_role;
+  ```
 
 ## Success Criteria
 
-Deployment is successful when:
+All of these must be true:
 
-✅ `/api/health` returns HTTP 200 with `"status": "ready"`  
-✅ Counsellors can go available without 503 errors  
-✅ Admin can create and verify doctors  
-✅ Members can chat and request counsellors  
-✅ Sessions can be created, matched, and completed  
-✅ No critical errors in browser console or Vercel logs  
+- ✅ CSP header is "Content-Security-Policy" (not report-only)
+- ✅ /api/health returns 200 with database: true
+- ✅ /api/admin/doctors returns 200 (not 503)
+- ✅ /admin/doctors page loads without errors
+- ✅ Can create doctor from admin form
+- ✅ Counsellors can go available without safety duty error
+- ✅ No console errors on main pages
 
----
+## Rollback Plan (If Needed)
 
-## Changes Made
+If production is completely broken:
 
-**Files Modified:**
-1. `next.config.js` - CSP enforcement enabled
-2. `src/lib/server/sessions.ts` - Safety duty optional for pilot
-3. `src/lib/server/operations.ts` - Safety coverage check updated
-4. `.env.example` - Added ENFORCE_SAFETY_DUTY documentation
-5. `src/lib/__tests__/securityHeaders.test.ts` - Updated test
-6. `FIXES_APPLIED.md` - Detailed fix documentation (NEW)
-7. `DEPLOYMENT_CHECKLIST.md` - This file (NEW)
+1. **Immediate:**
+   - [ ] Set `PILOT_PAUSED=true` in Vercel env vars
+   - [ ] Redeploy
 
-**No Breaking Changes:**
-- Existing functionality preserved
-- New features are backward compatible
-- Environment variable has safe default
+2. **Quick:**
+   - [ ] Vercel → Deployments → Previous deployment
+   - [ ] Click three dots → "Promote to Production"
 
----
+3. **Investigate:**
+   - [ ] Check Vercel function logs
+   - [ ] Check Supabase logs
+   - [ ] Check browser console errors
 
-## Quick Command Reference
+## Monitoring (First 24 Hours)
 
-```bash
-# Development
-npm run dev
+- [ ] Monitor error rates in Vercel
+- [ ] Check Supabase logs for unusual activity
+- [ ] Test key user flows:
+  - [ ] User signup/login
+  - [ ] Counsellor availability
+  - [ ] Doctor creation
+  - [ ] Chat functionality
+  - [ ] Session creation
 
-# Testing
-npm run test
-npm run test:safety
-npm run test:coverage
+## Documentation
 
-# Production checks
-npm run typecheck
-npm run lint
-npm run build
-npm run pilot:verify
-
-# Smoke tests
-npm run pilot:smoke
-npm run pilot:smoke:public
-```
+- [ ] Updated `.env.example` with ENFORCE_SAFETY_DUTY
+- [ ] Created deployment guides
+- [ ] Committed all documentation
+- [ ] Pushed to repository
 
 ---
 
-**Status: Ready for pilot deployment**  
-**Date: December 2024**  
-**Version: 1.0.0 (Pilot Ready)**
+## Timeline
+
+- **Database Migration:** 5 minutes
+- **Code Deployment:** 3-5 minutes (auto)
+- **Environment Variables:** 3 minutes
+- **Verification:** 5 minutes
+- **Total:** ~15-20 minutes
+
+---
+
+## Current Status
+
+**Date:** _____________
+**Time:** _____________
+**Deployed By:** _____________
+
+**Checklist Progress:**
+- Pre-Deployment: ___/4
+- Database: ___/6
+- Env Vars: ___/7
+- Deployment: ___/4
+- Verification: ___/15
+
+**Overall Status:** 🔴 Not Started / 🟡 In Progress / 🟢 Complete
+
+**Issues Encountered:**
+- _____________________________________________
+- _____________________________________________
+
+**Resolution:**
+- _____________________________________________
+- _____________________________________________
+
+---
+
+## Sign-Off
+
+**Technical Verification:** ☐ Passed  
+**Functional Testing:** ☐ Passed  
+**Production Ready:** ☐ Yes / ☐ No
+
+**Approved By:** _____________
+**Date/Time:** _____________
+
+---
+
+## Emergency Contacts
+
+**Vercel Dashboard:** https://vercel.com/dashboard  
+**Supabase Dashboard:** https://supabase.com/dashboard  
+**GitHub Repository:** (your repo URL)
+
+**Support Resources:**
+- STEP_BY_STEP_FIX.md (detailed guide)
+- RUN_THIS_IN_SUPABASE.sql (database migration)
+- URGENT_FIX_GUIDE.md (troubleshooting)
+- FIXES_APPLIED.md (technical details)
