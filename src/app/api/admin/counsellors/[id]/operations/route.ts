@@ -66,7 +66,8 @@ export async function PATCH(
     profile,
     verification_status: verificationStatus,
     max_concurrent_sessions: maxConcurrentSessions,
-    accepting_new_sessions: verificationStatus === "verified" && body.acceptingNewSessions === true,
+    // A verified counsellor may receive sessions whenever they are online.
+    accepting_new_sessions: verificationStatus === "verified",
     ...(verificationStatus === "verified" ? {} : { status: "offline" }),
   }).eq("id", id);
   if (update.error) return NextResponse.json({ success: false, error: update.error.message }, { status: 503 });
@@ -78,7 +79,7 @@ export async function PATCH(
       verificationStatus,
       previousVerificationStatus: existing.verification_status,
       operationsNote: operationsNote || undefined,
-      acceptingNewSessions: verificationStatus === "verified" && body.acceptingNewSessions === true,
+      acceptingNewSessions: verificationStatus === "verified",
       maxConcurrentSessions,
     },
   });

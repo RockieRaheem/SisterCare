@@ -425,11 +425,11 @@ export default function CounsellorOperationsPage() {
                       </div>
                     </fieldset>
 
-                    <div className="mt-5 flex flex-wrap gap-4 rounded-2xl bg-slate-50 p-4 dark:bg-slate-900">
-                      <label className="inline-flex min-h-10 items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-200">
-                        <input type="checkbox" checked={record.acceptingNewSessions} onChange={(event) => update(record.id, { acceptingNewSessions: event.target.checked })} className="h-5 w-5 rounded border-slate-300 text-primary focus:ring-primary" />
-                        Accepting new sessions
-                      </label>
+                    <div className="mt-5 flex flex-wrap gap-4 rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                      <span className="inline-flex min-h-10 items-center gap-2">
+                        <span className="material-symbols-outlined text-emerald-600" aria-hidden="true">check_circle</span>
+                        Verified counsellors can receive sessions whenever they are online
+                      </span>
                       <label className="inline-flex min-h-10 items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-200">
                         <input type="checkbox" checked={record.crisisTrained} onChange={(event) => update(record.id, { crisisTrained: event.target.checked })} className="h-5 w-5 rounded border-slate-300 text-primary focus:ring-primary" />
                         Crisis-response trained

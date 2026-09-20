@@ -21,9 +21,6 @@ export function describeCounsellorEligibilityFailure(
   if (reasons.includes("credentials_expired")) {
     return "Your professional credential has expired. Submit an updated credential before going available.";
   }
-  if (reasons.includes("not_accepting_sessions")) {
-    return "New sessions are disabled for your account. Ask an administrator to enable accepting sessions.";
-  }
   if (reasons.includes("off_shift")) {
     return "You are outside the shift hours configured for your account. Ask an administrator to update your schedule if you are on duty.";
   }
@@ -101,9 +98,6 @@ export function evaluateCounsellorEligibility(
 ): CounsellorEligibility {
   const now = options.now ?? new Date();
   const reasons = [...evaluateCounsellorStanding(counsellor, now).reasons];
-  if (counsellor.acceptingNewSessions !== true) {
-    reasons.push("not_accepting_sessions");
-  }
   if (!isCounsellorOnShift(counsellor, now)) {
     reasons.push("off_shift");
   }

@@ -60,7 +60,6 @@ describe("counsellor operational eligibility", () => {
         counsellor({
           verificationStatus: "suspended",
           credentialExpiresAt: new Date("2026-01-01"),
-          acceptingNewSessions: false,
           availableHours: { start: "18:00", end: "20:00", days: ["Monday"] },
         }),
         { now, activeLoad: 2, priority: "critical" },
@@ -68,7 +67,6 @@ describe("counsellor operational eligibility", () => {
     ).toEqual([
       "verification_required",
       "credentials_expired",
-      "not_accepting_sessions",
       "off_shift",
       "at_capacity",
     ]);
