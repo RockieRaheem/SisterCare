@@ -75,7 +75,7 @@ export default function CounsellorsPage() {
     void loadCounsellors(true);
     const refresh = window.setInterval(() => {
       if (document.visibilityState === "visible") void loadCounsellors();
-    }, 15_000);
+    }, 5_000);
     const refreshOnFocus = () => {
       if (document.visibilityState === "visible") void loadCounsellors();
     };

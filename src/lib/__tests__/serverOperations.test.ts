@@ -107,6 +107,14 @@ describe("server operations readiness", () => {
     await expect(getSafetyCoverageReadiness()).resolves.toBe(true);
   });
 
+  it("does not block pilot care when strict safety duty is disabled", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("ENFORCE_SAFETY_DUTY", "false");
+
+    await expect(getSafetyCoverageReadiness()).resolves.toBe(true);
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
   it("reports the database unavailable when any required probe fails", async () => {
     mocks.from.mockImplementation((table: string) => ({
       select: vi.fn().mockResolvedValue({
