@@ -180,7 +180,7 @@ export async function requestDoctorAppointment(params: {
   );
   const selected = params.preferredDoctorId
     ? doctors.find((doctor) => doctor.id === params.preferredDoctorId)
-    : doctors.find((doctor) => doctor.status === "available") || doctors[0];
+    : doctors.find((doctor) => doctor.status === "available");
   if (params.preferredDoctorId && !selected) {
     throw new Error("The selected doctor is not currently verified");
   }
@@ -200,6 +200,44 @@ export async function requestDoctorAppointment(params: {
     .single();
   if (error) throw new Error(error.message);
   return appointment(data as Row);
+}
+
+/** Assign queued requests when a verified doctor starts accepting care. */
+export async function assignPendingDoctorAppointments(
+  doctorId: string,
+): Promise<number> {
+  const db = getSupabaseAdmin();
+  const { data: doctor, error: doctorError } = await db
+    .from("doctors")
+    .select("*")
+    .eq("id", doctorId)
+    .maybeSingle();
+  if (doctorError) throw new Error(doctorError.message);
+  if (!doctor || !doctorIsAvailable(doctor as Row)) return 0;
+
+  const { data: pending, error: pendingError } = await db
+    .from("doctor_appointments")
+    .select("id,specialty,preferred_language")
+    .is("doctor_id", null)
+    .eq("status", "requested")
+    .order("requested_at", { ascending: true })
+    .limit(50);
+  if (pendingError) throw new Error(pendingError.message);
+
+  let assigned = 0;
+  for (const request of pending || []) {
+    const { data, error } = await db
+      .from("doctor_appointments")
+      .update({ doctor_id: doctorId })
+      .eq("id", request.id)
+      .is("doctor_id", null)
+      .eq("status", "requested")
+      .select("id")
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (data) assigned += 1;
+  }
+  return assigned;
 }
 
 export async function cancelDoctorAppointment(
@@ -266,6 +304,7 @@ export async function updateDoctorPresence(
     last_heartbeat_at: status === "available" ? new Date().toISOString() : null,
   }).eq("id", doctorId);
   if (updateError) throw new Error(updateError.message);
+  if (effective === "available") await assignPendingDoctorAppointments(doctorId);
   return effective;
 }
 

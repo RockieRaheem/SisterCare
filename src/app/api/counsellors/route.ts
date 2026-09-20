@@ -21,7 +21,14 @@ export async function GET(request: NextRequest) {
     const counsellors = await Promise.all(
       verified.map(async (counsellor) => ({
         ...counsellor,
-        status: safetyCoverageReady ? counsellor.status : "offline",
+        // Don't override in_session status even if safety coverage is missing
+        // Counsellors with active sessions must show as "in_session"
+        // Only block NEW availability when safety coverage is missing
+        status: safetyCoverageReady 
+          ? counsellor.status 
+          : counsellor.status === "in_session" 
+            ? "in_session" 
+            : "offline",
         photoURL: await resolveCounsellorPhotoUrl(
           db,
           counsellor.id,

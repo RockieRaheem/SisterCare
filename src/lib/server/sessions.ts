@@ -287,6 +287,7 @@ export async function recordHeartbeat(
     .from("counsellors")
     .update({
       status: effectiveStatus,
+      accepting_new_sessions: effectiveStatus === "available",
       last_heartbeat: nowIso(),
       updated_at: nowIso(),
     })
@@ -309,7 +310,7 @@ export async function recordHeartbeat(
 export async function setOffline(counsellorId: string): Promise<void> {
   const { error } = await db()
     .from("counsellors")
-    .update({ status: "offline", last_heartbeat: nowIso(), updated_at: nowIso() })
+    .update({ status: "offline", accepting_new_sessions: false, last_heartbeat: nowIso(), updated_at: nowIso() })
     .eq("id", counsellorId);
   check(error);
   await emitEvent("counsellor.presence_changed", {
@@ -323,6 +324,7 @@ async function setCounsellorInSession(counsellorId: string) {
     .from("counsellors")
     .update({
       status: "in_session",
+      accepting_new_sessions: true,
       last_heartbeat: nowIso(),
       updated_at: nowIso(),
     })
@@ -349,7 +351,7 @@ async function refreshCounsellorAvailability(counsellorId: string) {
     activeLoad > 0 ? "in_session" : fresh ? "available" : "offline";
   const { error: updateError } = await db()
     .from("counsellors")
-    .update({ status, updated_at: nowIso() })
+    .update({ status, accepting_new_sessions: status !== "offline", updated_at: nowIso() })
     .eq("id", counsellorId);
   check(updateError);
 }

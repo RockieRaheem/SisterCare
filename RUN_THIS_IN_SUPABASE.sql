@@ -184,6 +184,11 @@ BEGIN
       WHERE profile.role = 'admin'
       ON CONFLICT (event_key) DO NOTHING;
     END IF;
+  ELSIF tg_op = 'UPDATE' AND new.doctor_id IS NOT NULL
+    AND old.doctor_id IS DISTINCT FROM new.doctor_id THEN
+    INSERT INTO public.care_notifications (recipient_id, event_type, event_key, metadata)
+    VALUES (new.doctor_id, 'doctor_request', 'doctor:' || new.id || ':assigned:' || new.doctor_id, jsonb_build_object('href', '/doctor?appointment=' || new.id))
+    ON CONFLICT (event_key) DO NOTHING;
   ELSIF tg_op = 'UPDATE' AND new.status IS DISTINCT FROM old.status THEN
     INSERT INTO public.care_notifications (recipient_id, event_type, event_key, metadata)
     VALUES (new.member_id, 'doctor_status', 'doctor:' || new.id || ':status:' || new.status, jsonb_build_object('href', '/doctors/appointments/' || new.id, 'status', new.status))
@@ -234,8 +239,9 @@ END;
 $$;
 
 -- Create triggers
+DROP TRIGGER IF EXISTS doctor_appointment_notifications ON public.doctor_appointments;
 CREATE TRIGGER doctor_appointment_notifications
-AFTER INSERT OR UPDATE OF status ON public.doctor_appointments
+AFTER INSERT OR UPDATE OF doctor_id, status ON public.doctor_appointments
 FOR EACH ROW EXECUTE FUNCTION public.create_doctor_appointment_notifications();
 
 CREATE TRIGGER doctor_message_notifications
