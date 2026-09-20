@@ -1,7 +1,6 @@
 import type { SupportedLanguageCode } from "@/lib/sunbird";
 import { getSunbirdVoices } from "@/lib/sunbird";
 
-export const VOICE_REPLIES_STORAGE_KEY = "sistercare-voice-replies";
 export const VOICE_SELECTIONS_STORAGE_KEY = "sistercare-voice-selections";
 export type VoiceSelections = Partial<Record<SupportedLanguageCode, string>>;
 
@@ -17,16 +16,6 @@ const SPEECH_LOCALES: Record<SupportedLanguageCode, string> = {
 
 export function speechLocale(language?: string): string {
   return SPEECH_LOCALES[language as SupportedLanguageCode] || "en-UG";
-}
-
-export function readVoiceRepliesPreference(
-  storage?: Pick<Storage, "getItem">,
-): boolean {
-  try {
-    return storage?.getItem(VOICE_REPLIES_STORAGE_KEY) === "true";
-  } catch {
-    return false;
-  }
 }
 
 export function readVoiceSelections(

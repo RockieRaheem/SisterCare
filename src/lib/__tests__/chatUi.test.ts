@@ -53,6 +53,16 @@ describe("member chat workspace", () => {
     expect(chat).toContain("More options for");
   });
 
+  it("never starts sensitive spoken replies without an explicit Listen click", () => {
+    expect(chat).not.toContain("voiceRepliesEnabled");
+    expect(chat).not.toContain("automatic spoken replies");
+    expect(chat).toContain("Listen to latest Sister reply");
+    expect(chat).toContain("Listen to Sister's response");
+    expect(chat.match(/playMessageAudio\(/g)).toHaveLength(2);
+    expect(chat).toContain("if (latestSisterMessage) void playMessageAudio(latestSisterMessage)");
+    expect(chat).toContain("onClick={() => void playMessageAudio(message)}");
+  });
+
   it("keeps legacy conversations visible when preview metadata is missing", () => {
     expect(chat).toContain("mergeConversationHistory");
     expect(chat).not.toContain("hasNoContent");

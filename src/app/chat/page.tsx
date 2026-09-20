@@ -34,7 +34,6 @@ import { AgentActionStatus, ChatConversation, UserProfile, ChatMessage } from "@
 import {
   SUPPORTED_LANGUAGES,
   SupportedLanguageCode,
-  getSunbirdVoices,
   normalizeSupportedLanguageCode,
 } from "@/lib/sunbird";
 import { authenticatedFetch } from "@/lib/authenticatedFetch";
@@ -47,10 +46,8 @@ import {
   voiceFileName,
 } from "@/lib/speechCapture";
 import {
-  readVoiceRepliesPreference,
   selectedVoiceForLanguage,
   speechLocale,
-  VOICE_REPLIES_STORAGE_KEY,
 } from "@/lib/voicePlayback";
 
 interface Message {
@@ -385,7 +382,6 @@ export default function ChatPage() {
   const languageInitializedForUserRef = useRef<string | null>(null);
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const [preparingAudioId, setPreparingAudioId] = useState<string | null>(null);
-  const [voiceRepliesEnabled, setVoiceRepliesEnabled] = useState(false);
   const [voicePlaybackError, setVoicePlaybackError] = useState<string | null>(null);
   const [freshChatId, setFreshChatId] = useState<string | null>(null);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
@@ -405,13 +401,16 @@ export default function ChatPage() {
   const recordingStartedAtRef = useRef<number>(0);
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioElementsRef = useRef<Map<string, HTMLAudioElement>>(new Map());
-  const voiceRepliesEnabledRef = useRef(false);
+  const readyAudioRef = useRef<Map<string, { url: string; expiresAt: number }>>(new Map());
   const playbackRequestRef = useRef(0);
   const isFreshChat =
     activeConversationId !== null && activeConversationId === freshChatId;
   const activeConversation = conversations.find(
     (conversation) => conversation.id === activeConversationId,
   );
+  const latestSisterMessage = [...messages]
+    .reverse()
+    .find((message) => message.sender === "sister");
 
   const createFreshConversation = useCallback(async (): Promise<string | null> => {
     if (!user) return null;
@@ -496,14 +495,6 @@ export default function ChatPage() {
     [user],
   );
 
-  useEffect(() => {
-    const enabled = readVoiceRepliesPreference(
-      typeof window !== "undefined" ? window.localStorage : undefined,
-    );
-    voiceRepliesEnabledRef.current = enabled;
-    setVoiceRepliesEnabled(enabled);
-  }, []);
-
   const stopAllSpokenAudio = useCallback(() => {
     playbackRequestRef.current += 1;
     audioElementsRef.current.forEach((audio) => {
@@ -519,13 +510,8 @@ export default function ChatPage() {
   }, []);
 
   const playMessageAudio = useCallback(async (message: Message) => {
-    if (playingAudioId === message.id) {
-      const current = audioElementsRef.current.get(message.id);
-      current?.pause();
-      if (typeof window !== "undefined" && "speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
-      }
-      setPlayingAudioId(null);
+    if (playingAudioId === message.id || preparingAudioId === message.id) {
+      stopAllSpokenAudio();
       return;
     }
 
@@ -544,16 +530,28 @@ export default function ChatPage() {
           `${SUPPORTED_LANGUAGES[language].name} does not currently have an available Sunbird voice.`,
         );
       }
-      const response = await authenticatedFetch("/api/language/speak", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: message.text, language, voice }),
-      });
-      const result = await response.json().catch(() => null);
-      if (!response.ok || !result?.data?.url) {
-        throw new Error(result?.error || "Spoken reply unavailable");
+      const cached = readyAudioRef.current.get(message.id);
+      let audioUrl = cached && cached.expiresAt > Date.now()
+        ? cached.url
+        : Date.now() - message.timestamp.getTime() < 10 * 60_000
+          ? message.audio?.url
+          : undefined;
+      if (!audioUrl) {
+        const response = await authenticatedFetch("/api/language/speak", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: message.text, language, voice }),
+        });
+        const result = await response.json().catch(() => null);
+        if (!response.ok || !result?.data?.url) {
+          throw new Error(result?.error || "Spoken reply unavailable");
+        }
+        audioUrl = result.data.url;
       }
-      const audioUrl = result.data.url;
+      if (!audioUrl) throw new Error("Spoken reply unavailable");
+      // Reuse only within this page session. Hosted voice URLs may expire, and
+      // no sensitive response audio is persisted on the device by default.
+      readyAudioRef.current.set(message.id, { url: audioUrl, expiresAt: Date.now() + 10 * 60_000 });
 
       if (playbackRequest !== playbackRequestRef.current) return;
 
@@ -561,6 +559,7 @@ export default function ChatPage() {
       audio.preload = "auto";
       audio.onended = () => setPlayingAudioId(null);
       audio.onerror = () => {
+        readyAudioRef.current.delete(message.id);
         setPlayingAudioId(null);
         setVoicePlaybackError(
           "This spoken reply could not be played. The written response is still available.",
@@ -575,6 +574,10 @@ export default function ChatPage() {
       setPlayingAudioId(message.id);
     } catch (playbackError) {
       if (playbackRequest !== playbackRequestRef.current) return;
+      if (playbackError instanceof DOMException && playbackError.name === "NotAllowedError") {
+        setVoicePlaybackError("Audio is ready. Tap Listen again to start it.");
+        return;
+      }
       const canUseDeviceVoice =
         (message.language || userLanguage) === "eng" &&
         typeof window !== "undefined" &&
@@ -600,27 +603,7 @@ export default function ChatPage() {
         setPreparingAudioId(null);
       }
     }
-  }, [playingAudioId, stopAllSpokenAudio, userLanguage]);
-
-  const toggleVoiceReplies = useCallback(() => {
-    const enabled = !voiceRepliesEnabledRef.current;
-    voiceRepliesEnabledRef.current = enabled;
-    setVoiceRepliesEnabled(enabled);
-    try {
-      window.localStorage.setItem(
-        VOICE_REPLIES_STORAGE_KEY,
-        enabled ? "true" : "false",
-      );
-    } catch {}
-    if (!enabled) {
-      stopAllSpokenAudio();
-      return;
-    }
-    const latestReply = [...messages]
-      .reverse()
-      .find((message) => message.sender === "sister");
-    if (latestReply) void playMessageAudio(latestReply);
-  }, [messages, playMessageAudio, stopAllSpokenAudio]);
+  }, [playingAudioId, preparingAudioId, stopAllSpokenAudio, userLanguage]);
 
   const startVoiceRecording = useCallback(async () => {
     try {
@@ -769,9 +752,11 @@ export default function ChatPage() {
 
   useEffect(() => {
     const audioElements = audioElementsRef.current;
+    const readyAudio = readyAudioRef.current;
     return () => {
       audioElements.forEach((audio) => audio.pause());
       audioElements.clear();
+      readyAudio.clear();
       if (typeof window !== "undefined" && "speechSynthesis" in window) {
         window.speechSynthesis.cancel();
       }
@@ -780,6 +765,7 @@ export default function ChatPage() {
 
   useEffect(() => {
     stopAllSpokenAudio();
+    readyAudioRef.current.clear();
   }, [activeConversationId, stopAllSpokenAudio]);
 
   useEffect(() => {
@@ -1452,9 +1438,6 @@ export default function ChatPage() {
           };
 
           setMessages((prev) => [...prev, sisterMessage]);
-          if (voiceRepliesEnabledRef.current) {
-            void playMessageAudio(sisterMessage);
-          }
 
           // Save AI response locally
           saveLocalMessage(currentConversationId, {
@@ -1517,7 +1500,7 @@ export default function ChatPage() {
         setIsTyping(false);
       }
     },
-    [user, activeConversationId, messages, createFreshConversation, generateTitleFromMessage, userProfile, userLanguage, router, signOut, playMessageAudio, stopAllSpokenAudio],
+    [user, activeConversationId, messages, createFreshConversation, generateTitleFromMessage, userProfile, userLanguage, router, signOut, stopAllSpokenAudio],
   );
 
   const isOverLimit = inputValue.length > MAX_MESSAGE_LENGTH;
@@ -2071,24 +2054,18 @@ export default function ChatPage() {
               <div className="flex shrink-0 items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={toggleVoiceReplies}
-                  aria-pressed={voiceRepliesEnabled}
-                  aria-label={voiceRepliesEnabled ? "Turn automatic spoken replies off" : "Turn automatic spoken replies on"}
-                  title={
-                    getSunbirdVoices(userLanguage).length
-                      ? `${getSunbirdVoices(userLanguage)[0]?.label}; spoken replies ${voiceRepliesEnabled ? "on" : "off"}`
-                      : `${SUPPORTED_LANGUAGES[userLanguage].name} spoken replies unavailable`
-                  }
-                  className={`flex min-h-10 items-center gap-1.5 rounded-xl border px-2.5 text-xs font-bold transition-colors ${
-                    voiceRepliesEnabled
-                      ? "border-primary/20 bg-primary/[0.08] text-primary"
-                      : "border-transparent text-text-secondary hover:bg-primary/[0.05] hover:text-primary"
-                  }`}
+                  onClick={() => {
+                    if (latestSisterMessage) void playMessageAudio(latestSisterMessage);
+                  }}
+                  disabled={!latestSisterMessage}
+                  aria-label={playingAudioId === latestSisterMessage?.id || preparingAudioId === latestSisterMessage?.id ? "Stop latest spoken reply" : "Listen to latest Sister reply"}
+                  title="Play the latest reply only when you choose to listen"
+                  className="flex min-h-10 items-center gap-1.5 rounded-xl border border-transparent px-2.5 text-xs font-bold text-text-secondary transition-colors hover:bg-primary/[0.05] hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <span className="material-symbols-outlined text-lg" aria-hidden="true">
-                    {voiceRepliesEnabled ? "volume_up" : "volume_off"}
+                    {playingAudioId === latestSisterMessage?.id || preparingAudioId === latestSisterMessage?.id ? "stop_circle" : "volume_up"}
                   </span>
-                  <span className="hidden sm:inline">Spoken replies</span>
+                  <span className="hidden sm:inline">{playingAudioId === latestSisterMessage?.id || preparingAudioId === latestSisterMessage?.id ? "Stop audio" : "Listen"}</span>
                 </button>
                 <button
                   onClick={handleNewChat}
@@ -2345,13 +2322,12 @@ export default function ChatPage() {
                                 <button
                                   type="button"
                                   onClick={() => void playMessageAudio(message)}
-                                  disabled={preparingAudioId === message.id}
                                   aria-label={
-                                    playingAudioId === message.id
-                                      ? "Pause Sister's spoken response"
+                                    playingAudioId === message.id || preparingAudioId === message.id
+                                      ? "Stop Sister's spoken response"
                                       : "Listen to Sister's response"
                                   }
-                                  className="flex min-h-9 items-center gap-1.5 rounded-xl bg-primary/[0.07] px-3 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/15 disabled:cursor-wait disabled:opacity-60 dark:bg-primary/20 dark:text-primary-light"
+                                  className="flex min-h-9 items-center gap-1.5 rounded-xl bg-primary/[0.07] px-3 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/15 dark:bg-primary/20 dark:text-primary-light"
                                 >
                                   <span className="material-symbols-outlined text-sm" aria-hidden="true">
                                     {preparingAudioId === message.id
@@ -2360,10 +2336,10 @@ export default function ChatPage() {
                                         ? "pause_circle"
                                         : "volume_up"}
                                   </span>
-                                  {preparingAudioId === message.id
-                                    ? "Preparing voice"
+                                    {preparingAudioId === message.id
+                                      ? "Cancel voice"
                                     : playingAudioId === message.id
-                                      ? "Pause"
+                                      ? "Stop"
                                       : "Listen"}
                                   {message.audio && message.audio.durationSeconds > 0 && (
                                     <span className="opacity-60" aria-hidden="true">

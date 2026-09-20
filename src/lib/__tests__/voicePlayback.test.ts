@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  readVoiceRepliesPreference,
   readVoiceSelections,
   selectedVoiceForLanguage,
   speechLocale,
-  VOICE_REPLIES_STORAGE_KEY,
   VOICE_SELECTIONS_STORAGE_KEY,
 } from "../voicePlayback";
 
@@ -13,13 +11,6 @@ describe("voice reply accessibility preferences", () => {
     expect(speechLocale("eng")).toBe("en-UG");
     expect(speechLocale("lug")).toBe("lg-UG");
     expect(speechLocale("swa")).toBe("sw-UG");
-  });
-
-  it("requires an explicit opt-in before sensitive replies play aloud", () => {
-    expect(readVoiceRepliesPreference({ getItem: () => null })).toBe(false);
-    expect(readVoiceRepliesPreference({
-      getItem: (key) => key === VOICE_REPLIES_STORAGE_KEY ? "true" : null,
-    })).toBe(true);
   });
 
   it("replaces stored legacy voices with the approved language voice", () => {
